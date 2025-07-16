@@ -1,0 +1,49 @@
+{
+  "name": "planeta-nocturno-agregador",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "migrate": "npx prisma db push && npx drizzle-kit introspect",
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@auth/drizzle-adapter": "^1.10.0",
+    "@prisma/client": "^6.11.1",
+    "@trpc/client": "^11.4.3",
+    "@trpc/react-query": "^11.4.3",
+    "@trpc/server": "^11.4.3",
+    "bcrypt": "^6.0.0",
+    "drizzle-orm": "^0.44.2",
+    "next": "15.3.5",
+    "next-auth": "^5.0.0-beta.29",
+    "pg": "^8.16.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "superjson": "^2.2.2",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^20",
+    "@types/pg": "^8.15.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.5",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.6.14",
+    "prisma": "^6.11.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.20.3",
+    "typescript": "^5"
+  }
+}
