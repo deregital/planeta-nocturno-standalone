@@ -101,8 +101,8 @@ model Event {
   description   String
   coverImageUrl String
   slug          String
-  startingDate  DateTime
-  endingDate    DateTime
+  startingDate  DateTime @db.Timestamptz
+  endingDate    DateTime @db.Timestamptz
   minAge        Int?
 
   locationId String    @db.Uuid
@@ -111,8 +111,9 @@ model Event {
   categoryId String        @db.Uuid
   category   EventCategory @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id])
 
-  ticketTypes    TicketType[]    @relation("EVENT_X_TICKET_TYPE") // Podria haber un (n.m)? Que el mismo ticketType este en otro evento?
-  emmitedTickets EmmitedTicket[] @relation("EVENT_X_EMMITED_TICKET")
+  ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
+
+  ticketGroups TicketGroup[] @relation("EVENT_X_TICKET_GROUP")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
@@ -123,8 +124,8 @@ model Location {
   id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String
   adress        String
-  googleMapsUrl String // eeee?
-  capacity      Int // O maxCapacity?
+  googleMapsUrl String
+  capacity      Int
   event         Event[] @relation("EVENT_X_LOCATION")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
@@ -140,7 +141,7 @@ model TicketType {
   maxAvailable   Int
   maxPerPurchase Int
 
-  scanLimit DateTime?
+  scanLimit DateTime? @db.Timestamptz
 
   event   Event  @relation("EVENT_X_TICKET_TYPE", fields: [eventId], references: [id])
   eventId String @db.Uuid
@@ -150,6 +151,21 @@ model TicketType {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("ticketType")
+}
+
+model TicketGroup {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  status        TicketGroupStatus
+  amountTickets Int               @default(0)
+  eventId       String            @map("event_id") @db.Uuid
+  event         Event             @relation("EVENT_X_TICKET_GROUP", fields: [eventId], references: [id], onDelete: Cascade)
+
+  tickets EmmitedTicket[] @relation("TICKET_X_TICKET_GROUP")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("ticketGroup")
 }
 
 model EmmitedTicket {
@@ -164,18 +180,19 @@ model EmmitedTicket {
   paidOnLocation Boolean
 
   scanned   Boolean   @default(false)
-  scannedAt DateTime?
+  scannedAt DateTime? @db.Timestamptz
 
   scannedByUserId String @db.Uuid
   scannedBy       User   @relation("USER_X_EMMITED_TICKET", fields: [scannedByUserId], references: [id])
 
-  event   Event  @relation("EVENT_X_EMMITED_TICKET", fields: [eventId], references: [id])
-  eventId String @db.Uuid
-
   ticketTypeId String     @db.Uuid
   type         TicketType @relation("TICKET_TYPE_X_EMMITED_TICKET", fields: [ticketTypeId], references: [id])
 
+  ticketGroupId String       @db.Uuid
+  ticketGroup   TicketGroup? @relation("TICKET_X_TICKET_GROUP", fields: [ticketGroupId], references: [id])
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  eventId   String?  @db.Uuid
 
   @@map("emmitedTicket")
 }
@@ -194,4 +211,10 @@ model EventCategory {
 enum Role {
   ADMIN
   STAFF
+}
+
+enum TicketGroupStatus {
+  BOOKED
+  PAID
+  FREE
 }
