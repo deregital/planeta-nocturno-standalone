@@ -15,16 +15,19 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name           String
-  password       String
-  email          String          @unique
-  emailVerified  DateTime?       @db.Timestamptz
-  image          String?
-  accounts       Account[]
-  sessions       Session[]
-  // role           Role            @default(dbgenerated("Role.STAFF"))
-  scannedTickets EmmitedTicket[]
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  password      String
+  email         String    @unique
+  emailVerified DateTime? @db.Timestamptz
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  fullName String
+  role     Role   @default(dbgenerated("Role.STAFF"))
+
+  scannedTickets EmmitedTicket[] @relation("USER_X_EMMITED_TICKET")
 
   // Optional for WebAuthn support
   Authenticator Authenticator[]
@@ -103,13 +106,15 @@ model Event {
   minAge        Int?
 
   locationId String    @db.Uuid
-  location   Location? @relation(fields: [locationId], references: [id])
+  location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id])
 
   categoryId String        @db.Uuid
-  category   EventCategory @relation(fields: [categoryId], references: [id])
+  category   EventCategory @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id])
 
-  ticketTypes    TicketType[] // Podria haber un (n.m)? Que el mismo ticketType este en otro evento?
-  emmitedTickets EmmitedTicket[]
+  ticketTypes    TicketType[]    @relation("EVENT_X_TICKET_TYPE") // Podria haber un (n.m)? Que el mismo ticketType este en otro evento?
+  emmitedTickets EmmitedTicket[] @relation("EVENT_X_EMMITED_TICKET")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 }
 
 model Location {
@@ -118,7 +123,7 @@ model Location {
   adress        String
   googleMapsUrl String // eeee?
   capacity      Int // O maxCapacity?
-  event         Event[]
+  event         Event[] @relation("EVENT_X_LOCATION")
 }
 
 model TicketType {
@@ -131,10 +136,10 @@ model TicketType {
 
   scanLimit DateTime?
 
-  event   Event  @relation(fields: [eventId], references: [id])
+  event   Event  @relation("EVENT_X_TICKET_TYPE", fields: [eventId], references: [id])
   eventId String @db.Uuid
 
-  tickets EmmitedTicket[]
+  tickets EmmitedTicket[] @relation("TICKET_TYPE_X_EMMITED_TICKET")
 }
 
 model EmmitedTicket {
@@ -152,20 +157,20 @@ model EmmitedTicket {
   scannedAt DateTime?
 
   scannedByUserId String @db.Uuid
-  scannedBy       User   @relation(fields: [scannedByUserId], references: [id])
+  scannedBy       User   @relation("USER_X_EMMITED_TICKET", fields: [scannedByUserId], references: [id])
 
-  event   Event  @relation(fields: [eventId], references: [id])
+  event   Event  @relation("EVENT_X_EMMITED_TICKET", fields: [eventId], references: [id])
   eventId String @db.Uuid
 
   ticketTypeId String     @db.Uuid
-  type         TicketType @relation(fields: [ticketTypeId], references: [id])
+  type         TicketType @relation("TICKET_TYPE_X_EMMITED_TICKET", fields: [ticketTypeId], references: [id])
 }
 
 model EventCategory {
   id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name String
 
-  events Event[]
+  events Event[] @relation("EVENT_X_CATEGORY")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 }
