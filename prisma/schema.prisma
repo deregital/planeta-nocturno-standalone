@@ -16,7 +16,7 @@ datasource db {
 
 model User {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String
+  name          String    @unique
   password      String
   email         String    @unique
   emailVerified DateTime? @db.Timestamptz
@@ -115,6 +115,8 @@ model Event {
   emmitedTickets EmmitedTicket[] @relation("EVENT_X_EMMITED_TICKET")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("event")
 }
 
 model Location {
@@ -124,6 +126,10 @@ model Location {
   googleMapsUrl String // eeee?
   capacity      Int // O maxCapacity?
   event         Event[] @relation("EVENT_X_LOCATION")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("location")
 }
 
 model TicketType {
@@ -140,6 +146,10 @@ model TicketType {
   eventId String @db.Uuid
 
   tickets EmmitedTicket[] @relation("TICKET_TYPE_X_EMMITED_TICKET")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("ticketType")
 }
 
 model EmmitedTicket {
@@ -164,6 +174,10 @@ model EmmitedTicket {
 
   ticketTypeId String     @db.Uuid
   type         TicketType @relation("TICKET_TYPE_X_EMMITED_TICKET", fields: [ticketTypeId], references: [id])
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("emmitedTicket")
 }
 
 model EventCategory {
@@ -173,6 +187,8 @@ model EventCategory {
   events Event[] @relation("EVENT_X_CATEGORY")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("eventCategory")
 }
 
 enum Role {
