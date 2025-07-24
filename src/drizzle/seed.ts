@@ -1,11 +1,114 @@
 import { db } from './index';
-import { user } from './schema';
+import { user, location, eventCategory, event, ticketType } from './schema';
 import { hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 
 async function main() {
-  const hashedPassword = await hash('123456', 10);
+  // 1. Crear locación
+  const locationName = 'Centro de Convenciones';
+  let loc = await db.query.location.findFirst({
+    where: eq(location.name, locationName),
+  });
+  if (!loc) {
+    const [insertedLoc] = await db
+      .insert(location)
+      .values({
+        name: locationName,
+        address: 'Av. Siempre Viva 123',
+        googleMapsUrl: 'https://maps.google.com/?q=Centro+de+Convenciones',
+        capacity: 1000,
+      })
+      .returning();
+    loc = insertedLoc;
+    console.log('Locación creada');
+  } else {
+    console.log('Locación ya existe');
+  }
 
+  // 2. Crear categoría
+  const categoryName = 'Concierto';
+  let cat = await db.query.eventCategory.findFirst({
+    where: eq(eventCategory.name, categoryName),
+  });
+  if (!cat) {
+    const [insertedCat] = await db
+      .insert(eventCategory)
+      .values({
+        name: categoryName,
+      })
+      .returning();
+    cat = insertedCat;
+    console.log('Categoría creada');
+  } else {
+    console.log('Categoría ya existe');
+  }
+
+  // 3. Crear evento
+  const eventName = 'Noche de Rock';
+  let ev = await db.query.event.findFirst({ where: eq(event.name, eventName) });
+  if (!ev) {
+    const [insertedEvent] = await db
+      .insert(event)
+      .values({
+        name: eventName,
+        description: 'Un concierto inolvidable de rock nacional.',
+        coverImageUrl: 'https://example.com/rock.jpg',
+        slug: 'noche-de-rock',
+        startingDate: new Date('2024-08-01T20:00:00Z').toISOString(),
+        endingDate: new Date('2024-08-02T02:00:00Z').toISOString(),
+        minAge: 18,
+        locationId: loc.id,
+        categoryId: cat.id,
+      })
+      .returning();
+    ev = insertedEvent;
+    console.log('Evento creado');
+  } else {
+    console.log('Evento ya existe');
+  }
+
+  // 4. Crear 3 tipos de tickets para el evento
+  const ticketTypesData = [
+    {
+      name: 'General',
+      description: 'Acceso general al evento',
+      price: 5000,
+      maxAvailable: 500,
+      maxPerPurchase: 4,
+      eventId: ev.id,
+    },
+    {
+      name: 'VIP',
+      description: 'Acceso VIP con beneficios exclusivos',
+      price: 12000,
+      maxAvailable: 100,
+      maxPerPurchase: 2,
+      eventId: ev.id,
+    },
+    {
+      name: 'Backstage',
+      description: 'Acceso al backstage y meet & greet',
+      price: 25000,
+      maxAvailable: 20,
+      maxPerPurchase: 1,
+      eventId: ev.id,
+    },
+  ];
+
+  for (const t of ticketTypesData) {
+    const exists = await db.query.ticketType.findFirst({
+      where: eq(ticketType.name, t.name),
+    });
+    if (!exists) {
+      await db.insert(ticketType).values(t);
+      console.log(`Tipo de ticket '${t.name}' creado`);
+    } else {
+      console.log(`Tipo de ticket '${t.name}' ya existe`);
+    }
+  }
+
+  // Usuario demo (como antes)
+  const hashedPassword = await hash('123456', 10);
   const isCreated = await db.query.user.findFirst({
     where: eq(user.name, 'nico'),
   });
@@ -13,7 +116,6 @@ async function main() {
     console.log('Usuario nico ya existe');
     return;
   }
-
   await db.insert(user).values({
     name: 'nico',
     password: hashedPassword,
