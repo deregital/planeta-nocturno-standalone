@@ -1,4 +1,4 @@
-import { ticketGroup } from '@/drizzle/schema';
+import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
 import { publicProcedure, router } from '@/server/trpc';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -14,20 +14,115 @@ export const ticketGroupSchema = z.object({
 export const ticketGroupRouter = router({
   create: publicProcedure
     .input(
-      ticketGroupSchema.pick({
-        amountTickets: true,
-        eventId: true,
+      z.object({
+        eventId: ticketGroupSchema.shape.eventId,
+        ticketsPerType: z
+          .object({
+            ticketTypeId: z.string(),
+            amount: z.number().int().min(0),
+          })
+          .array(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .insert(ticketGroup)
-        .values({ ...input, status: 'BOOKED' })
-        .returning();
+      console.log(input);
+      if (input.ticketsPerType.every((ticket) => ticket.amount <= 0)) {
+        throw new Error('No se han seleccionado tickets para comprar');
+      }
+
+      const result = await ctx.db.transaction(async (tx) => {
+        const ticketGroupData = {
+          eventId: input.eventId,
+          status: 'BOOKED' as const,
+          amountTickets: input.ticketsPerType.reduce(
+            (sum, ticket) => sum + ticket.amount,
+            0,
+          ),
+        };
+
+        const result = await tx
+          .insert(ticketGroup)
+          .values(ticketGroupData)
+          .returning();
+
+        if (!result) {
+          tx.rollback();
+          throw new Error('No se pudo crear el grupo de tickets');
+        }
+
+        const ticketGroupId = result[0].id;
+
+        // Insertar las relaciones con los tipos de tickets
+        const ticketTypePerGroups = input.ticketsPerType
+          .map((ticket) => ({
+            ticketGroupId,
+            ticketTypeId: ticket.ticketTypeId,
+            amount: ticket.amount,
+          }))
+          .filter((ticketType) => ticketType.amount > 0);
+
+        await tx.insert(ticketTypePerGroup).values(ticketTypePerGroups);
+
+        return ticketGroupId;
+      });
 
       if (!result) throw 'Error al crear ticketGroup';
-      return result[0];
+      return result;
     }),
+  getById: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        with: {
+          ticketTypePerGroups: {
+            with: {
+              ticketType: {
+                columns: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  price: true,
+                  category: true,
+                },
+              },
+            },
+          },
+          event: {
+            columns: {
+              id: true,
+              name: true,
+              description: true,
+              startingDate: true,
+              endingDate: true,
+              coverImageUrl: true,
+            },
+            with: {
+              location: {
+                columns: {
+                  id: true,
+                  name: true,
+                  address: true,
+                },
+              },
+              eventCategory: {
+                columns: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!group) {
+        throw new Error('ticketGroup no encontrado');
+      }
+
+      return group;
+    }),
+
   getTicketsByEvent: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {

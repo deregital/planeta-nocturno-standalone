@@ -27,7 +27,7 @@ function EventCardContainer({ event }: EventCardContainerProps) {
     />
   );
 
-  return <Link href={`/${event.slug}`}>{cardEvent}</Link>;
+  return <Link href={`/event/${event.slug}`}>{cardEvent}</Link>;
 }
 
 export default EventCardContainer;

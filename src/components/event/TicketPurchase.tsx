@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { startTransition, useActionState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -8,11 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import TicketPurchaseModal from './TicketPurchaseModal';
 import { type RouterOutputs } from '@/server/routers/app';
-import { trpc } from '@/server/trpc/client';
 import { useEventTickets } from '@/hooks/useEventTickets';
-import ErrorModal from './ErrorModal';
+import { handlePurchase as handlePurchaseAction } from '@/app/event/[slug]/actions';
 
 function TicketPurchase({
   ticketTypes,
@@ -21,50 +19,17 @@ function TicketPurchase({
   ticketTypes: RouterOutputs['events']['getById']['ticketTypes'];
   eventId: string;
 }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [ticketGroupId, setTicketGroupId] = useState<
-    RouterOutputs['ticketGroup']['create']['id'] | null
-  >(null);
+  const [state, handlePurchase, pending] = useActionState(
+    handlePurchaseAction,
+    undefined,
+  );
+
   const {
     ticketsAvailable: ticketsTypeAvailable,
     quantity,
     setQuantity,
     isLoading,
   } = useEventTickets(eventId, ticketTypes);
-  const createTicketGroup = trpc.ticketGroup.create.useMutation({
-    onError: (error) => {
-      setShowErrorModal(true);
-      setErrorMessage(error.message);
-    },
-  });
-  const deleteTicketGroup = trpc.ticketGroup.delete.useMutation();
-
-  const handlePurchase = async () => {
-    // if (quantity === '0') return;
-    // if (ticketsAvailable < parseInt(quantity)) return;
-
-    await createTicketGroup
-      .mutateAsync({
-        eventId,
-        amountTickets: 0,
-      })
-      .then((ticketGroupData) => {
-        setTicketGroupId(ticketGroupData.id);
-      });
-
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = async (bought: boolean) => {
-    setIsModalOpen(false);
-    if (!bought && ticketGroupId) {
-      await deleteTicketGroup.mutateAsync(ticketGroupId).then(() => {
-        setTicketGroupId(null);
-      });
-    }
-  };
 
   return (
     <div className='rounded-[20px] border border-MiExpo_gray p-6 bg-white h-full flex flex-col font-sans'>
@@ -141,31 +106,21 @@ function TicketPurchase({
               ? 'opacity-50 cursor-not-allowed bg-red-500'
               : ''
           }`}
-          onClick={handlePurchase}
+          onClick={() =>
+            startTransition(() =>
+              handlePurchase({ eventId, ticketsPerType: quantity }),
+            )
+          }
           disabled={
-            ticketsTypeAvailable.every((ticket) => ticket.disabled) || isLoading
+            ticketsTypeAvailable.every((ticket) => ticket.disabled) ||
+            isLoading ||
+            pending ||
+            quantity.every((q) => q.amount === 0)
           }
         >
           {ticketsTypeAvailable ? 'COMPRAR' : 'AGOTADO'}
         </Button>
       </div>
-
-      {/* Modal de compra de tickets */}
-      <TicketPurchaseModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        quantity={'0'}
-        isFree={true}
-        eventId={eventId}
-        ticketType={'ticketTypes[0].name'}
-        ticketGroupId={ticketGroupId || ''}
-      />
-      <ErrorModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        errorTitle={'No se pudo reservar los tickets'}
-        errorMessage={errorMessage}
-      />
     </div>
   );
 }
