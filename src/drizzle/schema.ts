@@ -1,9 +1,34 @@
-import { pgTable, foreignKey, uuid, text, doublePrecision, integer, timestamp, uniqueIndex, boolean, primaryKey, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, uniqueIndex, uuid, text, timestamp, integer, foreignKey, doublePrecision, boolean, primaryKey, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const role = pgEnum("Role", ['ADMIN', 'STAFF'])
 export const ticketGroupStatus = pgEnum("TicketGroupStatus", ['BOOKED', 'PAID', 'FREE'])
+export const ticketTypeCategory = pgEnum("TicketTypeCategory", ['FREE', 'PAID', 'TABLE'])
 
+
+export const user = pgTable("user", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	name: text().notNull(),
+	password: text().notNull(),
+	email: text().notNull(),
+	emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
+	image: text(),
+	fullName: text().notNull(),
+	role: role().notNull(),
+	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	uniqueIndex("user_email_key").using("btree", table.email.asc().nullsLast().op("text_ops")),
+	uniqueIndex("user_name_key").using("btree", table.name.asc().nullsLast().op("text_ops")),
+]);
+
+export const location = pgTable("location", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	name: text().notNull(),
+	address: text().notNull(),
+	googleMapsUrl: text().notNull(),
+	capacity: integer().notNull(),
+	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
 
 export const ticketType = pgTable("ticketType", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
@@ -12,6 +37,8 @@ export const ticketType = pgTable("ticketType", {
 	price: doublePrecision(),
 	maxAvailable: integer().notNull(),
 	maxPerPurchase: integer().notNull(),
+	category: ticketTypeCategory().notNull(),
+	maxSellDate: timestamp({ withTimezone: true, mode: 'string' }),
 	scanLimit: timestamp({ withTimezone: true, mode: 'string' }),
 	eventId: uuid().notNull(),
 	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -37,14 +64,19 @@ export const ticketGroup = pgTable("ticketGroup", {
 		}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
-export const location = pgTable("location", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	name: text().notNull(),
-	address: text().notNull(),
-	googleMapsUrl: text().notNull(),
-	capacity: integer().notNull(),
+export const session = pgTable("session", {
+	sessionToken: text().notNull(),
+	userId: uuid().notNull(),
+	expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
 	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+}, (table) => [
+	uniqueIndex("session_sessionToken_key").using("btree", table.sessionToken.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "session_userId_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+]);
 
 export const event = pgTable("event", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
@@ -55,6 +87,7 @@ export const event = pgTable("event", {
 	startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
 	endingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
 	minAge: integer(),
+	isActive: boolean().default(false).notNull(),
 	locationId: uuid().notNull(),
 	categoryId: uuid().notNull(),
 	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -113,33 +146,12 @@ export const emmitedTicket = pgTable("emmitedTicket", {
 		}).onUpdate("cascade").onDelete("restrict"),
 ]);
 
-export const session = pgTable("session", {
-	sessionToken: text().notNull(),
-	userId: uuid().notNull(),
+export const verificationToken = pgTable("verificationToken", {
+	identifier: text().notNull(),
+	token: text().notNull(),
 	expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	uniqueIndex("session_sessionToken_key").using("btree", table.sessionToken.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [user.id],
-			name: "session_userId_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
-]);
-
-export const user = pgTable("user", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	name: text().notNull(),
-	password: text().notNull(),
-	email: text().notNull(),
-	emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
-	image: text(),
-	fullName: text().notNull(),
-	role: role().notNull(),
-	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-	uniqueIndex("user_email_key").using("btree", table.email.asc().nullsLast().op("text_ops")),
-	uniqueIndex("user_name_key").using("btree", table.name.asc().nullsLast().op("text_ops")),
+	primaryKey({ columns: [table.identifier, table.token], name: "verificationToken_pkey"}),
 ]);
 
 export const ticketTypePerGroup = pgTable("ticketTypePerGroup", {
@@ -156,16 +168,8 @@ export const ticketTypePerGroup = pgTable("ticketTypePerGroup", {
 			columns: [table.ticketGroupId],
 			foreignColumns: [ticketGroup.id],
 			name: "ticketTypePerGroup_ticketGroupId_fkey"
-		}).onUpdate("cascade").onDelete("restrict"),
+		}).onUpdate("cascade").onDelete("cascade"),
 	primaryKey({ columns: [table.ticketTypeId, table.ticketGroupId], name: "ticketTypePerGroup_pkey"}),
-]);
-
-export const verificationToken = pgTable("verificationToken", {
-	identifier: text().notNull(),
-	token: text().notNull(),
-	expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-}, (table) => [
-	primaryKey({ columns: [table.identifier, table.token], name: "verificationToken_pkey"}),
 ]);
 
 export const authenticator = pgTable("authenticator", {

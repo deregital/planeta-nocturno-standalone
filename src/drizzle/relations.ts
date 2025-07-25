@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { event, ticketType, ticketGroup, location, eventCategory, user, emmitedTicket, session, ticketTypePerGroup, authenticator, account } from "./schema";
+import { event, ticketType, ticketGroup, user, session, location, eventCategory, emmitedTicket, ticketTypePerGroup, authenticator, account } from "./schema";
 
 export const ticketTypeRelations = relations(ticketType, ({one, many}) => ({
 	event: one(event, {
@@ -32,6 +32,20 @@ export const ticketGroupRelations = relations(ticketGroup, ({one, many}) => ({
 	ticketTypePerGroups: many(ticketTypePerGroup),
 }));
 
+export const sessionRelations = relations(session, ({one}) => ({
+	user: one(user, {
+		fields: [session.userId],
+		references: [user.id]
+	}),
+}));
+
+export const userRelations = relations(user, ({many}) => ({
+	sessions: many(session),
+	emmitedTickets: many(emmitedTicket),
+	authenticators: many(authenticator),
+	accounts: many(account),
+}));
+
 export const locationRelations = relations(location, ({many}) => ({
 	events: many(event),
 }));
@@ -52,20 +66,6 @@ export const emmitedTicketRelations = relations(emmitedTicket, ({one}) => ({
 	ticketGroup: one(ticketGroup, {
 		fields: [emmitedTicket.ticketGroupId],
 		references: [ticketGroup.id]
-	}),
-}));
-
-export const userRelations = relations(user, ({many}) => ({
-	emmitedTickets: many(emmitedTicket),
-	sessions: many(session),
-	authenticators: many(authenticator),
-	accounts: many(account),
-}));
-
-export const sessionRelations = relations(session, ({one}) => ({
-	user: one(user, {
-		fields: [session.userId],
-		references: [user.id]
 	}),
 }));
 

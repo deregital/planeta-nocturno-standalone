@@ -1,7 +1,18 @@
-import { db } from './index';
 import { user, location, eventCategory, event, ticketType } from './schema';
 import { hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as relations from './relations';
+import * as models from './schema';
+import 'dotenv/config';
+import { type InsertTicketType } from '@/server/types';
+
+export const db = drizzle(process.env.DATABASE_URL!, {
+  schema: {
+    ...relations,
+    ...models,
+  },
+});
 
 async function main() {
   // 1. Crear locación
@@ -68,7 +79,7 @@ async function main() {
   }
 
   // 4. Crear 3 tipos de tickets para el evento
-  const ticketTypesData = [
+  const ticketTypesData: InsertTicketType[] = [
     {
       name: 'General',
       description: 'Acceso general al evento',
@@ -76,6 +87,7 @@ async function main() {
       maxAvailable: 500,
       maxPerPurchase: 4,
       eventId: ev.id,
+      category: 'PAID',
     },
     {
       name: 'VIP',
@@ -84,14 +96,16 @@ async function main() {
       maxAvailable: 100,
       maxPerPurchase: 2,
       eventId: ev.id,
+      category: 'TABLE',
     },
     {
       name: 'Backstage',
       description: 'Acceso al backstage y meet & greet',
-      price: 25000,
+      price: 0,
       maxAvailable: 20,
       maxPerPurchase: 1,
       eventId: ev.id,
+      category: 'FREE',
     },
   ];
 

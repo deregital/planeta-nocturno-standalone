@@ -104,6 +104,7 @@ model Event {
   startingDate  DateTime @db.Timestamptz
   endingDate    DateTime @db.Timestamptz
   minAge        Int?
+  isActive      Boolean  @default(false)
 
   locationId String    @db.Uuid
   location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id])
@@ -134,12 +135,14 @@ model Location {
 }
 
 model TicketType {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String
   description    String
   price          Float?
   maxAvailable   Int
   maxPerPurchase Int
+  category       TicketTypeCategory
+  maxSellDate    DateTime?          @db.Timestamptz
 
   scanLimit DateTime? @db.Timestamptz
 
@@ -178,7 +181,7 @@ model TicketTypePerGroup {
   type         TicketType @relation("TICKET_TYPE_PER_GROUP_X_TICKET_TYPE", fields: [ticketTypeId], references: [id])
 
   ticketGroupId String       @db.Uuid
-  ticketGroup   TicketGroup? @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP", fields: [ticketGroupId], references: [id])
+  ticketGroup   TicketGroup? @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP", fields: [ticketGroupId], references: [id], onDelete: Cascade)
 
   @@id([ticketTypeId, ticketGroupId])
   @@map("ticketTypePerGroup")
@@ -233,4 +236,10 @@ enum TicketGroupStatus {
   BOOKED
   PAID
   FREE
+}
+
+enum TicketTypeCategory {
+  FREE
+  PAID
+  TABLE
 }
