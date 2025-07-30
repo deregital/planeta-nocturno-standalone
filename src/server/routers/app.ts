@@ -2,6 +2,10 @@ import { user } from '@/drizzle/schema';
 import { publicProcedure, router } from '@/server/trpc';
 import { userSchema } from '../schemas/user';
 import { hash } from 'bcrypt';
+import { eventsRouter } from '@/server/routers/events';
+import { type inferRouterOutputs } from '@trpc/server';
+import { ticketGroupRouter } from './ticket-group';
+import { emittedTicketsRouter } from './emitted-tickets';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -16,6 +20,10 @@ export const appRouter = router({
         password: hashedPassword,
       });
     }),
+  events: eventsRouter,
+  ticketGroup: ticketGroupRouter,
+  emittedTickets: emittedTicketsRouter,
 });
 
 export type AppRouter = typeof appRouter;
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
