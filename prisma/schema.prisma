@@ -193,6 +193,7 @@ model EmmitedTicket {
   age            Int
   dni            String  @unique
   mail           String
+  gender         String
   phoneNumber    String
   instagram      String?
   birthDate      String

@@ -131,13 +131,6 @@ function TicketPurchaseModal({
     defaultState(ticketsCount),
   );
 
-  // const isReferralCodeValid = trpc.profile.referralCodeExists.useQuery(
-  //   formData.referralCode,
-  //   {
-  //     enabled: false,
-  //   },
-  // );
-
   useEffect(() => {
     setFormData(defaultState(ticketsCount));
   }, [ticketsCount, isOpen]);

@@ -5,7 +5,7 @@ import { hash } from 'bcrypt';
 import { eventsRouter } from '@/server/routers/events';
 import { type inferRouterOutputs } from '@trpc/server';
 import { ticketGroupRouter } from './ticket-group';
-import { emmitedTicketsRouter } from './emmited-tickets';
+import { emittedTicketsRouter } from './emitted-tickets';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -22,7 +22,7 @@ export const appRouter = router({
     }),
   events: eventsRouter,
   ticketGroup: ticketGroupRouter,
-  tickets: emmitedTicketsRouter,
+  emittedTickets: emittedTicketsRouter,
 });
 
 export type AppRouter = typeof appRouter;
