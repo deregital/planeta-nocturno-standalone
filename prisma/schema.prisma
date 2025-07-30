@@ -104,6 +104,7 @@ model Event {
   startingDate  DateTime @db.Timestamptz
   endingDate    DateTime @db.Timestamptz
   minAge        Int?
+  isActive      Boolean  @default(false)
 
   locationId String    @db.Uuid
   location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id])
@@ -123,7 +124,7 @@ model Event {
 model Location {
   id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String
-  adress        String
+  address       String
   googleMapsUrl String
   capacity      Int
   event         Event[] @relation("EVENT_X_LOCATION")
@@ -134,12 +135,14 @@ model Location {
 }
 
 model TicketType {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String
   description    String
   price          Float?
   maxAvailable   Int
   maxPerPurchase Int
+  category       TicketTypeCategory
+  maxSellDate    DateTime?          @db.Timestamptz
 
   scanLimit DateTime? @db.Timestamptz
 
@@ -147,6 +150,8 @@ model TicketType {
   eventId String @db.Uuid
 
   tickets EmmitedTicket[] @relation("TICKET_TYPE_X_EMMITED_TICKET")
+
+  ticketTypePerGroup TicketTypePerGroup[] @relation("TICKET_TYPE_PER_GROUP_X_TICKET_TYPE")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
@@ -163,9 +168,23 @@ model TicketGroup {
 
   tickets EmmitedTicket[] @relation("TICKET_X_TICKET_GROUP")
 
+  ticketTypePerGroup TicketTypePerGroup[] @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP")
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("ticketGroup")
+}
+
+model TicketTypePerGroup {
+  amount       Int
+  ticketTypeId String     @db.Uuid
+  type         TicketType @relation("TICKET_TYPE_PER_GROUP_X_TICKET_TYPE", fields: [ticketTypeId], references: [id])
+
+  ticketGroupId String       @db.Uuid
+  ticketGroup   TicketGroup? @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP", fields: [ticketGroupId], references: [id], onDelete: Cascade)
+
+  @@id([ticketTypeId, ticketGroupId])
+  @@map("ticketTypePerGroup")
 }
 
 model EmmitedTicket {
@@ -174,6 +193,7 @@ model EmmitedTicket {
   age            Int
   dni            String  @unique
   mail           String
+  gender         String
   phoneNumber    String
   instagram      String?
   birthDate      String
@@ -182,8 +202,8 @@ model EmmitedTicket {
   scanned   Boolean   @default(false)
   scannedAt DateTime? @db.Timestamptz
 
-  scannedByUserId String @db.Uuid
-  scannedBy       User   @relation("USER_X_EMMITED_TICKET", fields: [scannedByUserId], references: [id])
+  scannedByUserId String? @db.Uuid
+  scannedBy       User?   @relation("USER_X_EMMITED_TICKET", fields: [scannedByUserId], references: [id])
 
   ticketTypeId String     @db.Uuid
   type         TicketType @relation("TICKET_TYPE_X_EMMITED_TICKET", fields: [ticketTypeId], references: [id])
@@ -217,4 +237,10 @@ enum TicketGroupStatus {
   BOOKED
   PAID
   FREE
+}
+
+enum TicketTypeCategory {
+  FREE
+  PAID
+  TABLE
 }
