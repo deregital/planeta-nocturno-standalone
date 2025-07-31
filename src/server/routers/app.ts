@@ -6,6 +6,7 @@ import { eventsRouter } from '@/server/routers/events';
 import { type inferRouterOutputs } from '@trpc/server';
 import { ticketGroupRouter } from './ticket-group';
 import { emittedTicketsRouter } from './emitted-tickets';
+import { mercadoPagoRouter } from './mercado-pago';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -23,6 +24,7 @@ export const appRouter = router({
   events: eventsRouter,
   ticketGroup: ticketGroupRouter,
   emittedTickets: emittedTicketsRouter,
+  mercadoPago: mercadoPagoRouter,
 });
 
 export type AppRouter = typeof appRouter;
