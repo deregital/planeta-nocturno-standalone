@@ -7,10 +7,8 @@ export async function POST(req: Request) {
 
   const payment = await new Payment(mercadoPago).get({ id: body.data.id });
 
-  console.log('Payment details:', payment.id);
-
   if (payment.status === 'approved') {
-    // Crear tickets
+    // cambiar status de ticketGroup
     if (payment.external_reference) {
       await trpc.ticketGroup.updateStatus({
         id: payment.external_reference,

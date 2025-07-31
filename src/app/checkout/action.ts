@@ -49,7 +49,6 @@ export const handlePurchase = async (formData: FormData) => {
   }
 
   const validation = createManyTicketSchema.safeParse(entradas);
-  console.log('validation:', validation);
 
   // Validar DNI únicos
   const dnis = new Set<string>();

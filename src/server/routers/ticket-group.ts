@@ -25,7 +25,6 @@ export const ticketGroupRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      console.log(input);
       if (input.ticketsPerType.every((ticket) => ticket.amount <= 0)) {
         throw new Error('No se han seleccionado tickets para comprar');
       }

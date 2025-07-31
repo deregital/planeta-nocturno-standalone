@@ -71,10 +71,6 @@ export const mercadoPagoRouter = router({
         ticketGroupId: input.ticketGroupId,
       });
 
-      console.log(
-        'URL',
-        `${process.env.PLANETA_NOCTURNO_URL}/payment/${group.id}`,
-      );
       const preference = await new Preference(mercadoPago).create({
         body: {
           items: [
