@@ -205,7 +205,24 @@ export const ticketGroupRouter = router({
   //     }
   //     return data;
   //   }),
+  updateStatus: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        status: z.enum(['FREE', 'PAID']),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .update(ticketGroup)
+        .set({
+          status: input.status,
+        })
+        .where(eq(ticketGroup.id, input.id))
+        .returning();
 
+      return result[0];
+    }),
   delete: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const result = await ctx.db
       .delete(ticketGroup)
@@ -218,4 +235,38 @@ export const ticketGroupRouter = router({
 
     return result[0];
   }),
+  getTotalPriceById: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        with: {
+          ticketTypePerGroups: {
+            with: {
+              ticketType: {
+                columns: {
+                  price: true,
+                },
+              },
+            },
+            columns: {
+              amount: true,
+            },
+          },
+        },
+      });
+
+      if (!group) {
+        throw new Error('ticketGroup no encontrado');
+      }
+
+      const totalPrice = group.ticketTypePerGroups.reduce(
+        (total, ticketType) => {
+          return total + ticketType.amount * (ticketType.ticketType.price ?? 0);
+        },
+        0,
+      );
+
+      return totalPrice;
+    }),
 });

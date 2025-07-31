@@ -32,7 +32,6 @@ export default async function CheckoutPage() {
     redirect('/');
   }
   const data = await trpc.ticketGroup.getById(ticketGroupId.value);
-  // console.log('data', data);
   return (
     <div className='flex flex-col justify-center  items-center gap-6'>
       <div className='flex flex-col justify-center gap-4 p-6'>
@@ -189,6 +188,7 @@ export default async function CheckoutPage() {
         })}
 
         <input hidden name='eventId' defaultValue={data.eventId} />
+        <input hidden name='ticketGroupId' defaultValue={data.id} />
         <Button type='submit'>Comprar</Button>
       </form>
     </div>

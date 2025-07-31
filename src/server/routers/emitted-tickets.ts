@@ -48,7 +48,6 @@ export const emittedTicketsRouter = router({
           scannedByUserId: null,
         }),
       );
-      console.log('values:', values);
       const res = await ctx.db.insert(emmitedTicket).values(values).returning();
 
       if (!res) throw 'Error al crear ticket/s';

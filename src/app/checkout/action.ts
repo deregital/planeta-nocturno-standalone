@@ -1,11 +1,13 @@
 'use server';
 import { createManyTicketSchema } from '@/server/routers/emitted-tickets';
 import { trpc } from '@/server/trpc/server';
+import { redirect } from 'next/navigation';
 import type z from 'zod';
 
 export const handlePurchase = async (formData: FormData) => {
   const entradas: z.infer<typeof createManyTicketSchema> = [];
   const eventId = formData.get('eventId');
+  const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
 
   for (const [key, value] of formData.entries()) {
     const [campo, id] = key.split('_');
@@ -59,8 +61,23 @@ export const handlePurchase = async (formData: FormData) => {
   }
 
   if (validation) {
+    const totalPrice = await trpc.ticketGroup.getTotalPriceById(
+      ticketGroupId?.toString() ?? '',
+    );
+
     await trpc.emittedTickets.createMany(entradas);
+    if (totalPrice === 0) {
+      await trpc.ticketGroup.updateStatus({
+        id: ticketGroupId,
+        status: 'FREE',
+      });
+    } else {
+      const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
+      if (url) {
+        redirect(url);
+      } else {
+        throw new Error('Error al crear la preferencia de pago');
+      }
+    }
   }
-  console.log('entradas:', entradas);
-  console.log('entradas:', entradas.length);
 };
