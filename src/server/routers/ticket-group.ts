@@ -1,5 +1,6 @@
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
 import { publicProcedure, router } from '@/server/trpc';
+import { generatePdf } from '@/utils/ticket-template';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -164,46 +165,6 @@ export const ticketGroupRouter = router({
 
     return group;
   }),
-  getPdf: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    // const { data, error } = await ctx.fetch.GET(
-    //   '/ticket/get-pdfs-by-ticket-group/{ticketGroupId}',
-    //   {
-    //     params: { path: { ticketGroupId: input } },
-    //   },
-    // );
-    // if (error) {
-    //   throw handleError(error);
-    // }
-    return {
-      pdfs: [
-        {
-          ticketId: 'string',
-          pdfBase64: 'string',
-        },
-      ],
-    };
-  }),
-  // update: publicProcedure
-  //   .input(updateTicketGroupSchema.merge(z.object({ id: z.string() })))
-  //   .mutation(async ({ ctx, input }) => {
-  //     const { data, error } = await ctx.fetch.PATCH(
-  //       '/ticket-group/update/{id}',
-  //       {
-  //         params: {
-  //           path: {
-  //             id: input.id,
-  //           },
-  //         },
-  //         body: {
-  //           ...input,
-  //         },
-  //       },
-  //     );
-  //     if (error) {
-  //       throw handleError(error);
-  //     }
-  //     return data;
-  //   }),
   updateStatus: publicProcedure
     .input(
       z.object({
@@ -267,5 +228,68 @@ export const ticketGroupRouter = router({
       );
 
       return totalPrice;
+    }),
+  generatePdfsByTicketGroupId: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      // Traerme todos los datos
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        columns: {
+          status: true,
+        },
+        with: {
+          emmitedTickets: {
+            columns: {
+              id: true,
+              fullName: true,
+              mail: true,
+              dni: true,
+              createdAt: true,
+            },
+          },
+          event: {
+            columns: {
+              name: true,
+              startingDate: true,
+            },
+            with: {
+              location: {
+                columns: {
+                  address: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Verificar que este paid/free
+      if (group?.status === 'BOOKED') {
+        throw new Error('El ticketGroup no está concretado (?');
+      }
+
+      // Generar los PDFs
+      if (!group?.emmitedTickets) {
+        throw new Error('QUE');
+      }
+
+      const pdfPromises = group.emmitedTickets.map(async (ticket) => {
+        return {
+          ticket,
+          pdf: await generatePdf({
+            eventName: group.event.name,
+            eventDate: group.event.startingDate,
+            eventLocation: group.event.location.address,
+            createdAt: ticket.createdAt,
+            dni: ticket.dni,
+            fullName: ticket.fullName,
+            id: ticket.id,
+          }),
+        };
+      });
+
+      const pdfs = await Promise.all(pdfPromises);
+      return pdfs;
     }),
 });

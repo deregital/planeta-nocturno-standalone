@@ -4,7 +4,10 @@ import { trpc } from '@/server/trpc/server';
 import { redirect } from 'next/navigation';
 import type z from 'zod';
 
-export const handlePurchase = async (formData: FormData) => {
+export const handlePurchase = async (
+  // prevState: unknown,
+  formData: FormData,
+) => {
   const entradas: z.infer<typeof createManyTicketSchema> = [];
   const eventId = formData.get('eventId');
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
@@ -50,33 +53,45 @@ export const handlePurchase = async (formData: FormData) => {
 
   const validation = createManyTicketSchema.safeParse(entradas);
 
-  // Validar DNI únicos
-  const dnis = new Set<string>();
-  for (const entrada of entradas) {
-    if (dnis.has(entrada.dni)) {
-      throw new Error(`DNI duplicado: ${entrada.dni}`);
-    }
-    dnis.add(entrada.dni);
+  if (!validation.success) {
+    return {
+      errors: validation.error.flatten().fieldErrors,
+    };
   }
 
-  if (validation) {
-    const totalPrice = await trpc.ticketGroup.getTotalPriceById(
-      ticketGroupId?.toString() ?? '',
-    );
+  const totalPrice = await trpc.ticketGroup.getTotalPriceById(
+    ticketGroupId?.toString() ?? '',
+  );
 
-    await trpc.emittedTickets.createMany(entradas);
-    if (totalPrice === 0) {
-      await trpc.ticketGroup.updateStatus({
-        id: ticketGroupId,
-        status: 'FREE',
-      });
+  await trpc.emittedTickets.createMany(entradas);
+  if (totalPrice === 0) {
+    await trpc.ticketGroup.updateStatus({
+      id: ticketGroupId,
+      status: 'FREE',
+    });
+    const group = await trpc.ticketGroup.getById(ticketGroupId);
+
+    const pdfs =
+      await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
+
+    // enviar mail con los pdf?
+    await Promise.all(
+      pdfs.map(async (pdf) =>
+        trpc.mail.send({
+          eventName: group.event.name,
+          receiver: pdf.ticket.mail,
+          subject: `Llegaron tus tickets para ${group.event.name}!`,
+          body: `Te esperamos eAAAAAAAAAAAAAAAAAAA`,
+          attatchments: [pdf.pdf],
+        }),
+      ),
+    );
+  } else {
+    const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
+    if (url) {
+      redirect(url);
     } else {
-      const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
-      if (url) {
-        redirect(url);
-      } else {
-        throw new Error('Error al crear la preferencia de pago');
-      }
+      throw new Error('Error al crear la preferencia de pago');
     }
   }
 };

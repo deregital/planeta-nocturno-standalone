@@ -115,7 +115,6 @@ export const emmitedTicket = pgTable("emmitedTicket", {
 	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	eventId: uuid(),
 }, (table) => [
-	uniqueIndex("emmitedTicket_dni_key").using("btree", table.dni.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.scannedByUserId],
 			foreignColumns: [user.id],
