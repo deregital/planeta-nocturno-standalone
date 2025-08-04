@@ -191,7 +191,7 @@ model EmmitedTicket {
   id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   fullName       String
   age            Int
-  dni            String  @unique
+  dni            String
   mail           String
   gender         String
   phoneNumber    String
