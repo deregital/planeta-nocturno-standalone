@@ -1,4 +1,4 @@
-import { emmitedTicket } from '@/drizzle/schema';
+import { emittedTicket } from '@/drizzle/schema';
 import { publicProcedure, router } from '@/server/trpc';
 import z from 'zod';
 import { generate } from '@pdfme/generator';
@@ -65,7 +65,7 @@ export const emittedTicketsRouter = router({
           scannedByUserId: null,
         }),
       );
-      const res = await ctx.db.insert(emmitedTicket).values(values).returning();
+      const res = await ctx.db.insert(emittedTicket).values(values).returning();
 
       if (!res) throw 'Error al crear ticket/s';
       return res;

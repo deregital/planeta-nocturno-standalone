@@ -96,7 +96,7 @@ export const eventCategory = pgTable("eventCategory", {
 	createdAt: timestamp({ withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
-export const emmitedTicket = pgTable("emmitedTicket", {
+export const emittedTicket = pgTable("emittedTicket", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	fullName: text().notNull(),
 	age: integer().notNull(),
@@ -118,17 +118,17 @@ export const emmitedTicket = pgTable("emmitedTicket", {
 	foreignKey({
 			columns: [table.scannedByUserId],
 			foreignColumns: [user.id],
-			name: "emmitedTicket_scannedByUserId_fkey"
+			name: "emittedTicket_scannedByUserId_fkey"
 		}).onUpdate("cascade").onDelete("set null"),
 	foreignKey({
 			columns: [table.ticketTypeId],
 			foreignColumns: [ticketType.id],
-			name: "emmitedTicket_ticketTypeId_fkey"
+			name: "emittedTicket_ticketTypeId_fkey"
 		}).onUpdate("cascade").onDelete("restrict"),
 	foreignKey({
 			columns: [table.ticketGroupId],
 			foreignColumns: [ticketGroup.id],
-			name: "emmitedTicket_ticketGroupId_fkey"
+			name: "emittedTicket_ticketGroupId_fkey"
 		}).onUpdate("cascade").onDelete("restrict"),
 ]);
 

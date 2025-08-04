@@ -239,7 +239,7 @@ export const ticketGroupRouter = router({
           status: true,
         },
         with: {
-          emmitedTickets: {
+          emittedTickets: {
             columns: {
               id: true,
               fullName: true,
@@ -270,11 +270,11 @@ export const ticketGroupRouter = router({
       }
 
       // Generar los PDFs
-      if (!group?.emmitedTickets) {
+      if (!group?.emittedTickets) {
         throw new Error('QUE');
       }
 
-      const pdfPromises = group.emmitedTickets.map(async (ticket) => {
+      const pdfPromises = group.emittedTickets.map(async (ticket) => {
         return {
           ticket,
           pdf: await generatePdf({
