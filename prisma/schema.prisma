@@ -197,7 +197,7 @@ model EmittedTicket {
   phoneNumber    String
   instagram      String?
   birthDate      String
-  paidOnLocation Boolean
+  paidOnLocation Boolean @default(false)
 
   scanned   Boolean   @default(false)
   scannedAt DateTime? @db.Timestamptz

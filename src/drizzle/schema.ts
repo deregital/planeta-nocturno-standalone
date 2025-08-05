@@ -106,7 +106,7 @@ export const emittedTicket = pgTable("emittedTicket", {
 	phoneNumber: text().notNull(),
 	instagram: text(),
 	birthDate: text().notNull(),
-	paidOnLocation: boolean().notNull(),
+	paidOnLocation: boolean().default(false).notNull(),
 	scanned: boolean().default(false).notNull(),
 	scannedAt: timestamp({ withTimezone: true, mode: 'string' }),
 	scannedByUserId: uuid(),
