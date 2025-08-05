@@ -1,20 +1,12 @@
 'use client';
 
-import { trpc } from '@/server/trpc/client';
-import { use } from 'react';
+import { type RouterOutputs } from '@/server/routers/app';
 
-interface PaymentPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
-}
-
-export default function Page({ params }: PaymentPageProps) {
-  const { slug } = use(params);
-  // traer pdf segun el paymentId
-  const { data: pdfs, isLoading } =
-    trpc.ticketGroup.generatePdfsByTicketGroupId.useQuery(slug);
-
+export default function TicketsClient({
+  pdfs,
+}: {
+  pdfs: RouterOutputs['ticketGroup']['generatePdfsByTicketGroupId'];
+}) {
   const downloadPdf = (pdfBase64: string, ticketId: string) => {
     try {
       const byteCharacters = atob(pdfBase64);
@@ -41,25 +33,15 @@ export default function Page({ params }: PaymentPageProps) {
   };
 
   const downloadAllPdfs = () => {
-    console.log(pdfs);
     if (pdfs && pdfs.length > 0) {
-      console.log('ENTOR');
       pdfs.forEach(async (pdf) => {
-        const pdfBase64 = Buffer.from(await pdf.pdf.arrayBuffer()).toString(
-          'base64',
-        );
-
-        downloadPdf(pdfBase64, 'prueba');
+        downloadPdf(pdf.pdf.base64, 'prueba');
       });
     }
   };
 
-  return !pdfs || isLoading ? (
-    <p>Cargndo</p>
-  ) : (
+  return (
     <div>
-      <p>{pdfs ? 'HAY PDfS' : 'NO HAY PDFS'}</p>
-      <p>{slug} success</p>
       <button onClick={() => downloadAllPdfs()}>Descargar PDF</button>
     </div>
   );

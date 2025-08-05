@@ -85,9 +85,9 @@ export const mercadoPagoRouter = router({
           external_reference: group.id,
           auto_return: 'approved',
           back_urls: {
-            success: `${process.env.PLANETA_NOCTURNO_URL}/payment/${group.id}`,
-            pending: `${process.env.PLANETA_NOCTURNO_URL}/payment/error`,
-            failure: `${process.env.PLANETA_NOCTURNO_URL}/payment/error`,
+            success: `${process.env.PLANETA_NOCTURNO_URL}/tickets/${group.id}`,
+            pending: `${process.env.PLANETA_NOCTURNO_URL}/tickets/error`,
+            failure: `${process.env.PLANETA_NOCTURNO_URL}/tickets/error`,
           },
         },
       });
