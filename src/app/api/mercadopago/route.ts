@@ -12,7 +12,7 @@ function verifySignature(
   const ts = signature.split(',')[0]?.split('=')[1];
   const v1 = signature.split(',')[1]?.split('=')[1];
   const manifest = `id:${data_id};request-id:${request_id};ts:${ts?.trim()};`;
-  const secretKey = process.env.MERCADO_PAGO_SECRET_KEY!;
+  const secretKey = process.env.MP_SECRET_KEY!;
   const signatureDecrypted = createHmac('sha256', secretKey)
     .update(manifest)
     .digest('hex');
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   }
 
   if (payment.status === 'approved') {
-    // cambiar status de ticketGroup
+    // cambiar status de ticketGroup a pagado
     if (payment.external_reference) {
       await trpc.ticketGroup.updateStatus({
         id: payment.external_reference,
@@ -52,20 +52,20 @@ export async function POST(req: Request) {
     }
     const group = await trpc.ticketGroup.getById(payment.external_reference);
 
-    // crear pdf?
+    // crear pdf
     const pdfs = await trpc.ticketGroup.generatePdfsByTicketGroupId(
       payment.external_reference,
     );
 
-    // enviar mail con los pdf?
+    // enviar mail con los pdf
     await Promise.all(
       pdfs.map(async (pdf) =>
         trpc.mail.send({
           eventName: group.event.name,
           receiver: pdf.ticket.mail,
           subject: `Llegaron tus tickets para ${group.event.name}!`,
-          body: `Te esperamos eAAAAAAAAAAAAAAAAAAA`,
-          attatchments: [pdf.pdf],
+          body: `Te esperamos.`,
+          attatchments: [pdf.pdf.blob],
         }),
       ),
     );
