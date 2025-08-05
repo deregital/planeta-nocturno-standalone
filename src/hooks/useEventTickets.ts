@@ -39,13 +39,6 @@ export function useEventTickets(
 
         const disabled = ticketTypeEmitted >= type.maxAvailable;
 
-        console.log(
-          type.name,
-          ticketTypeEmitted,
-          type.maxAvailable,
-          type.maxPerPurchase,
-          disabled,
-        );
         const maxPerPurchase =
           type.maxAvailable - ticketTypeEmitted < type.maxPerPurchase
             ? type.maxAvailable - ticketTypeEmitted
