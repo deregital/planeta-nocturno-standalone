@@ -248,6 +248,13 @@ export const ticketGroupRouter = router({
               dni: true,
               createdAt: true,
             },
+            with: {
+              ticketType: {
+                columns: {
+                  name: true,
+                },
+              },
+            },
           },
           event: {
             columns: {
@@ -294,6 +301,7 @@ export const ticketGroupRouter = router({
           dni: ticket.dni,
           fullName: ticket.fullName,
           id: ticket.id,
+          ticketType: ticket.ticketType.name,
         });
         return {
           ticket,

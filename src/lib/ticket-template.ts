@@ -5,10 +5,8 @@ import { barcodes, image, line, text } from '@pdfme/schemas';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-export function generateTicketTemplate(): Template {
-  const translatedType = 'QUE';
+export function generateTicketTemplate(ticketType: string): Template {
   const offset = 0;
-  const displaySeat = true;
   return {
     schemas: [
       [
@@ -94,7 +92,7 @@ export function generateTicketTemplate(): Template {
         {
           name: 'fullName_title',
           type: 'text',
-          content: 'Nombre y apellido del titular del ticket:',
+          content: 'Nombre completo del titular del ticket:',
           position: { x: 47, y: 198 },
           width: 201.08,
           height: 10.05,
@@ -170,7 +168,7 @@ export function generateTicketTemplate(): Template {
           fontSize: 46.25,
           lineHeight: 1,
           characterSpacing: 0,
-          fontColor: '#822E81',
+          fontColor: process.env.NEXT_PUBLIC_PRIMARY_COLOR,
           fontName: 'DMSans-SemiBold',
           backgroundColor: '',
           opacity: 1,
@@ -179,54 +177,6 @@ export function generateTicketTemplate(): Template {
           required: true,
           readOnly: false,
         },
-        displaySeat
-          ? {
-              name: 'seat_title',
-              type: 'text',
-              content: 'Asiento:',
-              position: { x: 47, y: 345 + offset },
-              width: 201.08,
-              height: 10.05,
-              rotate: 0,
-              alignment: 'left',
-              verticalAlignment: 'top',
-              fontSize: 25,
-              lineHeight: 1,
-              characterSpacing: 0,
-              fontColor: '#000000',
-              fontName: 'DMSans-Light',
-              backgroundColor: '',
-              opacity: 1,
-              strikethrough: false,
-              underline: false,
-              required: false,
-              readOnly: true,
-            }
-          : null,
-        displaySeat
-          ? {
-              name: 'seat',
-              type: 'text',
-              content: '126',
-              position: { x: 47, y: 357.38 + offset },
-              width: 225.69,
-              height: 19.05,
-              rotate: 0,
-              alignment: 'left',
-              verticalAlignment: 'top',
-              fontSize: 46.25,
-              lineHeight: 1,
-              characterSpacing: 0,
-              fontColor: '#822E81',
-              fontName: 'DMSans-SemiBold',
-              backgroundColor: '',
-              opacity: 1,
-              strikethrough: false,
-              underline: false,
-              required: true,
-              readOnly: false,
-            }
-          : null,
         {
           name: 'ticketType_title',
           type: 'text',
@@ -252,7 +202,7 @@ export function generateTicketTemplate(): Template {
         {
           name: 'ticketType',
           type: 'text',
-          content: translatedType,
+          content: ticketType,
           position: { x: 47, y: 387.38 },
           width: 225.69,
           height: 19.05,
@@ -262,7 +212,7 @@ export function generateTicketTemplate(): Template {
           fontSize: 46.25,
           lineHeight: 1,
           characterSpacing: 0,
-          fontColor: '#822E81',
+          fontColor: process.env.NEXT_PUBLIC_PRIMARY_COLOR,
           fontName: 'DMSans-SemiBold',
           backgroundColor: '',
           opacity: 1,
@@ -344,7 +294,7 @@ export function generateTicketTemplate(): Template {
           fontSize: 46.25,
           lineHeight: 1,
           characterSpacing: 0,
-          fontColor: '#822E81',
+          fontColor: process.env.NEXT_PUBLIC_PRIMARY_COLOR,
           fontName: 'DMSans-SemiBold',
           backgroundColor: '',
           opacity: 1,
@@ -371,6 +321,7 @@ interface GenerateTicketProps {
   dni: string;
   id: string;
   createdAt: string;
+  ticketType: string;
 }
 
 export async function generatePdf(ticket: GenerateTicketProps) {
@@ -387,7 +338,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     ? ticket.dni
     : Number(ticket.dni).toLocaleString('es-ES');
 
-  const template = generateTicketTemplate();
+  const template = generateTicketTemplate(ticket.ticketType);
 
   const inputs = [
     {
@@ -396,10 +347,10 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       eventLocation: ticket.eventLocation,
       fullName: ticket.fullName,
       dni: normalizedDni,
-      seat: '-',
       barcode: encryptString(ticket.id),
-      footer: 'FOOTER',
-      emissionDate: ticket.createdAt,
+      footer: `Para cualquier duda, reclamo o consulta comunicarse vía mail a ${process.env.INSTANCE_CONTACT_EMAIL}.\n Más información en ${process.env.INSTANCE_WEB_URL}.`,
+      emissionDate: format(ticket.createdAt, 'dd/MM/yyyy HH:mm'),
+      ticketType: ticket.ticketType,
     },
   ];
 
