@@ -1,20 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ghost } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
-export default function NotFound() {
+export default function Page() {
   return (
     <div className='flex justify-center items-center min-h-screen pb-64'>
       <Card className='max-w-md w-full text-center shadow-lg'>
         <CardHeader>
-          <CardTitle className='text-2xl font-bold flex items-center justify-center gap-2'>
-            <Ghost className='w-6 h-6 text-muted-foreground' />
-            Entradas no encontrada
+          <CardTitle className='text-2xl font-bold text-destructive flex items-center justify-center gap-2'>
+            <AlertTriangle className='w-6 h-6' />
+            Ha ocurrido un error
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className='text-muted-foreground'>
-            La entrada que buscás no existe. Asegurate de que el enlace sea
-            correcto o volvé a intentarlo desde la página principal.
+            Algo salió mal, probablemente en el proceso de pago. Intentá
+            nuevamente más tarde.
           </p>
         </CardContent>
       </Card>

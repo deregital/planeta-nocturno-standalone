@@ -1,6 +1,15 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { type RouterOutputs } from '@/server/routers/app';
+import { Download } from 'lucide-react';
 
 export default function TicketsClient({
   pdfs,
@@ -41,8 +50,26 @@ export default function TicketsClient({
   };
 
   return (
-    <div>
-      <button onClick={() => downloadAllPdfs()}>Descargar PDF</button>
+    <div className='flex justify-center items-center min-h-screen pb-64'>
+      <Card className='max-w-md mx-auto text-center shadow-lg'>
+        <CardHeader>
+          <CardTitle className='text-2xl font-bold'>
+            ¡Gracias por su compra!
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className='text-muted-foreground'>
+            Ya podés descargar tus entradas. También fueron enviadas a el/los
+            email/s que proporcionaste.
+          </p>
+        </CardContent>
+        <CardFooter className='justify-center'>
+          <Button onClick={() => downloadAllPdfs()}>
+            <Download className='mr-2 h-4 w-4' />
+            Descargar Entradas
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
