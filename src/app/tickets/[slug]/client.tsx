@@ -50,7 +50,7 @@ export default function TicketsClient({
   };
 
   return (
-    <div className='flex justify-center items-center min-h-screen pb-64'>
+    <div className='flex justify-center items-center h-full'>
       <Card className='max-w-md mx-auto text-center shadow-lg'>
         <CardHeader>
           <CardTitle className='text-2xl font-bold'>

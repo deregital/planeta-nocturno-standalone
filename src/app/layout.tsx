@@ -28,7 +28,7 @@ export default function RootLayout({
     <TRPCReactProvider>
       <html lang='en'>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} antialiased grid grid-rows-[auto_1fr] h-screen`}
         >
           <TopBar />
           {children}

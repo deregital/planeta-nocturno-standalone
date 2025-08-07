@@ -13,8 +13,8 @@ export default function Page() {
         </CardHeader>
         <CardContent>
           <p className='text-muted-foreground'>
-            Algo salió mal, probablemente en el proceso de pago. Intentá
-            nuevamente más tarde.
+            Algo salió mal, probablemente durante el proceso de pago. Intentá
+            nuevamente.
           </p>
         </CardContent>
       </Card>
