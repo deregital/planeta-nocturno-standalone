@@ -190,7 +190,6 @@ model TicketTypePerGroup {
 model EmittedTicket {
   id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   fullName       String
-  age            Int
   dni            String
   mail           String
   gender         String
@@ -209,7 +208,7 @@ model EmittedTicket {
   type         TicketType @relation("TICKET_TYPE_X_EMITTED_TICKET", fields: [ticketTypeId], references: [id])
 
   ticketGroupId String       @db.Uuid
-  ticketGroup   TicketGroup? @relation("TICKET_X_TICKET_GROUP", fields: [ticketGroupId], references: [id])
+  ticketGroup   TicketGroup? @relation("TICKET_X_TICKET_GROUP", fields: [ticketGroupId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
   eventId   String?  @db.Uuid

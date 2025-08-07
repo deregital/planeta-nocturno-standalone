@@ -99,7 +99,6 @@ export const eventCategory = pgTable("eventCategory", {
 export const emittedTicket = pgTable("emittedTicket", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	fullName: text().notNull(),
-	age: integer().notNull(),
 	dni: text().notNull(),
 	mail: text().notNull(),
 	gender: text().notNull(),
@@ -129,7 +128,7 @@ export const emittedTicket = pgTable("emittedTicket", {
 			columns: [table.ticketGroupId],
 			foreignColumns: [ticketGroup.id],
 			name: "emittedTicket_ticketGroupId_fkey"
-		}).onUpdate("cascade").onDelete("restrict"),
+		}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
 export const session = pgTable("session", {
