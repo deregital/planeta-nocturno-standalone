@@ -1,6 +1,7 @@
 'use server';
 import { createManyTicketSchema } from '@/server/schemas/emitted-tickets';
 import { trpc } from '@/server/trpc/server';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type z from 'zod';
 
@@ -13,7 +14,9 @@ export const handlePurchase = async (
   prevState: PurchaseActionState,
   formData: FormData,
 ): Promise<PurchaseActionState> => {
-  const entradas: z.infer<typeof createManyTicketSchema> = [];
+  const entradas: Array<
+    z.input<typeof createManyTicketSchema>[number] & { id: string }
+  > = [];
   const eventId = formData.get('eventId');
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
 
@@ -105,6 +108,8 @@ export const handlePurchase = async (
       ),
     );
 
+    (await cookies()).delete('carrito');
+
     redirect(`/tickets/${ticketGroupId}`);
   } else {
     const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
@@ -115,6 +120,8 @@ export const handlePurchase = async (
         errors: ['Error al crear la preferencia de pago, vuelva a intentarlo'],
       };
     }
+
+    (await cookies()).delete('carrito');
 
     redirect(url);
   }

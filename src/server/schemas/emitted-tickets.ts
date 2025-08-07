@@ -1,41 +1,33 @@
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import z from 'zod';
-
-export const createManyTicketFullSchema = z
-  .object({
-    fullName: z.string(),
-    age: z.number().int().min(0),
-    dni: z.string(),
-    mail: z.email(),
-    gender: z.string(),
-    phoneNumber: z.string(),
-    instagram: z.string().optional(),
-    birthDate: z.string(),
-    ticketTypeId: z.uuid(),
-    ticketGroupId: z.uuid(),
-    paidOnLocation: z.boolean().default(false).optional(),
-    eventId: z.uuid().nullable().optional(),
-    scannedByUserId: z.uuid().optional(),
-  })
-  .array();
 
 export const emittedTicketSchema = z.object({
   id: z.string(),
-  fullName: z.string(),
-  dni: z.string().max(9, {
+  fullName: z.string().min(2, {
+    error: 'El nombre es requerido',
+  }),
+  dni: z.string().min(4, {
     error: 'El DNI no es valido, asegúrese de no incluir puntos ni comas',
   }),
-  mail: z.email(),
+  mail: z.email({
+    error: 'El email no es válido',
+  }),
   gender: z.enum(['male', 'female', 'other'], {
     error: 'Seleccione un género válido',
   }),
-  phoneNumber: z.string(),
+  phoneNumber: z.string().refine((value) => isValidPhoneNumber(value), {
+    message: 'El teléfono no es válido',
+  }),
   instagram: z.string().optional(),
-  birthDate: z.string(),
+  birthDate: z.coerce.date().max(new Date(), {
+    error: 'La fecha de nacimiento debe ser previa a hoy',
+  }),
   paidOnLocation: z.boolean(),
 });
 
 export const createManyTicketSchema = emittedTicketSchema
   .omit({
+    id: true,
     gender: true,
   })
   .extend({

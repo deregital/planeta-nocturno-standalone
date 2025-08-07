@@ -23,7 +23,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { type RouterOutputs } from '@/server/routers/app';
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
+import 'react-phone-number-input/style.css';
+import PhoneInput from 'react-phone-number-input';
 
 export default function CheckoutClient({
   ticketGroup,
@@ -34,8 +36,17 @@ export default function CheckoutClient({
     ticketsInput: [],
   });
 
+  const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>({});
+
+  const handlePhoneNumberChange = (key: string, value: string) => {
+    setPhoneNumbers((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
   return (
-    <div className='flex flex-col justify-center  items-center gap-6'>
+    <div className='flex flex-col justify-center  items-center gap-6 pb-20'>
       <div className='flex flex-col justify-center gap-4 p-6'>
         <p className='text-4xl'>{ticketGroup.event.name}</p>
         <p className='text-2xl'>
@@ -116,14 +127,32 @@ export default function CheckoutClient({
               <label
                 htmlFor={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
               >
-                Numero de teléfono
+                Número de teléfono
               </label>
-              <Input
-                type='text'
+              <PhoneInput
+                defaultCountry='AR'
+                value={
+                  phoneNumbers[
+                    `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
+                  ]
+                }
+                onChange={(v) => {
+                  if (v)
+                    handlePhoneNumberChange(
+                      `phoneNumber_${ticket.ticketType.id}-${indexAmount}`,
+                      v?.toString(),
+                    );
+                }}
+              />
+              <input
+                hidden
                 name={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
-                required
-                defaultValue='+54'
-                className='border border-gray-300 rounded p-2'
+                value={
+                  phoneNumbers[
+                    `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
+                  ] ?? ''
+                }
+                onChange={() => {}}
               />
               <label
                 htmlFor={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
@@ -135,6 +164,8 @@ export default function CheckoutClient({
                 name={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
                 required
                 className='border border-gray-300 rounded p-2'
+                max={format(new Date(), 'yyyy-MM-dd')}
+                suppressHydrationWarning
               />
               <label htmlFor={`gender_${ticket.ticketType.id}-${indexAmount}`}>
                 Genero
