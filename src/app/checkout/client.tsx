@@ -1,15 +1,8 @@
 'use client';
 import { Button } from '@/components/ui/button';
 
-import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+
+
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { handlePurchase } from './action';
@@ -26,10 +19,11 @@ import { type RouterOutputs } from '@/server/routers/app';
 import React, { useActionState, useState } from 'react';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
+import esPhoneLocale from 'react-phone-number-input/locale/es'
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Label } from '@/components/ui/label';
-import { ticketTypePerGroup } from '@/drizzle/schema';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 
 export default function CheckoutClient({
   ticketGroup,
@@ -108,7 +102,7 @@ export default function CheckoutClient({
 
       <form
         action={action}
-        className='flex flex-col gap-8 px-4 w-full sm:w-xl md:w-2xl mt-8'
+        className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'
       >
         {ticketGroup.ticketTypePerGroups.map((ticket, ticketTypeIndex) => {
           return Array.from({ length: ticket.amount }).map((_, indexAmount) => (
@@ -151,8 +145,10 @@ export default function CheckoutClient({
                   Número de teléfono<span className='text-red-500'>*</span>
                 </Label>
                 <PhoneInput
-                  className='py-[20px] border-pn-gray file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive'
+                  labels={esPhoneLocale}
                   defaultCountry='AR'
+                  className='[&_[data-slot="input"]]:border-pn-gray'
+                  inputComponent={Input}
                   value={
                     phoneNumbers[
                       `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
@@ -243,10 +239,12 @@ export default function CheckoutClient({
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />
         <Button
           type='submit'
-          className='bg-pn-accent rounded-full text-2xl font-bold py-7 hover:bg-pn-accent/90 cursor-pointer'
+          size='lg'
+          variant='accent'
+          className='rounded-full sm:text-2xl text-xl font-bold py-6 mt-8'
           disabled={isPending}
         >
-          COMPRAR
+          <span>COMPRAR</span>
         </Button>
       </form>
     </div>

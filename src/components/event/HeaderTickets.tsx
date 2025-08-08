@@ -45,7 +45,7 @@ function HeaderTickets({
           <h1 className='text-xl md:text-2xl lg:text-3xl font-bold text-white md:text-black line-clamp-2 md:line-clamp-1'>
             {event.name}
           </h1>
-          <p className='text-sm lg:text-base whitespace-nowrap text-white md:text-MiExpo_purple capitalize mt-2 overflow-hidden text-ellipsis'>
+          <p className='text-sm lg:text-base whitespace-nowrap text-white/80 md:text-black/75 capitalize mt-2 overflow-hidden text-ellipsis'>
             {formattedDate}
           </p>
         </div>
@@ -71,7 +71,7 @@ function HeaderTickets({
           <div className='text-sm lg:text-base h-full min-w-0'>
             <p
               className='font-semibold text-black line-clamp-3'
-              title={event.locationId}
+              title={event.location.address}
             >
               {event.location.address}
             </p>
