@@ -37,18 +37,19 @@ export const handlePurchase = async (
     if (id === 'ID' || campo === '$ACTION') continue;
     const entrada = entradas.find((e) => e.id === id);
 
+    const valueString = value.toString();
     if (!entrada) {
       entradas.push({
         id,
-        fullName: campo === 'fullName' ? value.toString() : '',
-        dni: campo === 'dni' ? value.toString() : '',
-        mail: campo === 'mail' ? value.toString() : '',
-        birthDate: campo === 'birthDate' ? value.toString() : '',
-        gender: campo === 'gender' ? value.toString() : 'other',
-        phoneNumber: campo === 'phoneNumber' ? value.toString() : '',
-        instagram: campo === 'instagram' ? value.toString() : '',
-        ticketTypeId: campo === 'ticketTypeId' ? value.toString() : '',
-        ticketGroupId: campo === 'ticketGroupId' ? value.toString() : '',
+        fullName: campo === 'fullName' ? valueString : '',
+        dni: campo === 'dni' ? valueString : '',
+        mail: campo === 'mail' ? valueString : '',
+        birthDate: campo === 'birthDate' ? valueString : '',
+        gender: campo === 'gender' ? valueString : 'other',
+        phoneNumber: campo === 'phoneNumber' ? valueString : '',
+        instagram: campo === 'instagram' ? valueString : '',
+        ticketTypeId: campo === 'ticketTypeId' ? valueString : '',
+        ticketGroupId: campo === 'ticketGroupId' ? valueString : '',
         paidOnLocation: false,
         eventId: eventId?.toString() ?? null,
       });
@@ -65,7 +66,7 @@ export const handlePurchase = async (
         campo === 'gender'
       ) {
         const index = entradas.findIndex((e) => e.id === id);
-        entradas[index][campo] = value.toString();
+        entradas[index][campo] = valueString;
       }
     }
   }

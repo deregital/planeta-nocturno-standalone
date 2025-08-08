@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from 'fs';
+import path from 'path';
 
 export async function getDMSansFonts(): Promise<{
   fontBold: Buffer<ArrayBufferLike>;

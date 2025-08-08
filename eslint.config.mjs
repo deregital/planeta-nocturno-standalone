@@ -16,7 +16,7 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript', 'prettier'),
   {
-    ignores: ['node_modules', '.next', 'out', 'public'],
+    ignores: ['node_modules', '.next', 'out', 'public', 'src/generated'],
   },
   {
     languageOptions: {
