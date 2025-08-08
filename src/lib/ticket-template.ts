@@ -431,7 +431,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     ? ticket.dni
     : Number(ticket.dni).toLocaleString('es-ES');
 
-  const [firstWord, ...rest] = process.env.INSTANCE_NAME!.split(' ');
+  const [firstWord, ...rest] = process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
   const template = generateTicketTemplate(firstWord);
 
   const inputs = [

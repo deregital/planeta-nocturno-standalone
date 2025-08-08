@@ -18,14 +18,14 @@ export const mailRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const { data, error } = await resend.emails.send({
-        from: `${process.env.INSTANCE_NAME} <ticket@${process.env.RESEND_DOMAIN}>`,
+        from: `${process.env.NEXT_PUBLIC_INSTANCE_NAME} <ticket@${process.env.RESEND_DOMAIN}>`,
         to: input.receiver,
         subject: input.subject,
         text: input.body,
         attachments: await Promise.all(
           input.attatchments.map(async (pdf) => ({
             content: Buffer.from(await pdf.arrayBuffer()),
-            filename: `${process.env.INSTANCE_NAME}-${input.eventName}.pdf`,
+            filename: `${process.env.NEXT_PUBLIC_INSTANCE_NAME}-${input.eventName}.pdf`,
             contentType: 'application/pdf',
           })),
         ),
