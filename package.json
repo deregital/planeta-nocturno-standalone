@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "migrate": "npx prisma db push && npx drizzle-kit introspect",
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

@@ -8,6 +8,7 @@ import type z from 'zod';
 export type PurchaseActionState = {
   ticketsInput: z.infer<typeof createManyTicketSchema>[];
   errors?: string[];
+  formData?: Record<string, string>;
 };
 
 export const handlePurchase = async (
@@ -27,6 +28,12 @@ export const handlePurchase = async (
         'El evento no está asignado, vuelva a hacer el proceso desde la home',
       ],
     };
+  }
+
+  // Capture form data for error handling
+  const formDataRecord: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    formDataRecord[key] = value.toString();
   }
 
   // REFORMULAR
@@ -77,6 +84,7 @@ export const handlePurchase = async (
     return {
       ticketsInput: prevState.ticketsInput,
       errors: validation.error.flatten().fieldErrors[0],
+      formData: formDataRecord,
     };
   }
 
@@ -119,6 +127,7 @@ export const handlePurchase = async (
       return {
         ticketsInput: prevState.ticketsInput,
         errors: ['Error al crear la preferencia de pago, vuelva a intentarlo'],
+        formData: formDataRecord,
       };
     }
 

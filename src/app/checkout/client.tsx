@@ -1,8 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/button';
 
-
-
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { handlePurchase } from './action';
@@ -16,10 +14,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { type RouterOutputs } from '@/server/routers/app';
-import React, { useActionState, useState } from 'react';
+import React, { useActionState, useEffect, useState } from 'react';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
-import esPhoneLocale from 'react-phone-number-input/locale/es'
+import esPhoneLocale from 'react-phone-number-input/locale/es';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -35,6 +33,19 @@ export default function CheckoutClient({
   });
 
   const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>({});
+
+  // Initialize phone numbers from state if available
+  useEffect(() => {
+    if (state.formData) {
+      const newPhoneNumbers: Record<string, string> = {};
+      Object.entries(state.formData).forEach(([key, value]) => {
+        if (key.startsWith('phoneNumber_')) {
+          newPhoneNumbers[key] = value;
+        }
+      });
+      setPhoneNumbers(newPhoneNumbers);
+    }
+  }, [state.formData]);
 
   const handlePhoneNumberChange = (key: string, value: string) => {
     setPhoneNumbers((prev) => ({
@@ -69,33 +80,33 @@ export default function CheckoutClient({
       </div>
 
       <div className='flex flex-col justify-center items-center border border-pn-gray p-4 rounded-sm w-full sm:w-xl md:w-2xl'>
-        {/* Encabezado de la tabla */}
-        <div className='grid grid-cols-3 pb-[4px] pt-4 border-b border-pn-gray w-full text-lg leading-[100%]'>
-          <div className='text-pn-text-primary'>Tipo de Ticket</div>
-          <div className='text-pn-text-primary text-center'>Valor</div>
-          <div className='text-pn-text-primary text-right'>Cantidad</div>
-        </div>
-        {/* Fila de ticket */}
-        <div className='grid grid-cols-3 py-6 gap-4 items-center w-full'>
-          {ticketGroup.ticketTypePerGroups.map((type, index) => {
-            return (
-              <React.Fragment key={index}>
-                <div className='text-pn-text-primary leading-[100%]'>
-                  {type.ticketType.name}
-                </div>
-                <div className='text-pn-text-primary leading-[100%] text-center'>
-                  {type.ticketType.price ? (
-                    <p>${type.ticketType.price}</p>
-                  ) : (
-                    <p className='text-green-700'>GRATUITO</p>
-                  )}
-                </div>
-                <div className='text-pn-text-primary leading-[100%] text-center'>
-                  {type.amount}
-                </div>
-              </React.Fragment>
-            );
-          })}
+        <div className='grid grid-cols-3 w-full text-lg'>
+          <div className='text-pn-text-primary border-b border-pn-gray pb-[4px] pt-4'>
+            Tipo de Ticket
+          </div>
+          <div className='text-pn-text-primary text-center border-b border-pn-gray pb-[4px] pt-4'>
+            Valor
+          </div>
+          <div className='text-pn-text-primary text-right border-b border-pn-gray pb-[4px] pt-4'>
+            Cantidad
+          </div>
+          {ticketGroup.ticketTypePerGroups.map((type, index) => (
+            <React.Fragment key={index}>
+              <div className='text-pn-text-primary leading-[100%] py-6'>
+                {type.ticketType.name}
+              </div>
+              <div className='text-pn-text-primary leading-[100%] text-center py-6'>
+                {type.ticketType.price ? (
+                  <p>${type.ticketType.price}</p>
+                ) : (
+                  <p className='text-green-700 font-semibold'>GRATUITO</p>
+                )}
+              </div>
+              <div className='text-pn-text-primary leading-[100%] text-right py-6'>
+                {type.amount}
+              </div>
+            </React.Fragment>
+          ))}
         </div>
         <p className='w-full text-start text-lg mt-6'>Total: {totalPrice}</p>
       </div>
@@ -121,6 +132,11 @@ export default function CheckoutClient({
                 id={`fullName_${ticket.ticketType.id}-${indexAmount}`}
                 label='Nombre completo'
                 required
+                defaultValue={
+                  state.formData?.[
+                    `fullName_${ticket.ticketType.id}-${indexAmount}`
+                  ]
+                }
               />
               <InputWithLabel
                 name={`mail_${ticket.ticketType.id}-${indexAmount}`}
@@ -128,6 +144,11 @@ export default function CheckoutClient({
                 label='Mail'
                 type='email'
                 required
+                defaultValue={
+                  state.formData?.[
+                    `mail_${ticket.ticketType.id}-${indexAmount}`
+                  ]
+                }
               />
               <InputWithLabel
                 name={`dni_${ticket.ticketType.id}-${indexAmount}`}
@@ -135,6 +156,9 @@ export default function CheckoutClient({
                 label='DNI'
                 type='text'
                 required
+                defaultValue={
+                  state.formData?.[`dni_${ticket.ticketType.id}-${indexAmount}`]
+                }
               />
 
               <div className='flex flex-col gap-1'>
@@ -181,6 +205,11 @@ export default function CheckoutClient({
                 required
                 max={format(new Date(), 'yyyy-MM-dd')}
                 suppressHydrationWarning
+                defaultValue={
+                  state.formData?.[
+                    `birthDate_${ticket.ticketType.id}-${indexAmount}`
+                  ]
+                }
               />
               <div className='flex flex-col gap-1'>
                 <Label
@@ -192,6 +221,11 @@ export default function CheckoutClient({
                 <Select
                   name={`gender_${ticket.ticketType.id}-${indexAmount}`}
                   required
+                  defaultValue={
+                    state.formData?.[
+                      `gender_${ticket.ticketType.id}-${indexAmount}`
+                    ]
+                  }
                 >
                   <SelectTrigger className='w-full py-[20px] border-pn-gray'>
                     <SelectValue placeholder='Selecciona tu género' />
@@ -212,6 +246,11 @@ export default function CheckoutClient({
                 label='Instagram'
                 type='text'
                 placeholder='@'
+                defaultValue={
+                  state.formData?.[
+                    `instagram_${ticket.ticketType.id}-${indexAmount}`
+                  ]
+                }
               />
               <input
                 type='hidden'
