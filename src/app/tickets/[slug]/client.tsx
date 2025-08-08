@@ -16,7 +16,7 @@ export default function TicketsClient({
 }: {
   pdfs: RouterOutputs['ticketGroup']['generatePdfsByTicketGroupId'];
 }) {
-  const downloadPdf = (pdfBase64: string, ticketId: string) => {
+  function downloadPdf(pdfBase64: string, ticketId: string) {
     try {
       const byteCharacters = atob(pdfBase64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -39,15 +39,15 @@ export default function TicketsClient({
     } catch (error) {
       console.error('Error downloading PDF:', error);
     }
-  };
+  }
 
-  const downloadAllPdfs = () => {
+  function downloadAllPdfs() {
     if (pdfs && pdfs.length > 0) {
-      pdfs.forEach(async (pdf) => {
-        downloadPdf(pdf.pdf.base64, 'prueba');
+      pdfs.forEach(async (pdf, index) => {
+        downloadPdf(pdf.pdf.base64, `ticket-${index + 1}`);
       });
     }
-  };
+  }
 
   return (
     <div className='flex justify-center items-center h-full'>
@@ -64,7 +64,7 @@ export default function TicketsClient({
           </p>
         </CardContent>
         <CardFooter className='justify-center'>
-          <Button onClick={() => downloadAllPdfs()}>
+          <Button variant='accent' onClick={() => downloadAllPdfs()}>
             <Download className='mr-2 h-4 w-4' />
             Descargar Entradas
           </Button>
