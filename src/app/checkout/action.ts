@@ -1,22 +1,40 @@
 'use server';
-import { createManyTicketSchema } from '@/server/routers/emitted-tickets';
+import { createManyTicketSchema } from '@/server/schemas/emitted-tickets';
 import { trpc } from '@/server/trpc/server';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type z from 'zod';
 
+export type PurchaseActionState = {
+  ticketsInput: z.infer<typeof createManyTicketSchema>[];
+  errors?: string[];
+};
+
 export const handlePurchase = async (
-  // prevState: unknown,
+  prevState: PurchaseActionState,
   formData: FormData,
-) => {
-  const entradas: z.infer<typeof createManyTicketSchema> = [];
+): Promise<PurchaseActionState> => {
+  const entradas: Array<
+    z.input<typeof createManyTicketSchema>[number] & { id: string }
+  > = [];
   const eventId = formData.get('eventId');
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
 
+  if (!eventId || !ticketGroupId) {
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: [
+        'El evento no está asignado, vuelva a hacer el proceso desde la home',
+      ],
+    };
+  }
+
+  // REFORMULAR
   for (const [key, value] of formData.entries()) {
     const [campo, id] = key.split('_');
     if (!campo || !id) continue;
 
-    if (id === 'ID') continue;
+    if (id === 'ID' || campo === '$ACTION') continue;
     const entrada = entradas.find((e) => e.id === id);
 
     if (!entrada) {
@@ -26,11 +44,12 @@ export const handlePurchase = async (
         dni: campo === 'dni' ? value.toString() : '',
         mail: campo === 'mail' ? value.toString() : '',
         birthDate: campo === 'birthDate' ? value.toString() : '',
-        gender: campo === 'gender' ? value.toString() : '',
+        gender: campo === 'gender' ? value.toString() : 'other',
         phoneNumber: campo === 'phoneNumber' ? value.toString() : '',
         instagram: campo === 'instagram' ? value.toString() : '',
         ticketTypeId: campo === 'ticketTypeId' ? value.toString() : '',
         ticketGroupId: campo === 'ticketGroupId' ? value.toString() : '',
+        paidOnLocation: false,
         eventId: eventId?.toString() ?? null,
       });
     } else {
@@ -55,7 +74,8 @@ export const handlePurchase = async (
 
   if (!validation.success) {
     return {
-      errors: validation.error.flatten().fieldErrors,
+      ticketsInput: prevState.ticketsInput,
+      errors: validation.error.flatten().fieldErrors[0],
     };
   }
 
@@ -64,34 +84,45 @@ export const handlePurchase = async (
   );
 
   await trpc.emittedTickets.createMany(entradas);
+
   if (totalPrice === 0) {
     await trpc.ticketGroup.updateStatus({
       id: ticketGroupId,
       status: 'FREE',
     });
+
     const group = await trpc.ticketGroup.getById(ticketGroupId);
 
     const pdfs =
       await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
 
-    // enviar mail con los pdf?
     await Promise.all(
       pdfs.map(async (pdf) =>
         trpc.mail.send({
           eventName: group.event.name,
           receiver: pdf.ticket.mail,
           subject: `Llegaron tus tickets para ${group.event.name}!`,
-          body: `Te esperamos eAAAAAAAAAAAAAAAAAAA`,
-          attatchments: [pdf.pdf],
+          body: `Te esperamos.`,
+          attatchments: [pdf.pdf.blob],
         }),
       ),
     );
+
+    (await cookies()).delete('carrito');
+
+    redirect(`/tickets/${ticketGroupId}`);
   } else {
     const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
-    if (url) {
-      redirect(url);
-    } else {
-      throw new Error('Error al crear la preferencia de pago');
+
+    if (!url) {
+      return {
+        ticketsInput: prevState.ticketsInput,
+        errors: ['Error al crear la preferencia de pago, vuelva a intentarlo'],
+      };
     }
+
+    (await cookies()).delete('carrito');
+
+    redirect(url);
   }
 };

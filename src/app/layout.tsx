@@ -1,16 +1,11 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { DM_Sans } from 'next/font/google';
 import './globals.css';
 import { TRPCReactProvider } from '@/server/trpc/client';
 import TopBar from '@/components/header/TopBar';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const dmSans = DM_Sans({
+  variable: '--font-dm-sans',
   subsets: ['latin'],
 });
 
@@ -28,7 +23,7 @@ export default function RootLayout({
     <TRPCReactProvider>
       <html lang='en'>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${dmSans.className} antialiased grid grid-rows-[auto_1fr] h-screen`}
         >
           <TopBar />
           {children}

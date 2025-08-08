@@ -19,7 +19,7 @@ function TicketPurchase({
   ticketTypes: RouterOutputs['events']['getById']['ticketTypes'];
   eventId: string;
 }) {
-  const [state, handlePurchase, pending] = useActionState(
+  const [, handlePurchase, pending] = useActionState(
     handlePurchaseAction,
     undefined,
   );
@@ -101,7 +101,7 @@ function TicketPurchase({
       {/* Botón de compra */}
       <div className='mt-4 grid grid-cols-3'>
         <Button
-          className={`bg-pn-primary cursor-pointer col-span-1 hover:bg-MiExpo_purple/90 text-secondary font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] ${
+          className={`bg-pn-accent cursor-pointer col-span-1 hover:bg-MiExpo_purple/90 text-secondary font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] ${
             !ticketsTypeAvailable
               ? 'opacity-50 cursor-not-allowed bg-red-500'
               : ''

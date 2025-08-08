@@ -1,8 +1,9 @@
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
 import { publicProcedure, router } from '@/server/trpc';
-import { generatePdf } from '@/utils/ticket-template';
+import { generatePdf } from '@/lib/ticket-template';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 
 export const ticketGroupSchema = z.object({
   id: z.uuid(), // uuid generado por defaultRandom()
@@ -239,13 +240,20 @@ export const ticketGroupRouter = router({
           status: true,
         },
         with: {
-          emmitedTickets: {
+          emittedTickets: {
             columns: {
               id: true,
               fullName: true,
               mail: true,
               dni: true,
               createdAt: true,
+            },
+            with: {
+              ticketType: {
+                columns: {
+                  name: true,
+                },
+              },
             },
           },
           event: {
@@ -264,28 +272,43 @@ export const ticketGroupRouter = router({
         },
       });
 
+      if (!group) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'TicketGroup no encontrado',
+        });
+      }
+
       // Verificar que este paid/free
       if (group?.status === 'BOOKED') {
-        throw new Error('El ticketGroup no está concretado (?');
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'El ticketGroup no está concretado',
+        });
       }
 
       // Generar los PDFs
-      if (!group?.emmitedTickets) {
+      if (!group?.emittedTickets) {
         throw new Error('QUE');
       }
 
-      const pdfPromises = group.emmitedTickets.map(async (ticket) => {
+      const pdfPromises = group.emittedTickets.map(async (ticket) => {
+        const blob = await generatePdf({
+          eventName: group.event.name,
+          eventDate: group.event.startingDate,
+          eventLocation: group.event.location.address,
+          createdAt: ticket.createdAt,
+          dni: ticket.dni,
+          fullName: ticket.fullName,
+          id: ticket.id,
+          ticketType: ticket.ticketType.name,
+        });
         return {
           ticket,
-          pdf: await generatePdf({
-            eventName: group.event.name,
-            eventDate: group.event.startingDate,
-            eventLocation: group.event.location.address,
-            createdAt: ticket.createdAt,
-            dni: ticket.dni,
-            fullName: ticket.fullName,
-            id: ticket.id,
-          }),
+          pdf: {
+            blob,
+            base64: Buffer.from(await blob.arrayBuffer()).toString('base64'),
+          },
         };
       });
 
