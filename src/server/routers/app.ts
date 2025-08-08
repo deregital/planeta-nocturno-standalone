@@ -4,8 +4,10 @@ import { userSchema } from '../schemas/user';
 import { hash } from 'bcrypt';
 import { eventsRouter } from '@/server/routers/events';
 import { type inferRouterOutputs } from '@trpc/server';
-import { ticketGroupRouter } from './ticket-group';
-import { emittedTicketsRouter } from './emitted-tickets';
+import { ticketGroupRouter } from '@/server/routers/ticket-group';
+import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
+import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
+import { mailRouter } from '@/server/routers/mail';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -23,6 +25,8 @@ export const appRouter = router({
   events: eventsRouter,
   ticketGroup: ticketGroupRouter,
   emittedTickets: emittedTicketsRouter,
+  mercadoPago: mercadoPagoRouter,
+  mail: mailRouter,
 });
 
 export type AppRouter = typeof appRouter;

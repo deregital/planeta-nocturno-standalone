@@ -28,7 +28,7 @@ export function useEventTickets(
     if (!ticketGroups || isLoading) return;
     setTicketsAvailable(
       ticketTypes.map((type) => {
-        const ticketTypeEmmitted = ticketGroups.reduce((acum, current) => {
+        const ticketTypeEmitted = ticketGroups.reduce((acum, current) => {
           return (
             acum +
             (current.ticketTypePerGroups.find(
@@ -37,18 +37,11 @@ export function useEventTickets(
           );
         }, 0);
 
-        const disabled = ticketTypeEmmitted >= type.maxAvailable;
+        const disabled = ticketTypeEmitted >= type.maxAvailable;
 
-        console.log(
-          type.name,
-          ticketTypeEmmitted,
-          type.maxAvailable,
-          type.maxPerPurchase,
-          disabled,
-        );
         const maxPerPurchase =
-          type.maxAvailable - ticketTypeEmmitted < type.maxPerPurchase
-            ? type.maxAvailable - ticketTypeEmmitted
+          type.maxAvailable - ticketTypeEmitted < type.maxPerPurchase
+            ? type.maxAvailable - ticketTypeEmitted
             : type.maxPerPurchase;
 
         return {

@@ -16,6 +16,8 @@ const config: Config = {
         'pn-background': 'var(--pn-background-color)',
         'pn-text-primary': 'var(--pn-text-primary-color)',
         'pn-text-secondary': 'var(--pn-text-secondary-color)',
+        'pn-text-accent': 'var(--pn-text-accent-color)',
+        'pn-gray': 'var(--pn-gray)',
       },
       text: {
         'pn-primary': 'var(--pn-text-primary-color)',
@@ -30,15 +32,19 @@ const config: Config = {
           '--pn-primary-color':
             process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#F59E0B',
           '--pn-secondary-color':
-            process.env.NEXT_PUBLIC_SECONDARY_COLOR || '#eaeaeaff',
+            process.env.NEXT_PUBLIC_SECONDARY_COLOR || '#F59E0B',
           '--pn-accent-color':
             process.env.NEXT_PUBLIC_ACCENT_COLOR || '#F59E0B',
           '--pn-background-color':
-            process.env.NEXT_PUBLIC_BACKGROUND_COLOR || '#0F172A',
+            process.env.NEXT_PUBLIC_BACKGROUND_COLOR || '#F59E0B',
           '--pn-text-primary-color':
-            process.env.NEXT_PUBLIC_TEXT_PRIMARY_COLOR || '#0F172A',
+            process.env.NEXT_PUBLIC_TEXT_PRIMARY_COLOR || '#F59E0B',
           '--pn-text-secondary-color':
-            process.env.NEXT_PUBLIC_TEXT_SECONDARY_COLOR || '#eaeaeaff',
+            process.env.NEXT_PUBLIC_TEXT_SECONDARY_COLOR || '#F59E0B',
+          '--pn-text-accent-color':
+            process.env.NEXT_PUBLIC_TEXT_ACCENT_COLOR || '#F59E0B',
+          // Default NO .env
+          '--pn-gray': '#A3A3A3',
         },
       });
     }),

@@ -1,7 +1,9 @@
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
 import { publicProcedure, router } from '@/server/trpc';
+import { generatePdf } from '@/lib/ticket-template';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 
 export const ticketGroupSchema = z.object({
   id: z.uuid(), // uuid generado por defaultRandom()
@@ -25,7 +27,6 @@ export const ticketGroupRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      console.log(input);
       if (input.ticketsPerType.every((ticket) => ticket.amount <= 0)) {
         throw new Error('No se han seleccionado tickets para comprar');
       }
@@ -165,47 +166,24 @@ export const ticketGroupRouter = router({
 
     return group;
   }),
-  getPdf: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    // const { data, error } = await ctx.fetch.GET(
-    //   '/ticket/get-pdfs-by-ticket-group/{ticketGroupId}',
-    //   {
-    //     params: { path: { ticketGroupId: input } },
-    //   },
-    // );
-    // if (error) {
-    //   throw handleError(error);
-    // }
-    return {
-      pdfs: [
-        {
-          ticketId: 'string',
-          pdfBase64: 'string',
-        },
-      ],
-    };
-  }),
-  // update: publicProcedure
-  //   .input(updateTicketGroupSchema.merge(z.object({ id: z.string() })))
-  //   .mutation(async ({ ctx, input }) => {
-  //     const { data, error } = await ctx.fetch.PATCH(
-  //       '/ticket-group/update/{id}',
-  //       {
-  //         params: {
-  //           path: {
-  //             id: input.id,
-  //           },
-  //         },
-  //         body: {
-  //           ...input,
-  //         },
-  //       },
-  //     );
-  //     if (error) {
-  //       throw handleError(error);
-  //     }
-  //     return data;
-  //   }),
+  updateStatus: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        status: z.enum(['FREE', 'PAID']),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .update(ticketGroup)
+        .set({
+          status: input.status,
+        })
+        .where(eq(ticketGroup.id, input.id))
+        .returning();
 
+      return result[0];
+    }),
   delete: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const result = await ctx.db
       .delete(ticketGroup)
@@ -218,4 +196,123 @@ export const ticketGroupRouter = router({
 
     return result[0];
   }),
+  getTotalPriceById: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        with: {
+          ticketTypePerGroups: {
+            with: {
+              ticketType: {
+                columns: {
+                  price: true,
+                },
+              },
+            },
+            columns: {
+              amount: true,
+            },
+          },
+        },
+      });
+
+      if (!group) {
+        throw new Error('ticketGroup no encontrado');
+      }
+
+      const totalPrice = group.ticketTypePerGroups.reduce(
+        (total, ticketType) => {
+          return total + ticketType.amount * (ticketType.ticketType.price ?? 0);
+        },
+        0,
+      );
+
+      return totalPrice;
+    }),
+  generatePdfsByTicketGroupId: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      // Traerme todos los datos
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        columns: {
+          status: true,
+        },
+        with: {
+          emittedTickets: {
+            columns: {
+              id: true,
+              fullName: true,
+              mail: true,
+              dni: true,
+              createdAt: true,
+            },
+            with: {
+              ticketType: {
+                columns: {
+                  name: true,
+                },
+              },
+            },
+          },
+          event: {
+            columns: {
+              name: true,
+              startingDate: true,
+            },
+            with: {
+              location: {
+                columns: {
+                  address: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!group) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'TicketGroup no encontrado',
+        });
+      }
+
+      // Verificar que este paid/free
+      if (group?.status === 'BOOKED') {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'El ticketGroup no está concretado',
+        });
+      }
+
+      // Generar los PDFs
+      if (!group?.emittedTickets) {
+        throw new Error('No hay tickets emitidos');
+      }
+
+      const pdfPromises = group.emittedTickets.map(async (ticket) => {
+        const blob = await generatePdf({
+          eventName: group.event.name,
+          eventDate: group.event.startingDate,
+          eventLocation: group.event.location.address,
+          createdAt: ticket.createdAt,
+          dni: ticket.dni,
+          fullName: ticket.fullName,
+          id: ticket.id,
+          ticketType: ticket.ticketType.name,
+        });
+        return {
+          ticket,
+          pdf: {
+            blob,
+            base64: Buffer.from(await blob.arrayBuffer()).toString('base64'),
+          },
+        };
+      });
+
+      const pdfs = await Promise.all(pdfPromises);
+      return pdfs;
+    }),
 });
