@@ -23,13 +23,13 @@ async function EventPage({ params }: EventPageProps) {
 
   return (
     <div className='flex justify-center px-1 sm:px-4 my-14'>
-      <main className='w-full max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-5rem)] lg:max-w-6xl rounded-[20px] border-2 border-MiExpo_gray overflow-hidden'>
+      <main className='w-full max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-5rem)] lg:max-w-6xl rounded-3xl border-2 border-pn-gray overflow-hidden'>
         {/* Header - Usado tanto en móvil como en escritorio */}
-        <div className='border-b border-MiExpo_gray overflow-hidden'>
+        <div className='border-b border-pn-gray overflow-hidden'>
           <HeaderTickets event={event} />
         </div>
 
-        <div className='mt-6 flex flex-col md:grid md:grid-cols-16 border-MiExpo_gray overflow-hidden'>
+        <div className='mt-6 flex flex-col md:grid md:grid-cols-16 border-pn-gray overflow-hidden'>
           <div className='px-4 md:px-6 pb-4 md:col-span-12 overflow-hidden'>
             <TicketPurchase
               eventId={event.id}

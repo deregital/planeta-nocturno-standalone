@@ -22,6 +22,7 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
 
 export default function CheckoutClient({
   ticketGroup,
@@ -60,16 +61,6 @@ export default function CheckoutClient({
     { locale: es },
   );
 
-  const totalPrice = ticketGroup.ticketTypePerGroups
-    .reduce((acc, type) => acc + (type.ticketType.price || 0) * type.amount, 0)
-    .toLocaleString('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
-    .replace(/\s/g, '');
-
   return (
     <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
       <div className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'>
@@ -79,37 +70,7 @@ export default function CheckoutClient({
         </p>
       </div>
 
-      <div className='flex flex-col justify-center items-center border border-pn-gray p-4 rounded-sm w-full sm:w-xl md:w-2xl'>
-        <div className='grid grid-cols-3 w-full text-lg'>
-          <div className='text-pn-text-primary border-b border-pn-gray pb-[4px] pt-4'>
-            Tipo de Ticket
-          </div>
-          <div className='text-pn-text-primary text-center border-b border-pn-gray pb-[4px] pt-4'>
-            Valor
-          </div>
-          <div className='text-pn-text-primary text-right border-b border-pn-gray pb-[4px] pt-4'>
-            Cantidad
-          </div>
-          {ticketGroup.ticketTypePerGroups.map((type, index) => (
-            <React.Fragment key={index}>
-              <div className='text-pn-text-primary leading-[100%] py-6'>
-                {type.ticketType.name}
-              </div>
-              <div className='text-pn-text-primary leading-[100%] text-center py-6'>
-                {type.ticketType.price ? (
-                  <p>${type.ticketType.price}</p>
-                ) : (
-                  <p className='text-green-700 font-semibold'>GRATUITO</p>
-                )}
-              </div>
-              <div className='text-pn-text-primary leading-[100%] text-right py-6'>
-                {type.amount}
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
-        <p className='w-full text-start text-lg mt-6'>Total: {totalPrice}</p>
-      </div>
+      <TicketGroupTable ticketGroup={ticketGroup} />
 
       <form
         action={action}
@@ -163,7 +124,7 @@ export default function CheckoutClient({
 
               <div className='flex flex-col gap-1'>
                 <Label
-                  className='pl-1 text-pn-accent gap-[2px]'
+                  className='pl-1 text-pn-accent gap-0.5'
                   htmlFor={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
                 >
                   Número de teléfono<span className='text-red-500'>*</span>
@@ -213,7 +174,7 @@ export default function CheckoutClient({
               />
               <div className='flex flex-col gap-1'>
                 <Label
-                  className='pl-1 text-pn-accent gap-[2px]'
+                  className='pl-1 text-pn-accent gap-0.5'
                   htmlFor={`gender_${ticket.ticketType.id}-${indexAmount}`}
                 >
                   Género<span className='text-red-500'>*</span>
@@ -227,7 +188,7 @@ export default function CheckoutClient({
                     ]
                   }
                 >
-                  <SelectTrigger className='w-full py-[20px] border-pn-gray'>
+                  <SelectTrigger className='w-full py-2 border-pn-gray'>
                     <SelectValue placeholder='Selecciona tu género' />
                   </SelectTrigger>
                   <SelectContent>

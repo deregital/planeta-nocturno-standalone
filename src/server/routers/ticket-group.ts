@@ -289,7 +289,7 @@ export const ticketGroupRouter = router({
 
       // Generar los PDFs
       if (!group?.emittedTickets) {
-        throw new Error('QUE');
+        throw new Error('No hay tickets emitidos');
       }
 
       const pdfPromises = group.emittedTickets.map(async (ticket) => {

@@ -32,16 +32,16 @@ function TicketPurchase({
   } = useEventTickets(eventId, ticketTypes);
 
   return (
-    <div className='rounded-[20px] border border-MiExpo_gray p-6 bg-white h-full flex flex-col font-sans'>
+    <div className='rounded-[20px] border border-pn-gray p-6 bg-white h-full flex flex-col font-sans'>
       {/* Encabezado de la tabla */}
-      <div className='grid grid-cols-3 pb-2 border-b border-MiExpo_gray'>
-        <div className='text-MiExpo_black text-[12px] sm:text-[16px] font-normal leading-[100%]'>
+      <div className='grid grid-cols-3 pb-2 border-b border-pn-gray'>
+        <div className='text-black text-[12px] sm:text-[16px] font-normal leading-[100%]'>
           Tipo de Ticket
         </div>
-        <div className='text-MiExpo_black text-[12px] sm:text-[16px] font-normal leading-[100%] text-center'>
+        <div className='text-black text-[12px] sm:text-[16px] font-normal leading-[100%] text-center'>
           Valor
         </div>
-        <div className='text-MiExpo_black text-[12px] sm:text-[16px] font-normal leading-[100%] text-right'>
+        <div className='text-black text-[12px] sm:text-[16px] font-normal leading-[100%] text-right'>
           Cantidad
         </div>
       </div>
@@ -51,10 +51,10 @@ function TicketPurchase({
         {ticketsTypeAvailable.map((type, index) => {
           return (
             <React.Fragment key={index}>
-              <div className='text-MiExpo_black text-[12px] sm:text-[16px] font-normal leading-[100%]'>
+              <div className='text-black text-[12px] sm:text-[16px] font-normal'>
                 {type.name}
               </div>
-              <div className='text-MiExpo_black text-[12px] sm:text-[16px] font-normal leading-[100%] text-center'>
+              <div className='text-black text-[12px] sm:text-[16px] font-normal text-center'>
                 {type.price ? (
                   <p>${type.price}</p>
                 ) : (
@@ -74,7 +74,7 @@ function TicketPurchase({
                       ])
                     }
                   >
-                    <SelectTrigger className='w-24 bg-white text-MiExpo_black border border-MiExpo_gray'>
+                    <SelectTrigger className='w-24 bg-white text-black border border-pn-gray'>
                       <SelectValue placeholder='0' />
                     </SelectTrigger>
                     <SelectContent align='end'>

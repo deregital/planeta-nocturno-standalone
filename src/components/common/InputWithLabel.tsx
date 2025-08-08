@@ -18,7 +18,7 @@ export default function InputWithLabel({
         {label}
         {inputProps.required && <span className='text-red-500'>*</span>}
       </Label>
-      <Input id={id} {...inputProps} className='border-pn-gray py-[20px]' />
+      <Input id={id} {...inputProps} className='border-pn-gray py-2' />
     </div>
   );
 }
