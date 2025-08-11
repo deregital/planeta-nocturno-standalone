@@ -3,7 +3,7 @@ import { Ghost } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className='flex justify-center items-center min-h-screen pb-64'>
+    <div className='flex justify-center items-center h-main-screen pb-64'>
       <Card className='max-w-md w-full text-center shadow-lg'>
         <CardHeader>
           <CardTitle className='text-2xl font-bold flex items-center justify-center gap-2'>
