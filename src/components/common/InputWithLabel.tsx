@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 interface InputWithLabelProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  id: string;
+  id?: string;
 }
 
 export default function InputWithLabel({
