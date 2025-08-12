@@ -112,6 +112,7 @@ export async function handleUpdate(
   revalidateLocations();
 
   return {
+    ...rawData,
     success: true,
   };
 }
