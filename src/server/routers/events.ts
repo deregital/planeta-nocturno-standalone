@@ -71,10 +71,11 @@ export const eventsRouter = router({
       });
 
       // same slug is slug or slug-1, slug-2, etc
-      const sameSlugAmount = existingEvent.filter((event) => event.slug.match(new RegExp(`^${slug}-(\\d+)$`))).length;
-      const sameSlug = sameSlugAmount > 0 ? `${slug}-${sameSlugAmount + 1}` : slug;
-
-      if (existingEvent) throw 'Evento con el mismo nombre ya existe';
+      const sameSlugAmount = existingEvent.filter((event) =>
+        event.slug.match(new RegExp(`^${slug}-(\\d+)$`)),
+      ).length;
+      const sameSlug =
+        sameSlugAmount > 0 ? `${slug}-${sameSlugAmount + 1}` : slug;
 
       const eventData = {
         name: input.name,
@@ -89,33 +90,35 @@ export const eventsRouter = router({
         categoryId: input.categoryId,
       };
 
-      const { event, ticketTypesCreated } = await ctx.db.transaction(async (tx) => {
-        try {
-          const [event] = await tx
-            .insert(eventSchema)
-            .values(eventData)
-            .returning();
+      const { event, ticketTypesCreated } = await ctx.db.transaction(
+        async (tx) => {
+          try {
+            const [event] = await tx
+              .insert(eventSchema)
+              .values(eventData)
+              .returning();
 
-          if (!event) throw 'Error al crear evento';
+            if (!event) throw 'Error al crear evento';
 
-          const ticketTypesCreated = await tx
-            .insert(ticketType)
-            .values(
-              input.ticketTypes.map((ticketType) => ({
-                ...ticketType,
-                maxSellDate: ticketType.maxSellDate?.toISOString(),
-                scanLimit: ticketType.scanLimit?.toISOString(),
-                eventId: event.id,
-              })),
-            )
-            .returning();
+            const ticketTypesCreated = await tx
+              .insert(ticketType)
+              .values(
+                input.ticketTypes.map((ticketType) => ({
+                  ...ticketType,
+                  maxSellDate: ticketType.maxSellDate?.toISOString(),
+                  scanLimit: ticketType.scanLimit?.toISOString(),
+                  eventId: event.id,
+                })),
+              )
+              .returning();
 
-          return { event, ticketTypesCreated };
-        } catch (error) {
-          tx.rollback();
-          throw error;
-        }
-      });
+            return { event, ticketTypesCreated };
+          } catch (error) {
+            tx.rollback();
+            throw error;
+          }
+        },
+      );
 
       return { event, ticketTypesCreated };
     }),
