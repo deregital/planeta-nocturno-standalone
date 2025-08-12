@@ -3,10 +3,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
 import { Location } from '@/server/schemas/location';
-import { Pencil } from 'lucide-react';
 import DeleteLocationModal from './DeleteLocationModal';
+import UpdateLocationModal from './UpdateLocationModal';
 
 export default function LocationAccordion({
   location,
@@ -32,9 +31,7 @@ export default function LocationAccordion({
         <p className='font-medium'>
           Capacidad: <span className='font-light'>{location.capacity}</span>
         </p>
-        <Button variant='ghost' className='absolute top-0 right-0'>
-          <Pencil />
-        </Button>
+        <UpdateLocationModal location={location} />
         <DeleteLocationModal id={location.id} />
       </AccordionContent>
     </AccordionItem>

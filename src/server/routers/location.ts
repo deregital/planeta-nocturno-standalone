@@ -1,7 +1,11 @@
 import { location } from '@/drizzle/schema';
 import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
-import { createLocationSchema, locationSchema } from '../schemas/location';
+import {
+  createLocationSchema,
+  locationSchema,
+  updateLocationSchema,
+} from '../schemas/location';
 import { publicProcedure, router } from '../trpc';
 
 export const locationRouter = router({
@@ -32,8 +36,25 @@ export const locationRouter = router({
 
       if (!data) {
         throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'No se encontró la locación',
+          code: 'BAD_REQUEST',
+          message: 'Error al intenar eliminar la locación',
+        });
+      }
+
+      return data;
+    }),
+  update: publicProcedure
+    .input(updateLocationSchema)
+    .mutation(async ({ input, ctx }) => {
+      const data = await ctx.db
+        .update(location)
+        .set(input)
+        .where(eq(location.id, input.id));
+
+      if (!data) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Error al intentar actualizar la locación',
         });
       }
 

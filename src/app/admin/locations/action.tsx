@@ -1,9 +1,16 @@
 'use server';
 
-import { createLocationSchema } from '@/server/schemas/location';
+import {
+  createLocationSchema,
+  updateLocationSchema,
+} from '@/server/schemas/location';
 import { trpc } from '@/server/trpc/server';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
+
+export async function revalidateLocations() {
+  revalidatePath('/admin/locations');
+}
 
 export type CreateLocationActionState = {
   name?: string;
@@ -29,8 +36,6 @@ export async function handleCreate(
     googleMapsUrl: formData.get('googleMapsUrl') as string,
     capacity: Number(formData.get('capacity')),
   };
-
-  console.log(rawData);
 
   const validation = createLocationSchema.safeParse(rawData);
 
@@ -58,6 +63,55 @@ export async function handleCreate(
   };
 }
 
-export async function revalidateLocations() {
-  revalidatePath('/admin/locations');
+export type UpdateLocationActionState = {
+  id?: string;
+  name?: string;
+  address?: string;
+  googleMapsUrl?: string;
+  capacity?: number;
+  errors?: {
+    name?: string[];
+    address?: string[];
+    googleMapsUrl?: string[];
+    capacity?: string[];
+  };
+  success?: boolean;
+};
+
+export async function handleUpdate(
+  prevState: UpdateLocationActionState,
+  formData: FormData,
+) {
+  const rawData = {
+    id: formData.get('id') as string,
+    name: formData.get('name') as string,
+    address: formData.get('address') as string,
+    googleMapsUrl: formData.get('googleMapsUrl') as string,
+    capacity: Number(formData.get('capacity')),
+  };
+
+  const validation = updateLocationSchema.safeParse(rawData);
+
+  if (!validation.success) {
+    const validateErrors = z.treeifyError(validation.error).properties;
+
+    return {
+      ...rawData,
+      success: false,
+      errors: {
+        name: validateErrors?.name?.errors,
+        address: validateErrors?.address?.errors,
+        googleMapsUrl: validateErrors?.googleMapsUrl?.errors,
+        capacity: validateErrors?.capacity?.errors,
+      },
+    };
+  }
+
+  await trpc.location.update(rawData);
+
+  revalidateLocations();
+
+  return {
+    success: true,
+  };
 }
