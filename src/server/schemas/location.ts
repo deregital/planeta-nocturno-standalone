@@ -8,9 +8,13 @@ export const locationSchema = z.object({
   address: z.string().min(1, {
     error: 'La ubicación es requerida',
   }),
-  googleMapsUrl: z.string().min(1, {
-    error: 'El link de Google Maps es requerido',
-  }),
+  googleMapsUrl: z
+    .url({
+      error: 'El link no es válido',
+    })
+    .min(1, {
+      error: 'El link de Google Maps es requerido',
+    }),
   capacity: z.int().min(1, {
     error: 'La capacidad debe ser mayor a 0',
   }),

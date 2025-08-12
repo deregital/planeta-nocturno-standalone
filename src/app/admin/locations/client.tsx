@@ -3,7 +3,7 @@
 import CreateLocationModal from '@/components/location/CreateLocationModal';
 import LocationAccordion from '@/components/location/LocationAccordion';
 import { Accordion } from '@/components/ui/accordion';
-import { Location } from '@/server/schemas/location';
+import { type Location } from '@/server/schemas/location';
 
 export default function Client({ locations }: { locations: Location[] }) {
   return (

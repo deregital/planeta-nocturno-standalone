@@ -3,7 +3,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Location } from '@/server/schemas/location';
+import { type Location } from '@/server/schemas/location';
 import DeleteLocationModal from './DeleteLocationModal';
 import UpdateLocationModal from './UpdateLocationModal';
 
@@ -17,16 +17,24 @@ export default function LocationAccordion({
   return (
     <AccordionItem
       value={value}
-      className='border last:border border-pn-gray rounded-lg px-4 pb-4 my-4'
+      className='border last:border border-pn-gray rounded-lg px-4 my-4'
     >
       <AccordionTrigger className='text-xl'>{location.name}</AccordionTrigger>
-      <AccordionContent className='text-lg relative pb-0'>
+      <AccordionContent className='text-lg relative pb-4'>
         <p className='font-medium'>
           Ubicación: <span className='font-light'>{location.address}</span>
         </p>
         <p className='font-medium'>
           Link a Maps:{' '}
-          <span className='font-light'>{location.googleMapsUrl}</span>
+          <span className='font-light'>
+            <a
+              href={location.googleMapsUrl}
+              className='underline'
+              target='_blank'
+            >
+              {location.googleMapsUrl}
+            </a>
+          </span>
         </p>
         <p className='font-medium'>
           Capacidad: <span className='font-light'>{location.capacity}</span>

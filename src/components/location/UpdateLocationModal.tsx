@@ -2,7 +2,7 @@
 
 import {
   handleUpdate,
-  UpdateLocationActionState,
+  type UpdateLocationActionState,
 } from '@/app/admin/locations/action';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Location } from '@/server/schemas/location';
+import { type Location } from '@/server/schemas/location';
 import { Pencil } from 'lucide-react';
 import { useActionState, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -62,7 +62,7 @@ export default function UpdateLocationModal({
                 defaultValue={state.name}
               />
               <p className='text-red-500 text-sm font-bold'>
-                {state.errors?.name?.join(', ')}
+                {state.errors?.name?.[0]}
               </p>
             </div>
             <div>
@@ -73,7 +73,7 @@ export default function UpdateLocationModal({
                 defaultValue={state.address}
               />
               <p className='text-red-500 text-sm font-bold'>
-                {state.errors?.address?.join(', ')}
+                {state.errors?.address?.[0]}
               </p>
             </div>
             <div>
@@ -85,7 +85,7 @@ export default function UpdateLocationModal({
                 defaultValue={state.capacity}
               />
               <p className='text-red-500 text-sm font-bold'>
-                {state.errors?.capacity?.join(', ')}
+                {state.errors?.capacity?.[0]}
               </p>
             </div>
             <div>
@@ -96,7 +96,7 @@ export default function UpdateLocationModal({
                 defaultValue={state.googleMapsUrl}
               />
               <p className='text-red-500 text-sm font-bold'>
-                {state.errors?.googleMapsUrl?.join(', ')}
+                {state.errors?.googleMapsUrl?.[0]}
               </p>
             </div>
             <input type='hidden' name='id' value={location.id} />

@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  CreateLocationActionState,
+  type CreateLocationActionState,
   handleCreate,
 } from '@/app/admin/locations/action';
 import { Button } from '@/components/ui/button';

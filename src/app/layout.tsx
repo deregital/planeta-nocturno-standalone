@@ -1,5 +1,5 @@
 import TopBar from '@/components/header/TopBar';
-import { Toaster } from '@/components/ui/sooner';
+import { Toaster } from '@/components/ui/sonner';
 import { TRPCReactProvider } from '@/server/trpc/client';
 import type { Metadata } from 'next';
 import { DM_Sans } from 'next/font/google';
