@@ -1,8 +1,9 @@
+import TopBar from '@/components/header/TopBar';
+import { Toaster } from '@/components/ui/sooner';
+import { TRPCReactProvider } from '@/server/trpc/client';
 import type { Metadata } from 'next';
 import { DM_Sans } from 'next/font/google';
 import './globals.css';
-import { TRPCReactProvider } from '@/server/trpc/client';
-import TopBar from '@/components/header/TopBar';
 
 const dmSans = DM_Sans({
   variable: '--font-dm-sans',
@@ -27,6 +28,7 @@ export default function RootLayout({
         >
           <TopBar />
           {children}
+          <Toaster />
         </body>
       </html>
     </TRPCReactProvider>
