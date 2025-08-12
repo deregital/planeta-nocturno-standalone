@@ -1,12 +1,12 @@
 import { location } from '@/drizzle/schema';
-import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
 import {
   createLocationSchema,
   locationSchema,
   updateLocationSchema,
-} from '../schemas/location';
-import { publicProcedure, router } from '../trpc';
+} from '@/server/schemas/location';
+import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { TRPCError } from '@trpc/server';
+import { eq } from 'drizzle-orm';
 
 export const locationRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -15,7 +15,7 @@ export const locationRouter = router({
 
     return data;
   }),
-  create: publicProcedure
+  create: protectedProcedure
     .input(createLocationSchema)
     .mutation(async ({ input, ctx }) => {
       const data = await ctx.db.insert(location).values(input);
@@ -29,7 +29,7 @@ export const locationRouter = router({
 
       return data;
     }),
-  delete: publicProcedure
+  delete: protectedProcedure
     .input(locationSchema.shape.id)
     .mutation(async ({ input, ctx }) => {
       const data = await ctx.db.delete(location).where(eq(location.id, input));
@@ -43,7 +43,7 @@ export const locationRouter = router({
 
       return data;
     }),
-  update: publicProcedure
+  update: protectedProcedure
     .input(updateLocationSchema)
     .mutation(async ({ input, ctx }) => {
       const data = await ctx.db
