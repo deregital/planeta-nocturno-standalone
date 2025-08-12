@@ -13,7 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import InputWithLabel from '../common/InputWithLabel';
 
 export default function CreateLocationModal() {
@@ -22,17 +23,30 @@ export default function CreateLocationModal() {
     FormData
   >(handleCreate, {});
 
+  useEffect(() => {
+    if (state.success) {
+      setOpen(false);
+      toast('¡Se ha creado la locación con éxito!');
+    }
+  }, [state]);
+
+  const [open, setOpen] = useState(false);
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Crear nueva locación</Button>
+        <div className='w-full flex justify-end'>
+          <Button className='w-fit'>Crear nueva locación</Button>
+        </div>
       </DialogTrigger>
       <DialogContent>
         <form action={createAction}>
           <DialogHeader>
-            <DialogTitle>Crear locación</DialogTitle>
+            <DialogTitle>
+              <p className='font-bold text-xl'>Crear locación</p>
+            </DialogTitle>
           </DialogHeader>
-          <div className='grid grid-cols-2 gap-6 py-8'>
+          <div className='grid grid-cols-2 gap-6 pt-4 pb-8'>
             <div>
               <InputWithLabel
                 name='name'
@@ -58,6 +72,7 @@ export default function CreateLocationModal() {
             <div>
               <InputWithLabel
                 name='capacity'
+                type='number'
                 label='Capacidad'
                 placeholder='Ingresar capacidad'
                 defaultValue={state.capacity}
@@ -79,7 +94,11 @@ export default function CreateLocationModal() {
             </div>
           </div>
           <DialogFooter>
-            <Button type='submit' disabled={isPending} className='w-full'>
+            <Button
+              type='submit'
+              disabled={isPending}
+              className='w-full rounded-md'
+            >
               Crear
             </Button>
           </DialogFooter>

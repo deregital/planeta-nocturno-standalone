@@ -2,7 +2,7 @@
 
 import { createLocationSchema } from '@/server/schemas/location';
 import { trpc } from '@/server/trpc/server';
-import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import z from 'zod';
 
 export type CreateLocationActionState = {
@@ -16,6 +16,7 @@ export type CreateLocationActionState = {
     googleMapsUrl?: string[];
     capacity?: string[];
   };
+  success?: boolean;
 };
 
 export async function handleCreate(
@@ -29,6 +30,8 @@ export async function handleCreate(
     capacity: Number(formData.get('capacity')),
   };
 
+  console.log(rawData);
+
   const validation = createLocationSchema.safeParse(rawData);
 
   if (!validation.success) {
@@ -36,6 +39,7 @@ export async function handleCreate(
 
     return {
       ...rawData,
+      success: false,
       errors: {
         name: validateErrors?.name?.errors,
         address: validateErrors?.address?.errors,
@@ -47,5 +51,13 @@ export async function handleCreate(
 
   await trpc.location.create(rawData);
 
-  redirect('/admin/locations');
+  revalidateLocations();
+
+  return {
+    success: true,
+  };
+}
+
+export async function revalidateLocations() {
+  revalidatePath('/admin/locations');
 }
