@@ -1,0 +1,55 @@
+import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
+import {
+  Select,
+  SelectValue,
+  SelectTrigger,
+  SelectItem,
+  SelectContent,
+} from '@/components/ui/select';
+
+interface SelectWithLabelProps extends React.ComponentProps<typeof Select> {
+  label: string;
+  id: string;
+  required?: boolean;
+  values: Array<{
+    label: string;
+    value: string;
+  }>;
+  className?: string;
+  divClassName?: string;
+  error?: string;
+}
+
+export default function SelectWithLabel({
+  label,
+  id,
+  required,
+  values,
+  className,
+  divClassName,
+  error,
+  ...selectProps
+}: SelectWithLabelProps) {
+  return (
+    <GenericInputWithLabel
+      label={label}
+      id={id}
+      required={required}
+      className={divClassName}
+      error={error}
+    >
+      <Select {...selectProps}>
+        <SelectContent>
+          {values.map((value) => (
+            <SelectItem key={value.value} value={value.value}>
+              {value.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+        <SelectTrigger className={className}>
+          <SelectValue placeholder='Selecciona una opción' />
+        </SelectTrigger>
+      </Select>
+    </GenericInputWithLabel>
+  );
+}

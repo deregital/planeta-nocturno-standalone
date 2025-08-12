@@ -16,7 +16,7 @@ const initialState: EventState = {
   event: {
     name: '',
     description: '',
-    coverImageUrl: '',
+    coverImageUrl: 'https://media.tenor.com/BPSfyjEKq-0AAAAM/momo-bailando.gif',
     startingDate: new Date(),
     endingDate: new Date(),
     categoryId: '',
@@ -32,7 +32,7 @@ export const createEventStore = (initState: EventState = initialState) => {
     ...initState,
     setEvent: (event) => {
       console.log(event);
-      set({ event: { ...initState.event, ...event } });
+      set((state) => ({ event: { ...state.event, ...event } }));
     },
     addTicketType: (ticketType) =>
       set((state) => ({
