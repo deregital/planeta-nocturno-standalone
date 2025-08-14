@@ -45,7 +45,7 @@ export default function LocationModal({
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la locación con éxito!`);
     }
-  }, [state]);
+  }, [state, toastMsg]);
 
   const [open, setOpen] = useState(false);
 
