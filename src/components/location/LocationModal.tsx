@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  CreateLocationActionState,
+  type CreateLocationActionState,
   handleCreate,
   handleUpdate,
-  UpdateLocationActionState,
+  type UpdateLocationActionState,
 } from '@/app/admin/locations/action';
 import { Button } from '@/components/ui/button';
 import {
