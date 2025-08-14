@@ -5,7 +5,7 @@ import {
 } from '@/components/ui/accordion';
 import { type Location } from '@/server/schemas/location';
 import DeleteLocationModal from './DeleteLocationModal';
-import UpdateLocationModal from './UpdateLocationModal';
+import LocationModal from './LocationModal';
 
 export default function LocationAccordion({
   location,
@@ -39,7 +39,7 @@ export default function LocationAccordion({
         <p className='font-medium'>
           Capacidad: <span className='font-light'>{location.capacity}</span>
         </p>
-        <UpdateLocationModal location={location} />
+        <LocationModal action='EDIT' location={location} />
         <DeleteLocationModal id={location.id} />
       </AccordionContent>
     </AccordionItem>

@@ -1,7 +1,7 @@
 'use client';
 
-import CreateLocationModal from '@/components/location/CreateLocationModal';
 import LocationAccordion from '@/components/location/LocationAccordion';
+import LocationModal from '@/components/location/LocationModal';
 import { Accordion } from '@/components/ui/accordion';
 import { type Location } from '@/server/schemas/location';
 
@@ -19,7 +19,7 @@ export default function Client({ locations }: { locations: Location[] }) {
             />
           ))}
       </Accordion>
-      <CreateLocationModal />
+      <LocationModal action='CREATE' />
     </>
   );
 }

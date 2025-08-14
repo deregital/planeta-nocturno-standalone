@@ -1,32 +1,49 @@
 'use client';
 
 import {
-  type CreateLocationActionState,
+  CreateLocationActionState,
   handleCreate,
+  handleUpdate,
+  UpdateLocationActionState,
 } from '@/app/admin/locations/action';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { type Location } from '@/server/schemas/location';
+import { Pencil } from 'lucide-react';
 import { useActionState, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import InputWithLabel from '../common/InputWithLabel';
 
-export default function CreateLocationModal() {
+type LocationModalProps = {
+  action: 'CREATE' | 'EDIT';
+  location?: Location;
+};
+
+export default function LocationModal({
+  action,
+  location,
+}: LocationModalProps) {
+  const actionHandler = action === 'CREATE' ? handleCreate : handleUpdate;
+  const toastMsg = action === 'CREATE' ? 'creado' : 'modificado';
+  type ActionStateType = CreateLocationActionState | UpdateLocationActionState;
+
   const [state, createAction, isPending] = useActionState<
-    CreateLocationActionState,
+    ActionStateType,
     FormData
-  >(handleCreate, {});
+  >(actionHandler, location ?? {});
 
   useEffect(() => {
     if (state.success) {
       setOpen(false);
-      toast('¡Se ha creado la locación con éxito!');
+      toast(`¡Se ha ${toastMsg} la locación con éxito!`);
     }
   }, [state]);
 
@@ -35,9 +52,15 @@ export default function CreateLocationModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div className='w-full flex justify-end'>
-          <Button className='w-fit'>Crear nueva locación</Button>
-        </div>
+        {action === 'CREATE' ? (
+          <div className='w-full flex justify-end'>
+            <Button className='w-fit'>Crear nueva locación</Button>
+          </div>
+        ) : (
+          <Button variant='ghost' className='absolute top-0 right-0'>
+            <Pencil />
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <form action={createAction}>
@@ -94,13 +117,29 @@ export default function CreateLocationModal() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              type='submit'
-              disabled={isPending}
-              className='w-full rounded-md'
-            >
-              Crear
-            </Button>
+            {action === 'EDIT' && location ? (
+              <>
+                <input type='hidden' name='id' value={location.id} />
+                <DialogClose asChild>
+                  <Button variant='ghost'>Cancelar</Button>
+                </DialogClose>
+                <Button
+                  type='submit'
+                  disabled={isPending}
+                  className='rounded-md'
+                >
+                  Editar
+                </Button>
+              </>
+            ) : (
+              <Button
+                type='submit'
+                disabled={isPending}
+                className='w-full rounded-md'
+              >
+                Crear
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
