@@ -8,6 +8,7 @@ import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
 import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
 import { mailRouter } from '@/server/routers/mail';
+import { locationRouter } from './location';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -27,6 +28,7 @@ export const appRouter = router({
   emittedTickets: emittedTicketsRouter,
   mercadoPago: mercadoPagoRouter,
   mail: mailRouter,
+  location: locationRouter,
 });
 
 export type AppRouter = typeof appRouter;
