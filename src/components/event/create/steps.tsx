@@ -1,7 +1,6 @@
 'use client';
 
 import { EventCreationInformation } from '@/components/event/create/EventCreationInformation';
-import { Button } from '@/components/ui/button';
 import {
   Stepper,
   StepperContent,
@@ -42,7 +41,7 @@ export function Steps() {
     <Stepper
       value={currentStep}
       onValueChange={setCurrentStep}
-      className='space-y-8 max-w-5xl px-4'
+      className='space-y-8 max-w-5xl p-4'
     >
       <StepperNav>
         {steps.map((step, index) => (
@@ -84,19 +83,6 @@ export function Steps() {
           </StepperContent>
         ))}
       </StepperPanel>
-
-      <div className='flex items-center justify-between gap-2.5'>
-        <Button variant='outline' onClick={goBack} disabled={currentStep === 1}>
-          Previous
-        </Button>
-        <Button
-          variant='outline'
-          onClick={goNext}
-          disabled={currentStep === steps.length}
-        >
-          Next
-        </Button>
-      </div>
     </Stepper>
   );
 }
