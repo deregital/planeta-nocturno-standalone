@@ -15,6 +15,22 @@ export const locationRouter = router({
 
     return data;
   }),
+  getById: publicProcedure
+    .input(locationSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const data = ctx.db.query.location.findFirst({
+        where: eq(location.id, input),
+      });
+
+      if (!data) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Locación no encontrada',
+        });
+      }
+
+      return data;
+    }),
   create: protectedProcedure
     .input(createLocationSchema)
     .mutation(async ({ input, ctx }) => {
