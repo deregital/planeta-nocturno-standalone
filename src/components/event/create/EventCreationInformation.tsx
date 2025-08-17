@@ -1,21 +1,25 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
-import { useShallow } from 'zustand/react/shallow';
-import InputWithLabel from '@/components/common/InputWithLabel';
-import { ImageUploader } from '@/components/event/create/ImageUploader';
-import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { validateGeneralInformation } from '@/app/admin/event/create/actions';
+import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import InputWithLabel from '@/components/common/InputWithLabel';
+import SelectWithLabel from '@/components/common/SelectWithLabel';
+import { ImageUploader } from '@/components/event/create/ImageUploader';
+import { Button } from '@/components/ui/button';
+import { trpc } from '@/server/trpc/client';
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
-export function EventCreationInformation() {
+export function EventCreationInformation({ next }: { next: () => void }) {
   const { event, setEvent } = useCreateEventStore(
     useShallow((state) => ({
       event: state.event,
       setEvent: state.setEvent,
     })),
   );
+
+  const { data: locations } = trpc.location.getAll.useQuery();
+  const { data: categories } = trpc.eventCategory.getAll.useQuery();
 
   const [minAgeEnabled, setMinAgeEnabled] = useState(false);
 
@@ -26,6 +30,7 @@ export function EventCreationInformation() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const validatedEvent = await validateGeneralInformation(event);
+
     if (!validatedEvent.success) {
       const keyAndError = Object.entries(validatedEvent.error ?? {});
       setError(
@@ -37,7 +42,10 @@ export function EventCreationInformation() {
           {} as { [key: string]: string },
         ),
       );
+      return;
     }
+
+    next();
   };
 
   return (
@@ -57,6 +65,7 @@ export function EventCreationInformation() {
             setEvent({ name: e.target.value });
           }}
           error={error.name}
+          defaultValue={event.name ?? ''}
         />
         <InputWithLabel
           label='Descripción del evento'
@@ -68,6 +77,7 @@ export function EventCreationInformation() {
             setEvent({ description: e.target.value });
           }}
           error={error.description}
+          defaultValue={event.description ?? ''}
         />
       </section>
       <section className='md:!flex-row'>
@@ -84,6 +94,10 @@ export function EventCreationInformation() {
             setEvent({ startingDate: date, endingDate: date });
           }}
           error={error.eventDate}
+          defaultValue={
+            event.startingDate.toISOString().split('T')[0] ??
+            new Date().toISOString().split('T')[0]
+          }
         />
         <InputWithLabel
           label='Hora de inicio'
@@ -104,6 +118,12 @@ export function EventCreationInformation() {
             setEvent({ startingDate: newDate });
           }}
           error={error.startTime}
+          defaultValue={
+            event.startingDate.toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }) ?? ''
+          }
         />
         <InputWithLabel
           label='Hora de fin'
@@ -130,6 +150,12 @@ export function EventCreationInformation() {
             setEvent({ endingDate: newDate });
           }}
           error={error.endTime}
+          defaultValue={
+            event.endingDate.toLocaleTimeString('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }) ?? ''
+          }
         />
       </section>
       <section className='flex !flex-row gap-2'>
@@ -145,6 +171,7 @@ export function EventCreationInformation() {
             setMinAgeEnabled(e.target.checked);
             setEvent({ minAge: e.target.checked ? 0 : null });
           }}
+          defaultValue={event.minAge ? 'true' : 'false'}
         />
         {minAgeEnabled && (
           <InputWithLabel
@@ -158,6 +185,7 @@ export function EventCreationInformation() {
               setEvent({ minAge: parseInt(e.target.value) });
             }}
             error={error.minAge}
+            defaultValue={event.minAge ?? undefined}
           />
         )}
       </section>
@@ -172,6 +200,7 @@ export function EventCreationInformation() {
             setEvent({ isActive: e.target.checked });
           }}
           error={error.isActive}
+          defaultValue={event.isActive.toString() ?? 'false'}
         />
       </section>
 
@@ -182,16 +211,14 @@ export function EventCreationInformation() {
           divClassName='flex-1'
           className='w-full'
           required
-          values={[
-            {
-              label: 'Ubicación 1',
-              value: 'ca702912-26ef-42cc-873f-32a7394cc134',
-            },
-            {
-              label: 'Ubicación 2',
-              value: 'ca702912-26ef-42cc-873f-32a7394cc125',
-            },
-          ]}
+          values={
+            locations
+              ? locations.map((location) => ({
+                  label: `${location.name} (${location.address})`,
+                  value: location.id,
+                }))
+              : []
+          }
           onValueChange={(value) => {
             setEvent({ locationId: value });
           }}
@@ -203,16 +230,14 @@ export function EventCreationInformation() {
           divClassName='flex-1'
           className='w-full'
           required
-          values={[
-            {
-              label: 'Categoría 1',
-              value: 'ca702912-26ef-42cc-873f-32a7394cc358',
-            },
-            {
-              label: 'Categoría 2',
-              value: 'ca702912-26ef-42cc-873f-32a7394cc125',
-            },
-          ]}
+          values={
+            categories
+              ? categories.map((category) => ({
+                  label: category.name,
+                  value: category.id,
+                }))
+              : []
+          }
           onValueChange={(value) => {
             setEvent({ categoryId: value });
           }}
@@ -221,7 +246,7 @@ export function EventCreationInformation() {
       </section>
 
       <Button type='submit' variant={'accent'}>
-        Crear evento
+        Continuar
       </Button>
     </form>
   );
