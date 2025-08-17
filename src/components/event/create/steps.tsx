@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { EventCreationInformation } from '@/components/event/create/EventCreationInformation';
 import { Button } from '@/components/ui/button';
 import {
   Stepper,
@@ -14,26 +14,30 @@ import {
   StepperTrigger,
 } from '@/components/ui/stepper';
 import { cn } from '@/lib/utils';
-import { EventCreationInformation } from '@/components/event/create/EventCreationInformation';
-
-const steps = [
-  {
-    title: 'Información general',
-    component: <EventCreationInformation />,
-  },
-  {
-    title: 'Tipos de entradas',
-    component: <div>Step 2</div>,
-  },
-  {
-    title: 'Revisión y publicación',
-    component: <div>Step 3</div>,
-  },
-];
+import { useState } from 'react';
+import PreviewEvent from './PreviewEvent';
+import TicketTypeCreation from './ticketType/TicketTypeCreation';
 
 export function Steps() {
   const [currentStep, setCurrentStep] = useState(1);
 
+  const goBack = () => setCurrentStep((prev) => prev - 1);
+  const goNext = () => setCurrentStep((prev) => prev + 1);
+
+  const steps = [
+    {
+      title: 'Información general',
+      component: <EventCreationInformation next={goNext} />,
+    },
+    {
+      title: 'Tipos de entradas',
+      component: <TicketTypeCreation back={goBack} next={goNext} />,
+    },
+    {
+      title: 'Revisión y publicación',
+      component: <PreviewEvent back={goBack} />,
+    },
+  ];
   return (
     <Stepper
       value={currentStep}
@@ -82,16 +86,12 @@ export function Steps() {
       </StepperPanel>
 
       <div className='flex items-center justify-between gap-2.5'>
-        <Button
-          variant='outline'
-          onClick={() => setCurrentStep((prev) => prev - 1)}
-          disabled={currentStep === 1}
-        >
+        <Button variant='outline' onClick={goBack} disabled={currentStep === 1}>
           Previous
         </Button>
         <Button
           variant='outline'
-          onClick={() => setCurrentStep((prev) => prev + 1)}
+          onClick={goNext}
           disabled={currentStep === steps.length}
         >
           Next
