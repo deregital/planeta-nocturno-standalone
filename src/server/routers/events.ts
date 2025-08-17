@@ -1,9 +1,10 @@
 import { event as eventSchema, ticketType } from '@/drizzle/schema';
+import { createEventSchema } from '@/server/schemas/event';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { generateSlug } from '@/server/utils/utils';
 import { eq, like } from 'drizzle-orm';
 import z from 'zod';
-import { createEventSchema } from '@/server/schemas/event';
-import { generateSlug } from '@/server/utils/utils';
+import { createTicketTypeSchema } from '../schemas/ticket-type';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -62,9 +63,15 @@ export const eventsRouter = router({
     return data;
   }),
   create: protectedProcedure
-    .input(createEventSchema)
+    .input(
+      z.object({
+        event: createEventSchema,
+        ticketTypes: createTicketTypeSchema.array(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const slug = generateSlug(input.name);
+      const { event, ticketTypes } = input;
+      const slug = generateSlug(input.event.name);
 
       const existingEvent = await ctx.db.query.event.findMany({
         where: like(eventSchema.slug, `${slug}%`),
@@ -78,41 +85,41 @@ export const eventsRouter = router({
         sameSlugAmount > 0 ? `${slug}-${sameSlugAmount + 1}` : slug;
 
       const eventData = {
-        name: input.name,
-        description: input.description,
-        coverImageUrl: input.coverImageUrl,
-        startingDate: input.startingDate.toISOString(),
-        endingDate: input.endingDate.toISOString(),
-        minAge: input.minAge,
-        isActive: input.isActive,
+        name: event.name,
+        description: event.description,
+        coverImageUrl: event.coverImageUrl,
+        startingDate: event.startingDate.toISOString(),
+        endingDate: event.endingDate.toISOString(),
+        minAge: event.minAge,
+        isActive: event.isActive,
         slug: sameSlug,
-        locationId: input.locationId,
-        categoryId: input.categoryId,
+        locationId: event.locationId,
+        categoryId: event.categoryId,
       };
 
-      const { event, ticketTypesCreated } = await ctx.db.transaction(
+      const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
         async (tx) => {
           try {
-            const [event] = await tx
+            const [eventCreated] = await tx
               .insert(eventSchema)
               .values(eventData)
               .returning();
 
-            if (!event) throw 'Error al crear evento';
+            if (!eventCreated) throw 'Error al crear evento';
 
             const ticketTypesCreated = await tx
               .insert(ticketType)
               .values(
-                input.ticketTypes.map((ticketType) => ({
+                ticketTypes.map((ticketType) => ({
                   ...ticketType,
                   maxSellDate: ticketType.maxSellDate?.toISOString(),
                   scanLimit: ticketType.scanLimit?.toISOString(),
-                  eventId: event.id,
+                  eventId: eventCreated.id,
                 })),
               )
               .returning();
 
-            return { event, ticketTypesCreated };
+            return { eventCreated, ticketTypesCreated };
           } catch (error) {
             tx.rollback();
             throw error;
@@ -120,6 +127,6 @@ export const eventsRouter = router({
         },
       );
 
-      return { event, ticketTypesCreated };
+      return { eventCreated, ticketTypesCreated };
     }),
 });
