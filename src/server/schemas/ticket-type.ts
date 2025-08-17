@@ -2,12 +2,27 @@ import { ticketTypeCategory } from '@/drizzle/schema';
 import z from 'zod';
 
 export const ticketTypeSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().min(1),
-  price: z.number().min(1).nullable(),
-  maxPerPurchase: z.number().min(1),
-  maxAvailable: z.number().min(1),
-  maxSellDate: z.date().nullable(),
-  category: z.enum(ticketTypeCategory.enumValues),
-  scanLimit: z.date().nullable(),
+  id: z.uuid({ error: 'El id debe ser un UUID válido' }),
+  name: z.string().min(1, { error: 'El nombre es requerido' }),
+  description: z.string().min(1, { error: 'La descripción es requerida' }),
+  price: z.number().min(0, { error: 'El precio debe ser positivo' }).nullable(),
+  maxPerPurchase: z
+    .number()
+    .min(1, { error: 'Debe ser al menos 1 por compra' }),
+  maxAvailable: z.number().min(1, { error: 'Debe ser al menos 1 disponible' }),
+  maxSellDate: z.coerce
+    .date({ error: 'La fecha de venta máxima no es válida' })
+    .nullable(),
+  category: z.enum(ticketTypeCategory.enumValues, {
+    error: 'La categoría es requerida',
+  }),
+
+  scanLimit: z.coerce
+    .date({ error: 'La fecha de escaneo no es válida' })
+    .nullable(),
 });
+export const createTicketTypeSchema = ticketTypeSchema.omit({
+  id: true,
+});
+
+export type CreateTicketTypeSchema = z.infer<typeof createTicketTypeSchema>;

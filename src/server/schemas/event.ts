@@ -1,4 +1,3 @@
-import { ticketTypeSchema } from '@/server/schemas/ticket-type';
 import { z } from 'zod';
 
 export const createEventSchema = z.object({
@@ -27,8 +26,6 @@ export const createEventSchema = z.object({
   categoryId: z.uuid({
     error: 'La categoría es requerida',
   }),
-
-  ticketTypes: z.array(ticketTypeSchema),
 });
 
 export type CreateEventSchema = z.infer<typeof createEventSchema>;
