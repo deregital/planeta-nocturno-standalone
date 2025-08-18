@@ -1,8 +1,12 @@
 import { z } from 'zod';
 
-export const createEventSchema = z.object({
-  name: z.string().min(1, { message: 'El nombre es requerido' }),
-  description: z.string().min(1, { message: 'La descripción es requerida' }),
+export const eventSchema = z.object({
+  id: z.uuid({
+    error: 'El id debe ser UUID',
+  }),
+  slug: z.string(),
+  name: z.string().min(1, { error: 'El nombre es requerido' }),
+  description: z.string().min(1, { error: 'La descripción es requerida' }),
   coverImageUrl: z.url(),
 
   startingDate: z.date({
@@ -28,4 +32,10 @@ export const createEventSchema = z.object({
   }),
 });
 
+export const createEventSchema = eventSchema.omit({
+  id: true,
+  slug: true,
+});
+
+export type EventSchema = z.infer<typeof eventSchema>;
 export type CreateEventSchema = z.infer<typeof createEventSchema>;

@@ -21,8 +21,10 @@ export const ticketTypeSchema = z.object({
     .date({ error: 'La fecha de escaneo no es válida' })
     .nullable(),
 });
+
 export const createTicketTypeSchema = ticketTypeSchema.omit({
   id: true,
 });
 
 export type CreateTicketTypeSchema = z.infer<typeof createTicketTypeSchema>;
+export type TicketTypeSchema = z.infer<typeof ticketTypeSchema>;
