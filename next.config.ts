@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'media.tenor.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'planeta-nocturno.s3.us-east-1.amazonaws.com',
+      },
     ],
   },
 };

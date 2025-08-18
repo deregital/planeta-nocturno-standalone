@@ -15,6 +15,7 @@ type UploadDropzoneProps = {
         maxFiles?: number;
       }
     | string;
+  className?: string;
   uploadOverride?: (
     ...args: Parameters<UploadHookControl<true>['upload']>
   ) => void;
@@ -28,6 +29,7 @@ export function UploadDropzone({
   metadata,
   description,
   uploadOverride,
+  className,
 }: UploadDropzoneProps) {
   const id = useId();
 
@@ -52,6 +54,7 @@ export function UploadDropzone({
         {
           'border-primary/80': isDragActive,
         },
+        className,
       )}
     >
       <label

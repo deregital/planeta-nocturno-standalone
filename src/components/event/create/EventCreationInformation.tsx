@@ -6,9 +6,11 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { Button } from '@/components/ui/button';
+import { generateS3Url } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 import { addDays, format, isAfter } from 'date-fns';
 import { toDate } from 'date-fns-tz';
+import Image from 'next/image';
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -69,7 +71,31 @@ export function EventCreationInformation({ next }: { next: () => void }) {
       className='flex flex-col gap-4 justify-center [&>section]:flex [&>section]:flex-col [&>section]:gap-2 [&>section]:p-2 [&>section]:border-2 [&>section]:border-pn-gray [&>section]:rounded-md [&>section]:w-full w-full'
       onSubmit={handleSubmit}
     >
-      <ImageUploader />
+      {event.coverImageUrl === '' ? (
+        <ImageUploader
+          error={error.coverImageUrl}
+          onUploadComplete={(objectKey) => {
+            handleChange('coverImageUrl', generateS3Url(objectKey));
+          }}
+        />
+      ) : (
+        <div className='flex flex-col gap-2'>
+          <Image
+            width={1000}
+            height={1000}
+            quality={100}
+            src={event.coverImageUrl}
+            className='max-h-96 aspect-auto rounded-md w-fit mx-auto max-w-full'
+            alt='Event cover'
+          />
+          <Button
+            variant='outline'
+            onClick={() => handleChange('coverImageUrl', '')}
+          >
+            Cambiar imagen
+          </Button>
+        </div>
+      )}
       <section className='flex flex-col gap-2'>
         <InputWithLabel
           label='Nombre del evento'
