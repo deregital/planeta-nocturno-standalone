@@ -1,0 +1,36 @@
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { type RouterOutputs } from '@/server/routers/app';
+import { format } from 'date-fns';
+import { Pencil } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+export default function EventCardHorizontal({
+  event,
+}: {
+  event: RouterOutputs['events']['getAll'][number];
+}) {
+  const router = useRouter();
+
+  return (
+    <Card className='flex flex-row bg-pn-accent py-2 rounded-lg'>
+      <CardContent className='flex w-full justify-between px-4 text-pn-text-accent'>
+        <div className='flex flex-row gap-4 items-center'>
+          <CardTitle>{event.name}</CardTitle>
+          <p className='text-sm'>
+            {format(event.startingDate, 'dd/MM/yyyy HH:mm')} -{' '}
+            {event.location.address}
+          </p>
+        </div>
+        <div>
+          <Button
+            variant={'ghost'}
+            onClick={() => router.push(`/admin/event/edit/${event.slug}`)}
+          >
+            <Pencil />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

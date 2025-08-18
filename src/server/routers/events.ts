@@ -11,6 +11,13 @@ export const eventsRouter = router({
     return ctx.db.query.event.findMany({
       with: {
         ticketTypes: true,
+        location: {
+          columns: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
       },
     });
   }),
