@@ -8,7 +8,11 @@ import { createTicketTypeSchema } from '../schemas/ticket-type';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.event.findMany();
+    return ctx.db.query.event.findMany({
+      with: {
+        ticketTypes: true,
+      },
+    });
   }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const data = await ctx.db.query.event.findFirst({
