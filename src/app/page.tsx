@@ -1,4 +1,4 @@
-import GridEvents from '@/components/events/GridEvents';
+import GridEvents from '@/components/events/buyPage/GridEvents';
 
 export default async function Home() {
   return (
