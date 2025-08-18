@@ -7,8 +7,18 @@ import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
+import { addDays, format, isAfter } from 'date-fns';
+import { toDate } from 'date-fns-tz';
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+
+function isBeforeHoursAndMinutes(date1: Date, date2: Date) {
+  return (
+    date1.getHours() < date2.getHours() ||
+    (date1.getHours() === date2.getHours() &&
+      date1.getMinutes() < date2.getMinutes())
+  );
+}
 
 export function EventCreationInformation({ next }: { next: () => void }) {
   const { event, setEvent } = useCreateEventStore(
@@ -21,13 +31,19 @@ export function EventCreationInformation({ next }: { next: () => void }) {
   const { data: locations } = trpc.location.getAll.useQuery();
   const { data: categories } = trpc.eventCategory.getAll.useQuery();
 
-  const [minAgeEnabled, setMinAgeEnabled] = useState(false);
-
   const [error, setError] = useState<{
     [key: string]: string;
   }>({});
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  function handleChange<T extends keyof typeof event>(
+    key: T,
+    value: (typeof event)[T],
+  ) {
+    setError((prev) => ({ ...prev, [key]: '' }));
+    setEvent({ [key]: value });
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const validatedEvent = await validateGeneralInformation(event);
 
@@ -46,7 +62,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
     }
 
     next();
-  };
+  }
 
   return (
     <form
@@ -61,9 +77,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           type='text'
           placeholder='Nombre del evento'
           name='name'
-          onChange={(e) => {
-            setEvent({ name: e.target.value });
-          }}
+          onChange={(e) => handleChange('name', e.target.value)}
           error={error.name}
           defaultValue={event.name ?? ''}
         />
@@ -73,9 +87,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           type='text'
           placeholder='Descripción del evento'
           name='description'
-          onChange={(e) => {
-            setEvent({ description: e.target.value });
-          }}
+          onChange={(e) => handleChange('description', e.target.value)}
           error={error.description}
           defaultValue={event.description ?? ''}
         />
@@ -88,16 +100,32 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           className='flex-1'
           placeholder='Fecha del evento'
           name='eventDate'
-          value={event.startingDate.toISOString().split('T')[0]}
+          value={format(event.startingDate, 'yyyy-MM-dd')}
           onChange={(e) => {
-            const date = new Date(e.target.value);
-            setEvent({ startingDate: date, endingDate: date });
+            if (isNaN(new Date(e.target.value).getTime())) {
+              setError({ eventDate: 'Fecha inválida' });
+              return;
+            }
+
+            const startingDate = toDate(e.target.value);
+
+            const endingDate = new Date(
+              isBeforeHoursAndMinutes(event.endingDate, event.startingDate)
+                ? addDays(startingDate, 1)
+                : startingDate,
+            );
+
+            startingDate.setHours(event.startingDate.getHours());
+            startingDate.setMinutes(event.startingDate.getMinutes());
+            endingDate.setHours(event.endingDate.getHours());
+            endingDate.setMinutes(event.endingDate.getMinutes());
+
+            handleChange('startingDate', startingDate);
+            handleChange('endingDate', endingDate);
+            setError({ eventDate: '' });
           }}
           error={error.eventDate}
-          defaultValue={
-            event.startingDate.toISOString().split('T')[0] ??
-            new Date().toISOString().split('T')[0]
-          }
+          // defaultValue={format(event.startingDate, 'yyyy-MM-dd')}
         />
         <InputWithLabel
           label='Hora de inicio'
@@ -106,24 +134,29 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           className='flex-1'
           placeholder='Hora de inicio'
           name='startTime'
-          value={event.startingDate.toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          value={format(event.startingDate, 'HH:mm')}
           onChange={(e) => {
             const [hours, minutes] = e.target.value.split(':');
-            const newDate = new Date(event.startingDate);
+            const newDate = toDate(event.startingDate, {});
             newDate.setHours(parseInt(hours), parseInt(minutes));
 
-            setEvent({ startingDate: newDate });
+            // if the new date is before the ending date, substract a day from the ending date
+            if (isBeforeHoursAndMinutes(newDate, event.endingDate)) {
+              const newEndingDate = new Date(newDate);
+              newEndingDate.setHours(event.endingDate.getHours());
+              newEndingDate.setMinutes(event.endingDate.getMinutes());
+              handleChange('endingDate', newEndingDate);
+            } else {
+              const newEndingDate = addDays(event.startingDate, 1);
+              newEndingDate.setHours(event.endingDate.getHours());
+              newEndingDate.setMinutes(event.endingDate.getMinutes());
+              handleChange('endingDate', newEndingDate);
+            }
+
+            handleChange('startingDate', newDate);
           }}
-          error={error.startTime}
-          defaultValue={
-            event.startingDate.toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }) ?? ''
-          }
+          error={error.startingDate}
+          // defaultValue={format(event.startingDate, 'HH:mm')}
         />
         <InputWithLabel
           label='Hora de fin'
@@ -132,30 +165,20 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           className='flex-1'
           placeholder='Hora de fin'
           name='endTime'
-          value={event.endingDate.toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          value={format(event.endingDate, 'HH:mm')}
           onChange={(e) => {
             const [hours, minutes] = e.target.value.split(':');
-            const startHours = event.startingDate.getHours();
-            const newDate = new Date(event.startingDate);
+            const newDate = toDate(event.startingDate, {});
             newDate.setHours(parseInt(hours), parseInt(minutes));
 
-            // If end time is after midnight and start time isn't, add a day
-            if (parseInt(hours) < startHours && parseInt(hours) < 24) {
+            if (!isAfter(newDate, event.startingDate)) {
               newDate.setDate(newDate.getDate() + 1);
             }
 
-            setEvent({ endingDate: newDate });
+            handleChange('endingDate', newDate);
           }}
-          error={error.endTime}
-          defaultValue={
-            event.endingDate.toLocaleTimeString('es-ES', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }) ?? ''
-          }
+          error={error.endingDate}
+          // defaultValue={format(event.endingDate, 'HH:mm')}
         />
       </section>
       <section className='flex !flex-row gap-2'>
@@ -166,14 +189,12 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           className='[&>input]:w-6 items-center'
           placeholder='Edad mínima'
           name='minAgeEnabled'
-          checked={minAgeEnabled}
+          checked={event.minAge !== null}
           onChange={(e) => {
-            setMinAgeEnabled(e.target.checked);
-            setEvent({ minAge: e.target.checked ? 0 : null });
+            handleChange('minAge', e.target.checked ? 0 : null);
           }}
-          defaultValue={event.minAge ? 'true' : 'false'}
         />
-        {minAgeEnabled && (
+        {event.minAge !== null && (
           <InputWithLabel
             label='Edad mínima'
             id='minAge'
@@ -182,10 +203,10 @@ export function EventCreationInformation({ next }: { next: () => void }) {
             placeholder='Edad mínima'
             name='minAge'
             onChange={(e) => {
-              setEvent({ minAge: parseInt(e.target.value) });
+              handleChange('minAge', parseInt(e.target.value));
             }}
             error={error.minAge}
-            defaultValue={event.minAge ?? undefined}
+            defaultValue={isNaN(event.minAge ?? 0) ? undefined : event.minAge!}
           />
         )}
       </section>
@@ -197,7 +218,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           placeholder='Activo'
           name='isActive'
           onChange={(e) => {
-            setEvent({ isActive: e.target.checked });
+            handleChange('isActive', e.target.checked);
           }}
           error={error.isActive}
           defaultValue={event.isActive.toString() ?? 'false'}
@@ -220,7 +241,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
               : []
           }
           onValueChange={(value) => {
-            setEvent({ locationId: value });
+            handleChange('locationId', value);
           }}
           error={error.locationId}
           defaultValue={event.locationId}
@@ -240,7 +261,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
               : []
           }
           onValueChange={(value) => {
-            setEvent({ categoryId: value });
+            handleChange('categoryId', value);
           }}
           error={error.categoryId}
           defaultValue={event.categoryId}
