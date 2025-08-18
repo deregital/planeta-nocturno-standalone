@@ -41,6 +41,12 @@ export default function TicketTypeModal({
     [key: string]: string;
   }>({});
   const [open, setOpen] = useState(false);
+  const [hasScanLimit, setHasScanLimit] = useState(
+    ticketType?.scanLimit ? true : false,
+  );
+  const [hasMaxSellDate, setHasMaxSellDate] = useState(
+    ticketType?.maxSellDate ? true : false,
+  );
 
   const { addTicketType, event, updateTicketType } = useCreateEventStore(
     useShallow((state) => ({
@@ -151,6 +157,7 @@ export default function TicketTypeModal({
             label='Precio de la entrada'
             type='number'
             error={error.price}
+            placeholder='$'
             defaultValue={
               ticketType
                 ? ticketType.price?.toString()
@@ -164,6 +171,7 @@ export default function TicketTypeModal({
                 name='maxAvailable'
                 label={`Cantidad maxima de entrada (Entradas restantes: ${maxAvailableLeft})`}
                 type='number'
+                required
                 error={error.maxAvailable}
                 max={maxAvailableLeft}
                 defaultValue={ticketType?.maxAvailable}
@@ -178,28 +186,88 @@ export default function TicketTypeModal({
               />
             </div>
             <div className='grid gap-4'>
-              <InputWithLabel
-                id='scanLimit'
-                name='scanLimit'
-                label='Finalización de escaneo de entradas'
-                type='datetime-local'
-                error={error.scanLimit}
-                defaultValue={
-                  ticketType?.scanLimit?.toISOString().slice(0, 16) ||
-                  event.endingDate.toISOString().slice(0, 16)
-                }
-              />
-              <InputWithLabel
-                id='maxSellDate'
-                name='maxSellDate'
-                label='Finalización de venta de entradas'
-                type='datetime-local'
-                error={error.maxSellDate}
-                defaultValue={
-                  ticketType?.maxSellDate?.toISOString().slice(0, 16) ||
-                  event.endingDate.toISOString().slice(0, 16)
-                }
-              />
+              <div className='flex'>
+                {hasScanLimit ? (
+                  <InputWithLabel
+                    id='scanLimit'
+                    name='scanLimit'
+                    label='Finalización de escaneo de entradas'
+                    type='datetime-local'
+                    error={error.scanLimit}
+                    defaultValue={
+                      ticketType?.scanLimit?.toISOString().slice(0, 16) ||
+                      event.endingDate.toISOString().slice(0, 16)
+                    }
+                    className='w-full'
+                  />
+                ) : (
+                  <InputWithLabel
+                    id='scanLimit'
+                    name='scanLimit'
+                    label='Finalización de escaneo de entradas'
+                    type='datetime-local'
+                    error={error.scanLimit}
+                    value={
+                      event.endingDate &&
+                      event.endingDate.toISOString().slice(0, 16)
+                    }
+                    className='w-full text-pn-gray'
+                    readOnly
+                  />
+                )}
+                <InputWithLabel
+                  label='¿Tiene?'
+                  id='scanLimitEnabled'
+                  type='checkbox'
+                  className='[&>input]:w-6 items-center'
+                  name='scanLimitEnabled'
+                  checked={hasScanLimit}
+                  onChange={(e) => {
+                    setHasScanLimit(e.target.checked);
+                  }}
+                />
+              </div>
+              <div className='flex'>
+                {hasMaxSellDate ? (
+                  <InputWithLabel
+                    id='maxSellDate'
+                    name='maxSellDate'
+                    label='Finalización de venta de entradas'
+                    type='datetime-local'
+                    error={error.maxSellDate}
+                    defaultValue={
+                      ticketType?.maxSellDate?.toISOString().slice(0, 16) ||
+                      event.endingDate.toISOString().slice(0, 16)
+                    }
+                    className='w-full'
+                  />
+                ) : (
+                  <InputWithLabel
+                    id='maxSellDate'
+                    name='maxSellDate'
+                    label='Finalización de venta de entradas'
+                    type='datetime-local'
+                    error={error.maxSellDate}
+                    defaultValue={
+                      event.endingDate &&
+                      event.endingDate.toISOString().slice(0, 16)
+                    }
+                    className='w-full text-pn-gray'
+                    readOnly
+                  />
+                )}
+                <InputWithLabel
+                  label='¿Tiene?'
+                  id='maxSellDateEnabled'
+                  type='checkbox'
+                  className='[&>input]:w-6 items-center data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600'
+                  name='maxSellDateEnabled'
+                  checked={hasMaxSellDate}
+                  onChange={(e) => {
+                    setHasMaxSellDate(e.target.checked);
+                  }}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
