@@ -223,6 +223,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
             setEvent({ locationId: value });
           }}
           error={error.locationId}
+          defaultValue={event.locationId}
         />
         <SelectWithLabel
           label='Categoría'
@@ -242,6 +243,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
             setEvent({ categoryId: value });
           }}
           error={error.categoryId}
+          defaultValue={event.categoryId}
         />
       </section>
 
