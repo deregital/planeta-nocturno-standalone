@@ -93,7 +93,6 @@ export default function TicketTypeModal({
     if (action === 'CREATE') {
       addTicketType(validation.data);
     } else if (action === 'EDIT') {
-      console.log(ticketTypeId);
       if (!z.uuid().safeParse(ticketTypeId).success) {
         setError({
           id: 'El id del tipo no es válido. Intente nuevamente.',
