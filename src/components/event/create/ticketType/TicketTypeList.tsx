@@ -33,7 +33,7 @@ export default function TicketTypeList({
         return (
           <li
             key={index}
-            className={`border grid gap-2 ${action === 'EDIT' ? 'grid-cols-3' : 'grid-cols-5 py-2'}`}
+            className={`border grid gap-2 items-center ${action === 'EDIT' ? 'grid-cols-3' : 'grid-cols-5 py-2'}`}
           >
             <p>{type.name}</p>
             <p className={`${action === 'EDIT' && 'justify-self-center'}`}>
