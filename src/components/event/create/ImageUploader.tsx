@@ -16,14 +16,17 @@ export function ImageUploader({
     },
   });
   return (
-    <UploadDropzone
-      description={{
-        maxFiles: 1,
-        fileTypes: 'JPG, JPEG, PNG',
-      }}
-      control={control}
-      accept='image/*'
-      className={cn(error && 'border-2 border-red-500')}
-    />
+    <div>
+      <UploadDropzone
+        description={{
+          maxFiles: 1,
+          fileTypes: 'JPG, JPEG, PNG',
+        }}
+        control={control}
+        accept='image/*'
+        className={cn(error && 'border-2 border-red-500')}
+      />
+      {error && <p className='text-red-500 font-bold text-sm'>{error}</p>}
+    </div>
   );
 }

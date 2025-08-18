@@ -7,7 +7,9 @@ export const eventSchema = z.object({
   slug: z.string(),
   name: z.string().min(1, { error: 'El nombre es requerido' }),
   description: z.string().min(1, { error: 'La descripción es requerida' }),
-  coverImageUrl: z.url(),
+  coverImageUrl: z.url({
+    error: 'La imagen de portada es requerida',
+  }),
 
   startingDate: z.date({
     error: 'La fecha de inicio es requerida',

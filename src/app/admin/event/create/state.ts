@@ -23,7 +23,7 @@ const initialState: EventState = {
   event: {
     name: '',
     description: '',
-    coverImageUrl: 'https://media.tenor.com/BPSfyjEKq-0AAAAM/momo-bailando.gif',
+    coverImageUrl: '',
     startingDate: new Date(),
     endingDate: new Date(),
     categoryId: '',
