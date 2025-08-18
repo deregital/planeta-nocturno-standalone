@@ -6,6 +6,7 @@ import {
   SelectItem,
   SelectContent,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 interface SelectWithLabelProps extends React.ComponentProps<typeof Select> {
   label: string;
@@ -46,7 +47,9 @@ export default function SelectWithLabel({
             </SelectItem>
           ))}
         </SelectContent>
-        <SelectTrigger className={className}>
+        <SelectTrigger
+          className={cn(className, error && 'border-red-500 border-2')}
+        >
           <SelectValue placeholder='Selecciona una opción' />
         </SelectTrigger>
       </Select>
