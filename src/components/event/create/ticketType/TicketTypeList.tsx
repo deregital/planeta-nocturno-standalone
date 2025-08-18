@@ -1,5 +1,8 @@
 import { ticketTypesTranslation } from '@/lib/translations';
-import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
+import {
+  type CreateTicketTypeSchema,
+  type TicketTypeSchema,
+} from '@/server/schemas/ticket-type';
 import DeleteTicketTypeModal from './DeleteTicketTypeModal';
 import TicketTypeModal from './TicketTypeModal';
 
@@ -8,7 +11,7 @@ export default function TicketTypeList({
   maxAvailableLeft,
   action,
 }: {
-  ticketTypes: (CreateTicketTypeSchema & { id: string })[];
+  ticketTypes: ((CreateTicketTypeSchema & { id: string }) | TicketTypeSchema)[];
   maxAvailableLeft: number;
   action: 'READ' | 'EDIT';
 }) {

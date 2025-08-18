@@ -1,15 +1,19 @@
 import { type CreateEventSchema } from '@/server/schemas/event';
-import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
+import {
+  type CreateTicketTypeSchema,
+  type TicketTypeSchema,
+} from '@/server/schemas/ticket-type';
 import { createStore } from 'zustand/vanilla';
 
 type EventState = {
   event: CreateEventSchema;
-  ticketTypes: (CreateTicketTypeSchema & { id: string })[];
+  ticketTypes: ((CreateTicketTypeSchema & { id: string }) | TicketTypeSchema)[];
 };
 type EventActions = {
   addTicketType: (ticketType: CreateTicketTypeSchema) => void;
   updateTicketType: (id: string, ticketType: CreateTicketTypeSchema) => void;
   deleteTicketType: (id: string) => void;
+  setTicketTypes: (ticketTypes: TicketTypeSchema[]) => void;
   setEvent: (event: Partial<CreateEventSchema>) => void;
 };
 
@@ -35,6 +39,11 @@ export const createEventStore = (initState: EventState = initialState) => {
     ...initState,
     setEvent: (event) => {
       set((state) => ({ event: { ...state.event, ...event } }));
+    },
+    setTicketTypes: (ticketTypes) => {
+      set((state) => ({
+        ticketTypes,
+      }));
     },
     addTicketType: (ticketType) => {
       set((state) => ({
