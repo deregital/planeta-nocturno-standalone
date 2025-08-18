@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import PreviewEvent from './PreviewEvent';
-import TicketTypeCreation from './ticketType/TicketTypeCreation';
+import TicketTypeAction from './ticketType/TicketTypeAction';
 
 export function Steps() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -30,7 +30,7 @@ export function Steps() {
     },
     {
       title: 'Tipos de entradas',
-      component: <TicketTypeCreation back={goBack} next={goNext} />,
+      component: <TicketTypeAction back={goBack} next={goNext} />,
     },
     {
       title: 'Revisión y publicación',

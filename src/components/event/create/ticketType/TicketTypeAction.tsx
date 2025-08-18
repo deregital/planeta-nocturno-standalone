@@ -7,12 +7,12 @@ import { useShallow } from 'zustand/react/shallow';
 import TicketTypeList from './TicketTypeList';
 import TicketTypeModal from './TicketTypeModal';
 
-export default function TicketTypeCreation({
+export default function TicketTypeAction({
   back,
   next,
 }: {
-  back: () => void;
-  next: () => void;
+  back?: () => void;
+  next?: () => void;
 }) {
   const { ticketTypes, event } = useCreateEventStore(
     useShallow((state) => ({
@@ -30,9 +30,11 @@ export default function TicketTypeCreation({
 
   return (
     <div className='w-full'>
-      <Button className='self-baseline' onClick={back} variant={'outline'}>
-        Volver
-      </Button>
+      {back && (
+        <Button className='self-baseline' onClick={back} variant={'outline'}>
+          Volver
+        </Button>
+      )}
       <h2 className='text-2xl text-center'>Agregar nueva entrada</h2>
       <div className='flex items-center justify-center gap-4 my-8'>
         {ticketTypeCategory.enumValues.map((category) => (
@@ -50,9 +52,11 @@ export default function TicketTypeCreation({
         ticketTypes={ticketTypes}
         maxAvailableLeft={maxAvailableLeft}
       />
-      <Button onClick={next} variant={'accent'} className='w-full mt-8'>
-        Continuar
-      </Button>
+      {next && (
+        <Button onClick={next} variant={'accent'} className='w-full mt-8'>
+          Continuar
+        </Button>
+      )}
     </div>
   );
 }
