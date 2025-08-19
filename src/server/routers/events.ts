@@ -9,7 +9,8 @@ import {
 } from '@/server/schemas/ticket-type';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
 import { generateSlug } from '@/server/utils/utils';
-import { eq, like } from 'drizzle-orm';
+import { eq, inArray, like } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import z from 'zod';
 
 export const eventsRouter = router({
@@ -149,7 +150,12 @@ export const eventsRouter = router({
     .input(
       z.object({
         event: eventSchemaZod,
-        ticketTypes: ticketTypeSchema.array(),
+        ticketTypes: ticketTypeSchema
+          .omit({ id: true })
+          .extend({
+            id: ticketTypeSchema.shape.id.nullable(),
+          })
+          .array(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -194,20 +200,48 @@ export const eventsRouter = router({
 
             if (!eventUpdated) throw 'Error al actualizar evento';
 
+            const ticketTypesDB = await tx.query.ticketType.findMany({
+              where: eq(ticketType.eventId, eventUpdated.id),
+            });
+            const deletedTicketTypesIds = ticketTypesDB
+              .filter((type) => !ticketTypes.some((t) => t.id === type.id))
+              .map((type) => type.id);
+            if (deletedTicketTypesIds.length > 0) {
+              await tx
+                .delete(ticketType)
+                .where(inArray(ticketType.id, deletedTicketTypesIds));
+            }
+
             const ticketTypesUpdated = await Promise.all(
               ticketTypes.map(async (type) => {
-                // (ticketType == table)
-                const [updated] = await tx
-                  .update(ticketType)
-                  .set({
-                    ...type,
-                    maxSellDate: type.maxSellDate?.toISOString(),
-                    scanLimit: type.scanLimit?.toISOString(),
-                  })
-                  .where(eq(ticketType.id, type.id))
-                  .returning();
+                // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+                const { id, ...rest } = type;
+                if (type.id) {
+                  const [updated] = await tx
+                    .update(ticketType)
+                    .set({
+                      ...rest,
+                      maxSellDate: type.maxSellDate?.toISOString(),
+                      scanLimit: type.scanLimit?.toISOString(),
+                      eventId: eventUpdated.id,
+                    })
+                    .where(eq(ticketType.id, type.id))
+                    .returning();
 
-                return updated;
+                  return updated;
+                } else {
+                  const [created] = await tx
+                    .insert(ticketType)
+                    .values({
+                      ...rest,
+                      maxSellDate: type.maxSellDate?.toISOString(),
+                      scanLimit: type.scanLimit?.toISOString(),
+                      eventId: eventUpdated.id,
+                    })
+                    .returning();
+
+                  return created;
+                }
               }),
             );
 
@@ -218,6 +252,8 @@ export const eventsRouter = router({
           }
         },
       );
+
+      revalidatePath(`/admin/event/edit/${event.slug}`);
 
       return { eventUpdated, ticketTypesUpdated };
     }),
