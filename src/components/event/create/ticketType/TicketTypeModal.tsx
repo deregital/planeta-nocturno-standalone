@@ -1,4 +1,5 @@
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { validateTicketType } from '@/app/admin/event/create/actions';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,21 +14,19 @@ import {
 } from '@/components/ui/dialog';
 import { ticketTypesTranslation } from '@/lib/translations';
 
-import {
-  type CreateTicketTypeSchema,
-  createTicketTypeSchema,
-} from '@/server/schemas/ticket-type';
+import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
 import { type TicketTypeCategory } from '@/server/types';
+import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
-import React, { useState } from 'react';
-import z from 'zod';
+import React, { useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { type EventState } from '@/app/admin/event/create/state';
 
 type TicketTypeModalProps = {
   category: TicketTypeCategory;
   maxAvailableLeft: number;
   action: 'CREATE' | 'EDIT';
-  ticketType?: CreateTicketTypeSchema & { id: string };
+  ticketType?: EventState['ticketTypes'][number];
 };
 
 export default function TicketTypeModal({
@@ -40,13 +39,12 @@ export default function TicketTypeModal({
   const [error, setError] = useState<{
     [key: string]: string;
   }>({});
+
   const [open, setOpen] = useState(false);
-  const [hasScanLimit, setHasScanLimit] = useState(
-    ticketType?.scanLimit ? true : false,
-  );
-  const [hasMaxSellDate, setHasMaxSellDate] = useState(
-    ticketType?.maxSellDate ? true : false,
-  );
+  const maxAvailableLeftReal = useMemo(() => {
+    if (!ticketType) return maxAvailableLeft;
+    return maxAvailableLeft + ticketType.maxAvailable;
+  }, [maxAvailableLeft, ticketType]);
 
   const { addTicketType, event, updateTicketType } = useCreateEventStore(
     useShallow((state) => ({
@@ -56,58 +54,127 @@ export default function TicketTypeModal({
     })),
   );
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const ticketTypeId = formData.get('id')?.toString() || '';
-
-    const rawData = {
-      name: formData.get('name'),
-      description: formData.get('description'),
-      price: Number(formData.get('price') ?? null),
-      maxPerPurchase: Number(formData.get('maxPerPurchase')),
-      maxAvailable: Number(formData.get('maxAvailable')),
-      maxSellDate: formData.get('maxSellDate'),
-      scanLimit: formData.get('scanLimit'),
+  // Initialize editing state based on props
+  function getInitialState(): CreateTicketTypeSchema {
+    if (ticketType) {
+      return {
+        name: ticketType.name || '',
+        description: ticketType.description || '',
+        price: ticketType.price,
+        maxPerPurchase: ticketType.maxPerPurchase || 6,
+        maxAvailable: ticketType.maxAvailable || 0,
+        maxSellDate: ticketType.maxSellDate || event.startingDate,
+        scanLimit: ticketType.scanLimit || event.endingDate,
+        category,
+      };
+    }
+    return {
+      name: '',
+      description: '',
+      price: category === 'FREE' ? 0 : null,
+      maxPerPurchase: 6,
+      maxAvailable: 0,
+      maxSellDate: event.startingDate,
+      scanLimit: event.endingDate,
       category,
     };
+  }
 
-    const validation = createTicketTypeSchema.safeParse(rawData);
+  const [editingTicketType, setEditingTicketType] =
+    useState<CreateTicketTypeSchema>(getInitialState);
+
+  const [hasScanLimit, setHasScanLimit] = useState(
+    ticketType?.scanLimit !== event.endingDate,
+  );
+  const [hasMaxSellDate, setHasMaxSellDate] = useState(
+    ticketType?.maxSellDate !== event.startingDate,
+  );
+
+  function handleInputChange(
+    field: keyof CreateTicketTypeSchema,
+    value: string | number | Date,
+  ) {
+    setEditingTicketType((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  }
+
+  function handleScanLimitToggle(checked: boolean) {
+    setHasScanLimit(checked);
+    if (!checked) {
+      setEditingTicketType((prev) => ({
+        ...prev,
+        scanLimit: event.endingDate,
+      }));
+    }
+  }
+
+  function handleMaxSellDateToggle(checked: boolean) {
+    setHasMaxSellDate(checked);
+    if (!checked) {
+      setEditingTicketType((prev) => ({
+        ...prev,
+        maxSellDate: event.startingDate,
+      }));
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const rawData = {
+      name: editingTicketType.name,
+      description: editingTicketType.description,
+      price: editingTicketType.price,
+      maxPerPurchase: editingTicketType.maxPerPurchase,
+      maxAvailable: editingTicketType.maxAvailable,
+      maxSellDate: editingTicketType.maxSellDate,
+      scanLimit: editingTicketType.scanLimit,
+      category: editingTicketType.category,
+    };
+
+    const validation = await validateTicketType(
+      rawData,
+      event.startingDate,
+      event.endingDate,
+      maxAvailableLeftReal,
+    );
 
     if (!validation.success) {
-      const keyAndError = Object.entries(
-        z.treeifyError(validation.error).properties ?? {},
-      );
-      setError(
-        keyAndError.reduce(
-          (acc, [key, value]) => {
-            acc[key] = value.errors[0];
-            return acc;
-          },
-          {} as { [key: string]: string },
-        ),
-      );
+      const formattedErrors: { [key: string]: string } = {};
+      Object.entries(validation.error || {}).forEach(([key, value]) => {
+        if (value && 'errors' in value && Array.isArray(value.errors)) {
+          formattedErrors[key] = value.errors[0];
+        }
+      });
+      setError(formattedErrors);
       return;
     }
 
     if (action === 'CREATE') {
       addTicketType(validation.data);
-    } else if (action === 'EDIT') {
-      if (!z.uuid().safeParse(ticketTypeId).success) {
-        setError({
-          id: 'El id del tipo no es válido. Intente nuevamente.',
-        });
-        return;
-      }
-
-      updateTicketType(ticketTypeId, validation.data);
+    } else if (action === 'EDIT' && ticketType?.id) {
+      updateTicketType(ticketType.id, validation.data);
     }
 
     setOpen(false);
+    setError({});
+  }
+
+  const handleOpenChange = (open: boolean) => {
+    setOpen(open);
+    setError({});
+    if (!open) {
+      // Reset to initial state when closing
+      setEditingTicketType(getInitialState());
+      setHasScanLimit(ticketType?.scanLimit !== event.endingDate);
+      setHasMaxSellDate(ticketType?.maxSellDate !== event.startingDate);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {action === 'CREATE' ? (
           <div>
@@ -116,7 +183,7 @@ export default function TicketTypeModal({
               className='flex flex-col justify-center items-center border-2 rounded-2xl border-pn-accent p-16 bg-gray-100 hover:bg-pn-accent/20'
             >
               <span className='text-3xl font-semibold'>{text}</span>
-              <div className=''>{icon}</div>
+              <div>{icon}</div>
             </Button>
           </div>
         ) : (
@@ -127,7 +194,7 @@ export default function TicketTypeModal({
       </DialogTrigger>
       <DialogContent className='!max-w-xl md:!max-w-3xl w-full lg:!max-w-4xl'>
         <DialogHeader>
-          <DialogTitle>Crear entrada - {text}</DialogTitle>
+          <DialogTitle>Crear entrada de tipo {text}</DialogTitle>
           <DialogDescription hidden></DialogDescription>
         </DialogHeader>
         <form
@@ -140,7 +207,8 @@ export default function TicketTypeModal({
             label='Nombre de la entrada'
             required
             error={error.name}
-            defaultValue={ticketType?.name}
+            value={editingTicketType.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
           />
           <InputWithLabel
             id='description'
@@ -148,32 +216,34 @@ export default function TicketTypeModal({
             label='Descripción de la entrada'
             error={error.description}
             required
-            defaultValue={ticketType?.description}
+            value={editingTicketType.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
           />
           <InputWithLabel
             id='price'
             name='price'
-            label='Precio de la entrada'
+            label='Precio de la entrada ($)'
             type='number'
             error={error.price}
             placeholder='$'
-            defaultValue={
-              ticketType
-                ? ticketType.price?.toString()
-                : (category === 'FREE' && '0') || undefined
-            }
+            disabled={category === 'FREE'}
+            value={editingTicketType.price || ''}
+            onChange={(e) => handleInputChange('price', Number(e.target.value))}
           />
           <div className='grid grid-cols-2 gap-6'>
             <div className='grid gap-4'>
               <InputWithLabel
                 id='maxAvailable'
                 name='maxAvailable'
-                label={`Cantidad maxima de entrada (Entradas restantes: ${maxAvailableLeft})`}
+                label={`Cantidad maxima de entrada (Entradas restantes: ${maxAvailableLeftReal})`}
                 type='number'
                 required
                 error={error.maxAvailable}
-                max={maxAvailableLeft}
-                defaultValue={ticketType?.maxAvailable}
+                max={maxAvailableLeftReal}
+                value={editingTicketType.maxAvailable}
+                onChange={(e) =>
+                  handleInputChange('maxAvailable', Number(e.target.value))
+                }
               />
               <InputWithLabel
                 id='maxPerPurchase'
@@ -181,7 +251,10 @@ export default function TicketTypeModal({
                 label='Cantidad maxima de entradas por venta'
                 type='number'
                 error={error.maxPerPurchase}
-                defaultValue={ticketType?.maxPerPurchase || 6}
+                value={editingTicketType.maxPerPurchase}
+                onChange={(e) =>
+                  handleInputChange('maxPerPurchase', Number(e.target.value))
+                }
               />
             </div>
             <div className='grid gap-4'>
@@ -193,9 +266,16 @@ export default function TicketTypeModal({
                     label='Finalización de escaneo de entradas'
                     type='datetime-local'
                     error={error.scanLimit}
-                    defaultValue={
-                      ticketType?.scanLimit?.toISOString().slice(0, 16) ||
-                      event.endingDate.toISOString().slice(0, 16)
+                    value={
+                      editingTicketType.scanLimit
+                        ? format(
+                            editingTicketType.scanLimit,
+                            "yyyy-MM-dd'T'HH:mm",
+                          )
+                        : ''
+                    }
+                    onChange={(e) =>
+                      handleInputChange('scanLimit', new Date(e.target.value))
                     }
                     className='w-full'
                   />
@@ -207,8 +287,12 @@ export default function TicketTypeModal({
                     type='datetime-local'
                     error={error.scanLimit}
                     value={
-                      event.endingDate &&
-                      event.endingDate.toISOString().slice(0, 16)
+                      editingTicketType.scanLimit
+                        ? format(
+                            editingTicketType.scanLimit,
+                            "yyyy-MM-dd'T'HH:mm",
+                          )
+                        : ''
                     }
                     className='w-full text-pn-gray'
                     readOnly
@@ -222,7 +306,7 @@ export default function TicketTypeModal({
                   name='scanLimitEnabled'
                   checked={hasScanLimit}
                   onChange={(e) => {
-                    setHasScanLimit(e.target.checked);
+                    handleScanLimitToggle(e.target.checked);
                   }}
                 />
               </div>
@@ -234,9 +318,16 @@ export default function TicketTypeModal({
                     label='Finalización de venta de entradas'
                     type='datetime-local'
                     error={error.maxSellDate}
-                    defaultValue={
-                      ticketType?.maxSellDate?.toISOString().slice(0, 16) ||
-                      event.endingDate.toISOString().slice(0, 16)
+                    value={
+                      editingTicketType.maxSellDate
+                        ? format(
+                            editingTicketType.maxSellDate,
+                            "yyyy-MM-dd'T'HH:mm",
+                          )
+                        : ''
+                    }
+                    onChange={(e) =>
+                      handleInputChange('maxSellDate', new Date(e.target.value))
                     }
                     className='w-full'
                   />
@@ -247,9 +338,13 @@ export default function TicketTypeModal({
                     label='Finalización de venta de entradas'
                     type='datetime-local'
                     error={error.maxSellDate}
-                    defaultValue={
-                      event.endingDate &&
-                      event.endingDate.toISOString().slice(0, 16)
+                    value={
+                      editingTicketType.maxSellDate
+                        ? format(
+                            editingTicketType.maxSellDate,
+                            "yyyy-MM-dd'T'HH:mm",
+                          )
+                        : ''
                     }
                     className='w-full text-pn-gray'
                     readOnly
@@ -263,7 +358,7 @@ export default function TicketTypeModal({
                   name='maxSellDateEnabled'
                   checked={hasMaxSellDate}
                   onChange={(e) => {
-                    setHasMaxSellDate(e.target.checked);
+                    handleMaxSellDateToggle(e.target.checked);
                   }}
                 />
               </div>
@@ -276,7 +371,14 @@ export default function TicketTypeModal({
               </Button>
             ) : (
               <>
-                <input type='hidden' name='id' id='id' value={ticketType?.id} />
+                {ticketType?.id && (
+                  <input
+                    type='hidden'
+                    name='id'
+                    id='id'
+                    value={ticketType?.id}
+                  />
+                )}
                 {error.id ?? <p className='text-red-500'>{error.id}</p>}
                 <DialogClose asChild>
                   <Button variant='ghost'>Cancelar</Button>

@@ -5,9 +5,12 @@ import {
 } from '@/server/schemas/ticket-type';
 import { createStore } from 'zustand/vanilla';
 
-type EventState = {
+export type EventState = {
   event: CreateEventSchema;
-  ticketTypes: ((CreateTicketTypeSchema & { id: string }) | TicketTypeSchema)[];
+  ticketTypes: (
+    | (CreateTicketTypeSchema & { id: string | null })
+    | TicketTypeSchema
+  )[];
 };
 type EventActions = {
   addTicketType: (ticketType: CreateTicketTypeSchema) => void;
@@ -47,10 +50,7 @@ export const createEventStore = (initState: EventState = initialState) => {
     },
     addTicketType: (ticketType) => {
       set((state) => ({
-        ticketTypes: [
-          ...state.ticketTypes,
-          { ...ticketType, id: crypto.randomUUID() },
-        ],
+        ticketTypes: [...state.ticketTypes, { ...ticketType, id: null }],
       }));
     },
     updateTicketType: (
