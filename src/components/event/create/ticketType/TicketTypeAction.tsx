@@ -21,7 +21,9 @@ export default function TicketTypeAction({
     })),
   );
 
-  const { data: location } = trpc.location.getById.useQuery(event.locationId);
+  const { data: location } = trpc.location.getById.useQuery(event.locationId, {
+    enabled: !!event.locationId,
+  });
 
   const maxAvailableLeft = location
     ? location.capacity -
