@@ -21,6 +21,7 @@ export default function Client() {
   const { data: event, isLoading } = trpc.events.getBySlug.useQuery(
     params.slug,
   );
+
   const { data: locations } = trpc.location.getAll.useQuery();
   const { data: categories } = trpc.eventCategory.getAll.useQuery();
 
@@ -42,9 +43,7 @@ export default function Client() {
     [key: string]: string;
   }>({});
 
-  const [minAgeEnabled, setMinAgeEnabled] = useState(
-    event?.minAge ? true : false,
-  );
+  const [minAgeEnabled, setMinAgeEnabled] = useState(event?.minAge !== null);
 
   const eventWithDates = useMemo(() => {
     if (!event) return null;
@@ -71,7 +70,7 @@ export default function Client() {
     }
   }, [event, eventWithDates, setEvent, setTicketTypes]);
 
-  const handleSubmit = async () => {
+  async function handleSubmit() {
     const validatedEvent = await validateGeneralInformation(eventState);
 
     if (!validatedEvent.success) {
@@ -102,7 +101,7 @@ export default function Client() {
 
     toast('¡Evento editado con éxito!');
     router.push('/admin/event');
-  };
+  }
 
   return isLoading || !event || !eventWithDates ? (
     <Loader />
@@ -159,35 +158,36 @@ export default function Client() {
       </section>
       <section>
         <h3 className='text-2xl'>Edad Mínima</h3>
-        <InputWithLabel
-          label='Edad mínima?'
-          id='minAgeEnabled'
-          type='checkbox'
-          className='[&>input]:w-6 items-center'
-          placeholder='Edad mínima'
-          name='minAgeEnabled'
-          checked={minAgeEnabled}
-          onChange={(e) => {
-            setMinAgeEnabled(e.target.checked);
-            setEvent({ minAge: e.target.checked ? 0 : null });
-          }}
-          defaultValue={event.minAge ? 'true' : 'false'}
-        />
-        {minAgeEnabled && (
+        <div className='flex flex-row'>
           <InputWithLabel
-            label='Edad mínima'
-            id='minAge'
-            type='number'
-            className='flex-1'
+            label='Edad mínima?'
+            id='minAgeEnabled'
+            type='checkbox'
+            className='[&>input]:w-6 items-center'
             placeholder='Edad mínima'
-            name='minAge'
+            name='minAgeEnabled'
+            checked={minAgeEnabled}
             onChange={(e) => {
-              setEvent({ minAge: parseInt(e.target.value) });
+              setMinAgeEnabled(e.target.checked);
+              setEvent({ minAge: e.target.checked ? 0 : null });
             }}
-            error={error.minAge}
-            defaultValue={event.minAge ?? undefined}
           />
-        )}
+          {minAgeEnabled && (
+            <InputWithLabel
+              label='Edad mínima'
+              id='minAge'
+              type='number'
+              className='flex-1'
+              placeholder='Edad mínima'
+              name='minAge'
+              onChange={(e) => {
+                setEvent({ minAge: parseInt(e.target.value) });
+              }}
+              error={error.minAge}
+              defaultValue={event.minAge ?? undefined}
+            />
+          )}
+        </div>
       </section>
       <section>
         <h3 className='text-2xl'>Locación</h3>

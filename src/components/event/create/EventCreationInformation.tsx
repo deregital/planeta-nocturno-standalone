@@ -8,7 +8,7 @@ import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { Button } from '@/components/ui/button';
 import { generateS3Url } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
-import { addDays, format, isAfter } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { toDate } from 'date-fns-tz';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -197,7 +197,7 @@ export function EventCreationInformation({ next }: { next: () => void }) {
             const newDate = toDate(event.startingDate, {});
             newDate.setHours(parseInt(hours), parseInt(minutes));
 
-            if (!isAfter(newDate, event.startingDate)) {
+            if (isBeforeHoursAndMinutes(newDate, event.startingDate)) {
               newDate.setDate(newDate.getDate() + 1);
             }
 
@@ -236,21 +236,6 @@ export function EventCreationInformation({ next }: { next: () => void }) {
           />
         )}
       </section>
-      <section>
-        <InputWithLabel
-          label='Activo'
-          id='isActive'
-          type='checkbox'
-          placeholder='Activo'
-          name='isActive'
-          onChange={(e) => {
-            handleChange('isActive', e.target.checked);
-          }}
-          error={error.isActive}
-          defaultValue={event.isActive.toString() ?? 'false'}
-        />
-      </section>
-
       <section>
         <SelectWithLabel
           label='Ubicación'
