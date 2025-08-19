@@ -43,8 +43,6 @@ export default function Client() {
     [key: string]: string;
   }>({});
 
-  const [minAgeEnabled, setMinAgeEnabled] = useState(event?.minAge !== null);
-
   const eventWithDates = useMemo(() => {
     if (!event) return null;
     return {
@@ -166,13 +164,12 @@ export default function Client() {
             className='[&>input]:w-6 items-center'
             placeholder='Edad mínima'
             name='minAgeEnabled'
-            checked={minAgeEnabled}
             onChange={(e) => {
-              setMinAgeEnabled(e.target.checked);
               setEvent({ minAge: e.target.checked ? 0 : null });
             }}
+            defaultChecked={event.minAge !== null}
           />
-          {minAgeEnabled && (
+          {eventState.minAge !== null && (
             <InputWithLabel
               label='Edad mínima'
               id='minAge'
