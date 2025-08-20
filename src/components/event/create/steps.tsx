@@ -1,6 +1,6 @@
 'use client';
 
-import { EventCreationInformation } from '@/components/event/create/EventCreationInformation';
+import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import {
   Stepper,
   StepperContent,
@@ -26,7 +26,7 @@ export function Steps() {
   const steps = [
     {
       title: 'Información general',
-      component: <EventCreationInformation next={goNext} />,
+      component: <EventGeneralInformation action='CREATE' next={goNext} />,
     },
     {
       title: 'Tipos de entradas',

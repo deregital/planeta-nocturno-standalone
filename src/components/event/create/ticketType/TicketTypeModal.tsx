@@ -18,7 +18,7 @@ import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
 import { type TicketTypeCategory } from '@/server/types';
 import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { type EventState } from '@/app/admin/event/create/state';
 
@@ -82,6 +82,11 @@ export default function TicketTypeModal({
 
   const [editingTicketType, setEditingTicketType] =
     useState<CreateTicketTypeSchema>(getInitialState);
+
+  useEffect(() => {
+    setEditingTicketType(getInitialState());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.startingDate, event.endingDate]);
 
   const [hasScanLimit, setHasScanLimit] = useState(
     ticketType?.scanLimit !== event.endingDate,

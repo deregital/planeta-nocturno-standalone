@@ -19,6 +19,7 @@ interface SelectWithLabelProps extends React.ComponentProps<typeof Select> {
   className?: string;
   divClassName?: string;
   error?: string;
+  readOnly?: boolean;
 }
 
 export default function SelectWithLabel({
@@ -29,6 +30,7 @@ export default function SelectWithLabel({
   className,
   divClassName,
   error,
+  readOnly,
   ...selectProps
 }: SelectWithLabelProps) {
   return (
@@ -39,7 +41,7 @@ export default function SelectWithLabel({
       className={divClassName}
       error={error}
     >
-      <Select {...selectProps}>
+      <Select {...selectProps} disabled={readOnly}>
         <SelectContent>
           {values.map((value) => (
             <SelectItem key={value.value} value={value.value}>
@@ -48,7 +50,11 @@ export default function SelectWithLabel({
           ))}
         </SelectContent>
         <SelectTrigger
-          className={cn(className, error && 'border-red-500 border-2')}
+          className={cn(
+            className,
+            error && 'border-red-500 border-2',
+            readOnly && 'cursor-default',
+          )}
         >
           <SelectValue placeholder='Selecciona una opción' />
         </SelectTrigger>

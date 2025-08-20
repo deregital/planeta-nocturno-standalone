@@ -10,7 +10,7 @@ export default function TicketTypeList({
 }: {
   ticketTypes: EventState['ticketTypes'];
   maxAvailableLeft: number;
-  action: 'READ' | 'EDIT';
+  action: 'PREVIEW' | 'EDIT';
 }) {
   return ticketTypes.length === 0 ? (
     <div className='flex justify-center'>
@@ -18,7 +18,7 @@ export default function TicketTypeList({
     </div>
   ) : (
     <ul>
-      {action === 'READ' && (
+      {action === 'PREVIEW' && (
         <li className='grid grid-cols-5 border font-bold'>
           <p>Nombre</p>
           <p>Descripción</p>
