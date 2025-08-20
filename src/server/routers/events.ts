@@ -150,12 +150,7 @@ export const eventsRouter = router({
     .input(
       z.object({
         event: eventSchemaZod,
-        ticketTypes: ticketTypeSchema
-          .omit({ id: true })
-          .extend({
-            id: ticketTypeSchema.shape.id.nullable(),
-          })
-          .array(),
+        ticketTypes: ticketTypeSchema.array(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -216,7 +211,7 @@ export const eventsRouter = router({
               ticketTypes.map(async (type) => {
                 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
                 const { id, ...rest } = type;
-                if (type.id) {
+                if (ticketTypesDB.find((t) => t.id === type.id)) {
                   const [updated] = await tx
                     .update(ticketType)
                     .set({
@@ -229,7 +224,7 @@ export const eventsRouter = router({
                     .returning();
 
                   return updated;
-                } else {
+                } else if (type.id) {
                   const [created] = await tx
                     .insert(ticketType)
                     .values({

@@ -19,7 +19,7 @@ import { type TicketTypeCategory } from '@/server/types';
 import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
+
 import { type EventState } from '@/app/admin/event/create/state';
 
 type TicketTypeModalProps = {
@@ -46,13 +46,11 @@ export default function TicketTypeModal({
     return maxAvailableLeft + ticketType.maxAvailable;
   }, [maxAvailableLeft, ticketType]);
 
-  const { addTicketType, event, updateTicketType } = useCreateEventStore(
-    useShallow((state) => ({
-      addTicketType: state.addTicketType,
-      updateTicketType: state.updateTicketType,
-      event: state.event,
-    })),
+  const addTicketType = useCreateEventStore((state) => state.addTicketType);
+  const updateTicketType = useCreateEventStore(
+    (state) => state.updateTicketType,
   );
+  const event = useCreateEventStore((state) => state.event);
 
   // Initialize editing state based on props
   function getInitialState(): CreateTicketTypeSchema {
@@ -66,6 +64,7 @@ export default function TicketTypeModal({
         maxSellDate: ticketType.maxSellDate || event.startingDate,
         scanLimit: ticketType.scanLimit || event.endingDate,
         category,
+        id: ticketType.id,
       };
     }
     return {
@@ -77,6 +76,7 @@ export default function TicketTypeModal({
       maxSellDate: event.startingDate,
       scanLimit: event.endingDate,
       category,
+      id: crypto.randomUUID(),
     };
   }
 
@@ -128,19 +128,8 @@ export default function TicketTypeModal({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const rawData = {
-      name: editingTicketType.name,
-      description: editingTicketType.description,
-      price: editingTicketType.price,
-      maxPerPurchase: editingTicketType.maxPerPurchase,
-      maxAvailable: editingTicketType.maxAvailable,
-      maxSellDate: editingTicketType.maxSellDate,
-      scanLimit: editingTicketType.scanLimit,
-      category: editingTicketType.category,
-    };
-
     const validation = await validateTicketType(
-      rawData,
+      editingTicketType,
       event.startingDate,
       event.endingDate,
       maxAvailableLeftReal,
@@ -232,7 +221,7 @@ export default function TicketTypeModal({
             error={error.price}
             placeholder='$'
             disabled={category === 'FREE'}
-            value={editingTicketType.price || ''}
+            value={editingTicketType.price ?? ''}
             onChange={(e) => handleInputChange('price', Number(e.target.value))}
           />
           <div className='grid grid-cols-2 gap-6'>

@@ -22,9 +22,7 @@ export const ticketTypeSchema = z.object({
     .nullable(),
 });
 
-export const createTicketTypeSchema = ticketTypeSchema.omit({
-  id: true,
-});
+export const createTicketTypeSchema = ticketTypeSchema;
 
 export type CreateTicketTypeSchema = z.infer<typeof createTicketTypeSchema>;
 export type TicketTypeSchema = z.infer<typeof ticketTypeSchema>;

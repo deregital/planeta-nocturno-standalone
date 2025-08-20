@@ -49,8 +49,9 @@ export const createEventStore = (initState: EventState = initialState) => {
       }));
     },
     addTicketType: (ticketType) => {
+      const newID = crypto.randomUUID();
       set((state) => ({
-        ticketTypes: [...state.ticketTypes, { ...ticketType, id: null }],
+        ticketTypes: [...state.ticketTypes, { ...ticketType, id: newID }],
       }));
     },
     updateTicketType: (
