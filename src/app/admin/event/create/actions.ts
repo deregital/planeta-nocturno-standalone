@@ -80,6 +80,15 @@ export async function validateTicketType(
 
   const errors: Record<string, { errors: string[] }> = {};
 
+  if (
+    validation.data.category !== 'FREE' &&
+    (!validation.data.price || validation.data.price <= 0)
+  ) {
+    errors.price = {
+      errors: ['El precio es requerido'],
+    };
+  }
+
   // Validate maxAvailable doesn't exceed available tickets
   if (validation.data.maxAvailable > maxAvailableLeft) {
     errors.maxAvailable = {
