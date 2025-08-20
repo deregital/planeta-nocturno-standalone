@@ -12,7 +12,6 @@ import { addDays, format } from 'date-fns';
 import { toDate } from 'date-fns-tz';
 import Image from 'next/image';
 import { useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 function isBeforeHoursAndMinutes(date1: Date, date2: Date) {
   return (
@@ -36,12 +35,8 @@ export function EventGeneralInformation({
   action,
   next,
 }: EventGeneralInformationProps) {
-  const { event, setEvent } = useCreateEventStore(
-    useShallow((state) => ({
-      event: state.event,
-      setEvent: state.setEvent,
-    })),
-  );
+  const event = useCreateEventStore((state) => state.event);
+  const setEvent = useCreateEventStore((state) => state.setEvent);
 
   const { data: locations } = trpc.location.getAll.useQuery();
   const { data: categories } = trpc.eventCategory.getAll.useQuery();
@@ -292,10 +287,12 @@ export function EventGeneralInformation({
               : []
           }
           onValueChange={(value) => {
+            if (value === '') return;
             handleChange('locationId', value);
           }}
           error={error.locationId}
           defaultValue={event.locationId}
+          value={event.locationId}
           readOnly={action === 'PREVIEW'}
         />
         <SelectWithLabel
@@ -313,10 +310,12 @@ export function EventGeneralInformation({
               : []
           }
           onValueChange={(value) => {
+            if (value === '') return;
             handleChange('categoryId', value);
           }}
           error={error.categoryId}
           defaultValue={event.categoryId}
+          value={event.categoryId}
           readOnly={action === 'PREVIEW'}
         />
       </section>

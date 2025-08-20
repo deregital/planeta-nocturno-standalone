@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ticketTypeCategory } from '@/drizzle/schema';
 import { trpc } from '@/server/trpc/client';
-import { useShallow } from 'zustand/react/shallow';
+import { useMemo } from 'react';
 import TicketTypeList from './TicketTypeList';
 import TicketTypeModal from './TicketTypeModal';
 
@@ -14,21 +14,20 @@ export default function TicketTypeAction({
   back?: () => void;
   next?: () => void;
 }) {
-  const { ticketTypes, event } = useCreateEventStore(
-    useShallow((state) => ({
-      ticketTypes: state.ticketTypes,
-      event: state.event,
-    })),
-  );
+  const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const event = useCreateEventStore((state) => state.event);
 
   const { data: location } = trpc.location.getById.useQuery(event.locationId, {
     enabled: !!event.locationId,
   });
 
-  const maxAvailableLeft = location
-    ? location.capacity -
+  const maxAvailableLeft = useMemo(() => {
+    if (!location) return 0;
+    return (
+      location.capacity -
       ticketTypes.reduce((acc, t) => acc + t.maxAvailable, 0)
-    : 0;
+    );
+  }, [location, ticketTypes]);
 
   return (
     <div className='w-full'>

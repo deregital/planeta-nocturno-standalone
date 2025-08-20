@@ -4,18 +4,14 @@ import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useShallow } from 'zustand/react/shallow';
+
 import TicketTypeList from './ticketType/TicketTypeList';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 
 export default function PreviewEvent({ back }: { back: () => void }) {
-  const { ticketTypes, event, setEvent } = useCreateEventStore(
-    useShallow((state) => ({
-      ticketTypes: state.ticketTypes,
-      event: state.event,
-      setEvent: state.setEvent,
-    })),
-  );
+  const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const event = useCreateEventStore((state) => state.event);
+  const setEvent = useCreateEventStore((state) => state.setEvent);
 
   const createEvent = trpc.events.create.useMutation();
 

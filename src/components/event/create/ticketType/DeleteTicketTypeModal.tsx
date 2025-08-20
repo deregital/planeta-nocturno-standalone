@@ -12,13 +12,10 @@ import {
 } from '@/components/ui/dialog';
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 export default function DeleteTicketTypeModal({ id }: { id: string }) {
-  const { deleteTicketType } = useCreateEventStore(
-    useShallow((state) => ({
-      deleteTicketType: state.deleteTicketType,
-    })),
+  const deleteTicketType = useCreateEventStore(
+    (state) => state.deleteTicketType,
   );
 
   const handleDelete = () => {

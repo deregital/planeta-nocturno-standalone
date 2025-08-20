@@ -6,7 +6,7 @@ import { Loader } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { useShallow } from 'zustand/react/shallow';
+
 import { validateGeneralInformation } from '../../create/actions';
 import { useCreateEventStore } from '../../create/provider';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
@@ -21,19 +21,10 @@ export default function Client() {
     params.slug,
   );
 
-  const {
-    ticketTypes: ticketTypesState,
-    event: eventState,
-    setEvent,
-    setTicketTypes,
-  } = useCreateEventStore(
-    useShallow((state) => ({
-      event: state.event,
-      ticketTypes: state.ticketTypes,
-      setEvent: state.setEvent,
-      setTicketTypes: state.setTicketTypes,
-    })),
-  );
+  const ticketTypesState = useCreateEventStore((state) => state.ticketTypes);
+  const eventState = useCreateEventStore((state) => state.event);
+  const setEvent = useCreateEventStore((state) => state.setEvent);
+  const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
 
   const [error, setError] = useState<{
     [key: string]: string;
