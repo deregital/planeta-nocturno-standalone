@@ -1,5 +1,4 @@
-import { encryptString } from '@/lib/utils';
-import { getDMSansFonts } from '@/server/utils/utils';
+import { getDMSansFonts, encryptString } from '@/server/utils/utils';
 import { type Font, type Template } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, image, line, rectangle, text } from '@pdfme/schemas';
@@ -431,7 +430,8 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     ? ticket.dni
     : Number(ticket.dni).toLocaleString('es-ES');
 
-  const [firstWord, ...rest] = process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
+  const [firstWord, ...rest] =
+    process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
   const template = generateTicketTemplate(firstWord);
 
   const inputs = [
