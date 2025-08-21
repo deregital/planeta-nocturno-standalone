@@ -23,8 +23,11 @@ export default function PreviewEvent({ back }: { back: () => void }) {
       toast('¡Evento creado con éxito!');
       router.push('/admin/event');
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error desconocido';
-      toast(`UUUH WACHo: ${msg}`);
+      const msg =
+        e instanceof Error
+          ? e.message
+          : 'Error desconocido, vuelva a intentarlo.';
+      toast(`Error al crear el evento: ${msg}`);
     }
   };
 
