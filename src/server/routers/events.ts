@@ -84,6 +84,15 @@ export const eventsRouter = router({
     const data = await ctx.db.query.event.findFirst({
       where: eq(eventSchema.slug, input),
       with: {
+        ticketGroups: {
+          with: {
+            emittedTickets: {
+              with: {
+                ticketType: true,
+              },
+            },
+          },
+        },
         ticketTypes: true,
         location: {
           columns: {
@@ -374,7 +383,6 @@ export const eventsRouter = router({
         });
         return pdf;
       } catch (error) {
-        console.log(error);
         throw error;
       }
     }),
@@ -493,7 +501,6 @@ export const eventsRouter = router({
 
         return pdf;
       } catch (error) {
-        console.log(error);
         throw error;
       }
     }),
