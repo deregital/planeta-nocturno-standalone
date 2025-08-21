@@ -29,6 +29,21 @@ export const eventsRouter = router({
       },
     });
   }),
+  getActive: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.query.event.findMany({
+      where: eq(eventSchema.isActive, true),
+      with: {
+        ticketTypes: true,
+        location: {
+          columns: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+    });
+  }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const data = await ctx.db.query.event.findFirst({
       where: eq(eventSchema.id, input),

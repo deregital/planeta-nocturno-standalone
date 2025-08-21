@@ -3,7 +3,7 @@ import { trpc } from '@/server/trpc/client';
 import EventCardContainer from './EventCardContainer';
 
 function GridEvents() {
-  const { data, isLoading } = trpc.events.getAll.useQuery();
+  const { data, isLoading } = trpc.events.getActive.useQuery();
 
   if (isLoading) {
     return (
