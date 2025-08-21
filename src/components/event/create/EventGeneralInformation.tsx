@@ -2,6 +2,7 @@
 
 import { validateGeneralInformation } from '@/app/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
@@ -152,21 +153,13 @@ export function EventGeneralInformation({
         )}
       </section>
       <section className='md:!flex-row'>
-        <InputWithLabel
+        <InputDateWithLabel
           label='Fecha del evento'
           id='eventDate'
-          type='date'
+          selected={event.startingDate}
           className='flex-1'
-          placeholder='Fecha del evento'
-          name='eventDate'
-          value={format(event.startingDate, 'yyyy-MM-dd')}
-          onChange={(e) => {
-            if (isNaN(new Date(e.target.value).getTime())) {
-              setError({ eventDate: 'Fecha inválida' });
-              return;
-            }
-
-            const startingDate = toDate(e.target.value);
+          onChange={(date) => {
+            const startingDate = date;
 
             const endingDate = new Date(
               isBeforeHoursAndMinutes(event.endingDate, event.startingDate)
@@ -181,10 +174,11 @@ export function EventGeneralInformation({
 
             handleChange('startingDate', startingDate);
             handleChange('endingDate', endingDate);
+
             setError({ eventDate: '' });
           }}
           error={error.eventDate}
-          readOnly={action === 'PREVIEW'}
+          disabled={action === 'PREVIEW'}
         />
         <InputWithLabel
           label='Hora de inicio'
