@@ -2,24 +2,23 @@
 import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
-import { Loader } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { validateGeneralInformation } from '../../create/actions';
 import { useCreateEventStore } from '../../create/provider';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
+import { type RouterOutputs } from '@/server/routers/app';
 
-export default function Client() {
-  const params = useParams<{ slug: string }>();
+export default function Client({
+  event,
+}: {
+  event: RouterOutputs['events']['getBySlug'];
+}) {
   const router = useRouter();
 
   const updateEvent = trpc.events.update.useMutation();
-
-  const { data: event, isLoading } = trpc.events.getBySlug.useQuery(
-    params.slug,
-  );
 
   const ticketTypesState = useCreateEventStore((state) => state.ticketTypes);
   const eventState = useCreateEventStore((state) => state.event);
@@ -80,9 +79,7 @@ export default function Client() {
     router.push('/admin/event');
   }
 
-  return isLoading || !event ? (
-    <Loader />
-  ) : (
+  return (
     <div className='w-full p-4 [&>section]:flex [&>section]:flex-col [&>section]:gap-4 [&>section]:my-6 [&>section]:p-4 [&>section]:border-2 [&>section]:border-pn-gray [&>section]:rounded-md [&>section]:w-full'>
       <h1 className='text-4xl font-bold'>Editar Evento</h1>
       <EventGeneralInformation action='EDIT' />

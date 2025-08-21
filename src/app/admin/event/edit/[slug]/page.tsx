@@ -2,6 +2,10 @@ import { trpc } from '@/server/trpc/server';
 import { redirect } from 'next/navigation';
 import { CreateEventStoreProvider } from '../../create/provider';
 import Client from './client';
+import { Suspense } from 'react';
+import { Loader } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default async function Page({
   params,
@@ -17,8 +21,10 @@ export default async function Page({
   }
 
   return (
-    <CreateEventStoreProvider>
-      <Client />
-    </CreateEventStoreProvider>
+    <Suspense fallback={<Loader className='animate-spin' />}>
+      <CreateEventStoreProvider>
+        <Client event={event} />
+      </CreateEventStoreProvider>
+    </Suspense>
   );
 }
