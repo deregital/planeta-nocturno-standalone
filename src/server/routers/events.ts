@@ -8,6 +8,7 @@ import {
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { type TicketType } from '@/server/types';
 import { generateSlug } from '@/server/utils/utils';
 import { eq, inArray, like } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -124,17 +125,21 @@ export const eventsRouter = router({
 
             if (!eventCreated) throw 'Error al crear evento';
 
-            const ticketTypesCreated = await tx
-              .insert(ticketType)
-              .values(
-                ticketTypes.map((ticketType) => ({
-                  ...ticketType,
-                  maxSellDate: ticketType.maxSellDate?.toISOString(),
-                  scanLimit: ticketType.scanLimit?.toISOString(),
-                  eventId: eventCreated.id,
-                })),
-              )
-              .returning();
+            let ticketTypesCreated: TicketType[] = [];
+
+            if (ticketTypes.length !== 0) {
+              ticketTypesCreated = await tx
+                .insert(ticketType)
+                .values(
+                  ticketTypes.map((ticketType) => ({
+                    ...ticketType,
+                    maxSellDate: ticketType.maxSellDate?.toISOString(),
+                    scanLimit: ticketType.scanLimit?.toISOString(),
+                    eventId: eventCreated.id,
+                  })),
+                )
+                .returning();
+            }
 
             return { eventCreated, ticketTypesCreated };
           } catch (error) {
