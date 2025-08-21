@@ -1,9 +1,13 @@
+import { FileMarkdown } from '@/components/icons/FileMarkdown';
+import { FileSmile } from '@/components/icons/FileSmile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/client';
 import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function EventCardHorizontal({
   event,
@@ -11,6 +15,11 @@ export default function EventCardHorizontal({
   event: RouterOutputs['events']['getAll'][number];
 }) {
   const router = useRouter();
+  const generatePresentismoOrdenAlfPDF =
+    trpc.events.generatePresentismoOrderNamePDF.useMutation();
+
+  const generatePresentismoGroupedTicketTypePDF =
+    trpc.events.generatePresentismoGroupedTicketTypePDF.useMutation();
 
   return (
     <Card className='flex flex-row bg-pn-accent py-2 rounded-lg'>
@@ -22,7 +31,58 @@ export default function EventCardHorizontal({
             {event.location.address}
           </p>
         </div>
-        <div>
+        <div className='flex flex-row gap-0.5'>
+          <Button
+            title='Generar presentismo por orden alfabético'
+            variant={'ghost'}
+            onClick={() => {
+              generatePresentismoOrdenAlfPDF.mutate(
+                { eventId: event.id },
+                {
+                  onError: (error) => {
+                    toast.error(error.message);
+                  },
+                  onSuccess: (pdf) => {
+                    // download pdf
+                    const blob = new Blob([pdf], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Asistencia ${event.slug}.pdf`;
+                    a.click();
+                  },
+                },
+              );
+            }}
+          >
+            <FileMarkdown />
+          </Button>
+
+          <Button
+            variant={'ghost'}
+            onClick={() => {
+              generatePresentismoGroupedTicketTypePDF.mutate(
+                { eventId: event.id },
+                {
+                  onError: (error) => {
+                    toast.error(error.message);
+                  },
+                  onSuccess: (pdf) => {
+                    // download pdf
+                    const blob = new Blob([pdf!], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Asistencia ${event.slug}.pdf`;
+                    a.click();
+                  },
+                },
+              );
+            }}
+          >
+            <FileSmile />
+          </Button>
+
           <Button
             variant={'ghost'}
             onClick={() => router.push(`/admin/event/edit/${event.slug}`)}

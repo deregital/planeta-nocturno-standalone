@@ -6,6 +6,7 @@ export async function getDMSansFonts(): Promise<{
   fontBold: Buffer<ArrayBufferLike>;
   fontSemiBold: Buffer<ArrayBufferLike>;
   fontLight: Buffer<ArrayBufferLike>;
+  fontSymbols: Buffer<ArrayBufferLike>;
 }> {
   const fontFolderPath = path.join(process.cwd(), 'public', 'fonts');
 
@@ -18,7 +19,10 @@ export async function getDMSansFonts(): Promise<{
   const fontLightPath = path.join(fontFolderPath, 'DMSans-Light.ttf');
   const fontLight = await fs.promises.readFile(fontLightPath);
 
-  return { fontBold, fontSemiBold, fontLight };
+  const fontSymbolsPath = path.join(fontFolderPath, 'Symbols.ttf');
+  const fontSymbols = await fs.promises.readFile(fontSymbolsPath);
+
+  return { fontBold, fontSemiBold, fontLight, fontSymbols };
 }
 
 export function generateSlug(text: string): string {
