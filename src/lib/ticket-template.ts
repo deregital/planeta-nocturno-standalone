@@ -1,9 +1,8 @@
-import { encryptString } from '@/lib/utils';
-import { getDMSansFonts } from '@/server/utils/utils';
+import { getDMSansFonts, encryptString } from '@/server/utils/utils';
 import { type Font, type Template } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, image, line, rectangle, text } from '@pdfme/schemas';
-import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
 
 export function generateTicketTemplate(first_word: string): Template {
@@ -422,16 +421,26 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     throw new Error('Ticket no encontrado');
   }
 
-  const formattedTime = format(ticket.eventDate, 'HH:mm');
-  const formattedDate = format(ticket.eventDate, 'PPPP', {
-    locale: es,
-  });
+  const formattedTime = formatInTimeZone(
+    ticket.eventDate,
+    'America/Argentina/Buenos_Aires',
+    'HH:mm',
+  );
+  const formattedDate = formatInTimeZone(
+    ticket.eventDate,
+    'America/Argentina/Buenos_Aires',
+    'PPPP',
+    {
+      locale: es,
+    },
+  );
 
   const normalizedDni = Number.isNaN(Number(ticket.dni))
     ? ticket.dni
     : Number(ticket.dni).toLocaleString('es-ES');
 
-  const [firstWord, ...rest] = process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
+  const [firstWord, ...rest] =
+    process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
   const template = generateTicketTemplate(firstWord);
 
   const inputs = [
@@ -443,7 +452,11 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       dni: normalizedDni,
       barcode: encryptString(ticket.id),
       footer: `Para cualquier duda, reclamo o consulta comunicarse vía mail a ${process.env.INSTANCE_CONTACT_EMAIL}.\nMás información en ${process.env.INSTANCE_WEB_URL}.`,
-      emissionDate: format(ticket.createdAt, 'dd/MM/yyyy HH:mm'),
+      emissionDate: formatInTimeZone(
+        ticket.createdAt,
+        'America/Argentina/Buenos_Aires',
+        'dd/MM/yyyy HH:mm',
+      ),
       ticketType: ticket.ticketType,
       name_first_word: firstWord,
       name_second_word: rest.join(' '),

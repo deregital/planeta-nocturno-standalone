@@ -1,24 +1,29 @@
+import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 interface InputWithLabelProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   id: string;
+  error?: string;
 }
 
 export default function InputWithLabel({
   label,
   id,
+  className,
+  error,
   ...inputProps
 }: InputWithLabelProps) {
   return (
-    <div className='flex flex-col gap-1'>
-      <Label htmlFor={id} className='pl-1 text-pn-accent gap-[2px]'>
-        {label}
-        {inputProps.required && <span className='text-red-500'>*</span>}
-      </Label>
+    <GenericInputWithLabel
+      label={label}
+      id={id}
+      className={className}
+      required={inputProps.required}
+      error={error}
+    >
       <Input id={id} {...inputProps} className='border-pn-gray py-2' />
-    </div>
+    </GenericInputWithLabel>
   );
 }
