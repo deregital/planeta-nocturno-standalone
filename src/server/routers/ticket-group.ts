@@ -1,6 +1,6 @@
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
 import { publicProcedure, router } from '@/server/trpc';
-import { generatePdf } from '@/lib/ticket-template';
+import { generatePdf } from '@/server/utils/ticket-template';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';

@@ -3,16 +3,26 @@ import {
   createEventSchema,
   eventSchema as eventSchemaZod,
 } from '@/server/schemas/event';
+import { barcodes, text, line, table } from '@pdfme/schemas';
 import {
   createTicketTypeSchema,
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
-import { generateSlug } from '@/server/utils/utils';
+import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 import { eq, inArray, like } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
+import {
+  type PDFDataGroupedTicketType,
+  presentismoPDFSchema,
+  type PDFDataOrderName,
+  presentismoPDFSchemaGroupedTicketType,
+} from '../utils/presentismo-pdf';
+import { formatInTimeZone } from 'date-fns-tz';
+import { generate } from '@pdfme/generator';
+import { type Font } from '@pdfme/common';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -271,5 +281,220 @@ export const eventsRouter = router({
       revalidatePath(`/admin/event/edit/${event.slug}`);
 
       return { eventUpdated, ticketTypesUpdated };
+    }),
+  generatePresentismoOrderNamePDF: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { eventId } = input;
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, eventId),
+        with: {
+          ticketTypes: true,
+          location: {
+            columns: {
+              address: true,
+            },
+          },
+          ticketGroups: {
+            with: {
+              emittedTickets: {
+                with: {
+                  ticketType: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!event) throw 'Evento no encontrado';
+
+      const tickets = event.ticketGroups
+        .flatMap((group) => group.emittedTickets)
+        .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+      const pdfData: PDFDataOrderName = [
+        {
+          qr: `${process.env.PLANETA_NOCTURNO_URL}/admin/event/${event.slug}`,
+          ubicacion: event.location.address,
+          nombre: event.name,
+          fecha: formatInTimeZone(
+            event.startingDate,
+            'America/Argentina/Buenos_Aires',
+            'dd/MM/yyyy',
+          ),
+          datos: tickets.map((ticket) => [
+            ticket.fullName,
+            ticket.ticketType.name,
+            ticket.phoneNumber,
+            ticket.dni,
+            ticket.scanned ? '☑' : '☐',
+          ]),
+        },
+      ];
+
+      const plugins = {
+        qrcode: barcodes.qrcode,
+        text,
+        line,
+        table,
+      };
+
+      const { fontBold, fontSemiBold, fontLight, fontSymbols } =
+        await getDMSansFonts();
+
+      const font: Font = {
+        'DMSans-Bold': {
+          data: fontBold, // Provide the buffer instead of a string path
+        },
+        'DMSans-SemiBold': {
+          data: fontSemiBold, // Provide the buffer instead of a string path
+          fallback: true,
+        },
+        'DMSans-Light': {
+          data: fontLight, // Provide the buffer instead of a string path
+        },
+        Symbols: {
+          data: fontSymbols, // Provide the buffer instead of a string path
+        },
+      };
+
+      try {
+        const pdf = await generate({
+          template: presentismoPDFSchema,
+          inputs: pdfData,
+          plugins,
+          options: {
+            font,
+          },
+        });
+        return pdf;
+      } catch (error) {
+        console.log(error);
+        throw error;
+      }
+    }),
+
+  generatePresentismoGroupedTicketTypePDF: protectedProcedure
+    .input(z.object({ eventId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { eventId } = input;
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, eventId),
+        with: {
+          ticketTypes: true,
+          location: {
+            columns: {
+              address: true,
+            },
+          },
+          ticketGroups: {
+            with: {
+              emittedTickets: {
+                with: {
+                  ticketType: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!event) throw 'Evento no encontrado';
+
+      const tickets = event.ticketTypes.map((ticketType) => {
+        return {
+          ticketType: ticketType.name,
+          tickets: event.ticketGroups
+            .flatMap((group) => group.emittedTickets)
+            .filter((ticket) => ticket.ticketType.id === ticketType.id)
+            .sort((a, b) => a.fullName.localeCompare(b.fullName)),
+        };
+      });
+
+      const pdfData: PDFDataGroupedTicketType = [
+        {
+          qr: `${process.env.PLANETA_NOCTURNO_URL}/admin/event/${event.slug}`,
+          ubicacion: event.location.address,
+          nombre: event.name,
+          fecha: formatInTimeZone(
+            event.startingDate,
+            'America/Argentina/Buenos_Aires',
+            'dd/MM/yyyy',
+          ),
+          ...tickets.reduce(
+            (acc, ticket) => {
+              acc[`datos_${ticket.ticketType}`] = ticket.tickets.map(
+                (ticket) => [
+                  ticket.fullName,
+                  ticket.ticketType.name,
+                  ticket.phoneNumber,
+                  ticket.dni,
+                  ticket.scanned ? '☑' : '☐',
+                ],
+              );
+              return acc;
+            },
+            {} as Record<
+              `datos_${string}`,
+              [string, string, string, string, string][]
+            >,
+          ),
+          ...tickets.reduce(
+            (acc, ticket) => {
+              acc[`tipo_entrada_${ticket.ticketType}`] =
+                `Tipo de entrada: ${ticket.ticketType}`;
+              return acc;
+            },
+            {} as Record<`tipo_entrada_${string}`, string>,
+          ),
+        },
+      ];
+
+      const { fontBold, fontSemiBold, fontLight, fontSymbols } =
+        await getDMSansFonts();
+
+      const font: Font = {
+        'DMSans-Bold': {
+          data: fontBold, // Provide the buffer instead of a string path
+        },
+        'DMSans-SemiBold': {
+          data: fontSemiBold, // Provide the buffer instead of a string path
+          fallback: true,
+        },
+        'DMSans-Light': {
+          data: fontLight, // Provide the buffer instead of a string path
+        },
+        Symbols: {
+          data: fontSymbols, // Provide the buffer instead of a string path
+        },
+      };
+
+      const plugins = {
+        qrcode: barcodes.qrcode,
+        text,
+        line,
+        table,
+      };
+
+      try {
+        const pdf = await generate({
+          template: presentismoPDFSchemaGroupedTicketType(tickets),
+          inputs: pdfData,
+          plugins,
+          options: {
+            font,
+          },
+        });
+
+        return pdf;
+      } catch (error) {
+        console.log(error);
+        throw error;
+      }
     }),
 });
