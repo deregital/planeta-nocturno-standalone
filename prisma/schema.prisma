@@ -146,7 +146,7 @@ model TicketType {
 
   scanLimit DateTime? @db.Timestamptz
 
-  event   Event  @relation("EVENT_X_TICKET_TYPE", fields: [eventId], references: [id])
+  event   Event  @relation("EVENT_X_TICKET_TYPE", fields: [eventId], references: [id], onDelete: Cascade)
   eventId String @db.Uuid
 
   tickets EmittedTicket[] @relation("TICKET_TYPE_X_EMITTED_TICKET")

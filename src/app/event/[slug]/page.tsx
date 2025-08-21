@@ -1,7 +1,7 @@
 import { trpc } from '@/server/trpc/server';
-import HeaderTickets from '@/components/event/HeaderTickets';
-import InformationEvent from '@/components/event/InformationEvent';
-import TicketPurchase from '@/components/event/TicketPurchase';
+import HeaderTickets from '@/components/event/buyPage/HeaderTickets';
+import InformationEvent from '@/components/event/buyPage/InformationEvent';
+import TicketPurchase from '@/components/event/buyPage/TicketPurchase';
 
 interface EventPageProps {
   params: Promise<{

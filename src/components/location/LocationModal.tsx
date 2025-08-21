@@ -72,6 +72,7 @@ export default function LocationModal({
           <div className='grid grid-cols-2 gap-6 pt-4 pb-8'>
             <div>
               <InputWithLabel
+                id='name'
                 name='name'
                 label='Nombre de la locación'
                 placeholder='Mi locación'
@@ -83,6 +84,7 @@ export default function LocationModal({
             </div>
             <div>
               <InputWithLabel
+                id='address'
                 name='address'
                 label='Ubicación'
                 placeholder='Balcarce 50'
@@ -94,6 +96,7 @@ export default function LocationModal({
             </div>
             <div>
               <InputWithLabel
+                id='capacity'
                 name='capacity'
                 type='number'
                 label='Capacidad'
@@ -106,6 +109,7 @@ export default function LocationModal({
             </div>
             <div>
               <InputWithLabel
+                id='googleMapsUrl'
                 name='googleMapsUrl'
                 label='Link a Google Maps'
                 placeholder='Ingresá el link'

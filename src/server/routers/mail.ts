@@ -35,6 +35,7 @@ export const mailRouter = router({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Algo salió mal al enviar el mail',
+          cause: error,
         });
       }
 
