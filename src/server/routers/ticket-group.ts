@@ -1,9 +1,9 @@
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
-import { publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/lib/ticket-template';
-import { eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { publicProcedure, router } from '@/server/trpc';
 import { TRPCError } from '@trpc/server';
+import { and, eq, lt } from 'drizzle-orm';
+import { z } from 'zod';
 
 export const ticketGroupSchema = z.object({
   id: z.uuid(), // uuid generado por defaultRandom()
@@ -32,6 +32,19 @@ export const ticketGroupRouter = router({
       }
 
       const result = await ctx.db.transaction(async (tx) => {
+        await tx
+          .delete(ticketGroup)
+          .where(
+            and(
+              eq(ticketGroup.status, 'BOOKED'),
+              eq(ticketGroup.eventId, input.eventId),
+              lt(
+                ticketGroup.createdAt,
+                new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+              ),
+            ),
+          );
+
         const ticketGroupData = {
           eventId: input.eventId,
           status: 'BOOKED' as const,
