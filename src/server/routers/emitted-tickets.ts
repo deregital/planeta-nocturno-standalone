@@ -1,6 +1,9 @@
-import { emittedTicket } from '@/drizzle/schema';
+import { emittedTicket, ticketGroup } from '@/drizzle/schema';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
-import { createManyTicketSchema } from '../schemas/emitted-tickets';
+import {
+  createManyTicketSchema,
+  createTicketSchema,
+} from '../schemas/emitted-tickets';
 import { z } from 'zod';
 import { decryptString } from '../utils/utils';
 import { TRPCError } from '@trpc/server';
@@ -9,6 +12,38 @@ import { format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 export const emittedTicketsRouter = router({
+  create: protectedProcedure
+    .input(createTicketSchema)
+    .mutation(async ({ ctx, input }) => {
+      const ticketCreated = await ctx.db.transaction(async (tx) => {
+        try {
+          const [ticketGroupCreated] = await tx
+            .insert(ticketGroup)
+            .values({
+              eventId: input.eventId,
+              status: 'PAID',
+              amountTickets: 1,
+            })
+            .returning();
+
+          const [ticketCreated] = await tx
+            .insert(emittedTicket)
+            .values({
+              ...input,
+              birthDate: input.birthDate.toISOString(),
+              ticketGroupId: ticketGroupCreated.id,
+            })
+            .returning();
+
+          return ticketCreated;
+        } catch (error) {
+          tx.rollback();
+          throw error;
+        }
+      });
+      return ticketCreated;
+    }),
+
   createMany: publicProcedure
     .input(createManyTicketSchema)
     .mutation(async ({ ctx, input }) => {

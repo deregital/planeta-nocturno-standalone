@@ -6,8 +6,8 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import { ScanTicketModal } from '@/components/event/individual/ScanTicketModal';
+import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 
-// Separate async component that can be suspended
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
 
@@ -56,7 +56,10 @@ async function EventDetails({ slug }: { slug: string }) {
           {event?.location.address}
         </h3>
         <QuantityTicketsEmitted event={event} />
+      </div>
+      <div className='flex flex-row gap-x-2'>
         <ScanTicketModal eventId={event.id} />
+        <EmitTicketModal event={event} />
       </div>
     </div>
   );
