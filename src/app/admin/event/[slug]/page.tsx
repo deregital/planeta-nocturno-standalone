@@ -5,8 +5,10 @@ import { CalendarIcon, ClockIcon, MapPin } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import Image from 'next/image';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { ScanTicketModal } from '@/components/event/individual/ScanTicketModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
+import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
@@ -14,6 +16,10 @@ async function EventDetails({ slug }: { slug: string }) {
   if (!event) {
     notFound();
   }
+
+  const tickets = await trpc.emittedTickets.getByEventId({
+    eventId: event.id,
+  });
 
   return (
     <div className='flex flex-col items-center mt-4'>
@@ -61,6 +67,7 @@ async function EventDetails({ slug }: { slug: string }) {
         <ScanTicketModal eventId={event.id} />
         <EmitTicketModal event={event} />
       </div>
+      <TicketTableWithTabs tickets={tickets} ticketTypes={event.ticketTypes} />
     </div>
   );
 }
@@ -74,7 +81,9 @@ export default async function EventPage({
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <EventDetails slug={slug} />
+      <NuqsAdapter>
+        <EventDetails slug={slug} />
+      </NuqsAdapter>
     </Suspense>
   );
 }

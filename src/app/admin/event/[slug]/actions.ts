@@ -21,3 +21,8 @@ export async function emitTicket(
     attatchments: [pdf.pdf.blob],
   });
 }
+
+export async function downloadTicket(ticketId: string) {
+  const pdf = await trpc.emittedTickets.getPdf({ ticketId });
+  return pdf;
+}

@@ -14,6 +14,8 @@ import { TRPCError } from '@trpc/server';
 import { and, eq } from 'drizzle-orm';
 import { format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import { generatePdf } from '../utils/ticket-template';
+import { sendMail } from '../services/mail';
 
 export const emittedTicketsRouter = router({
   create: protectedProcedure
@@ -68,6 +70,46 @@ export const emittedTicketsRouter = router({
 
       if (!res) throw 'Error al crear ticket/s';
       return res;
+    }),
+
+  getPdf: protectedProcedure
+    .input(z.object({ ticketId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const ticket = await ctx.db.query.emittedTicket.findFirst({
+        where: eq(emittedTicket.id, input.ticketId),
+        with: {
+          ticketGroup: {
+            with: {
+              event: {
+                with: {
+                  location: true,
+                },
+              },
+            },
+          },
+          ticketType: true,
+        },
+      });
+
+      if (!ticket) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Ticket no encontrado',
+        });
+      }
+
+      const pdf = await generatePdf({
+        eventName: ticket.ticketGroup.event.name,
+        eventDate: ticket.ticketGroup.event.startingDate,
+        eventLocation: ticket.ticketGroup.event.location.address,
+        ticketType: ticket.ticketType.name,
+        createdAt: ticket.createdAt,
+        dni: ticket.dni,
+        fullName: ticket.fullName,
+        id: ticket.id,
+      });
+
+      return pdf;
     }),
 
   scan: protectedProcedure
@@ -155,6 +197,30 @@ export const emittedTicketsRouter = router({
       };
     }),
 
+  manualScan: protectedProcedure
+    .input(z.object({ ticketId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const ticket = await ctx.db.query.emittedTicket.findFirst({
+        where: eq(emittedTicket.id, input.ticketId),
+      });
+      if (!ticket) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Ticket no encontrado',
+        });
+      }
+
+      await ctx.db
+        .update(emittedTicket)
+        .set({
+          scanned: true,
+          scannedAt: new Date().toISOString(),
+          scannedByUserId: ctx.session.user.id,
+        })
+        .where(eq(emittedTicket.id, input.ticketId));
+
+      return { success: true, ticket };
+    }),
   getByEventId: protectedProcedure
     .input(
       z.object({
@@ -164,8 +230,79 @@ export const emittedTicketsRouter = router({
     .query(async ({ ctx, input }) => {
       const tickets = await ctx.db.query.emittedTicket.findMany({
         where: eq(emittedTicket.eventId, input.eventId),
+        with: {
+          ticketType: true,
+          ticketGroup: true,
+        },
       });
 
       return tickets;
+    }),
+
+  send: protectedProcedure
+    .input(
+      z.object({
+        ticketId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ticket = await ctx.db.query.emittedTicket.findFirst({
+        where: eq(emittedTicket.id, input.ticketId),
+        with: {
+          ticketGroup: {
+            with: {
+              event: {
+                with: {
+                  location: true,
+                },
+              },
+            },
+          },
+          ticketType: true,
+        },
+      });
+
+      if (!ticket) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Ticket no encontrado',
+        });
+      }
+
+      const pdf = await generatePdf({
+        eventName: ticket.ticketGroup.event.name,
+        eventDate: ticket.ticketGroup.event.startingDate,
+        eventLocation: ticket.ticketGroup.event.location.address,
+        ticketType: ticket.ticketType.name,
+        createdAt: ticket.createdAt,
+        dni: ticket.dni,
+        fullName: ticket.fullName,
+        id: ticket.id,
+      });
+
+      const { data, error } = await sendMail({
+        to: ticket.mail,
+        subject: `Ticket de ${ticket.ticketGroup.event.name}`,
+        body: `Hola ${ticket.fullName}, te enviamos tu ticket de ${ticket.ticketGroup.event.name}`,
+        attachments: [Buffer.from(await pdf.arrayBuffer())],
+        eventName: ticket.ticketGroup.event.name,
+      });
+
+      if (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Error al enviar el correo',
+        });
+      }
+
+      return { success: true, data };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ ticketId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(emittedTicket)
+        .where(eq(emittedTicket.id, input.ticketId));
     }),
 });
