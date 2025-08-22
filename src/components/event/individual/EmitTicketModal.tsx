@@ -20,7 +20,10 @@ import 'react-phone-number-input/style.css';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { cn } from '@/lib/utils';
+import { emitTicket } from '@/app/admin/event/[slug]/actions';
 import { toast } from 'sonner';
+import { createTicketSchema } from '@/server/schemas/emitted-tickets';
+import z from 'zod';
 
 export function EmitTicketModal({
   event,
@@ -55,25 +58,7 @@ export function EmitTicketModal({
     }
   }, [selectedTicketType?.category]);
 
-  const emitTicketMutation = trpc.emittedTickets.create.useMutation({
-    onError: (error) => {
-      if (error.data?.zodError) {
-        const props = Object.entries(
-          (
-            error.data.zodError as unknown as {
-              properties: Record<string, { errors: string[] }>;
-            }
-          ).properties,
-        ).map(([key, value]) => [key, value.errors[0] ?? '']);
-
-        setError(Object.fromEntries(props) as Record<string, string>);
-      } else {
-        setError({});
-      }
-    },
-  });
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const formData = new FormData(e.currentTarget);
@@ -90,20 +75,33 @@ export function EmitTicketModal({
       instagram: (formData.get('instagram') as string) || undefined,
     };
 
-    emitTicketMutation.mutate(ticketData, {
-      onSuccess: () => {
-        setOpen(false);
-        setError({});
-        setPhoneNumber('');
-        setBirthDate(new Date());
-        setSelectedTicketTypeId('');
-        formRef.current?.reset();
-        utils.emittedTickets.getByEventId.invalidate({
-          eventId: event!.id,
-        });
-        toast.success('Ticket emitido correctamente');
-      },
+    const validation = createTicketSchema.safeParse(ticketData);
+
+    if (!validation.success) {
+      const error = z.treeifyError(validation.error);
+      setError(
+        Object.fromEntries(
+          Object.entries(error?.properties ?? {}).map(([key, value]) => [
+            key,
+            value.errors?.[0] ?? '',
+          ]),
+        ),
+      );
+      return;
+    }
+
+    await emitTicket(ticketData);
+
+    setOpen(false);
+    setError({});
+    setPhoneNumber('');
+    setBirthDate(new Date());
+    setSelectedTicketTypeId('');
+    formRef.current?.reset();
+    utils.emittedTickets.getByEventId.invalidate({
+      eventId: event!.id,
     });
+    toast.success('Ticket emitido correctamente');
   }
 
   return (

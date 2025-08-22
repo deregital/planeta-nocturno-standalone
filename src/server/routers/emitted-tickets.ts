@@ -1,4 +1,8 @@
-import { emittedTicket, ticketGroup } from '@/drizzle/schema';
+import {
+  emittedTicket,
+  ticketGroup,
+  ticketType as ticketTypeTable,
+} from '@/drizzle/schema';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
 import {
   createManyTicketSchema,
@@ -17,11 +21,20 @@ export const emittedTicketsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const ticketCreated = await ctx.db.transaction(async (tx) => {
         try {
+          const ticketType = await tx.query.ticketType.findFirst({
+            where: eq(ticketTypeTable.id, input.ticketTypeId),
+          });
+
           const [ticketGroupCreated] = await tx
             .insert(ticketGroup)
             .values({
               eventId: input.eventId,
-              status: 'PAID',
+              status:
+                ticketType?.category === 'FREE'
+                  ? 'FREE'
+                  : input.paidOnLocation
+                    ? 'PAID'
+                    : 'BOOKED',
               amountTickets: 1,
             })
             .returning();
