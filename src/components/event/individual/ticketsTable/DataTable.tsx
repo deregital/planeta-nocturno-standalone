@@ -75,7 +75,7 @@ export function DataTable<TData extends { id: string }, TValue>({
   });
 
   return (
-    <div className='rounded-md border overflow-x-auto max-w-[100vw]'>
+    <div className='rounded-md border overflow-x-auto w-full md:max-w-[98vw] max-w-[95vw] mx-auto'>
       <Table className='bg-white'>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

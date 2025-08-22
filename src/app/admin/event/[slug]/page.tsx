@@ -17,10 +17,6 @@ async function EventDetails({ slug }: { slug: string }) {
     notFound();
   }
 
-  const tickets = await trpc.emittedTickets.getByEventId({
-    eventId: event.id,
-  });
-
   return (
     <div className='flex flex-col items-center mt-4'>
       <Image
@@ -67,7 +63,7 @@ async function EventDetails({ slug }: { slug: string }) {
         <ScanTicketModal eventId={event.id} />
         <EmitTicketModal event={event} />
       </div>
-      <TicketTableWithTabs tickets={tickets} ticketTypes={event.ticketTypes} />
+      <TicketTableWithTabs ticketTypes={event.ticketTypes} />
     </div>
   );
 }
