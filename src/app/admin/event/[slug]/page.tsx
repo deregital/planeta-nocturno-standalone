@@ -1,7 +1,7 @@
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { trpc } from '@/server/trpc/server';
 import { formatInTimeZone } from 'date-fns-tz';
-import { CalendarIcon, ClockIcon, MapPin } from 'lucide-react';
+import { CalendarIcon, ClockIcon, Loader2, MapPin } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import Image from 'next/image';
@@ -76,7 +76,13 @@ export default async function EventPage({
   const { slug } = await params;
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className='flex h-full w-full items-center justify-center'>
+          <Loader2 className='animate-spin' />
+        </div>
+      }
+    >
       <NuqsAdapter>
         <EventDetails slug={slug} />
       </NuqsAdapter>
