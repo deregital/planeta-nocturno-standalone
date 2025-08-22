@@ -1,5 +1,7 @@
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import z from 'zod';
+import { eventSchema } from './event';
+import { ticketTypeSchema } from './ticket-type';
 
 export const emittedTicketSchema = z.object({
   id: z.string(),
@@ -37,3 +39,10 @@ export const createManyTicketSchema = emittedTicketSchema
     gender: z.string(),
   })
   .array();
+
+export const createTicketSchema = emittedTicketSchema
+  .omit({ id: true })
+  .extend({
+    eventId: eventSchema.shape.id,
+    ticketTypeId: ticketTypeSchema.shape.id,
+  });

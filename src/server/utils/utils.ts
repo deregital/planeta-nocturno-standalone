@@ -1,4 +1,9 @@
-import { createCipheriv, createHash, randomBytes } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -51,5 +56,26 @@ export function encryptString(string: string): string {
   const ivBase64 = iv.toString('base64');
 
   // Retorna IV + texto cifrado (separados por :)
-  return ivBase64 + ':' + encrypted;
+  const result = ivBase64 + ':' + encrypted;
+  return result;
+}
+
+export function decryptString(encryptedString: string): string {
+  try {
+    const [ivBase64, cipherTextBase64] = encryptedString.split(':');
+    if (!ivBase64 || !cipherTextBase64) {
+      throw new Error('Cadena inválida');
+    }
+    const key = getKeyFromSecret(process.env.BARCODE_SECRET!);
+    const iv = Buffer.from(ivBase64!, 'base64');
+
+    let ticketId: string;
+    const decipher = createDecipheriv('aes-256-cbc', key, iv);
+    ticketId = decipher.update(cipherTextBase64!, 'base64', 'utf8');
+    ticketId += decipher.final('utf8');
+
+    return ticketId;
+  } catch (error) {
+    throw error;
+  }
 }

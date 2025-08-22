@@ -3,7 +3,7 @@ import { publicProcedure, router } from '@/server/trpc';
 import { userSchema } from '../schemas/user';
 import { hash } from 'bcrypt';
 import { eventsRouter } from '@/server/routers/events';
-import { type inferRouterOutputs } from '@trpc/server';
+import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/server';
 import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
 import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
@@ -35,3 +35,4 @@ export const appRouter = router({
 
 export type AppRouter = typeof appRouter;
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
+export type RouterInputs = inferRouterInputs<AppRouter>;
