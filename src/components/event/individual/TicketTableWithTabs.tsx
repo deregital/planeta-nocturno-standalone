@@ -37,7 +37,7 @@ export function TicketTableWithTabs({
 
   const [tab, setTab] = useQueryState<string>(
     'tab',
-    parseAsString.withDefault(Object.keys(ticketsByType)[0]),
+    parseAsString.withDefault(ticketTypes[0].name),
   );
 
   return (
