@@ -6,7 +6,7 @@ export default function ClientLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
+    <div className='grid grid-rows-[auto_1fr] h-screen'>
       <TopBar />
       {children}
     </div>

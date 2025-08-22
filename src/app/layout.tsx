@@ -1,4 +1,3 @@
-import TopBar from '@/components/header/TopBar';
 import { Toaster } from '@/components/ui/sonner';
 import { TRPCReactProvider } from '@/server/trpc/client';
 import type { Metadata } from 'next';
@@ -24,10 +23,7 @@ export default function RootLayout({
     <TRPCReactProvider>
       <html lang='en'>
         <body className={`${dmSans.className} antialiased`}>
-          <div className='grid grid-rows-[auto_1fr] h-screen'>
-            <TopBar />
-            {children}
-          </div>
+          {children}
           <Toaster />
         </body>
       </html>
