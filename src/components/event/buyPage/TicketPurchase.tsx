@@ -1,5 +1,5 @@
 'use client';
-import React, { startTransition, useActionState } from 'react';
+import { handlePurchase as handlePurchaseAction } from '@/app/(client)/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -8,9 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { type RouterOutputs } from '@/server/routers/app';
 import { useEventTickets } from '@/hooks/useEventTickets';
-import { handlePurchase as handlePurchaseAction } from '@/app/event/[slug]/actions';
+import { type RouterOutputs } from '@/server/routers/app';
+import React, { startTransition, useActionState } from 'react';
 
 function TicketPurchase({
   ticketTypes,
