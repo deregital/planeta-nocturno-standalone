@@ -23,11 +23,11 @@ export default function RootLayout({
   return (
     <TRPCReactProvider>
       <html lang='en'>
-        <body
-          className={`${dmSans.className} antialiased grid grid-rows-[auto_1fr] h-screen`}
-        >
-          <TopBar />
-          {children}
+        <body className={`${dmSans.className} antialiased`}>
+          <div className='grid grid-rows-[auto_1fr] h-screen'>
+            <TopBar />
+            {children}
+          </div>
           <Toaster />
         </body>
       </html>
