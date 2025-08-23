@@ -9,9 +9,7 @@ export default function TopBar({ userName }: { userName: string }) {
       <InstanceLogo size='sm' />
       <div className='flex flex-row gap-16 items-center text-white'>
         <p>{userName} (admin)</p>
-        <Button onClick={() => signOut()} type='submit'>
-          Cerrar Sesión
-        </Button>
+        <Button onClick={() => signOut()}>Cerrar Sesión</Button>
       </div>
     </div>
   );
