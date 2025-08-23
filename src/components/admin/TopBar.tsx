@@ -1,4 +1,5 @@
-import { signOut } from '@/server/auth';
+'use client';
+import { signOut } from 'next-auth/react';
 import InstanceLogo from '../header/InstanceLogo';
 import { Button } from '../ui/button';
 
@@ -8,14 +9,9 @@ export default function TopBar({ userName }: { userName: string }) {
       <InstanceLogo size='sm' />
       <div className='flex flex-row gap-16 items-center text-white'>
         <p>{userName} (admin)</p>
-        <form
-          action={async () => {
-            'use server';
-            signOut();
-          }}
-        >
-          <Button type='submit'>Cerrar Sesión</Button>
-        </form>
+        <Button onClick={() => signOut()} type='submit'>
+          Cerrar Sesión
+        </Button>
       </div>
     </div>
   );
