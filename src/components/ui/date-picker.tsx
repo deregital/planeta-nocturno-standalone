@@ -53,7 +53,8 @@ export function DatePicker({ onSelectAction, ...inputProps }: DatePickerProps) {
         readOnly
         placeholder={inputProps.placeholder}
         className='bg-background pr-10'
-        onClick={() => {
+        onClick={(e) => {
+          e.preventDefault();
           if (!open) {
             setOpen(true);
           }
