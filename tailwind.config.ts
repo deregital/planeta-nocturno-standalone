@@ -18,6 +18,7 @@ const config: Config = {
         'pn-text-secondary': 'var(--pn-text-secondary-color)',
         'pn-text-accent': 'var(--pn-text-accent-color)',
         'pn-gray': 'var(--pn-gray)',
+        'pn-black': 'var(--pn-black)',
       },
       text: {
         'pn-primary': 'var(--pn-text-primary-color)',
@@ -45,6 +46,7 @@ const config: Config = {
             process.env.NEXT_PUBLIC_TEXT_ACCENT_COLOR || '#F59E0B',
           // Default NO .env
           '--pn-gray': '#A3A3A3',
+          '--pn-black': '#1F1F1F',
         },
       });
     }),
