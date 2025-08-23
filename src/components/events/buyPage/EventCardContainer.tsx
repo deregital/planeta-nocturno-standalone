@@ -1,8 +1,9 @@
 'use client';
-import { formatEventDate } from '@/lib/utils';
-import CardEvent from './CardEvent';
 import Link from 'next/link';
+
+import { formatEventDate } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
+import CardEvent from '@/components/events/buyPage/CardEvent';
 
 type Event = RouterOutputs['events']['getAll'][number];
 

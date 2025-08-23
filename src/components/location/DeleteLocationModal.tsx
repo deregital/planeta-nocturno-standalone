@@ -1,4 +1,8 @@
 'use client';
+import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
 import { revalidateLocations } from '@/app/admin/locations/action';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,9 +15,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { trpc } from '@/server/trpc/client';
-import { Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
 
 export default function DeleteLocationModal({ id }: { id: string }) {
   const deleteLocation = trpc.location.delete.useMutation({

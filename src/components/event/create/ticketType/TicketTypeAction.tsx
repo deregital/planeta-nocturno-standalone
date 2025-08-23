@@ -1,11 +1,12 @@
+import { useMemo } from 'react';
+
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ticketTypeCategory } from '@/drizzle/schema';
 import { trpc } from '@/server/trpc/client';
-import { useMemo } from 'react';
-import TicketTypeList from './TicketTypeList';
-import TicketTypeModal from './TicketTypeModal';
+import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
+import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
 
 export default function TicketTypeAction({
   back,

@@ -1,5 +1,6 @@
 import { type Template } from '@pdfme/common';
-import { type EmittedTicket } from '../types';
+
+import { type EmittedTicket } from '@/server/types';
 
 export type PDFDataOrderName = [
   {

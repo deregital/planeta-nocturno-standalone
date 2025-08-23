@@ -1,9 +1,10 @@
-import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
-import { publicProcedure, router } from '@/server/trpc';
-import { generatePdf } from '@/server/utils/ticket-template';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+
+import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
+import { publicProcedure, router } from '@/server/trpc';
+import { generatePdf } from '@/server/utils/ticket-template';
 
 export const ticketGroupSchema = z.object({
   id: z.uuid(), // uuid generado por defaultRandom()

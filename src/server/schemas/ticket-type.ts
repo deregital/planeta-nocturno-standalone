@@ -1,5 +1,6 @@
-import { ticketTypeCategory } from '@/drizzle/schema';
 import z from 'zod';
+
+import { ticketTypeCategory } from '@/drizzle/schema';
 
 export const ticketTypeSchema = z.object({
   id: z.uuid({ error: 'El id debe ser un UUID válido' }),

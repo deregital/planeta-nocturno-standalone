@@ -1,5 +1,12 @@
 'use client';
 
+import { Ticket } from 'lucide-react';
+import esPhoneLocale from 'react-phone-number-input/locale/es';
+import PhoneInput from 'react-phone-number-input';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
+import z from 'zod';
+
 import {
   Dialog,
   DialogContent,
@@ -9,22 +16,16 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
-import { Ticket } from 'lucide-react';
 import { trpc } from '@/server/trpc/client';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Label } from '@/components/ui/label';
-import esPhoneLocale from 'react-phone-number-input/locale/es';
-import PhoneInput from 'react-phone-number-input';
 import { Input } from '@/components/ui/input';
-import { useMemo, useState, useRef, useEffect } from 'react';
-import 'react-phone-number-input/style.css';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { cn } from '@/lib/utils';
 import { emitTicket } from '@/app/admin/event/[slug]/actions';
-import { toast } from 'sonner';
 import { createTicketSchema } from '@/server/schemas/emitted-tickets';
-import z from 'zod';
+import 'react-phone-number-input/style.css';
 
 export function EmitTicketModal({
   event,

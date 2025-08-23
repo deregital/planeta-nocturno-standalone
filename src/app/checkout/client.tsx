@@ -1,9 +1,16 @@
 'use client';
-import { Button } from '@/components/ui/button';
 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { handlePurchase } from './action';
+import { useActionState, useEffect, useState } from 'react';
+import PhoneInput from 'react-phone-number-input';
+import esPhoneLocale from 'react-phone-number-input/locale/es';
+
+import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
+import InputWithLabel from '@/components/common/InputWithLabel';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -13,16 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { type RouterOutputs } from '@/server/routers/app';
-import React, { useActionState, useEffect, useState } from 'react';
-import 'react-phone-number-input/style.css';
-import PhoneInput from 'react-phone-number-input';
-import esPhoneLocale from 'react-phone-number-input/locale/es';
-import InputWithLabel from '@/components/common/InputWithLabel';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
-import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
+import { type RouterOutputs } from '@/server/routers/app';
+import { handlePurchase } from '@/app/checkout/action';
+import 'react-phone-number-input/style.css';
 
 export default function CheckoutClient({
   ticketGroup,

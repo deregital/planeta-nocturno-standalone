@@ -1,7 +1,8 @@
-import { publicProcedure, router } from '@/server/trpc';
 import z from 'zod';
 import { TRPCError } from '@trpc/server';
-import { sendMail } from '../services/mail';
+
+import { publicProcedure, router } from '@/server/trpc';
+import { sendMail } from '@/server/services/mail';
 
 export const mailRouter = router({
   send: publicProcedure

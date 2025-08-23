@@ -1,9 +1,11 @@
+import type { Metadata } from 'next';
+
+import { DM_Sans } from 'next/font/google';
+
 import TopBar from '@/components/header/TopBar';
 import { Toaster } from '@/components/ui/sonner';
 import { TRPCReactProvider } from '@/server/trpc/client';
-import type { Metadata } from 'next';
-import { DM_Sans } from 'next/font/google';
-import './globals.css';
+import '@/app/globals.css';
 
 const dmSans = DM_Sans({
   variable: '--font-dm-sans',

@@ -1,5 +1,8 @@
 'use client';
 
+import { ScanBarcode } from 'lucide-react';
+import { useRef } from 'react';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,8 +13,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
-import { ScanBarcode } from 'lucide-react';
-import { useRef } from 'react';
 
 export function ScanTicketModal({ eventId }: { eventId: string }) {
   const scanMutation = trpc.emittedTickets.scan.useMutation();

@@ -1,9 +1,11 @@
 'use server';
-import { createManyTicketSchema } from '@/server/schemas/emitted-tickets';
-import { trpc } from '@/server/trpc/server';
+import type z from 'zod';
+
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import type z from 'zod';
+
+import { createManyTicketSchema } from '@/server/schemas/emitted-tickets';
+import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
   ticketsInput: z.infer<typeof createManyTicketSchema>[];

@@ -1,9 +1,10 @@
-import { publicProcedure, router } from '@/server/trpc';
 import z from 'zod';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { calculateTotalPrice } from '../services/ticketGroup';
 import { eq } from 'drizzle-orm';
+
+import { publicProcedure, router } from '@/server/trpc';
 import { ticketGroup } from '@/drizzle/schema';
+import { calculateTotalPrice } from '@/server/services/ticketGroup';
 
 export const createPreferenceSchema = z.object({
   ticketGroupId: z.string(),

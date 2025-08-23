@@ -4,8 +4,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { type Location } from '@/server/schemas/location';
-import DeleteLocationModal from './DeleteLocationModal';
-import LocationModal from './LocationModal';
+import DeleteLocationModal from '@/components/location/DeleteLocationModal';
+import LocationModal from '@/components/location/LocationModal';
 
 export default function LocationAccordion({
   location,

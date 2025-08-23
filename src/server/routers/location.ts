@@ -1,3 +1,6 @@
+import { TRPCError } from '@trpc/server';
+import { eq } from 'drizzle-orm';
+
 import { location } from '@/drizzle/schema';
 import {
   createLocationSchema,
@@ -5,8 +8,6 @@ import {
   updateLocationSchema,
 } from '@/server/schemas/location';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
-import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
 
 export const locationRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {

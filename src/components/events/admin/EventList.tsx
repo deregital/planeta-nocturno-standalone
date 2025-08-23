@@ -1,5 +1,5 @@
 import { type RouterOutputs } from '@/server/routers/app';
-import EventCardHorizontal from './EventCardHorizontal';
+import EventCardHorizontal from '@/components/events/admin/EventCardHorizontal';
 
 export default function EventList({
   events,

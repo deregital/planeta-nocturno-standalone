@@ -1,8 +1,9 @@
-import { eventCategory } from '@/drizzle/schema';
-import { publicProcedure, router } from '@/server/trpc';
 import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
-import { eventCategorySchema } from '../schemas/event-category';
+
+import { eventCategory } from '@/drizzle/schema';
+import { publicProcedure, router } from '@/server/trpc';
+import { eventCategorySchema } from '@/server/schemas/event-category';
 
 export const eventCategoriesRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {

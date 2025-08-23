@@ -1,6 +1,6 @@
 'use client';
 import { trpc } from '@/server/trpc/client';
-import EventCardContainer from './EventCardContainer';
+import EventCardContainer from '@/components/events/buyPage/EventCardContainer';
 
 function GridEvents() {
   const { data, isLoading } = trpc.events.getActive.useQuery();

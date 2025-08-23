@@ -1,11 +1,12 @@
-import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
-import { trpc } from '@/server/trpc/server';
 import { formatInTimeZone } from 'date-fns-tz';
 import { CalendarIcon, ClockIcon, Loader2, MapPin } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
+
+import { trpc } from '@/server/trpc/server';
+import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicketModal } from '@/components/event/individual/ScanTicketModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';

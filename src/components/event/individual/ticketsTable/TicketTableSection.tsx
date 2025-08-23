@@ -1,7 +1,7 @@
 'use client';
-import { DataTable } from './DataTable';
-import { generateTicketColumns } from './columns';
 import { type RouterOutputs } from '@/server/routers/app';
+import { DataTable } from '@/components/event/individual/ticketsTable/DataTable';
+import { generateTicketColumns } from '@/components/event/individual/ticketsTable/columns';
 
 export function TicketTableSection({
   tickets,

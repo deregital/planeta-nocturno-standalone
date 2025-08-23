@@ -1,9 +1,11 @@
-import { auth } from '@/server/auth';
 import { type inferRouterOutputs, initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { z, ZodError } from 'zod';
-import { type appRouter } from './routers/app';
+
 import { db } from '@/drizzle';
+
+import { auth } from '@/server/auth';
+import { type appRouter } from '@/server/routers/app';
 
 export function handleError(error: {
   message: string[];

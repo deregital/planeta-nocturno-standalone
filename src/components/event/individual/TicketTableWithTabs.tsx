@@ -1,11 +1,12 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
-import { TicketTableSection } from './ticketsTable/TicketTableSection';
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type TicketType } from '@/server/types';
 import { trpc } from '@/server/trpc/client';
+import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
 
 export function TicketTableWithTabs({
   ticketTypes,

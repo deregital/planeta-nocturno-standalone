@@ -2,6 +2,9 @@
 
 import * as React from 'react';
 import { CalendarIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { es } from 'date-fns/locale';
+import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -11,9 +14,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useEffect, useState } from 'react';
-import { es } from 'date-fns/locale';
-import { format } from 'date-fns';
 
 function formatDate(date: Date | undefined) {
   if (!date) {

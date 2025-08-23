@@ -1,6 +1,18 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
+import { useState } from 'react';
+import {
+  ArrowDownAZ,
+  DownloadIcon,
+  MoreHorizontal,
+  ScanBarcode,
+  SendIcon,
+  TrashIcon,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,21 +22,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { trpc } from '@/server/trpc/client';
-import { useState } from 'react';
 import { type RouterOutputs } from '@/server/routers/app';
-import {
-  ArrowDownAZ,
-  DownloadIcon,
-  MoreHorizontal,
-  ScanBarcode,
-  SendIcon,
-  TrashIcon,
-} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
 import { downloadTicket } from '@/app/admin/event/[slug]/actions';
-import { useRouter } from 'next/navigation';
 
 export function generateTicketColumns() {
   const columns: ColumnDef<

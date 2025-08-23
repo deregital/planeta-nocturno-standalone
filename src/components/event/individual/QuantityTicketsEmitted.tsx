@@ -1,8 +1,9 @@
 'use client';
 
-import { type RouterOutputs } from '@/server/routers/app';
 import { Ticket } from 'lucide-react';
 import { useMemo } from 'react';
+
+import { type RouterOutputs } from '@/server/routers/app';
 
 export function QuantityTicketsEmitted({
   event,

@@ -1,3 +1,7 @@
+import { format } from 'date-fns';
+import { Pencil } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { validateTicketType } from '@/app/admin/event/create/actions';
 import InputWithLabel from '@/components/common/InputWithLabel';
@@ -13,13 +17,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { ticketTypesTranslation } from '@/lib/translations';
-
 import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
 import { type TicketTypeCategory } from '@/server/types';
-import { format } from 'date-fns';
-import { Pencil } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
-
 import { type EventState } from '@/app/admin/event/create/state';
 
 type TicketTypeModalProps = {

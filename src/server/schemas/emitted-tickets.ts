@@ -1,7 +1,8 @@
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import z from 'zod';
-import { eventSchema } from './event';
-import { ticketTypeSchema } from './ticket-type';
+
+import { eventSchema } from '@/server/schemas/event';
+import { ticketTypeSchema } from '@/server/schemas/ticket-type';
 
 export const emittedTicketSchema = z.object({
   id: z.string(),

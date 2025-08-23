@@ -1,7 +1,8 @@
 'use server';
-import { trpc } from '@/server/trpc/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+
+import { trpc } from '@/server/trpc/server';
 
 export const handlePurchase = async (
   prevState: unknown,

@@ -1,9 +1,10 @@
-import { trpc } from '@/server/trpc/server';
 import { redirect } from 'next/navigation';
-import { CreateEventStoreProvider } from '../../create/provider';
-import Client from './client';
 import { Suspense } from 'react';
 import { Loader } from 'lucide-react';
+
+import { trpc } from '@/server/trpc/server';
+import { CreateEventStoreProvider } from '@/app/admin/event/create/provider';
+import Client from '@/app/admin/event/edit/[slug]/client';
 
 export const dynamic = 'force-dynamic';
 

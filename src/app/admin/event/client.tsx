@@ -1,9 +1,10 @@
 'use client';
+import { Calendar } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 import EventList from '@/components/events/admin/EventList';
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
-import { Calendar } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 export default function Client({
   events,

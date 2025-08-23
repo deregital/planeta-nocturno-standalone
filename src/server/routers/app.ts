@@ -1,15 +1,16 @@
-import { user } from '@/drizzle/schema';
-import { publicProcedure, router } from '@/server/trpc';
-import { userSchema } from '../schemas/user';
 import { hash } from 'bcrypt';
-import { eventsRouter } from '@/server/routers/events';
 import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/server';
+
+import { eventsRouter } from '@/server/routers/events';
+import { publicProcedure, router } from '@/server/trpc';
+import { user } from '@/drizzle/schema';
 import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
 import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
 import { mailRouter } from '@/server/routers/mail';
-import { locationRouter } from './location';
 import { eventCategoriesRouter } from '@/server/routers/event-categories';
+import { userSchema } from '@/server/schemas/user';
+import { locationRouter } from '@/server/routers/location';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {

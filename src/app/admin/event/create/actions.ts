@@ -1,5 +1,8 @@
 'use server';
 
+import { differenceInMinutes } from 'date-fns';
+import z from 'zod';
+
 import {
   type CreateEventSchema,
   createEventSchema,
@@ -8,8 +11,6 @@ import {
   type CreateTicketTypeSchema,
   createTicketTypeSchema,
 } from '@/server/schemas/ticket-type';
-import { differenceInMinutes } from 'date-fns';
-import z from 'zod';
 
 const generalEventSchema = createEventSchema.pick({
   name: true,

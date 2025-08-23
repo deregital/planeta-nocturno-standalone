@@ -1,8 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { signIn } from '@/server/auth';
 import { z } from 'zod';
+
+import { signIn } from '@/server/auth';
 
 const loginSchema = z.object({
   name: z.string().min(1),

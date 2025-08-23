@@ -1,4 +1,5 @@
 import { relations } from 'drizzle-orm/relations';
+
 import {
   user,
   session,
@@ -11,7 +12,7 @@ import {
   ticketTypePerGroup,
   authenticator,
   account,
-} from './schema';
+} from '@/drizzle/schema';
 
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {

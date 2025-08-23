@@ -10,6 +10,8 @@ import {
   useReactTable,
   getPaginationRowModel,
 } from '@tanstack/react-table';
+import { useState } from 'react';
+import { Loader } from 'lucide-react';
 
 import {
   Table,
@@ -20,9 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
-import { Pagination } from './Pagination';
-import { Loader } from 'lucide-react';
+import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
   columns: ColumnDef<TData, TValue>[];

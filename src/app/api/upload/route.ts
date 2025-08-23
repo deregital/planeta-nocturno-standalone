@@ -1,11 +1,12 @@
-import { auth } from '@/server/auth';
-import { generateSlug } from '@/server/utils/utils';
 import { S3Client } from '@aws-sdk/client-s3';
 import {
   createUploadRouteHandler,
   route,
   type Router,
 } from 'better-upload/server';
+
+import { auth } from '@/server/auth';
+import { generateSlug } from '@/server/utils/utils';
 
 const s3 = new S3Client({
   credentials: {

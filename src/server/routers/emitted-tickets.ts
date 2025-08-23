@@ -1,21 +1,22 @@
+import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
+import { and, eq } from 'drizzle-orm';
+import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+
+import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
 import {
   emittedTicket,
   ticketGroup,
   ticketType as ticketTypeTable,
 } from '@/drizzle/schema';
-import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { decryptString } from '@/server/utils/utils';
 import {
   createManyTicketSchema,
   createTicketSchema,
-} from '../schemas/emitted-tickets';
-import { z } from 'zod';
-import { decryptString } from '../utils/utils';
-import { TRPCError } from '@trpc/server';
-import { and, eq } from 'drizzle-orm';
-import { format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
-import { generatePdf } from '../utils/ticket-template';
-import { sendMail } from '../services/mail';
+} from '@/server/schemas/emitted-tickets';
+import { generatePdf } from '@/server/utils/ticket-template';
+import { sendMail } from '@/server/services/mail';
 
 export const emittedTicketsRouter = router({
   create: protectedProcedure
