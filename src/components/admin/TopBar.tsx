@@ -30,8 +30,10 @@ export default function TopBar({ userName }: { userName: string }) {
             className='w-full bg-pn-black text-white border-0'
           >
             <div className='flex items-center'>
-              <SheetTitle className='p-4 font-bold text-white'>
-                <InstanceLogo size='sm' />
+              <SheetTitle asChild>
+                <div className='p-4 font-bold text-white'>
+                  <InstanceLogo size='sm' />
+                </div>
               </SheetTitle>
               <p>{userName} (admin)</p>
             </div>
