@@ -3,8 +3,8 @@ import { subMonths } from 'date-fns';
 
 export default async function Dashboard() {
   const statistics = await trpc.statistics.getStatistics({
-    from: new Date(),
-    to: subMonths(new Date(), 1),
+    from: subMonths(new Date(), 1),
+    to: new Date(),
   });
 
   return (
