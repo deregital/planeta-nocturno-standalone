@@ -5,7 +5,7 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
     process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
 
   return (
-    <h1
+    <p
       className={cn(
         'font-bold leading-[80px]',
         size === 'sm'
@@ -15,7 +15,7 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
     >
       <span className='text-pn-accent'>{firstWord}</span>
       <span className='text-pn-secondary'>{rest}</span>
-    </h1>
+    </p>
   );
 }
 
