@@ -1,5 +1,5 @@
 import { emittedTicket } from '@/drizzle/schema';
-import { publicProcedure, router } from '@/server/trpc';
+import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
 import { createManyTicketSchema } from '../schemas/emitted-tickets';
 
 export const emittedTicketsRouter = router({
@@ -15,4 +15,11 @@ export const emittedTicketsRouter = router({
       if (!res) throw 'Error al crear ticket/s';
       return res;
     }),
+  getAllUniqueBuyer: protectedProcedure.query(async ({ ctx }) => {
+    const data = await ctx.db
+      .selectDistinctOn([emittedTicket.dni])
+      .from(emittedTicket);
+
+    return data;
+  }),
 });

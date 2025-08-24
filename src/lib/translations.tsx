@@ -15,3 +15,9 @@ export const ticketTypesTranslation: Record<
   },
   TABLE: { text: 'Mesa', icon: <TableBar /> },
 };
+
+export const genderTranslation: Record<'male' | 'female' | 'other', string> = {
+  female: 'Femenino',
+  male: 'Masculino',
+  other: 'Otro',
+};

@@ -19,6 +19,7 @@ const config: Config = {
         'pn-text-accent': 'var(--pn-text-accent-color)',
         'pn-gray': 'var(--pn-gray)',
         'pn-black': 'var(--pn-black)',
+        'pn-slate': 'var(--pn-slate)',
       },
       text: {
         'pn-primary': 'var(--pn-text-primary-color)',
@@ -47,6 +48,7 @@ const config: Config = {
           // Default NO .env
           '--pn-gray': '#A3A3A3',
           '--pn-black': '#1F1F1F',
+          '--pn-slate': '#94A3B8',
         },
       });
     }),
