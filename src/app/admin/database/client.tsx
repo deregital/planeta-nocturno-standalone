@@ -44,7 +44,7 @@ export default function Client({
   return (
     <div className='flex flex-col gap-4'>
       <h1 className='text-4xl font-bold p-4'>Base de Datos</h1>
-      <div className='overflow-auto max-w-screen'>
+      <div className='overflow-auto max-w-screen md:max-w-[calc(100vw-12rem)]'>
         <Table className='text-xl font-medium'>
           <TableHeader>
             <TableRow className='[&>th]:text-pn-slate [&>th]:font-medium [&>th]:py-4 [&>th]:px-6'>
