@@ -1,7 +1,7 @@
 import { Calendar, Database, Home, MapPin } from 'lucide-react';
 import SideBarTile from './SideBarTile';
 
-const routes = [
+export const navRoutes = [
   {
     href: '/admin',
     icon: <Home />,
@@ -26,9 +26,9 @@ const routes = [
 
 export default function SideBar() {
   return (
-    <aside className='w-48 text-pn-accent flex flex-col p-3 border-r-3 border-pn-gray/40 pt-24'>
+    <aside className='hidden w-48 text-pn-accent md:flex flex-col p-3 border-r-3 border-pn-gray/40 pt-24'>
       <nav className='flex flex-col gap-3'>
-        {routes.map((route, index) => (
+        {navRoutes.map((route, index) => (
           <SideBarTile
             key={index}
             href={route.href}

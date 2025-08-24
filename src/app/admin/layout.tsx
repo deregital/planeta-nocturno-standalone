@@ -17,7 +17,7 @@ export default async function AdminLayout({
       <TopBar userName={session.user.name} />
       <div className='flex'>
         <SideBar />
-        <div className='flex-1'>{children}</div>
+        <main className='flex-1'>{children}</main>
       </div>
     </div>
   );
