@@ -1,15 +1,16 @@
 import { user } from '@/drizzle/schema';
-import { publicProcedure, router } from '@/server/trpc';
-import { userSchema } from '../schemas/user';
-import { hash } from 'bcrypt';
-import { eventsRouter } from '@/server/routers/events';
-import { type inferRouterOutputs } from '@trpc/server';
-import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
-import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
-import { mailRouter } from '@/server/routers/mail';
-import { locationRouter } from './location';
 import { eventCategoriesRouter } from '@/server/routers/event-categories';
+import { eventsRouter } from '@/server/routers/events';
+import { mailRouter } from '@/server/routers/mail';
+import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
+import { ticketGroupRouter } from '@/server/routers/ticket-group';
+import { publicProcedure, router } from '@/server/trpc';
+import { type inferRouterOutputs } from '@trpc/server';
+import { hash } from 'bcrypt';
+import { userSchema } from '../schemas/user';
+import { locationRouter } from './location';
+import { statisticsRouter } from './statistics';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -31,6 +32,7 @@ export const appRouter = router({
   mail: mailRouter,
   location: locationRouter,
   eventCategory: eventCategoriesRouter,
+  statistics: statisticsRouter,
 });
 
 export type AppRouter = typeof appRouter;
