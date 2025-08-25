@@ -1,5 +1,6 @@
 import { emittedTicket } from '@/drizzle/schema';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { differenceInYears } from 'date-fns';
 import { createManyTicketSchema } from '../schemas/emitted-tickets';
 
 export const emittedTicketsRouter = router({
@@ -17,9 +18,22 @@ export const emittedTicketsRouter = router({
     }),
   getAllUniqueBuyer: protectedProcedure.query(async ({ ctx }) => {
     const data = await ctx.db
-      .selectDistinctOn([emittedTicket.dni])
+      .selectDistinctOn([emittedTicket.dni], {
+        dni: emittedTicket.dni,
+        fullName: emittedTicket.fullName,
+        mail: emittedTicket.mail,
+        gender: emittedTicket.gender,
+        instagram: emittedTicket.instagram,
+        birthDate: emittedTicket.birthDate,
+        phoneNumber: emittedTicket.phoneNumber,
+      })
       .from(emittedTicket);
 
-    return data;
+    const dataWithAge = data.map((buyer) => ({
+      ...buyer,
+      age: differenceInYears(new Date(), buyer.birthDate).toString(),
+    }));
+
+    return dataWithAge;
   }),
 });
