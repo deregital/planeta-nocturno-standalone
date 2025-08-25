@@ -80,7 +80,7 @@ export default function Client({
                     'No definido'}
                 </TableCell>
                 <TableCell>{buyer.phoneNumber}</TableCell>
-                <TableCell>{buyer.instagram?.length === 0 && '-'}</TableCell>
+                <TableCell>{buyer.instagram || '-'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
