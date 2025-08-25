@@ -48,7 +48,7 @@ export function TicketTableWithTabs({
         onValueChange={(v) => setTab(v)}
         defaultValue={tab}
       >
-        <TabsList className='flex-1 w-full md:max-w-[98vw] max-w-[95vw] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
+        <TabsList className='flex-1 w-full md:max-w-[98%] max-w-[95%] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
           {Object.keys(ticketsByType).map((type) => (
             <TabsTrigger className='min-w-2xs px-4' key={type} value={type}>
               {type}
