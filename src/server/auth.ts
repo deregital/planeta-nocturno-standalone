@@ -1,10 +1,12 @@
 import NextAuth from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
-import { db } from '@/drizzle';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcrypt';
-import { userSchema } from './schemas/user';
+
+import { db } from '@/drizzle';
+
 import { user as userTable } from '@/drizzle/schema';
+import { userSchema } from '@/server/schemas/user';
 
 const credentialsSchema = userSchema.pick({
   name: true,

@@ -1,7 +1,8 @@
 import { MapPin } from 'lucide-react';
-import { type RouterOutputs } from '@/server/routers/app';
 import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
+
+import { type RouterOutputs } from '@/server/routers/app';
 
 function HeaderTickets({
   event,

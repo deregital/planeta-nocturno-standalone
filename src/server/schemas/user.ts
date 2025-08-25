@@ -1,5 +1,6 @@
-import { role } from '@/drizzle/schema';
 import { z } from 'zod';
+
+import { role } from '@/drizzle/schema';
 
 export const userSchema = z.object({
   name: z.string().min(1),

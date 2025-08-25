@@ -1,10 +1,11 @@
 'use server';
 
-import { trpc } from '@/server/trpc/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import CheckoutClient from './client';
+import { trpc } from '@/server/trpc/server';
+
+import CheckoutClient from '@/app/checkout/client';
 
 export default async function CheckoutPage() {
   const ticketGroupId = (await cookies()).get('carrito');

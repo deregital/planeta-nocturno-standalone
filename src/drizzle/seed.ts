@@ -1,11 +1,18 @@
-import { user, location, eventCategory, event, ticketType } from './schema';
 import { hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import * as relations from './relations';
-import * as models from './schema';
-import 'dotenv/config';
+
 import { type InsertTicketType } from '@/server/types';
+import * as relations from '@/drizzle/relations';
+import * as models from '@/drizzle/schema';
+import {
+  event,
+  eventCategory,
+  location,
+  ticketType,
+  user,
+} from '@/drizzle/schema';
+import 'dotenv/config';
 
 export const db = drizzle(process.env.DATABASE_URL!, {
   schema: {

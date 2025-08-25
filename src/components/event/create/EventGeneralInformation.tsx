@@ -1,5 +1,10 @@
 'use client';
 
+import { addDays, format } from 'date-fns';
+import { toDate } from 'date-fns-tz';
+import Image from 'next/image';
+import { useState } from 'react';
+
 import { validateGeneralInformation } from '@/app/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
@@ -7,13 +12,9 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { Button } from '@/components/ui/button';
+import { generateS3Url } from '@/lib/client-utils';
 import { cn } from '@/lib/utils';
-import { generateS3Url } from '@/lib/utils-client';
 import { trpc } from '@/server/trpc/client';
-import { addDays, format } from 'date-fns';
-import { toDate } from 'date-fns-tz';
-import Image from 'next/image';
-import { useState } from 'react';
 
 function isBeforeHoursAndMinutes(date1: Date, date2: Date) {
   return (

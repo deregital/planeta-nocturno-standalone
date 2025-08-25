@@ -1,12 +1,13 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+import z from 'zod';
+
 import {
   createLocationSchema,
   updateLocationSchema,
 } from '@/server/schemas/location';
 import { trpc } from '@/server/trpc/server';
-import { revalidatePath } from 'next/cache';
-import z from 'zod';
 
 export async function revalidateLocations() {
   revalidatePath('/admin/locations');

@@ -1,16 +1,17 @@
 'use client';
+import { LogOut } from 'lucide-react';
+import { signOut } from 'next-auth/react';
+
 import {
   Sheet,
   SheetContent,
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { LogOut } from 'lucide-react';
-import { signOut } from 'next-auth/react';
-import InstanceLogo from '../header/InstanceLogo';
-import { Button } from '../ui/button';
-import { navRoutes } from './SideBar';
-import SideBarTile from './SideBarTile';
+import { Button } from '@/components/ui/button';
+import InstanceLogo from '@/components/header/InstanceLogo';
+import { navRoutes } from '@/components/admin/SideBar';
+import SideBarTile from '@/components/admin/SideBarTile';
 
 export default function TopBar({ userName }: { userName: string }) {
   return (

@@ -1,5 +1,5 @@
-import InstanceLogo from './InstanceLogo';
-import Navbar from './Navbar';
+import InstanceLogo from '@/components/header/InstanceLogo';
+import Navbar from '@/components/header/Navbar';
 
 function TopBar() {
   return (

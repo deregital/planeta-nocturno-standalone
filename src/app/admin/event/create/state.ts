@@ -1,9 +1,10 @@
+import { createStore } from 'zustand/vanilla';
+
 import { type CreateEventSchema } from '@/server/schemas/event';
 import {
   type CreateTicketTypeSchema,
   type TicketTypeSchema,
 } from '@/server/schemas/ticket-type';
-import { createStore } from 'zustand/vanilla';
 
 export type EventState = {
   event: CreateEventSchema;

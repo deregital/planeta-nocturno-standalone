@@ -1,5 +1,6 @@
-import { trpc } from '@/server/trpc/server';
 import { subMonths } from 'date-fns';
+
+import { trpc } from '@/server/trpc/server';
 
 export default async function Dashboard() {
   const statistics = await trpc.statistics.getStatistics({

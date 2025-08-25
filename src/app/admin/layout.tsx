@@ -1,7 +1,8 @@
+import { redirect } from 'next/navigation';
+
 import SideBar from '@/components/admin/SideBar';
 import TopBar from '@/components/admin/TopBar';
 import { auth } from '@/server/auth';
-import { redirect } from 'next/navigation';
 
 export default async function AdminLayout({
   children,

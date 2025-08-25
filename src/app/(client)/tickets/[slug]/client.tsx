@@ -1,5 +1,7 @@
 'use client';
 
+import { Download } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -9,7 +11,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { type RouterOutputs } from '@/server/routers/app';
-import { Download } from 'lucide-react';
 
 export default function TicketsClient({
   pdfs,

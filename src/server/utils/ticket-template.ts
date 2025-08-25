@@ -1,9 +1,10 @@
-import { getDMSansFonts, encryptString } from '@/server/utils/utils';
 import { type Font, type Template } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, image, line, rectangle, text } from '@pdfme/schemas';
 import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
+
+import { getDMSansFonts, encryptString } from '@/server/utils/utils';
 
 export function generateTicketTemplate(first_word: string): Template {
   const accentColor = process.env.NEXT_PUBLIC_ACCENT_COLOR;

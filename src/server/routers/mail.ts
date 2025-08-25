@@ -1,9 +1,8 @@
-import { publicProcedure, router } from '@/server/trpc';
 import z from 'zod';
-import { Resend } from 'resend';
 import { TRPCError } from '@trpc/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { publicProcedure, router } from '@/server/trpc';
+import { sendMail } from '@/server/services/mail';
 
 export const mailRouter = router({
   send: publicProcedure
@@ -17,18 +16,16 @@ export const mailRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const { data, error } = await resend.emails.send({
-        from: `${process.env.NEXT_PUBLIC_INSTANCE_NAME} <ticket@${process.env.RESEND_DOMAIN}>`,
+      const { data, error } = await sendMail({
         to: input.receiver,
         subject: input.subject,
-        text: input.body,
+        body: input.body,
         attachments: await Promise.all(
-          input.attatchments.map(async (pdf) => ({
-            content: Buffer.from(await pdf.arrayBuffer()),
-            filename: `${process.env.NEXT_PUBLIC_INSTANCE_NAME}-${input.eventName}.pdf`,
-            contentType: 'application/pdf',
-          })),
+          input.attatchments.map(async (pdf) =>
+            Buffer.from(await pdf.arrayBuffer()),
+          ),
         ),
+        eventName: input.eventName,
       });
 
       if (error) {

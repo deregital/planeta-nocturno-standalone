@@ -11,6 +11,14 @@ import {
   type Row,
 } from '@tanstack/react-table';
 import { useState } from 'react';
+import {
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,14 +38,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
-import {
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { genderTranslation } from '@/lib/translations';
 
 export const emittedBuyerColumns: ColumnDef<EmittedBuyerTable>[] = [

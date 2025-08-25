@@ -1,5 +1,6 @@
-import { type RouterOutputs } from '@/server/routers/app';
 import React from 'react';
+
+import { type RouterOutputs } from '@/server/routers/app';
 
 export function TicketGroupTable({
   ticketGroup,

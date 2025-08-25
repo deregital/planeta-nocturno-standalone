@@ -1,15 +1,15 @@
 'use client';
-import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
-import { Button } from '@/components/ui/button';
-import { trpc } from '@/server/trpc/client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { validateGeneralInformation } from '../../create/actions';
-import { useCreateEventStore } from '../../create/provider';
+import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
+import { Button } from '@/components/ui/button';
+import { trpc } from '@/server/trpc/client';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import { type RouterOutputs } from '@/server/routers/app';
+import { validateGeneralInformation } from '@/app/admin/event/create/actions';
+import { useCreateEventStore } from '@/app/admin/event/create/provider';
 
 export default function Client({
   event,

@@ -1,5 +1,6 @@
 import { Calendar, Database, Home, MapPin } from 'lucide-react';
-import SideBarTile from './SideBarTile';
+
+import SideBarTile from '@/components/admin/SideBarTile';
 
 export const navRoutes = [
   {

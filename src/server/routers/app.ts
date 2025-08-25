@@ -1,16 +1,17 @@
-import { user } from '@/drizzle/schema';
-import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
-import { eventCategoriesRouter } from '@/server/routers/event-categories';
-import { eventsRouter } from '@/server/routers/events';
-import { mailRouter } from '@/server/routers/mail';
-import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
-import { ticketGroupRouter } from '@/server/routers/ticket-group';
-import { publicProcedure, router } from '@/server/trpc';
-import { type inferRouterOutputs } from '@trpc/server';
 import { hash } from 'bcrypt';
-import { userSchema } from '../schemas/user';
-import { locationRouter } from './location';
-import { statisticsRouter } from './statistics';
+import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/server';
+
+import { eventsRouter } from '@/server/routers/events';
+import { publicProcedure, router } from '@/server/trpc';
+import { user } from '@/drizzle/schema';
+import { ticketGroupRouter } from '@/server/routers/ticket-group';
+import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
+import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
+import { mailRouter } from '@/server/routers/mail';
+import { eventCategoriesRouter } from '@/server/routers/event-categories';
+import { userSchema } from '@/server/schemas/user';
+import { locationRouter } from '@/server/routers/location';
+import { statisticsRouter } from '@/server/routers/statistics';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -37,3 +38,4 @@ export const appRouter = router({
 
 export type AppRouter = typeof appRouter;
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
+export type RouterInputs = inferRouterInputs<AppRouter>;

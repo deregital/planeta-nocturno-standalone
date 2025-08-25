@@ -1,12 +1,12 @@
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-
-import TicketTypeList from './ticketType/TicketTypeList';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
+import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
 
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);

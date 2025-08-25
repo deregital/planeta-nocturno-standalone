@@ -1,6 +1,9 @@
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import z from 'zod';
 
+import { eventSchema } from '@/server/schemas/event';
+import { ticketTypeSchema } from '@/server/schemas/ticket-type';
+
 export const emittedTicketSchema = z.object({
   id: z.string(),
   fullName: z.string().min(2, {
@@ -53,3 +56,9 @@ export const emittedBuyerTableSchema = emittedTicketSchema
   });
 
 export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;
+export const createTicketSchema = emittedTicketSchema
+  .omit({ id: true })
+  .extend({
+    eventId: eventSchema.shape.id,
+    ticketTypeId: ticketTypeSchema.shape.id,
+  });

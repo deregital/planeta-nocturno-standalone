@@ -1,8 +1,9 @@
+import { CircleDollarSign } from 'lucide-react';
+import { type ReactNode } from 'react';
+
 import FreeIcon from '@/components/icons/FreeIcon';
 import TableBar from '@/components/icons/TableBar';
 import { type TicketTypeCategory } from '@/server/types';
-import { CircleDollarSign } from 'lucide-react';
-import { type ReactNode } from 'react';
 
 export const ticketTypesTranslation: Record<
   TicketTypeCategory,

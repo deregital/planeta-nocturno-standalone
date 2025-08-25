@@ -1,6 +1,7 @@
+import { useUploadFiles } from 'better-upload/client';
+
 import { UploadDropzone } from '@/components/ui/upload-dropzone';
 import { cn } from '@/lib/utils';
-import { useUploadFiles } from 'better-upload/client';
 
 export function ImageUploader({
   onUploadComplete,

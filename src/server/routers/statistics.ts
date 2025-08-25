@@ -1,7 +1,8 @@
-import { ticketGroup } from '@/drizzle/schema';
 import { and, between, ne } from 'drizzle-orm';
 import z from 'zod';
-import { protectedProcedure, router } from '../trpc';
+
+import { ticketGroup } from '@/drizzle/schema';
+import { protectedProcedure, router } from '@/server/trpc';
 
 export const statisticsRouter = router({
   getStatistics: protectedProcedure

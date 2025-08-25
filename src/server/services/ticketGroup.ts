@@ -1,8 +1,10 @@
 // src/server/services/ticketGroup.ts
 
-import { db } from '@/drizzle';
-import { ticketGroup } from '@/drizzle/schema';
 import { eq } from 'drizzle-orm';
+
+import { db } from '@/drizzle';
+
+import { ticketGroup } from '@/drizzle/schema';
 
 export async function calculateTotalPrice({
   ticketGroupId,

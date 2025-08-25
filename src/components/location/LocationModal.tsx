@@ -1,5 +1,9 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
+import { useActionState, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
 import {
   type CreateLocationActionState,
   handleCreate,
@@ -17,10 +21,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { type Location } from '@/server/schemas/location';
-import { Pencil } from 'lucide-react';
-import { useActionState, useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import InputWithLabel from '../common/InputWithLabel';
+import InputWithLabel from '@/components/common/InputWithLabel';
 
 type LocationModalProps = {
   action: 'CREATE' | 'EDIT';

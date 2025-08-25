@@ -1,7 +1,7 @@
 import { ticketTypesTranslation } from '@/lib/translations';
-import DeleteTicketTypeModal from './DeleteTicketTypeModal';
-import TicketTypeModal from './TicketTypeModal';
 import { type EventState } from '@/app/admin/event/create/state';
+import DeleteTicketTypeModal from '@/components/event/create/ticketType/DeleteTicketTypeModal';
+import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
 
 export default function TicketTypeList({
   ticketTypes,

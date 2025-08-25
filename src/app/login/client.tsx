@@ -1,7 +1,8 @@
 'use client';
 
 import { useActionState } from 'react';
-import { authenticate } from './action';
+
+import { authenticate } from '@/app/login/action';
 
 export default function LoginClient() {
   const [state, action, isPending] = useActionState(authenticate, {});

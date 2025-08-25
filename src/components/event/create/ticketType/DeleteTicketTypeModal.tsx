@@ -1,4 +1,7 @@
 'use client';
+import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
+
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,8 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Trash2 } from 'lucide-react';
-import { useState } from 'react';
 
 export default function DeleteTicketTypeModal({ id }: { id: string }) {
   const deleteTicketType = useCreateEventStore(

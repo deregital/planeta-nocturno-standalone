@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import {
   Stepper,
@@ -13,9 +15,8 @@ import {
   StepperTrigger,
 } from '@/components/ui/stepper';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
-import PreviewEvent from './PreviewEvent';
-import TicketTypeAction from './ticketType/TicketTypeAction';
+import PreviewEvent from '@/components/event/create/PreviewEvent';
+import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
 
 export function Steps() {
   const [currentStep, setCurrentStep] = useState(1);

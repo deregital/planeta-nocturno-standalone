@@ -1,6 +1,7 @@
-import { auth } from '@/server/auth';
 import { redirect } from 'next/navigation';
-import LoginClient from './client';
+
+import { auth } from '@/server/auth';
+import LoginClient from '@/app/login/client';
 
 export default async function Login() {
   const session = await auth();

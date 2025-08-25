@@ -1,8 +1,9 @@
 'use client';
+import { useState, useEffect } from 'react';
+
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 import { type TicketType } from '@/server/types';
-import { useState, useEffect } from 'react';
 
 export function useEventTickets(
   eventId: string,
