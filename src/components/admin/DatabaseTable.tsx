@@ -5,6 +5,7 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   useReactTable,
   type ColumnDef,
   type Row,
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/table';
 import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
 import {
+  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -48,7 +50,16 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTable>[] = [
   },
   {
     accessorKey: 'mail',
-    header: 'Email',
+    header: ({ column }) => (
+      <Button
+        variant={'ghost'}
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        className='text-md sm:text-lg md:text-xl font-medium'
+      >
+        Mail
+        <ArrowUpDown />
+      </Button>
+    ),
   },
   {
     accessorKey: 'age',
@@ -115,6 +126,7 @@ export function DatabaseTable<EmittedBuyerTable, TValue>({
       globalFilter,
     },
     onGlobalFilterChange: setGlobalFilter,
+    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
@@ -134,12 +146,13 @@ export function DatabaseTable<EmittedBuyerTable, TValue>({
             resultados
           </p>
           {globalFilter && (
-            <button
+            <Button
+              variant={'ghost'}
               onClick={() => setGlobalFilter('')}
               className='px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors'
             >
               Limpiar
-            </button>
+            </Button>
           )}
         </div>
       </div>
