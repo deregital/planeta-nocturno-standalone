@@ -45,7 +45,7 @@ export default function Client({
     <div className='flex flex-col gap-4'>
       <h1 className='text-4xl font-bold p-4'>Base de Datos</h1>
       <div className='overflow-auto max-w-screen md:max-w-[calc(100vw-12rem)]'>
-        <Table className='text-xl font-medium'>
+        <Table className='text-md sm:text-lg md:text-xl font-medium '>
           <TableHeader>
             <TableRow className='[&>th]:text-pn-slate [&>th]:font-medium [&>th]:py-4 [&>th]:px-6'>
               <TableHead>DNI</TableHead>
@@ -62,9 +62,11 @@ export default function Client({
               <TableRow
                 onClick={() => router.push(`/admin/database/${buyer.dni}`)}
                 key={index}
-                className='[&>td]:py-6 [&>td]:px-6 hover:cursor-pointer hover:bg-pn-slate/20'
+                className='[&>td]:py-6 [&>td]:px-6 hover:cursor-pointer hover:bg-pn-slate/20 [&>td]:truncate [&>td]:max-w-48'
               >
-                <TableCell>{buyer.dni}</TableCell>
+                <TableCell className='text-ellipsis overflow-visible whitespace-normal max-w-full'>
+                  {buyer.dni}
+                </TableCell>
                 <TableCell>{buyer.fullName}</TableCell>
                 <TableCell>{buyer.mail}</TableCell>
                 <TableCell>
