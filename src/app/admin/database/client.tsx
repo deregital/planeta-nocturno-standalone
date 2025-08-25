@@ -47,7 +47,7 @@ export default function Client({
       <div className='overflow-auto max-w-screen md:max-w-[calc(100vw-12rem)]'>
         <Table className='text-md sm:text-lg md:text-xl font-medium '>
           <TableHeader>
-            <TableRow className='[&>th]:text-pn-slate [&>th]:font-medium [&>th]:py-4 [&>th]:px-6'>
+            <TableRow className='hover:bg-transparent [&>th]:text-pn-slate [&>th]:font-medium [&>th]:py-4 [&>th]:px-6'>
               <TableHead>DNI</TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Email</TableHead>
