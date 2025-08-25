@@ -2,9 +2,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { TRPCError } from '@trpc/server';
 
+import TicketsClient from '@/app/(client)/tickets/[slug]/client';
 import { trpc } from '@/server/trpc/server';
-
-import TicketsClient from '@/app/tickets/[slug]/client';
 
 interface PaymentPageProps {
   params: Promise<{

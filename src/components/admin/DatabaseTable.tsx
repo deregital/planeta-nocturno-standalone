@@ -201,9 +201,9 @@ export function DatabaseTable<EmittedBuyerTable, TValue>({
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
-                  onClick={() =>
-                    router.push(`/admin/database/${row.getValue('dni')}`)
-                  }
+                  onClick={() => {
+                    router.push(`/admin/database/${row.getValue('dni')}`);
+                  }}
                   className='[&>td]:py-6 [&>td]:px-6 hover:cursor-pointer hover:bg-pn-slate/15 [&>td]:truncate [&>td]:max-w-48'
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}

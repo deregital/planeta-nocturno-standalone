@@ -1,8 +1,13 @@
 import { Calendar, Database, Home, MapPin } from 'lucide-react';
+import { type Route } from 'next';
 
 import SideBarTile from '@/components/admin/SideBarTile';
 
-export const navRoutes = [
+export const navRoutes: {
+  href: Route<string>;
+  icon: React.ReactNode;
+  title: string;
+}[] = [
   {
     href: '/admin',
     icon: <Home />,
