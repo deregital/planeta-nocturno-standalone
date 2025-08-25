@@ -38,6 +38,7 @@ import {
   ChevronsRight,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { genderTranslation } from '@/lib/translations';
 
 export const emittedBuyerColumns: ColumnDef<EmittedBuyerTable>[] = [
   {
@@ -68,6 +69,11 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTable>[] = [
   {
     accessorKey: 'gender',
     header: 'Genero',
+    cell: ({ row }) => {
+      const gender = row.original.gender;
+      if (!gender) return '-';
+      return genderTranslation[gender as keyof typeof genderTranslation];
+    },
   },
   {
     accessorKey: 'phoneNumber',
@@ -76,6 +82,19 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTable>[] = [
   {
     accessorKey: 'instagram',
     header: 'Instagram',
+    cell: ({ row }) => {
+      const instagram = row.original.instagram;
+      if (!instagram) return '-';
+      return (
+        <a
+          href={`https://www.instagram.com/${instagram}`}
+          target='_blank'
+          rel='noopener noreferrer'
+        >
+          {instagram}
+        </a>
+      );
+    },
   },
 ];
 
@@ -93,11 +112,11 @@ export function DatabaseTable<EmittedBuyerTable, TValue>({
   const [globalFilter, setGlobalFilter] = useState('');
 
   // Custom filter function that normalizes text
-  const customFilterFn = (
+  function customFilterFn(
     row: Row<EmittedBuyerTable>,
     columnId: string,
     filterValue: string,
-  ) => {
+  ) {
     const searchValue = filterValue
       .toLowerCase()
       .normalize('NFD')
@@ -113,7 +132,7 @@ export function DatabaseTable<EmittedBuyerTable, TValue>({
       .replace(/[\u0300-\u036f]/g, '');
 
     return normalizedCellValue.includes(searchValue);
-  };
+  }
 
   const table = useReactTable({
     data,
@@ -133,7 +152,7 @@ export function DatabaseTable<EmittedBuyerTable, TValue>({
     <div className='space-y-4'>
       {/* Filter and Actions */}
       <div className='flex items-center justify-between px-4'>
-        <div className='flex items-center space-x-2'>
+        <div className='flex sm:items-center justify-start gap-2 flex-col sm:flex-row'>
           <Input
             placeholder='Filtrar por nombre, DNI o teléfono...'
             value={globalFilter}
