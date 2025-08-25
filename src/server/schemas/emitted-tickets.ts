@@ -41,6 +41,21 @@ export const createManyTicketSchema = emittedTicketSchema
   })
   .array();
 
+export const emittedBuyerTableSchema = emittedTicketSchema
+  .omit({
+    id: true,
+    paidOnLocation: true,
+    birthDate: true,
+    gender: true,
+    instagram: true,
+  })
+  .extend({
+    gender: z.string(),
+    age: z.string(),
+    instagram: z.string().optional().nullish(),
+  });
+
+export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;
 export const createTicketSchema = emittedTicketSchema
   .omit({ id: true })
   .extend({

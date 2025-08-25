@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { and, eq } from 'drizzle-orm';
-import { format } from 'date-fns';
+import { format, differenceInYears } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
@@ -72,6 +72,26 @@ export const emittedTicketsRouter = router({
       if (!res) throw 'Error al crear ticket/s';
       return res;
     }),
+  getAllUniqueBuyer: protectedProcedure.query(async ({ ctx }) => {
+    const data = await ctx.db
+      .selectDistinctOn([emittedTicket.dni], {
+        dni: emittedTicket.dni,
+        fullName: emittedTicket.fullName,
+        mail: emittedTicket.mail,
+        gender: emittedTicket.gender,
+        instagram: emittedTicket.instagram,
+        birthDate: emittedTicket.birthDate,
+        phoneNumber: emittedTicket.phoneNumber,
+      })
+      .from(emittedTicket);
+
+    const dataWithAge = data.map((buyer) => ({
+      ...buyer,
+      age: differenceInYears(new Date(), buyer.birthDate).toString(),
+    }));
+
+    return dataWithAge;
+  }),
 
   getPdf: protectedProcedure
     .input(z.object({ ticketId: z.string() }))

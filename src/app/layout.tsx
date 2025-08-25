@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 
 import { DM_Sans } from 'next/font/google';
 
-import TopBar from '@/components/header/TopBar';
 import { Toaster } from '@/components/ui/sonner';
 import { TRPCReactProvider } from '@/server/trpc/client';
 import '@/app/globals.css';
@@ -25,10 +24,7 @@ export default function RootLayout({
   return (
     <TRPCReactProvider>
       <html lang='en'>
-        <body
-          className={`${dmSans.className} antialiased grid grid-rows-[auto_1fr] h-screen`}
-        >
-          <TopBar />
+        <body className={`${dmSans.className} antialiased`}>
           {children}
           <Toaster />
         </body>

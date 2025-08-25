@@ -1,20 +1,22 @@
-import { signOut } from '@/server/auth';
+import { subMonths } from 'date-fns';
 
-export default function Admin() {
+import { trpc } from '@/server/trpc/server';
+
+export default async function Dashboard() {
+  const statistics = await trpc.statistics.getStatistics({
+    from: subMonths(new Date(), 1),
+    to: new Date(),
+  });
+
   return (
-    <form
-      className='flex justify-center items-center h-screen'
-      action={async () => {
-        'use server';
-        await signOut();
-      }}
-    >
-      <button
-        className='bg-red-500 text-white p-2 rounded-md cursor-pointer'
-        type='submit'
-      >
-        Logout
-      </button>
-    </form>
+    <div>
+      <p>Dinero Recaudado: ${statistics.totalRaised}</p>
+      <p>Entradas vendidas: {statistics.totalSold}</p>
+      <p>
+        Tasa de asistencia: %{statistics.scannedPercentage} (
+        {statistics.totalScanned} / {statistics.totalTickets})
+      </p>
+      <pre>{JSON.stringify(statistics ?? 'No hay estadisticas', null, 2)}</pre>
+    </div>
   );
 }

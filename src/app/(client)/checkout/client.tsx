@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { type RouterOutputs } from '@/server/routers/app';
-import { handlePurchase } from '@/app/checkout/action';
+import { handlePurchase } from '@/app/(client)/checkout/action';
 import 'react-phone-number-input/style.css';
 
 export default function CheckoutClient({

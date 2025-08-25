@@ -11,6 +11,7 @@ import { mailRouter } from '@/server/routers/mail';
 import { eventCategoriesRouter } from '@/server/routers/event-categories';
 import { userSchema } from '@/server/schemas/user';
 import { locationRouter } from '@/server/routers/location';
+import { statisticsRouter } from '@/server/routers/statistics';
 
 export const appRouter = router({
   getUsers: publicProcedure.query(async ({ ctx }) => {
@@ -32,6 +33,7 @@ export const appRouter = router({
   mail: mailRouter,
   location: locationRouter,
   eventCategory: eventCategoriesRouter,
+  statistics: statisticsRouter,
 });
 
 export type AppRouter = typeof appRouter;
