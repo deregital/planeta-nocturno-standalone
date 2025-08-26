@@ -55,7 +55,7 @@ export function Steps() {
               asChild
               className='flex flex-col gap-2.5 items-center'
             >
-              <StepperIndicator className='font-bold data-[state=completed]:bg-pn-accent data-[state=active]:bg-pn-accent/80 data-[state=inactive]:bg-pn-gray/75'>
+              <StepperIndicator className='font-bold'>
                 {index + 1}
               </StepperIndicator>
               <StepperTitle>{step.title}</StepperTitle>

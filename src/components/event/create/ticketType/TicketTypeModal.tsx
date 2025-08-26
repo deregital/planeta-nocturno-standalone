@@ -173,7 +173,7 @@ export default function TicketTypeModal({
           <div>
             <Button
               variant='ghost'
-              className='flex flex-col justify-center items-center border-2 rounded-2xl border-pn-accent p-16 bg-gray-100 hover:bg-pn-accent/20'
+              className='flex flex-col justify-center items-center border-2 rounded-2xl border-stroke p-16 bg-white hover:bg-accent-light/10'
             >
               <span className='text-3xl font-semibold'>{text}</span>
               <div>{icon}</div>

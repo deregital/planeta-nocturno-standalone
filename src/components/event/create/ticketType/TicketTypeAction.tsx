@@ -31,7 +31,7 @@ export default function TicketTypeAction({
   }, [location, ticketTypes]);
 
   return (
-    <div className='w-full'>
+    <div className='w-full text-accent'>
       {back && (
         <Button className='self-baseline' onClick={back} variant={'outline'}>
           Volver
@@ -48,7 +48,7 @@ export default function TicketTypeAction({
           />
         ))}
       </div>
-      <Separator className='my-6 bg-pn-gray' />
+      <Separator className='my-6 bg-stroke' />
       <TicketTypeList
         action='EDIT'
         ticketTypes={ticketTypes}

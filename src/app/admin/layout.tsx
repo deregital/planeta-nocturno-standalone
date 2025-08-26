@@ -14,11 +14,11 @@ export default async function AdminLayout({
   if (!session) redirect('/login');
 
   return (
-    <div className='grid grid-rows-[auto_1fr] h-screen'>
+    <div className='grid grid-rows-[auto_1fr] min-h-screen h-full'>
       <TopBar auth={session} />
       <div className='flex'>
         <SideBar />
-        <main className='flex-1'>{children}</main>
+        <main className='flex-1 border-l-3 border-stroke/40 '>{children}</main>
       </div>
     </div>
   );

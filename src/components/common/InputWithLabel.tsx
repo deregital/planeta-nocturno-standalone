@@ -23,7 +23,7 @@ export default function InputWithLabel({
       required={inputProps.required}
       error={error}
     >
-      <Input id={id} {...inputProps} className='border-pn-gray py-2' />
+      <Input id={id} {...inputProps} className='border-stroke py-2' />
     </GenericInputWithLabel>
   );
 }

@@ -33,9 +33,9 @@ function TicketPurchase({
   } = useEventTickets(eventId, ticketTypes);
 
   return (
-    <div className='rounded-[20px] border border-pn-gray p-6 bg-white h-full flex flex-col font-sans'>
+    <div className='rounded-[20px] border border-stroke p-6 bg-white h-full flex flex-col font-sans'>
       {/* Encabezado de la tabla */}
-      <div className='grid grid-cols-3 pb-2 border-b border-pn-gray'>
+      <div className='grid grid-cols-3 pb-2 border-b border-stroke'>
         <div className='text-black text-[12px] sm:text-[16px] font-normal leading-[100%]'>
           Tipo de Ticket
         </div>
@@ -75,7 +75,7 @@ function TicketPurchase({
                       ])
                     }
                   >
-                    <SelectTrigger className='w-24 bg-white text-black border border-pn-gray'>
+                    <SelectTrigger className='w-24 bg-white text-black border border-stroke'>
                       <SelectValue placeholder='0' />
                     </SelectTrigger>
                     <SelectContent align='end'>

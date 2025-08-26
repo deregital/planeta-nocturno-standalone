@@ -133,7 +133,7 @@ export default function CheckoutClient({
                 <PhoneInput
                   labels={esPhoneLocale}
                   defaultCountry='AR'
-                  className='[&_[data-slot="input"]]:border-pn-gray'
+                  className='[&_[data-slot="input"]]:border-stroke'
                   inputComponent={Input}
                   value={
                     phoneNumbers[
@@ -189,7 +189,7 @@ export default function CheckoutClient({
                     ]
                   }
                 >
-                  <SelectTrigger className='w-full py-2 border-pn-gray'>
+                  <SelectTrigger className='w-full py-2 border-stroke'>
                     <SelectValue placeholder='Selecciona tu género' />
                   </SelectTrigger>
                   <SelectContent>

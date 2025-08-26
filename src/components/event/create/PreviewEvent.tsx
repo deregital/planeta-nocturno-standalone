@@ -2,7 +2,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
-import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
@@ -11,15 +10,17 @@ import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList'
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
   const event = useCreateEventStore((state) => state.event);
-  const setEvent = useCreateEventStore((state) => state.setEvent);
 
   const createEvent = trpc.events.create.useMutation();
 
   const router = useRouter();
 
-  const handleSubmit = async () => {
+  const handleSubmit = async ({ isActive }: { isActive: boolean }) => {
     try {
-      await createEvent.mutateAsync({ event, ticketTypes });
+      await createEvent.mutateAsync({
+        event: { ...event, isActive },
+        ticketTypes,
+      });
       toast('¡Evento creado con éxito!');
       router.push('/admin/event');
     } catch (e) {
@@ -32,7 +33,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
   };
 
   return (
-    <div className='w-full  [&>section]:flex [&>section]:flex-col [&>section]:gap-4 [&>section]:my-6 [&>section]:p-4 [&>section]:border-2 [&>section]:border-pn-gray [&>section]:rounded-md [&>section]:w-full'>
+    <div className='w-full  [&>section]:flex [&>section]:flex-col [&>section]:gap-4 [&>section]:my-6 [&>section]:p-4 [&>section]:border-2 [&_section]:border-stroke [&_section]:bg-accent-ultra-light [&>section]:rounded-md [&>section]:w-full'>
       <Button className='self-baseline' onClick={back} variant={'outline'}>
         Volver
       </Button>
@@ -46,27 +47,29 @@ export default function PreviewEvent({ back }: { back: () => void }) {
           maxAvailableLeft={0}
         />
       </section>
-      <section>
-        <h3 className='text-2xl'>Activar la venta de entradas</h3>
-        <InputWithLabel
-          label='Activo'
-          id='isActive'
-          type='checkbox'
-          placeholder='Activo'
-          name='isActive'
-          onChange={(e) => {
-            setEvent({ isActive: e.target.checked });
-          }}
-          defaultValue={event.isActive.toString() ?? 'false'}
-        />
-      </section>
-      <Button
-        variant={'accent'}
-        className='w-full justify-self-end'
-        onClick={() => handleSubmit()}
-      >
-        Crear evento
-      </Button>
+      <div className='flex gap-4 [&_button]:flex-1'>
+        <Button
+          onClick={() =>
+            handleSubmit({
+              isActive: false,
+            })
+          }
+          variant={'outline'}
+        >
+          Crear sin publicar
+        </Button>
+        <Button
+          variant={'accent'}
+          className=''
+          onClick={() =>
+            handleSubmit({
+              isActive: true,
+            })
+          }
+        >
+          Crear y publicar
+        </Button>
+      </div>
     </div>
   );
 }

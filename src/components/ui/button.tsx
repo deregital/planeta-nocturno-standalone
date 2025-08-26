@@ -10,12 +10,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-button text-secondary font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-pn-accent/90',
+          'bg-button text-secondary font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent/90',
         accent:
-          'bg-accent text-on-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-pn-accent/90',
+          'bg-accent text-on-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent/90',
         outline:
-          'bg-transparent border-2 border-button text-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent/10',
-        ghost: 'hover:bg-pn-gray/10 text-accent',
+          'bg-transparent border-2 border-button text-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent-ultra-light',
+        ghost: 'hover:bg-accent/10 text-accent',
         destructive: 'bg-red-500',
       },
 

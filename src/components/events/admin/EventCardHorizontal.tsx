@@ -25,7 +25,7 @@ export default function EventCardHorizontal({
 
   return (
     <Card variant={'accent'} className='flex flex-row py-2 rounded-lg'>
-      <CardContent className='flex w-full justify-between px-4 text-pn-text-accent'>
+      <CardContent className='flex w-full justify-between px-4 text-on-accent'>
         <div className='flex flex-row gap-4 items-center'>
           <CardTitle>{event.name}</CardTitle>
           <p className='text-sm'>

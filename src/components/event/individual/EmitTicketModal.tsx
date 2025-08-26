@@ -169,7 +169,7 @@ export function EmitTicketModal({
             <FormRow>
               <div className='flex flex-col gap-1'>
                 <Label
-                  className='pl-1 text-pn-accent gap-0.5'
+                  className='pl-1 text-accent gap-0.5'
                   htmlFor={`phoneNumber`}
                 >
                   Número de teléfono<span className='text-red-500'>*</span>
@@ -182,7 +182,7 @@ export function EmitTicketModal({
                   labels={esPhoneLocale}
                   defaultCountry='AR'
                   className={cn(
-                    '[&_[data-slot="input"]]:border-pn-gray',
+                    '[&_[data-slot="input"]]:border-stroke',
                     error.phoneNumber &&
                       '[&_[data-slot="input"]]:border-red-500 [&_[data-slot="input"]]:border-2',
                   )}

@@ -72,7 +72,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
 
   return (
     <>
-      <div className='border-t border-black/10 bg-transparent px-3 py-3 text-black sm:px-6'>
+      <div className='border-t border-accent-dark/10 bg-transparent px-3 py-3 text-black sm:px-6'>
         <div className='flex items-center justify-between'>
           <div
             id='buttons-pagination'

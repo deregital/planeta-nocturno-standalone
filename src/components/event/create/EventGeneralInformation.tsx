@@ -81,7 +81,7 @@ export function EventGeneralInformation({
 
   return (
     <form
-      className='flex flex-col gap-4 justify-center [&>section]:flex [&>section]:flex-col [&>section]:gap-2 [&>section]:p-2 [&>section]:border-2 [&>section]:border-pn-gray [&>section]:rounded-md [&>section]:w-full w-full'
+      className='flex flex-col gap-4 justify-center [&>section]:flex [&>section]:flex-col [&>section]:gap-2 [&>section]:p-2 [&>section]:border-2 [&>section]:border-accent [&>section]:bg-accent-ultra-light [&>section]:rounded-md [&>section]:w-full w-full'
       onSubmit={handleSubmit}
     >
       {(action === 'CREATE' || action === 'EDIT') &&
