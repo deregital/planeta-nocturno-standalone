@@ -12,7 +12,7 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { Button } from '@/components/ui/button';
-import { generateS3Url } from '@/lib/client-utils';
+import { generateS3Url } from '@/lib/utils-client';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
