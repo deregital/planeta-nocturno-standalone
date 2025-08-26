@@ -43,10 +43,10 @@ function HeaderTickets({
         <div className='absolute inset-0 bg-gradient-to-t from-black/40 to-black/20 md:hidden'></div>
 
         <div className='relative z-10'>
-          <h1 className='text-xl md:text-2xl lg:text-3xl font-bold text-white md:text-black line-clamp-2 md:line-clamp-1'>
+          <h1 className='text-xl md:text-2xl lg:text-3xl font-base text-white md:text-black line-clamp-2 md:line-clamp-1'>
             {event.name}
           </h1>
-          <p className='text-sm lg:text-base whitespace-nowrap text-white/80 md:text-black/75 capitalize mt-2 overflow-hidden text-ellipsis'>
+          <p className='text-sm lg:text-base whitespace-nowrap text-white/80 md:text-accent capitalize mt-2 overflow-hidden text-ellipsis'>
             {formattedDate}
           </p>
         </div>
@@ -61,7 +61,7 @@ function HeaderTickets({
       </div>
 
       {/* Lado derecho - Ubicación */}
-      <div className='col-span-1 md:col-span-2 px-4 py-2 md:px-4 md:py-3 lg:px-6 lg:py-4 flex items-center justify-start md:border-l border-[#A3A3A3] overflow-hidden'>
+      <div className='col-span-1 md:col-span-2 px-4 py-2 md:px-4 md:py-3 lg:px-6 lg:py-4 flex items-center justify-start md:border-l border-stroke overflow-hidden'>
         <div className='flex items-start min-w-0'>
           <div className='flex items-center justify-center mr-2'>
             <MapPin

@@ -16,7 +16,9 @@ async function EventPage({ params }: EventPageProps) {
   if (!event) {
     return (
       <div className='max-w-7xl mx-5 md:mx-[3rem] py-8 px-4'>
-        <h1 className='text-2xl font-bold text-center'>Evento no encontrado</h1>
+        <h1 className='text-2xl font-bold text-center text-accent-dark'>
+          Evento no encontrado
+        </h1>
       </div>
     );
   }

@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { cn } from '@/lib/utils';
 
 function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
@@ -5,7 +7,8 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
     process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
 
   return (
-    <p
+    <Link
+      href='/'
       className={cn(
         'font-bold leading-[80px]',
         size === 'sm'
@@ -15,7 +18,7 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
     >
       <span className='text-brand'>{firstWord}</span>
       <span className='text-on-accent'>{rest}</span>
-    </p>
+    </Link>
   );
 }
 

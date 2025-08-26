@@ -27,16 +27,16 @@ function CardEvent({
       className={`bg-white rounded-3xl overflow-hidden drop-shadow-md ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_15px_8px_rgba(0,0,0,0.1)] hover:cursor-pointer'} transition-all duration-300 w-[150px] sm:w-[240px]`}
     >
       <div
-        className={`relative h-[120px] sm:h-[180px] w-full ${disabled ? 'bg-gray-300' : 'bg-pn-purple/10'}`}
+        className={`relative h-[120px] sm:h-[180px] w-full ${disabled ? 'bg-gray-300' : 'bg-accent/10'}`}
       >
         <Image src={imageUrl} alt={title} fill className='object-cover' />
       </div>
       <div className='px-2 sm:px-4 py-2 sm:py-8 font-sans'>
-        <h3 className='text-[14px] sm:text-[18px] font-light text-black mb-2 sm:mb-5'>
+        <h3 className='text-[14px] sm:text-[18px] font-light text-accent-dark mb-2 sm:mb-5'>
           {title}
         </h3>
         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 text-accent'>
             <div className='flex items-center gap-1'>
               <span className='hidden sm:inline text-xs text-gray-600'>
                 {dayOfWeek}
@@ -49,7 +49,7 @@ function CardEvent({
             </div>
             <Calendar size={16} />
           </div>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 text-accent'>
             <div className='flex items-center gap-1'>
               <span className='text-3xl sm:text-2xl font-bold'>
                 {time.split(':')[0]}{' '}
