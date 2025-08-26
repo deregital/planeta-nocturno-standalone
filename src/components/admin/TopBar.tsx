@@ -30,9 +30,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
           </div>
           <div className='flex md:hidden'>
             <Sheet>
-              <SheetTrigger asChild>
-                <button className='text-brand'>☰</button>
-              </SheetTrigger>
+              <SheetTrigger className='text-brand'>☰</SheetTrigger>
               <SheetContent
                 side='top'
                 className='w-full bg-accent-dark text-on-accent border-0 gap-0'
@@ -60,7 +58,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                   <Button
                     onClick={() => signOut()}
                     variant={'ghost'}
-                    className='flex gap-2 justify-baseline items-center py-2 !px-4 m-0 h-fit text-xl font-normal'
+                    className='flex gap-2 justify-baseline items-center py-2 !px-4 m-0 h-fit text-xl font-normal text-brand'
                   >
                     <LogOut />
                     Cerrar Sesión
