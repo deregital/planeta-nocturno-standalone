@@ -9,14 +9,14 @@ function Toaster({ ...props }: ToasterProps) {
   return (
     <Sonner
       theme={theme as ToasterProps['theme']}
-      className='toaster group'
-      style={
-        {
-          '--normal-bg': 'var(--popover)',
-          '--normal-text': 'var(--popover-foreground)',
-          '--normal-border': 'var(--border)',
-        } as React.CSSProperties
-      }
+      className='toaster group [&_li]:bg-accent-light [&_li]:text-accent-dark [&_li]:border-stroke'
+      toastOptions={{
+        style: {
+          background: 'var(--accent-ultra-light-color)',
+          color: 'var(--accent-dark-color)',
+          border: 'var(--stroke-color)',
+        },
+      }}
       {...props}
     />
   );
