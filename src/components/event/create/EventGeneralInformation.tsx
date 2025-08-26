@@ -120,6 +120,9 @@ export function EventGeneralInformation({
         )}
       >
         <div className='flex-1 flex flex-col gap-2 w-full'>
+          <h3 className='text-accent-dark text-lg font-semibold'>
+            Descripción general del evento
+          </h3>
           <InputWithLabel
             label='Nombre del evento'
             id='name'
@@ -154,87 +157,92 @@ export function EventGeneralInformation({
           />
         )}
       </section>
-      <section className='md:!flex-row'>
-        <InputDateWithLabel
-          label='Fecha del evento'
-          id='eventDate'
-          selected={event.startingDate}
-          className='flex-1'
-          onChange={(date) => {
-            const startingDate = date;
+      <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Descripción general del evento
+        </h3>
+        <div className='flex flex-col gap-2 md:!flex-row'>
+          <InputDateWithLabel
+            label='Fecha del evento'
+            id='eventDate'
+            selected={event.startingDate}
+            className='flex-1'
+            onChange={(date) => {
+              const startingDate = date;
 
-            const endingDate = new Date(
-              isBeforeHoursAndMinutes(event.endingDate, event.startingDate)
-                ? addDays(startingDate, 1)
-                : startingDate,
-            );
+              const endingDate = new Date(
+                isBeforeHoursAndMinutes(event.endingDate, event.startingDate)
+                  ? addDays(startingDate, 1)
+                  : startingDate,
+              );
 
-            startingDate.setHours(event.startingDate.getHours());
-            startingDate.setMinutes(event.startingDate.getMinutes());
-            endingDate.setHours(event.endingDate.getHours());
-            endingDate.setMinutes(event.endingDate.getMinutes());
+              startingDate.setHours(event.startingDate.getHours());
+              startingDate.setMinutes(event.startingDate.getMinutes());
+              endingDate.setHours(event.endingDate.getHours());
+              endingDate.setMinutes(event.endingDate.getMinutes());
 
-            handleChange('startingDate', startingDate);
-            handleChange('endingDate', endingDate);
+              handleChange('startingDate', startingDate);
+              handleChange('endingDate', endingDate);
 
-            setError({ eventDate: '' });
-          }}
-          error={error.eventDate}
-          disabled={action === 'PREVIEW'}
-        />
-        <InputWithLabel
-          label='Hora de inicio'
-          id='startTime'
-          type='time'
-          className='flex-1'
-          placeholder='Hora de inicio'
-          name='startTime'
-          value={format(event.startingDate, 'HH:mm')}
-          onChange={(e) => {
-            const [hours, minutes] = e.target.value.split(':');
-            const newDate = toDate(event.startingDate, {});
-            newDate.setHours(parseInt(hours), parseInt(minutes));
+              setError({ eventDate: '' });
+            }}
+            error={error.eventDate}
+            disabled={action === 'PREVIEW'}
+          />
+          <InputWithLabel
+            label='Hora de inicio'
+            id='startTime'
+            type='time'
+            className='flex-1'
+            placeholder='Hora de inicio'
+            name='startTime'
+            value={format(event.startingDate, 'HH:mm')}
+            onChange={(e) => {
+              const [hours, minutes] = e.target.value.split(':');
+              const newDate = toDate(event.startingDate, {});
+              newDate.setHours(parseInt(hours), parseInt(minutes));
 
-            // if the new date is before the ending date, substract a day from the ending date
-            if (isBeforeHoursAndMinutes(newDate, event.endingDate)) {
-              const newEndingDate = new Date(newDate);
-              newEndingDate.setHours(event.endingDate.getHours());
-              newEndingDate.setMinutes(event.endingDate.getMinutes());
-              handleChange('endingDate', newEndingDate);
-            } else {
-              const newEndingDate = addDays(event.startingDate, 1);
-              newEndingDate.setHours(event.endingDate.getHours());
-              newEndingDate.setMinutes(event.endingDate.getMinutes());
-              handleChange('endingDate', newEndingDate);
-            }
+              // if the new date is before the ending date, substract a day from the ending date
+              if (isBeforeHoursAndMinutes(newDate, event.endingDate)) {
+                const newEndingDate = new Date(newDate);
+                newEndingDate.setHours(event.endingDate.getHours());
+                newEndingDate.setMinutes(event.endingDate.getMinutes());
+                handleChange('endingDate', newEndingDate);
+              } else {
+                const newEndingDate = addDays(event.startingDate, 1);
+                newEndingDate.setHours(event.endingDate.getHours());
+                newEndingDate.setMinutes(event.endingDate.getMinutes());
+                handleChange('endingDate', newEndingDate);
+              }
 
-            handleChange('startingDate', newDate);
-          }}
-          error={error.startingDate}
-          readOnly={action === 'PREVIEW'}
-        />
-        <InputWithLabel
-          label='Hora de fin'
-          id='endTime'
-          type='time'
-          className='flex-1'
-          placeholder='Hora de fin'
-          name='endTime'
-          value={format(event.endingDate, 'HH:mm')}
-          onChange={(e) => {
-            const [hours, minutes] = e.target.value.split(':');
-            const newDate = toDate(event.startingDate, {});
-            newDate.setHours(parseInt(hours), parseInt(minutes));
+              handleChange('startingDate', newDate);
+            }}
+            error={error.startingDate}
+            readOnly={action === 'PREVIEW'}
+          />
+          <InputWithLabel
+            label='Hora de fin'
+            id='endTime'
+            type='time'
+            className='flex-1'
+            placeholder='Hora de fin'
+            name='endTime'
+            value={format(event.endingDate, 'HH:mm')}
+            onChange={(e) => {
+              const [hours, minutes] = e.target.value.split(':');
+              const newDate = toDate(event.startingDate, {});
+              newDate.setHours(parseInt(hours), parseInt(minutes));
 
-            if (isBeforeHoursAndMinutes(newDate, event.startingDate)) {
-              newDate.setDate(newDate.getDate() + 1);
-            }
+              if (isBeforeHoursAndMinutes(newDate, event.startingDate)) {
+                newDate.setDate(newDate.getDate() + 1);
+              }
 
-            handleChange('endingDate', newDate);
-          }}
-          error={error.endingDate}
-          readOnly={action === 'PREVIEW'}
-        />
+              handleChange('endingDate', newDate);
+            }}
+            error={error.endingDate}
+            readOnly={action === 'PREVIEW'}
+          />
+        </div>
       </section>
       <section className='flex !flex-row gap-2'>
         <InputWithLabel
@@ -268,8 +276,11 @@ export function EventGeneralInformation({
         )}
       </section>
       <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Ubicación y categoría
+        </h3>
         <SelectWithLabel
-          label='Ubicación'
+          label='Locación'
           id='locationId'
           divClassName='flex-1'
           className='w-full'

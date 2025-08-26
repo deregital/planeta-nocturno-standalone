@@ -287,7 +287,7 @@ export default function TicketTypeModal({
                           )
                         : ''
                     }
-                    className='w-full text-pn-gray'
+                    className='w-full text-accent/50'
                     readOnly
                   />
                 )}
@@ -339,7 +339,7 @@ export default function TicketTypeModal({
                           )
                         : ''
                     }
-                    className='w-full text-pn-gray'
+                    className='w-full text-accent/50'
                     readOnly
                   />
                 )}

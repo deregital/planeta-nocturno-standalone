@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
@@ -55,7 +56,17 @@ export default function TicketTypeAction({
         maxAvailableLeft={maxAvailableLeft}
       />
       {next && (
-        <Button onClick={next} variant={'accent'} className='w-full mt-8'>
+        <Button
+          onClick={() => {
+            if (ticketTypes.length === 0) {
+              toast.error('Debe agregar al menos una entrada');
+              return;
+            }
+            next();
+          }}
+          variant={'accent'}
+          className='w-full mt-8'
+        >
           Continuar
         </Button>
       )}
