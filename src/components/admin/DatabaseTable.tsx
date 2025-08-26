@@ -143,7 +143,7 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
             className='min-w-full'
           />
           {/* Results count */}
-          <p className='text-sm'>
+          <p className='text-sm text-accent'>
             {filteredData.length} de {data.length} resultados
           </p>
           {globalFilter && (
