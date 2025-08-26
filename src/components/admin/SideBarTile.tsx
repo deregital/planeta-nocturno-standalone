@@ -12,7 +12,10 @@ export default function SideBarTile<T extends string>({
   href: Route<T>;
 }) {
   return (
-    <Link href={href} className='flex gap-2 items-center'>
+    <Link
+      href={href}
+      className='flex gap-2 items-center dark:text-brand text-accent hover:bg-accent-ultra-light/10 py-2 px-4'
+    >
       {icon}
       <p className='text-xl'>{title}</p>
     </Link>

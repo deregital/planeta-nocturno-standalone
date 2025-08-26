@@ -9,11 +9,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        default:
+          'bg-button text-secondary font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-pn-accent/90',
         accent:
-          'bg-pn-accent text-secondary font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-pn-accent/90',
+          'bg-accent text-on-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-pn-accent/90',
         outline:
           'bg-transparent border border-pn-accent text-pn-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-pn-accent/10',
-        ghost: 'hover:bg-pn-gray/10',
+        ghost: 'hover:bg-pn-gray/10 text-brand',
         destructive: 'bg-red-500',
       },
 
@@ -25,7 +27,7 @@ const buttonVariants = cva(
       },
     },
     defaultVariants: {
-      variant: 'accent',
+      variant: 'default',
       size: 'default',
     },
   },

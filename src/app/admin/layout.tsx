@@ -15,7 +15,7 @@ export default async function AdminLayout({
 
   return (
     <div className='grid grid-rows-[auto_1fr] h-screen'>
-      <TopBar userName={session.user.name} />
+      <TopBar auth={session} />
       <div className='flex'>
         <SideBar />
         <main className='flex-1'>{children}</main>

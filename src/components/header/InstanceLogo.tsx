@@ -13,8 +13,8 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
           : 'text-[1.5rem] md:text-[2.5rem] lg:text-[4rem]',
       )}
     >
-      <span className='text-pn-accent'>{firstWord}</span>
-      <span className='text-pn-secondary'>{rest}</span>
+      <span className='text-brand'>{firstWord}</span>
+      <span className='text-on-accent'>{rest}</span>
     </p>
   );
 }
