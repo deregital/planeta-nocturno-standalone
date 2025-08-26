@@ -13,6 +13,8 @@
   --color-accent-light: var(--accent-light-color);
   --color-accent-ultra-light: var(--accent-ultra-light-color);
   --color-on-accent: var(--on-accent-color);
+  --color-pn-black: var(--pn-black-color);
+  --color-stroke: var(--stroke-color);
 }
 
 @layer utilities {

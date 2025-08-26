@@ -46,6 +46,8 @@ const config: Config = {
           '--accent-light-color': accentLight,
           '--accent-ultra-light-color': accentUltraLight,
           '--on-accent-color': textOnAccentColor,
+          '--stroke-color': accentColor,
+          '--pn-black-color': accentDark,
         },
       });
     }),

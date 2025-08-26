@@ -1,6 +1,7 @@
 'use client';
 import { LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { type Session } from 'next-auth';
 
 import {
@@ -15,6 +16,7 @@ import { navRoutes } from '@/components/admin/SideBar';
 import SideBarTile from '@/components/admin/SideBarTile';
 
 export default function TopBar({ auth }: { auth: Session | null }) {
+  const pathname = usePathname();
   return (
     <div className='w-full h-16 flex items-center justify-between px-8 bg-accent-dark'>
       <InstanceLogo size='sm' />
@@ -52,6 +54,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                       href={route.href}
                       icon={route.icon}
                       title={route.title}
+                      isActive={pathname === route.href}
                     />
                   ))}
                   <Button

@@ -1,5 +1,8 @@
+'use client';
+
 import { Calendar, Database, Home, MapPin } from 'lucide-react';
 import { type Route } from 'next';
+import { usePathname } from 'next/navigation';
 
 import SideBarTile from '@/components/admin/SideBarTile';
 
@@ -31,18 +34,18 @@ export const navRoutes: {
 ];
 
 export default function SideBar() {
+  const pathname = usePathname();
   return (
-    <aside className='hidden w-48 text-pn-accent md:flex flex-col p-3 border-r-3 border-pn-gray/40 pt-24'>
-      <nav className='flex flex-col gap-3'>
-        {navRoutes.map((route, index) => (
-          <SideBarTile
-            key={index}
-            href={route.href}
-            icon={route.icon}
-            title={route.title}
-          />
-        ))}
-      </nav>
+    <aside className='hidden w-48 md:flex flex-col py-3 border-r-3 border-stroke/40'>
+      {navRoutes.map((route, index) => (
+        <SideBarTile
+          key={index}
+          href={route.href}
+          icon={route.icon}
+          title={route.title}
+          isActive={pathname === route.href}
+        />
+      ))}
     </aside>
   );
 }
