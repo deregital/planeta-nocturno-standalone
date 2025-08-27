@@ -1,20 +1,12 @@
 'use client';
 import { addDays, subMonths } from 'date-fns';
 import { Loader } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import ComparativeTable from '@/components/admin/ComparativeTable';
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
 import { BaseCard } from '@/components/common/BaseCard';
 import { Progress } from '@/components/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { trpc } from '@/server/trpc/client';
 
 export default function Dashboard() {
@@ -22,7 +14,6 @@ export default function Dashboard() {
 
   const [from, setFrom] = useState(subMonths(today, 1));
   const [to, setTo] = useState(today);
-  const [currency, setCurrency] = useState('peso');
 
   const {
     data: statistics,
@@ -33,10 +24,6 @@ export default function Dashboard() {
     to,
   });
 
-  useEffect(() => {
-    refetch();
-  }, [from, to, statistics]);
-
   if (isLoading) {
     return <Loader />;
   }
@@ -45,8 +32,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className='my-16 px-4'>
-      <BaseCard className='grid grid-cols-4 grid-rows-5 h-96 p-3 border-2'>
+    <div className='flex gap-8 flex-col my-16 px-4'>
+      <BaseCard className='grid grid-cols-4 grid-rows-5 h-96 p-3 border-2 '>
         {/* TImestamp */}
         <BaseCard className='col-span-2 row-span-1 flex justify-center items-center border-0'>
           <DateRangePicker
@@ -66,6 +53,7 @@ export default function Dashboard() {
                   ? new Date(addDays(range.to, 1).getTime() - 1000)
                   : new Date(addDays(new Date(), 1).getTime() - 1000),
               );
+              refetch();
             }}
           />
         </BaseCard>
@@ -97,23 +85,6 @@ export default function Dashboard() {
               maximumFractionDigits: 0,
             }).format(statistics.totalRaised)}
           </p>
-          <Select
-            value={currency}
-            onValueChange={(value) => {
-              setCurrency(value);
-            }}
-          >
-            <SelectTrigger className='w-[180px]'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Moneda</SelectLabel>
-                <SelectItem value='peso'>Pesos argentinos</SelectItem>
-                <SelectItem value='dollar'>Dolar estadounidense</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
         </BaseCard>
 
         {/* Total Sold  */}
@@ -124,7 +95,11 @@ export default function Dashboard() {
           </p>
         </BaseCard>
       </BaseCard>
-      {/* <pre>{JSON.stringify(statistics ?? 'No hay estadisticas', null, 2)}</pre> */}
+
+      {/* Comparative table */}
+      <BaseCard className='flex flex-col gap-4 border-2 p-3 py-6'>
+        <ComparativeTable />
+      </BaseCard>
     </div>
   );
 }
