@@ -1,14 +1,15 @@
 'use client';
 
 import {
-  type CellContext,
   type ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { useEffect, useMemo, useState } from 'react';
+import { subMonths } from 'date-fns';
+import { useMemo, useState } from 'react';
 import { Loader, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 import {
   Table,
@@ -23,96 +24,135 @@ import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
-
 type StatRow = {
   label: string;
   [eventId: string]: string | number;
 };
 
-export type ComparativeStatWithType =
-  RouterOutputs['statistics']['getEventsStats'][number] & {
-    type: 'EVENT' | 'LOCATION';
-  };
+export type ComparativeStatWithType = {
+  id: string;
+  type: 'EVENT' | 'LOCATION';
+};
 
 export default function ComparativeTable() {
-  const { data: allEvents } = trpc.statistics.getEventsStats.useQuery();
-  const { data: allLocations } = trpc.statistics.getLocationsStats.useQuery();
+  const today = useMemo(() => new Date(), []);
+  const searchParams = useSearchParams();
 
-  const [eventsList, setEventsList] = useState<ComparativeStatWithType[]>([]);
-  const [locationsList, setLocationsList] = useState<ComparativeStatWithType[]>(
-    [],
-  );
+  const from = searchParams.get('from')
+    ? new Date(searchParams.get('from') as string)
+    : subMonths(today, 1);
+  const to = searchParams.get('to')
+    ? new Date(searchParams.get('to') as string)
+    : today;
+
+  const { data: allEvents, isRefetching: isRefetchingEvents } =
+    trpc.statistics.getEventsStats.useQuery({
+      from,
+      to,
+    });
+  const { data: allLocations, isRefetching: isRefetchingLocations } =
+    trpc.statistics.getLocationsStats.useQuery({
+      from,
+      to,
+    });
 
   const [colsData, setColsData] = useState<ComparativeStatWithType[]>([]);
 
-  useEffect(() => {
-    if (allEvents) {
-      setEventsList(
-        allEvents.map((e) => ({
-          ...e,
-          type: 'EVENT',
-        })),
-      );
-    }
-    if (allLocations) {
-      setLocationsList(
-        allLocations.map((l) => ({
-          ...l,
-          type: 'LOCATION',
-        })),
-      );
-    }
-  }, [allEvents, allLocations]);
+  // Derive the actual data from current query results and colsData
+  // This automatically filters out items that no longer exist
+  const selectedData = useMemo(() => {
+    if (!allEvents || !allLocations) return [];
+
+    return colsData
+      .map((item) => {
+        if (item.type === 'EVENT') {
+          const event = allEvents.find((e) => e.id === item.id);
+          return event ? { ...event, type: 'EVENT' as const } : null;
+        } else if (item.type === 'LOCATION') {
+          const location = allLocations.find((l) => l.id === item.id);
+          return location ? { ...location, type: 'LOCATION' as const } : null;
+        }
+        return null;
+      })
+      .filter(
+        Boolean,
+      ) as (RouterOutputs['statistics']['getEventsStats'][number] & {
+      type: 'EVENT' | 'LOCATION';
+    })[];
+  }, [colsData, allEvents, allLocations]);
+
+  const eventsList = useMemo(() => {
+    return allEvents
+      ?.filter(
+        (e) => !colsData.some((c) => c.id === e.id && c.type === 'EVENT'),
+      )
+      .map((e) => ({
+        ...e,
+        type: 'EVENT' as const,
+      }));
+  }, [allEvents, colsData]);
+
+  const locationsList = useMemo(() => {
+    return allLocations
+      ?.filter(
+        (l) => !colsData.some((c) => c.id === l.id && c.type === 'LOCATION'),
+      )
+      .map((l) => ({
+        ...l,
+        type: 'LOCATION' as const,
+      }));
+  }, [allLocations, colsData]);
 
   const removeComparative = (comp: ComparativeStatWithType) => {
-    setColsData(colsData.filter((colsData) => colsData.id !== comp.id));
-    if (comp.type === 'EVENT') {
-      setEventsList([...eventsList, comp]);
-    } else if (comp.type === 'LOCATION') {
-      setLocationsList([...locationsList, comp]);
-    }
+    setColsData(
+      colsData.filter(
+        (item) => !(item.id === comp.id && item.type === comp.type),
+      ),
+    );
   };
 
   const rows = useMemo<StatRow[]>(() => {
     return [
       {
         label: 'Entradas emitidas',
-        ...Object.fromEntries(colsData.map((c) => [c.id, c.totalEmitted])),
+        ...Object.fromEntries(selectedData.map((c) => [c.id, c.totalEmitted])),
       },
       {
         label: 'Asistencia',
-        ...Object.fromEntries(colsData.map((c) => [c.id, c.attendance])),
+        ...Object.fromEntries(selectedData.map((c) => [c.id, c.attendance])),
       },
       {
         label: 'Dinero recaudado',
-        ...Object.fromEntries(colsData.map((c) => [c.id, `$${c.totalRaised}`])),
+        ...Object.fromEntries(
+          selectedData.map((c) => [c.id, `$${c.totalRaised}`]),
+        ),
       },
     ];
-  }, [colsData]);
+  }, [selectedData]);
 
   const columns = useMemo<ColumnDef<StatRow>[]>(
     () => [
       {
         accessorKey: 'label',
         header: () => <span className='font-medium text-2xl'>Información</span>,
-        cell: (info: CellContext<StatRow, unknown>) => (
-          <span className='font-medium'>{info.getValue() as string}</span>
-        ),
       },
-      ...colsData.map((col) => ({
+      ...selectedData.map((col) => ({
         accessorKey: col.id,
         header: () => (
           <div className='flex items-center gap-2'>
             <span className='font-medium text-2xl'>{col.name}</span>
-            <Button variant={'ghost'} onClick={() => removeComparative(col)}>
+            <Button
+              variant={'ghost'}
+              onClick={() => removeComparative({ id: col.id, type: col.type })}
+            >
               <X />
             </Button>
           </div>
         ),
-        cell: (info: CellContext<StatRow, unknown>) => info.getValue(),
       })),
     ],
-    [colsData, removeComparative],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedData],
   );
 
   const table = useReactTable({
@@ -121,7 +161,12 @@ export default function ComparativeTable() {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  if (!allEvents || !allLocations) {
+  if (
+    !allEvents ||
+    !allLocations ||
+    isRefetchingEvents ||
+    isRefetchingLocations
+  ) {
     return <Loader />;
   }
 
@@ -131,19 +176,17 @@ export default function ComparativeTable() {
         <SelectableComboBox
           title='Agregar evento'
           listOf='evento'
-          list={eventsList}
+          list={eventsList ?? []}
           onSelect={(item) => {
-            setColsData([...colsData, { ...item, type: 'EVENT' }]);
-            setEventsList(eventsList.filter((e) => e.id !== item.id));
+            setColsData([...colsData, { id: item.id, type: 'EVENT' }]);
           }}
         />
         <SelectableComboBox
           title='Agregar locación'
           listOf='locación'
-          list={locationsList}
+          list={locationsList ?? []}
           onSelect={(item) => {
-            setColsData([...colsData, { ...item, type: 'LOCATION' }]);
-            setLocationsList(locationsList.filter((l) => l.id !== item.id));
+            setColsData([...colsData, { id: item.id, type: 'LOCATION' }]);
           }}
         />
       </div>
