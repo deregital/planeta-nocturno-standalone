@@ -1,5 +1,6 @@
 import { type Template } from '@pdfme/common';
 
+import { getColorsAsHex } from '@/lib/get-colors';
 import { type EmittedTicket } from '@/server/types';
 
 export type PDFDataOrderName = [
@@ -180,70 +181,74 @@ const commonSchema = [
   },
 ];
 
-export const presentismoPDFSchema: Template = {
-  schemas: [
-    [
-      ...commonSchema,
-      {
-        name: 'datos',
-        type: 'table',
-        position: { x: 3.38, y: 55.96 },
-        width: 202.65,
-        height: 52.932,
-        content:
-          '[["Aylen Katherine Naiquen Alegre Fanelli","99999","54 9 11 6534 4651 980","46581349","Sí"],["Ariel Colton","1948","1136005044","46501954",""]]',
-        showHead: true,
-        head: [
-          'Nombre',
-          'Tipo de entrada',
-          'Núm. de teléfono',
-          'DNI',
-          '¿Asistió?',
-        ],
-        headWidthPercentages: [
-          22.13974216629657, 16.103719467061442, 25.901924500370086,
-          20.21800723743734, 15.63660662883455,
-        ],
-        tableStyles: { borderWidth: 0.3, borderColor: '#000000' },
-        headStyles: {
-          fontName: 'DMSans-Bold',
-          fontSize: 13,
-          characterSpacing: 0,
-          alignment: 'left',
-          verticalAlignment: 'middle',
-          lineHeight: 1,
-          fontColor: process.env.NEXT_PUBLIC_TEXT_ACCENT_COLOR!,
-          borderColor: '',
-          backgroundColor: process.env.NEXT_PUBLIC_ACCENT_COLOR!,
-          borderWidth: { top: 0, right: 0, bottom: 0, left: 0 },
-          padding: { top: 5, right: 5, bottom: 5, left: 5 },
+export function presentismoPDFSchema(): Template {
+  const { accentColor, textOnAccent } = getColorsAsHex();
+  return {
+    schemas: [
+      [
+        ...commonSchema,
+        {
+          name: 'datos',
+          type: 'table',
+          position: { x: 3.38, y: 55.96 },
+          width: 202.65,
+          height: 52.932,
+          content:
+            '[["Aylen Katherine Naiquen Alegre Fanelli","99999","54 9 11 6534 4651 980","46581349","Sí"],["Ariel Colton","1948","1136005044","46501954",""]]',
+          showHead: true,
+          head: [
+            'Nombre',
+            'Tipo de entrada',
+            'Núm. de teléfono',
+            'DNI',
+            '¿Asistió?',
+          ],
+          headWidthPercentages: [
+            22.13974216629657, 16.103719467061442, 25.901924500370086,
+            20.21800723743734, 15.63660662883455,
+          ],
+          tableStyles: { borderWidth: 0.3, borderColor: '#000000' },
+          headStyles: {
+            fontName: 'DMSans-Bold',
+            fontSize: 13,
+            characterSpacing: 0,
+            alignment: 'left',
+            verticalAlignment: 'middle',
+            lineHeight: 1,
+            fontColor: textOnAccent,
+            borderColor: '',
+            backgroundColor: accentColor,
+            borderWidth: { top: 0, right: 0, bottom: 0, left: 0 },
+            padding: { top: 5, right: 5, bottom: 5, left: 5 },
+          },
+          bodyStyles: {
+            fontName: 'Symbols',
+            fontSize: 13,
+            characterSpacing: 0,
+            alignment: 'left',
+            verticalAlignment: 'middle',
+            lineHeight: 1,
+            fontColor: '#000000',
+            borderColor: '#888888',
+            backgroundColor: '',
+            alternateBackgroundColor: '#f5f5f5',
+            borderWidth: { top: 0.1, right: 0.1, bottom: 0.1, left: 0.1 },
+            padding: { top: 5, right: 5, bottom: 5, left: 5 },
+          },
+          columnStyles: {},
+          required: true,
         },
-        bodyStyles: {
-          fontName: 'Symbols',
-          fontSize: 13,
-          characterSpacing: 0,
-          alignment: 'left',
-          verticalAlignment: 'middle',
-          lineHeight: 1,
-          fontColor: '#000000',
-          borderColor: '#888888',
-          backgroundColor: '',
-          alternateBackgroundColor: '#f5f5f5',
-          borderWidth: { top: 0.1, right: 0.1, bottom: 0.1, left: 0.1 },
-          padding: { top: 5, right: 5, bottom: 5, left: 5 },
-        },
-        columnStyles: {},
-        required: true,
-      },
+      ],
     ],
-  ],
-  basePdf: { width: 210, height: 297, padding: [0, 0, 0, 0] },
-  pdfmeVersion: '5.2.4',
-};
+    basePdf: { width: 210, height: 297, padding: [0, 0, 0, 0] },
+    pdfmeVersion: '5.2.4',
+  };
+}
 
 export function presentismoPDFSchemaGroupedTicketType(
   ticketTypes: Array<{ ticketType: string; tickets: EmittedTicket[] }>,
 ): Template {
+  const { accentLight, textOnAccent } = getColorsAsHex();
   const TEXT_HEIGHT = 10;
   const ROW_HEIGHT = 52.932;
   let offset = 52.96; // Increased from 25.96 to give more top margin
@@ -323,9 +328,9 @@ export function presentismoPDFSchemaGroupedTicketType(
                 alignment: 'left',
                 verticalAlignment: 'middle',
                 lineHeight: 1,
-                fontColor: process.env.NEXT_PUBLIC_TEXT_ACCENT_COLOR!,
+                fontColor: textOnAccent,
                 borderColor: '',
-                backgroundColor: process.env.NEXT_PUBLIC_ACCENT_COLOR!,
+                backgroundColor: accentLight,
                 borderWidth: { top: 0, right: 0, bottom: 0, left: 0 },
                 padding: { top: 5, right: 5, bottom: 5, left: 5 },
               },
