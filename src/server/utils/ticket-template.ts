@@ -5,10 +5,10 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
 
 import { getDMSansFonts, encryptString } from '@/server/utils/utils';
-import { getColors } from '@/lib/get-colors';
+import { getColorsAsHex } from '@/lib/get-colors';
 
 export function generateTicketTemplate(first_word: string): Template {
-  const { accentColor, textOnAccent: accentText } = getColors();
+  const { accentColor, textOnAccent: accentText } = getColorsAsHex();
 
   const offset = (first_word.length + 1) * 9.7;
   return {
