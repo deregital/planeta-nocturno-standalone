@@ -25,4 +25,17 @@ export const eventCategoriesRouter = router({
 
       return data;
     }),
+  create: publicProcedure
+    .input(eventCategorySchema.omit({ id: true }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.insert(eventCategory).values(input);
+    }),
+  edit: publicProcedure
+    .input(eventCategorySchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db
+        .update(eventCategory)
+        .set(input)
+        .where(eq(eventCategory.id, input.id));
+    }),
 });

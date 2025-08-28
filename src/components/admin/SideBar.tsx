@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Database, Home, MapPin } from 'lucide-react';
+import { Calendar, Database, Home, MapPin, Type } from 'lucide-react';
 import { type Route } from 'next';
 import { usePathname } from 'next/navigation';
 
@@ -30,6 +30,11 @@ export const navRoutes: {
     href: '/admin/locations',
     icon: <MapPin />,
     title: 'Locaciones',
+  },
+  {
+    href: '/admin/categories',
+    icon: <Type />,
+    title: 'Categorías',
   },
 ];
 

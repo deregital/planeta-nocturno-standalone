@@ -6,3 +6,5 @@ export const eventCategorySchema = z.object({
     error: 'El nombre es requerido',
   }),
 });
+
+export type EventCategory = z.infer<typeof eventCategorySchema>;
