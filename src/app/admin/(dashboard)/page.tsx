@@ -1,8 +1,8 @@
 'use client';
 import { addDays, subMonths } from 'date-fns';
 import { Loader } from 'lucide-react';
+import { parseAsIsoDate, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
-import { useQueryState, parseAsIsoDate } from 'nuqs';
 
 import ComparativeTable from '@/components/admin/ComparativeTable';
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
@@ -35,13 +35,13 @@ export default function Dashboard() {
 
   return (
     <div className='flex gap-8 flex-col my-16 px-4'>
-      <BaseCard className='grid grid-cols-4 grid-rows-5 h-96 p-3 border-2 '>
+      <BaseCard className='flex flex-col sm:grid sm:grid-rows-7 sm:grid-cols-2 md:1/6 lg:h-96 lg:grid-cols-4 p-3 border-2 '>
         {/* TImestamp */}
         {isLoading ? (
           <Loader className='animate-spin' />
         ) : (
           <>
-            <BaseCard className='col-span-2 row-span-1 flex justify-center items-center border-0'>
+            <BaseCard className='sm:col-span-2 sm:row-span-1 lg:row-span-2 lg:row-start-1 col-span-2 flex justify-center items-center border-0'>
               <DateRangePicker
                 align='start'
                 value={{
@@ -67,12 +67,12 @@ export default function Dashboard() {
             </BaseCard>
           </>
         )}
-        {/* Assitance % */}
+        {/* Attendance % */}
         {statistics && (
           <>
-            <BaseCard className='col-start-1 col-span-2 row-span-4 row-start-2 p-12 gap-8 flex flex-col justify-center items-center'>
-              <div className='flex justify-baseline items-center w-full gap-6'>
-                <p className='text-3xl '>Tasa de asistencia:</p>
+            <BaseCard className='sm:col-start-1 sm:row-span-3 sm:col-span-2 sm:row-start-2 lg:row-span-5 p-12 gap-8 justify-center items-center'>
+              <div className='flex justify-center lg:justify-baseline items-center w-full gap-6'>
+                <p className='text-3xl'>Tasa de asistencia:</p>
                 <p className='text-5xl font-medium text-pn-accent'>
                   {Intl.NumberFormat('es-AR', {
                     minimumFractionDigits: 2,
@@ -83,14 +83,16 @@ export default function Dashboard() {
               </div>
               <Progress
                 value={statistics.scannedPercentage}
-                className='h-12 [&>div]:bg-pn-accent [&>div]:rounded-full'
+                className='h-12 [&>div]:bg-pn-accent [&>div]:rounded-full md:mt-8'
               />
             </BaseCard>
 
             {/* Total Raised */}
-            <BaseCard className='grid-start-3 row-span-5 flex flex-col justify-start items-center px-4 py-8'>
-              <p className='text-3xl font-light'>Dinero Recaudado</p>
-              <p className='text-6xl text-pn-accent font-medium py-16'>
+            <BaseCard className='sm:row-start-5 sm:row-span-3 lg:grid-start-3 lg:row-span-7 lg:row-start-1 flex flex-col justify-start items-center px-4 py-8'>
+              <p className='text-3xl font-light text-center'>
+                Dinero recaudado
+              </p>
+              <p className='text-6xl lg:text-5xl xl:text-6xl text-pn-accent font-medium lg:py-16'>
                 {Intl.NumberFormat('es-AR', {
                   style: 'currency',
                   currency: 'ARS',
@@ -100,9 +102,11 @@ export default function Dashboard() {
             </BaseCard>
 
             {/* Total Sold  */}
-            <BaseCard className='grid-start-3 row-span-5 flex flex-col justify-start items-center px-4 py-8'>
-              <p className='text-3xl font-light'>Entradas vendidas</p>
-              <p className='text-6xl text-pn-accent font-medium py-16'>
+            <BaseCard className='sm:row-start-5 sm:row-span-3 lg:grid-start-3 lg:row-span-7 lg:row-start-1 flex flex-col justify-start items-center px-4 py-8'>
+              <p className='text-3xl font-light text-center'>
+                Entradas vendidas
+              </p>
+              <p className='text-6xl lg:text-5xl xl:text-6xl text-pn-accent font-medium lg:py-16'>
                 {Intl.NumberFormat('es-AR').format(statistics.totalTickets)}
               </p>
             </BaseCard>
@@ -110,7 +114,7 @@ export default function Dashboard() {
         )}
       </BaseCard>
       {/* Comparative table */}
-      <BaseCard className='flex flex-col gap-4 border-2 p-3 py-6'>
+      <BaseCard className='flex flex-col gap-4 border-2 p-3 py-6 max-w-[calc(100vw-3rem)] md:max-w-[calc(100vw-14rem)]'>
         <ComparativeTable />
       </BaseCard>
     </div>
