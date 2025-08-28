@@ -10,7 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-button text-secondary font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent/90',
+          'bg-button text-on-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent/90',
         accent:
           'bg-accent text-on-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent/90',
         outline:
