@@ -7,7 +7,7 @@ import {
   ChevronUpIcon,
   Loader,
 } from 'lucide-react';
-import { type FC, type JSX, useEffect, useRef, useState } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -80,8 +80,6 @@ interface Preset {
 
 // Define presets
 const PRESETS: Preset[] = [
-  { name: 'today', label: 'Hoy' },
-  { name: 'yesterday', label: 'Ayer' },
   { name: 'last7', label: 'Últimos 7 días' },
   { name: 'last14', label: 'Últimos 14 días' },
   { name: 'last30', label: 'Últimos 30 días' },
@@ -92,7 +90,7 @@ const PRESETS: Preset[] = [
 ];
 
 /** The DateRangePicker component allows a user to select a range of dates */
-export const DateRangePicker: FC<DateRangePickerProps> = ({
+export function DateRangePicker({
   initialDateFrom = new Date(new Date().setHours(0, 0, 0, 0)),
   initialDateTo,
   initialCompareFrom,
@@ -102,7 +100,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   align = 'end',
   locale = 'es-AR',
   showCompare = true,
-}): JSX.Element => {
+}: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const [range, setRange] = useState<DateRange>({
@@ -173,16 +171,6 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     const first = from.getDate() - from.getDay();
 
     switch (preset.name) {
-      case 'today':
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        break;
-      case 'yesterday':
-        from.setDate(from.getDate() - 1);
-        from.setHours(0, 0, 0, 0);
-        to.setDate(to.getDate() - 1);
-        to.setHours(23, 59, 59, 999);
-        break;
       case 'last7':
         from.setDate(from.getDate() - 6);
         from.setHours(0, 0, 0, 0);
@@ -321,21 +309,23 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     label: string;
     isSelected: boolean;
   }): JSX.Element {
-  return <Button
-      className={cn(isSelected && 'pointer-events-none')}
-      variant='ghost'
-      onClick={() => {
-        setPreset(preset);
-      }}
-    >
-      <>
-        <span className={cn('pr-2 opacity-0', isSelected && 'opacity-70')}>
-          <CheckIcon width={18} height={18} />
-        </span>
-        {label}
-      </>
-    </Button>
-}
+    return (
+      <Button
+        className={cn(isSelected && 'pointer-events-none')}
+        variant='ghost'
+        onClick={() => {
+          setPreset(preset);
+        }}
+      >
+        <>
+          <span className={cn('pr-2 opacity-0', isSelected && 'opacity-70')}>
+            <CheckIcon width={18} height={18} />
+          </span>
+          {label}
+        </>
+      </Button>
+    );
+  }
 
   // Helper function to check if two date ranges are equal
   const areRangesEqual = (a?: DateRange, b?: DateRange) => {
@@ -368,7 +358,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
       <PopoverTrigger asChild>
         <Button
           size={'lg'}
-          className='w-full h-full border-pn-stroke text-pn-stroke hover:bg-transparent !text-xl'
+          className='w-full h-full border-stroke text-accent hover:bg-transparent !text-xl'
           variant={'outline'}
         >
           {isMounted ? (
@@ -620,6 +610,6 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
       </PopoverContent>
     </Popover>
   );
-};
+}
 
 DateRangePicker.displayName = 'DateRangePicker';

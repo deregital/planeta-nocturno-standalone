@@ -25,13 +25,10 @@ export default function Client({
       </Button>
       <div className='flex '>
         <h1 className='text-4xl font-bold'>{buyer.fullName}</h1>
-        {/* icons */}
-        <div></div>
       </div>
 
       <div className='flex gap-8 flex-col lg:flex-row'>
-        {/* Personal Data */}
-        <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2'>
+        <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark'>
           <div>
             <IdCard />
             <p>DNI: {buyer.dni}</p>
@@ -61,8 +58,7 @@ export default function Client({
           </div>
         </FilledCard>
 
-        {/* Event Attended */}
-        <FilledCard className='flex w-full p-4 flex-col'>
+        <FilledCard className='flex w-full p-4 flex-col text-accent-dark'>
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>
           <div className='space-y-4 max-h-96 overflow-y-auto my-4'>
             {emittedTickets.map((ticket) => (
@@ -83,8 +79,6 @@ export default function Client({
           </div>
         </FilledCard>
       </div>
-
-      {/* <pre>{JSON.stringify(data, null, 2)}</pre> */}
     </div>
   );
 }

@@ -114,7 +114,7 @@ function Calendar({
         range_middle: cn('rounded-none', defaultClassNames.range_middle),
         range_end: cn('rounded-r-md bg-accent', defaultClassNames.range_end),
         today: cn(
-          'text-on-accent rounded-md data-[selected=true]:rounded-none',
+          'text-on-accent rounded-md data-[selected=true]:rounded-l-none',
           defaultClassNames.today,
         ),
         outside: cn(
@@ -205,7 +205,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        'data-[selected-single=true]:bg-accent/70 data-[selected-single=true]:text-on-accent data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 data-[today=true]:bg-accent-light/70 data-[today=true]:text-accent-foreground data-[today=true]:after:content-[""] data-[today=true]:after:absolute data-[today=true]:after:bottom-1 data-[today=true]:after:left-1/2 data-[today=true]:after:-translate-x-1/2 data-[today=true]:after:w-1.5 data-[today=true]:after:h-1.5 data-[today=true]:after:bg-accent data-[today=true]:after:rounded-full',
+        'data-[selected-single=true]:bg-accent/70 data-[selected-single=true]:text-on-accent data-[range-middle=true]:bg-accent/30 data-[range-middle=true]:text-accent-dark data-[range-start=true]:bg-accent/50 data-[range-start=true]:text-on-accent data-[range-end=true]:bg-accent data-[range-end=true]:text-on-accent group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-accent-dark/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 data-[today=true]:bg-accent-light/70 data-[today=true]:text-accent-foreground data-[today=true]:after:content-[""] data-[today=true]:after:absolute data-[today=true]:after:bottom-1 data-[today=true]:after:left-1/2 data-[today=true]:after:-translate-x-1/2 data-[today=true]:after:w-1.5 data-[today=true]:after:h-1.5 data-[today=true]:after:bg-accent data-[today=true]:after:rounded-full',
         defaultClassNames.day,
         className,
       )}

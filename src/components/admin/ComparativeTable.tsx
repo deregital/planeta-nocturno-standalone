@@ -191,13 +191,13 @@ export default function ComparativeTable() {
         />
       </div>
       <Table className='border rounded-xl'>
-        <TableHeader className='border-2 rounded-2xl border-pn-stroke'>
+        <TableHeader className='border-2 rounded-2xl border-stroke'>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className='px-3 py-2 text-left border-2 border-pn-stroke '
+                  className='px-3 py-2 text-left border-2 border-stroke '
                 >
                   {header.isPlaceholder
                     ? null
