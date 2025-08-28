@@ -1,7 +1,7 @@
 import { and, between, ne } from 'drizzle-orm';
 import z from 'zod';
 
-import { ticketGroup } from '@/drizzle/schema';
+import { emittedTicket, ticketGroup } from '@/drizzle/schema';
 import { protectedProcedure, router } from '@/server/trpc';
 
 export const statisticsRouter = router({
@@ -83,5 +83,162 @@ export const statisticsRouter = router({
         scannedPercentage,
         // data,
       };
+    }),
+  getEventsStats: protectedProcedure
+    .input(
+      z.object({
+        from: z.date(),
+        to: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const data = await ctx.db.query.event.findMany({
+        with: {
+          ticketGroups: {
+            where: ne(ticketGroup.status, 'BOOKED'),
+            columns: {
+              amountTickets: true,
+            },
+            with: {
+              emittedTickets: {
+                where: between(
+                  emittedTicket.createdAt,
+                  input.from.toISOString(),
+                  input.to.toISOString(),
+                ),
+                columns: {
+                  scanned: true,
+                },
+              },
+              ticketTypePerGroups: {
+                with: {
+                  ticketType: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const stats = data.map((e) => {
+        const { totalRaised, totalSold } = e.ticketGroups
+          .flatMap((ticketGroup) => ticketGroup.ticketTypePerGroups)
+          .reduce(
+            (acc, ttpg) => {
+              const price = ttpg.ticketType?.price ?? 0;
+              const amount = ttpg.amount ?? 0;
+
+              acc.totalRaised += amount * price;
+              acc.totalSold += amount;
+
+              return acc;
+            },
+            { totalRaised: 0, totalSold: 0 },
+          );
+        const allEt = e.ticketGroups.flatMap((tg) =>
+          tg.emittedTickets.map((et) => et.scanned),
+        );
+        const attendance = allEt.filter((et) => et).length;
+
+        const amountEt = e.ticketGroups.reduce((acc, tg) => {
+          acc += tg.emittedTickets.length;
+          return acc;
+        }, 0);
+
+        return {
+          id: e.id,
+          name: e.name,
+          attendance,
+          totalRaised,
+          totalSold,
+          totalEmitted: amountEt,
+        };
+      });
+
+      return stats;
+    }),
+  getLocationsStats: protectedProcedure
+    .input(
+      z.object({
+        from: z.date(),
+        to: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const data = await ctx.db.query.location.findMany({
+        columns: {
+          id: true,
+          name: true,
+        },
+        with: {
+          events: {
+            with: {
+              ticketGroups: {
+                where: ne(ticketGroup.status, 'BOOKED'),
+                columns: {
+                  amountTickets: true,
+                },
+                with: {
+                  emittedTickets: {
+                    where: between(
+                      emittedTicket.createdAt,
+                      input.from.toISOString(),
+                      input.to.toISOString(),
+                    ),
+                    columns: {
+                      scanned: true,
+                    },
+                  },
+                  ticketTypePerGroups: {
+                    with: {
+                      ticketType: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const stats = data.map((l) => {
+        const { totalRaised, totalSold } = l.events
+          .flatMap((e) => e.ticketGroups)
+          .flatMap((ticketGroup) => ticketGroup.ticketTypePerGroups)
+          .reduce(
+            (acc, ttpg) => {
+              const price = ttpg.ticketType?.price ?? 0;
+              const amount = ttpg.amount ?? 0;
+
+              acc.totalRaised += amount * price;
+              acc.totalSold += amount;
+
+              return acc;
+            },
+            { totalRaised: 0, totalSold: 0 },
+          );
+        const allEt = l.events
+          .flatMap((e) => e.ticketGroups)
+          .flatMap((tg) => tg.emittedTickets.map((et) => et.scanned));
+        const attendance = allEt.filter((et) => et).length;
+
+        const amountEt = l.events
+          .flatMap((e) => e.ticketGroups)
+          .reduce((acc, tg) => {
+            acc += tg.emittedTickets.length;
+            return acc;
+          }, 0);
+
+        return {
+          id: l.id,
+          name: l.name,
+          attendance,
+          totalRaised,
+          totalSold,
+          totalEmitted: amountEt,
+        };
+      });
+
+      return stats;
     }),
 });
