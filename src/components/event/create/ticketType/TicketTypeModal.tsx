@@ -277,14 +277,14 @@ export default function TicketTypeModal({
                     id='scanLimit'
                     name='scanLimit'
                     label='Finalización de escaneo de entradas'
-                    type='datetime-local'
+                    type='text'
                     error={error.scanLimit}
                     value={
                       editingTicketType.scanLimit
-                        ? format(
+                        ? `${format(
                             editingTicketType.scanLimit,
-                            "yyyy-MM-dd'T'HH:mm",
-                          )
+                            'dd/MM/yyyy HH:mm b',
+                          )} (Fin del evento)`
                         : ''
                     }
                     className='w-full text-accent/50'
@@ -329,14 +329,14 @@ export default function TicketTypeModal({
                     id='maxSellDate'
                     name='maxSellDate'
                     label='Finalización de venta de entradas'
-                    type='datetime-local'
+                    type='text'
                     error={error.maxSellDate}
                     value={
                       editingTicketType.maxSellDate
-                        ? format(
+                        ? `${format(
                             editingTicketType.maxSellDate,
-                            "yyyy-MM-dd'T'HH:mm",
-                          )
+                            'dd/MM/yyyy HH:mm b',
+                          )} (Comienzo del evento)`
                         : ''
                     }
                     className='w-full text-accent/50'
@@ -357,7 +357,26 @@ export default function TicketTypeModal({
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className='flex !flex-col gap-4'>
+            <p className='text-sm text-accent'>
+              {`Esta entrada de tipo`}{' '}
+              <b>{ticketTypesTranslation[category].text}</b>{' '}
+              {`(cuesta $${editingTicketType.price}). Esta entrada solo se puede
+              vender por la WEB hasta hasta el día`}{' '}
+              <b>{format(editingTicketType.maxSellDate!, 'dd/MM/yyyy')}</b>,
+              hasta las <b>{format(editingTicketType.maxSellDate!, 'p')}</b>
+              {`, y es válida para ingresar hasta el día `}
+              <b>{format(editingTicketType.scanLimit!, 'dd/MM/yyyy')}</b>
+              {`, hasta
+              las `}
+              <b>{format(editingTicketType.scanLimit!, 'p')}</b>
+              {`. Solo se
+              pueden vender `}
+              <b>{editingTicketType.maxAvailable}</b>
+              {` entradas de
+              este tipo, y por compra solamente se pueden emitir `}
+              <b>{editingTicketType.maxPerPurchase}</b>.
+            </p>
             {action === 'CREATE' ? (
               <Button type='submit' className='w-full'>
                 Crear
