@@ -33,6 +33,7 @@ type DatePickerProps = Omit<
   onSelectAction: (date: Date) => void;
   placeholder?: string;
   selected: Date;
+  disabled?: boolean;
 };
 
 export function DatePicker({ onSelectAction, ...inputProps }: DatePickerProps) {
@@ -51,8 +52,9 @@ export function DatePicker({ onSelectAction, ...inputProps }: DatePickerProps) {
         id='text'
         value={value}
         readOnly
+        disabled={inputProps.disabled}
         placeholder={inputProps.placeholder}
-        className='bg-background pr-10'
+        className='pr-10'
         onClick={(e) => {
           e.preventDefault();
           if (!open) {
@@ -69,6 +71,7 @@ export function DatePicker({ onSelectAction, ...inputProps }: DatePickerProps) {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            disabled={inputProps.disabled}
             id='date-picker'
             variant='ghost'
             className='absolute top-1/2 right-2 size-6 -translate-y-1/2'

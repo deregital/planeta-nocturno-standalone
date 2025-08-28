@@ -29,9 +29,11 @@ async function EventDetails({ slug }: { slug: string }) {
         alt='Event cover'
       />
       <div className='col-span-3 p-2'>
-        <h3 className='text-center text-2xl font-bold'>{event?.name}</h3>
+        <h3 className='text-center text-2xl font-bold text-accent'>
+          {event?.name}
+        </h3>
       </div>
-      <div className='flex flex-wrap items-center justify-center gap-x-3 pb-3'>
+      <div className='flex flex-wrap items-center justify-center gap-x-3 pb-3 text-accent'>
         <h3 className='flex items-center gap-x-1 p-2 text-center align-middle text-sm sm:text-base'>
           <CalendarIcon className='inline h-5 w-5' />
           {formatInTimeZone(

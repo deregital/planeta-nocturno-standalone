@@ -75,15 +75,16 @@ export function DataTable<TData extends { id: string }, TValue>({
   });
 
   return (
-    <div className='rounded-md border overflow-x-auto w-full md:max-w-[98%] max-w-[95%] mx-auto'>
+    <div className='rounded-md border-stroke/70 border overflow-x-auto w-full md:max-w-[98%] max-w-[95%] mx-auto'>
       <Table className='bg-white'>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <TableRow className='hover:bg-inherit' key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
                   <TableHead
                     key={header.id}
+                    className='text-accent font-bold'
                     style={{
                       width: header.getSize(),
                     }}
@@ -116,8 +117,8 @@ export function DataTable<TData extends { id: string }, TValue>({
                 className={cn(
                   onClickRow && 'cursor-pointer',
                   idx % 2 === 0
-                    ? 'bg-gray-200 hover:bg-gray-300'
-                    : 'hover:bg-gray-200/60',
+                    ? 'bg-accent-ultra-light hover:bg-gray-500/15'
+                    : 'hover:bg-gray-500/15',
                 )}
                 key={row.id}
                 data-state={row.getIsSelected() && 'selected'}

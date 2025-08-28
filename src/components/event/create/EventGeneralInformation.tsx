@@ -12,7 +12,7 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { Button } from '@/components/ui/button';
-import { generateS3Url } from '@/lib/client-utils';
+import { generateS3Url } from '@/lib/utils-client';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
@@ -81,7 +81,7 @@ export function EventGeneralInformation({
 
   return (
     <form
-      className='flex flex-col gap-4 justify-center [&>section]:flex [&>section]:flex-col [&>section]:gap-2 [&>section]:p-2 [&>section]:border-2 [&>section]:border-pn-gray [&>section]:rounded-md [&>section]:w-full w-full'
+      className='flex flex-col gap-4 justify-center [&>section]:flex [&>section]:flex-col [&>section]:gap-2 [&>section]:p-2 [&>section]:border-2 [&>section]:border-accent [&>section]:bg-accent-ultra-light [&>section]:rounded-md [&>section]:w-full w-full'
       onSubmit={handleSubmit}
     >
       {(action === 'CREATE' || action === 'EDIT') &&
@@ -100,7 +100,7 @@ export function EventGeneralInformation({
               height={1000}
               quality={100}
               src={event.coverImageUrl}
-              className='max-h-96 aspect-auto rounded-md w-fit max-w-full'
+              className='max-h-64 aspect-auto rounded-md w-fit max-w-full'
               alt='Event cover'
             />
             <Button
@@ -120,27 +120,34 @@ export function EventGeneralInformation({
         )}
       >
         <div className='flex-1 flex flex-col gap-2 w-full'>
+          <h3 className='text-accent-dark text-lg font-semibold'>
+            Descripción general del evento
+          </h3>
           <InputWithLabel
             label='Nombre del evento'
             id='name'
             type='text'
             placeholder='Nombre del evento'
             name='name'
+            required
             onChange={(e) => handleChange('name', e.target.value)}
             error={error.name}
             defaultValue={event.name ?? ''}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
           <InputWithLabel
             label='Descripción del evento'
             id='description'
             type='text'
             placeholder='Descripción del evento'
+            required
             name='description'
             onChange={(e) => handleChange('description', e.target.value)}
             error={error.description}
             defaultValue={event.description ?? ''}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
         </div>
         {action === 'PREVIEW' && (
@@ -154,92 +161,103 @@ export function EventGeneralInformation({
           />
         )}
       </section>
-      <section className='md:!flex-row'>
-        <InputDateWithLabel
-          label='Fecha del evento'
-          id='eventDate'
-          selected={event.startingDate}
-          className='flex-1'
-          onChange={(date) => {
-            const startingDate = date;
+      <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Descripción general del evento
+        </h3>
+        <div className='flex flex-col gap-2 md:!flex-row'>
+          <InputDateWithLabel
+            label='Fecha del evento'
+            id='eventDate'
+            selected={event.startingDate}
+            className='flex-1'
+            required
+            onChange={(date) => {
+              const startingDate = date;
 
-            const endingDate = new Date(
-              isBeforeHoursAndMinutes(event.endingDate, event.startingDate)
-                ? addDays(startingDate, 1)
-                : startingDate,
-            );
+              const endingDate = new Date(
+                isBeforeHoursAndMinutes(event.endingDate, event.startingDate)
+                  ? addDays(startingDate, 1)
+                  : startingDate,
+              );
 
-            startingDate.setHours(event.startingDate.getHours());
-            startingDate.setMinutes(event.startingDate.getMinutes());
-            endingDate.setHours(event.endingDate.getHours());
-            endingDate.setMinutes(event.endingDate.getMinutes());
+              startingDate.setHours(event.startingDate.getHours());
+              startingDate.setMinutes(event.startingDate.getMinutes());
+              endingDate.setHours(event.endingDate.getHours());
+              endingDate.setMinutes(event.endingDate.getMinutes());
 
-            handleChange('startingDate', startingDate);
-            handleChange('endingDate', endingDate);
+              handleChange('startingDate', startingDate);
+              handleChange('endingDate', endingDate);
 
-            setError({ eventDate: '' });
-          }}
-          error={error.eventDate}
-          disabled={action === 'PREVIEW'}
-        />
-        <InputWithLabel
-          label='Hora de inicio'
-          id='startTime'
-          type='time'
-          className='flex-1'
-          placeholder='Hora de inicio'
-          name='startTime'
-          value={format(event.startingDate, 'HH:mm')}
-          onChange={(e) => {
-            const [hours, minutes] = e.target.value.split(':');
-            const newDate = toDate(event.startingDate, {});
-            newDate.setHours(parseInt(hours), parseInt(minutes));
+              setError({ eventDate: '' });
+            }}
+            error={error.eventDate}
+            disabled={action === 'PREVIEW'}
+          />
+          <InputWithLabel
+            label='Hora de inicio'
+            id='startTime'
+            type='time'
+            required
+            className='flex-1'
+            placeholder='Hora de inicio'
+            name='startTime'
+            value={format(event.startingDate, 'HH:mm')}
+            onChange={(e) => {
+              const [hours, minutes] = e.target.value.split(':');
+              const newDate = toDate(event.startingDate, {});
+              newDate.setHours(parseInt(hours), parseInt(minutes));
 
-            // if the new date is before the ending date, substract a day from the ending date
-            if (isBeforeHoursAndMinutes(newDate, event.endingDate)) {
-              const newEndingDate = new Date(newDate);
-              newEndingDate.setHours(event.endingDate.getHours());
-              newEndingDate.setMinutes(event.endingDate.getMinutes());
-              handleChange('endingDate', newEndingDate);
-            } else {
-              const newEndingDate = addDays(event.startingDate, 1);
-              newEndingDate.setHours(event.endingDate.getHours());
-              newEndingDate.setMinutes(event.endingDate.getMinutes());
-              handleChange('endingDate', newEndingDate);
-            }
+              // if the new date is before the ending date, substract a day from the ending date
+              if (isBeforeHoursAndMinutes(newDate, event.endingDate)) {
+                const newEndingDate = new Date(newDate);
+                newEndingDate.setHours(event.endingDate.getHours());
+                newEndingDate.setMinutes(event.endingDate.getMinutes());
+                handleChange('endingDate', newEndingDate);
+              } else {
+                const newEndingDate = addDays(event.startingDate, 1);
+                newEndingDate.setHours(event.endingDate.getHours());
+                newEndingDate.setMinutes(event.endingDate.getMinutes());
+                handleChange('endingDate', newEndingDate);
+              }
 
-            handleChange('startingDate', newDate);
-          }}
-          error={error.startingDate}
-          readOnly={action === 'PREVIEW'}
-        />
-        <InputWithLabel
-          label='Hora de fin'
-          id='endTime'
-          type='time'
-          className='flex-1'
-          placeholder='Hora de fin'
-          name='endTime'
-          value={format(event.endingDate, 'HH:mm')}
-          onChange={(e) => {
-            const [hours, minutes] = e.target.value.split(':');
-            const newDate = toDate(event.startingDate, {});
-            newDate.setHours(parseInt(hours), parseInt(minutes));
+              handleChange('startingDate', newDate);
+            }}
+            error={error.startingDate}
+            readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
+          />
+          <InputWithLabel
+            label='Hora de fin'
+            id='endTime'
+            type='time'
+            required
+            className='flex-1'
+            placeholder='Hora de fin'
+            name='endTime'
+            value={format(event.endingDate, 'HH:mm')}
+            onChange={(e) => {
+              const [hours, minutes] = e.target.value.split(':');
+              const newDate = toDate(event.startingDate, {});
+              newDate.setHours(parseInt(hours), parseInt(minutes));
 
-            if (isBeforeHoursAndMinutes(newDate, event.startingDate)) {
-              newDate.setDate(newDate.getDate() + 1);
-            }
+              if (isBeforeHoursAndMinutes(newDate, event.startingDate)) {
+                newDate.setDate(newDate.getDate() + 1);
+              }
 
-            handleChange('endingDate', newDate);
-          }}
-          error={error.endingDate}
-          readOnly={action === 'PREVIEW'}
-        />
+              handleChange('endingDate', newDate);
+            }}
+            error={error.endingDate}
+            readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
+          />
+        </div>
       </section>
       <section className='flex !flex-row gap-2'>
         <InputWithLabel
           label='Edad mínima?'
           id='minAgeEnabled'
+          disabled={action === 'PREVIEW'}
           type='checkbox'
           className='[&>input]:w-6 items-center'
           placeholder='Edad mínima'
@@ -264,12 +282,16 @@ export function EventGeneralInformation({
             error={error.minAge}
             defaultValue={isNaN(event.minAge ?? 0) ? undefined : event.minAge!}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
         )}
       </section>
       <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Ubicación y categoría
+        </h3>
         <SelectWithLabel
-          label='Ubicación'
+          label='Locación'
           id='locationId'
           divClassName='flex-1'
           className='w-full'
@@ -290,6 +312,7 @@ export function EventGeneralInformation({
           defaultValue={event.locationId}
           value={event.locationId}
           readOnly={action === 'PREVIEW'}
+          disabled={action === 'PREVIEW'}
         />
         <SelectWithLabel
           label='Categoría'
@@ -313,6 +336,7 @@ export function EventGeneralInformation({
           defaultValue={event.categoryId}
           value={event.categoryId}
           readOnly={action === 'PREVIEW'}
+          disabled={action === 'PREVIEW'}
         />
       </section>
 

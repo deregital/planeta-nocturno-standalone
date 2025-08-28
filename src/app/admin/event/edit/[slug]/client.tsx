@@ -80,11 +80,11 @@ export default function Client({
   }
 
   return (
-    <div className='w-full p-4 [&>section]:flex [&>section]:flex-col [&>section]:gap-4 [&>section]:my-6 [&>section]:p-4 [&>section]:border-2 [&>section]:border-pn-gray [&>section]:rounded-md [&>section]:w-full'>
+    <div className='w-full p-4 [&_section]:flex [&_section]:flex-col [&_section]:gap-4 [&_section]:p-4 [&_section]:border-2 [&_section]:bg-accent-ultra-light [&_section]:border-stroke [&_section]:rounded-md [&_section]:w-full'>
       <h1 className='text-4xl font-bold'>Editar Evento</h1>
       <EventGeneralInformation action='EDIT' />
-      <section>
-        <h3 className='text-2xl'>Entradas</h3>
+      <section className='my-6' id='ticket-types'>
+        <h3 className='text-2xl text-accent font-bold'>Entradas</h3>
         <TicketTypeAction />
       </section>
       {error.general && (

@@ -2,56 +2,38 @@ import type { Config } from 'tailwindcss';
 
 import plugin from 'tailwindcss/plugin';
 
+// eslint-disable-next-line no-restricted-imports
+import { getColors } from './src/lib/get-colors';
+
 const config: Config = {
   content: [
     './src/**/*.{js,ts,jsx,tsx}',
     './app/**/*.{js,ts,jsx,tsx}',
     './components/**/*.{js,ts,jsx,tsx}',
   ],
-  theme: {
-    extend: {
-      colors: {
-        'pn-primary': 'var(--pn-primary-color)',
-        'pn-secondary': 'var(--pn-secondary-color)',
-        'pn-accent': 'var(--pn-accent-color)',
-        'pn-background': 'var(--pn-background-color)',
-        'pn-text-primary': 'var(--pn-text-primary-color)',
-        'pn-text-secondary': 'var(--pn-text-secondary-color)',
-        'pn-text-accent': 'var(--pn-text-accent-color)',
-        'pn-gray': 'var(--pn-gray)',
-        'pn-black': 'var(--pn-black)',
-        'pn-slate': 'var(--pn-slate)',
-        'pn-stroke': 'var(--pn-stroke)',
-      },
-      text: {
-        'pn-primary': 'var(--pn-text-primary-color)',
-        'pn-secondary': 'var(--pn-text-secondary-color)',
-      },
-    },
-  },
   plugins: [
-    plugin(function ({ addBase }) {
+    plugin(({ addBase }) => {
+      const {
+        textOnAccent,
+        accentDark,
+        accentColor,
+        buttonColor,
+        brandColor,
+        accentLight,
+        accentUltraLight,
+      } = getColors();
+
       addBase({
         ':root': {
-          '--pn-primary-color':
-            process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#F59E0B',
-          '--pn-secondary-color':
-            process.env.NEXT_PUBLIC_SECONDARY_COLOR || '#F59E0B',
-          '--pn-accent-color':
-            process.env.NEXT_PUBLIC_ACCENT_COLOR || '#F59E0B',
-          '--pn-background-color':
-            process.env.NEXT_PUBLIC_BACKGROUND_COLOR || '#F59E0B',
-          '--pn-text-primary-color':
-            process.env.NEXT_PUBLIC_TEXT_PRIMARY_COLOR || '#F59E0B',
-          '--pn-text-secondary-color':
-            process.env.NEXT_PUBLIC_TEXT_SECONDARY_COLOR || '#F59E0B',
-          '--pn-text-accent-color':
-            process.env.NEXT_PUBLIC_TEXT_ACCENT_COLOR || '#F59E0B',
-          // Default NO .env
-          '--pn-gray': '#A3A3A3',
-          '--pn-black': '#1F1F1F',
-          '--pn-slate': '#94A3B8',
-          '--pn-stroke': '#0F172A',
+          '--accent-dark-color': accentDark,
+          '--accent-color': accentColor,
+          '--button-color': buttonColor,
+          '--brand-color': brandColor,
+          '--accent-light-color': accentLight,
+          '--accent-ultra-light-color': accentUltraLight,
+          '--on-accent-color': textOnAccent,
+          '--stroke-color': accentColor,
+          '--pn-black-color': accentDark
         },
       });
     }),

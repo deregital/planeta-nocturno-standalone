@@ -30,7 +30,10 @@ export default function DeleteLocationModal({ id }: { id: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant='destructive' className='absolute bottom-4 right-0'>
+        <Button
+          variant='destructive'
+          className='absolute bottom-4 right-2 !p-2 !size-8'
+        >
           <Trash2 />
         </Button>
       </DialogTrigger>

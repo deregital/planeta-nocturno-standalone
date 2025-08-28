@@ -52,6 +52,7 @@ export default function SelectWithLabel({
         <SelectTrigger
           className={cn(
             className,
+            'bg-white border-stroke',
             error && 'border-red-500 border-2',
             readOnly && 'cursor-default',
           )}

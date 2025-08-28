@@ -2,6 +2,7 @@ import { ticketTypesTranslation } from '@/lib/translations';
 import { type EventState } from '@/app/admin/event/create/state';
 import DeleteTicketTypeModal from '@/components/event/create/ticketType/DeleteTicketTypeModal';
 import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
+import { cn } from '@/lib/utils';
 
 export default function TicketTypeList({
   ticketTypes,
@@ -17,9 +18,9 @@ export default function TicketTypeList({
       <p className='text-xl font-extralight'>Todavía no hay entradas creadas</p>
     </div>
   ) : (
-    <ul>
+    <ul className='gap-y-2 flex flex-col'>
       {action === 'PREVIEW' && (
-        <li className='grid grid-cols-5 border font-bold'>
+        <li className='grid grid-cols-5 font-bold text-accent border-stroke px-5'>
           <p>Nombre</p>
           <p>Descripción</p>
           <p>Precio</p>
@@ -33,7 +34,10 @@ export default function TicketTypeList({
         return (
           <li
             key={index}
-            className={`border grid gap-2 items-center ${action === 'EDIT' ? 'grid-cols-3' : 'grid-cols-5 py-2'}`}
+            className={cn(
+              `border border-stroke rounded-md grid gap-2 items-center px-5`,
+              action === 'EDIT' ? 'grid-cols-3' : 'grid-cols-5 py-2',
+            )}
           >
             <p>{type.name}</p>
             <p className={`${action === 'EDIT' && 'justify-self-center'}`}>

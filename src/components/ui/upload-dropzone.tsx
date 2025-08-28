@@ -52,20 +52,21 @@ export function UploadDropzone({
   return (
     <div
       className={cn(
-        'border-input relative rounded-lg border border-dashed transition-colors',
+        'border-stroke relative rounded-lg border border-dashed transition-colors bg-[url("/upload-dropzone-bg.webp")] z-5 bg-cover bg-center',
         {
-          'border-primary/80': isDragActive,
+          'border-accent/80': isDragActive,
         },
         className,
       )}
     >
+      <div className='absolute inset-0 bg-accent-ultra-light/70 rounded-lg z-10' />
       <label
         {...getRootProps()}
         className={cn(
-          'dark:bg-input/10 flex w-full cursor-pointer flex-col items-center justify-center rounded-lg bg-transparent px-2 py-6 transition-colors',
+          'group flex w-full z-20 sticky cursor-pointer flex-col items-center justify-center rounded-lg bg-transparent px-2 py-6 transition-colors',
           {
-            'text-muted-foreground cursor-not-allowed': isPending,
-            'hover:bg-accent dark:hover:bg-accent/30': !isPending,
+            'text-accent cursor-not-allowed opacity-50': isPending,
+            'hover:bg-accent-ultra-light/80': !isPending,
           },
         )}
         htmlFor={id}
@@ -74,13 +75,17 @@ export function UploadDropzone({
           {isPending ? (
             <Loader2 className='size-6 animate-spin' />
           ) : (
-            <Upload className='size-6' />
+            <Upload className='size-6 text-accent' />
           )}
         </div>
 
-        <div className='mt-3 space-y-1 text-center'>
-          <p className='text-sm font-semibold'>
-            Arrastrá y soltá archivos aquí
+        <div className='mt-3 space-y-1 text-center text-accent'>
+          <p className='text-sm font-medium'>
+            Arrastrá y soltá la{' '}
+            <span className='font-bold underline group-hover:underline-offset-4 transition-all'>
+              foto del evento
+            </span>{' '}
+            acá
           </p>
 
           <p className='text-muted-foreground max-w-64 text-xs'>

@@ -15,12 +15,11 @@ export default function LocationAccordion({
   value: string;
 }) {
   return (
-    <AccordionItem
-      value={value}
-      className='border last:border border-pn-gray rounded-lg px-4 my-4'
-    >
-      <AccordionTrigger className='text-xl'>{location.name}</AccordionTrigger>
-      <AccordionContent className='text-lg relative pb-4'>
+    <AccordionItem value={value} className='rounded-lg my-4'>
+      <AccordionTrigger className='text-xl px-4'>
+        {location.name}
+      </AccordionTrigger>
+      <AccordionContent className='text-lg relative'>
         <p className='font-medium'>
           Ubicación: <span className='font-light'>{location.address}</span>
         </p>

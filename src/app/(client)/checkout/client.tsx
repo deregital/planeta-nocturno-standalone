@@ -66,7 +66,7 @@ export default function CheckoutClient({
     <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
       <div className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'>
         <p className='text-2xl'>{ticketGroup.event.name}</p>
-        <p className='text-lg font-medium text-pn-accent'>
+        <p className='text-lg font-medium text-accent'>
           {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
         </p>
       </div>
@@ -125,7 +125,7 @@ export default function CheckoutClient({
 
               <div className='flex flex-col gap-1'>
                 <Label
-                  className='pl-1 text-pn-accent gap-0.5'
+                  className='pl-1 text-accent gap-0.5'
                   htmlFor={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
                 >
                   Número de teléfono<span className='text-red-500'>*</span>
@@ -133,7 +133,7 @@ export default function CheckoutClient({
                 <PhoneInput
                   labels={esPhoneLocale}
                   defaultCountry='AR'
-                  className='[&_[data-slot="input"]]:border-pn-gray'
+                  className='[&_[data-slot="input"]]:border-stroke'
                   inputComponent={Input}
                   value={
                     phoneNumbers[
@@ -175,7 +175,7 @@ export default function CheckoutClient({
               />
               <div className='flex flex-col gap-1'>
                 <Label
-                  className='pl-1 text-pn-accent gap-0.5'
+                  className='pl-1 text-accent gap-0.5'
                   htmlFor={`gender_${ticket.ticketType.id}-${indexAmount}`}
                 >
                   Género<span className='text-red-500'>*</span>
@@ -189,7 +189,7 @@ export default function CheckoutClient({
                     ]
                   }
                 >
-                  <SelectTrigger className='w-full py-2 border-pn-gray'>
+                  <SelectTrigger className='w-full py-2 border-stroke'>
                     <SelectValue placeholder='Selecciona tu género' />
                   </SelectTrigger>
                   <SelectContent>
@@ -227,7 +227,7 @@ export default function CheckoutClient({
               {(indexAmount < ticket.amount - 1 ||
                 ticketTypeIndex <
                   ticketGroup.ticketTypePerGroups.length - 1) && (
-                <Separator className='my-6 bg-pn-gray' />
+                <Separator className='my-6 bg-accent-dark/70' />
               )}
             </div>
           ));

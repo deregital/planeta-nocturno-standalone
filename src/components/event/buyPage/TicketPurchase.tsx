@@ -33,16 +33,16 @@ function TicketPurchase({
   } = useEventTickets(eventId, ticketTypes);
 
   return (
-    <div className='rounded-[20px] border border-pn-gray p-6 bg-white h-full flex flex-col font-sans'>
+    <div className='rounded-[20px] border border-stroke p-6 bg-accent-ultra-light h-full flex flex-col font-sans'>
       {/* Encabezado de la tabla */}
-      <div className='grid grid-cols-3 pb-2 border-b border-pn-gray'>
-        <div className='text-black text-[12px] sm:text-[16px] font-normal leading-[100%]'>
+      <div className='grid grid-cols-3 pb-2 border-b border-stroke'>
+        <div className='text-accent-dark md:text-[16px] text-[12px] sm:text-[16px] font-normal leading-[100%]'>
           Tipo de Ticket
         </div>
-        <div className='text-black text-[12px] sm:text-[16px] font-normal leading-[100%] text-center'>
+        <div className='text-accent-dark md:text-[16px] text-[12px] sm:text-[16px] font-normal leading-[100%] text-center'>
           Valor
         </div>
-        <div className='text-black text-[12px] sm:text-[16px] font-normal leading-[100%] text-right'>
+        <div className='text-accent-dark md:text-[16px] text-[12px] sm:text-[16px] font-normal leading-[100%] text-right'>
           Cantidad
         </div>
       </div>
@@ -59,7 +59,7 @@ function TicketPurchase({
                 {type.price ? (
                   <p>${type.price}</p>
                 ) : (
-                  <p className='text-green-700'>GRATUITO</p>
+                  <p className='text-accent '>GRATUITO</p>
                 )}
               </div>
               <div className='flex justify-end'>
@@ -75,7 +75,7 @@ function TicketPurchase({
                       ])
                     }
                   >
-                    <SelectTrigger className='w-24 bg-white text-black border border-pn-gray'>
+                    <SelectTrigger className='w-24 bg-white text-black border border-stroke'>
                       <SelectValue placeholder='0' />
                     </SelectTrigger>
                     <SelectContent align='end'>

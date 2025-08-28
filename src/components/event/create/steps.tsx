@@ -55,7 +55,7 @@ export function Steps() {
               asChild
               className='flex flex-col gap-2.5 items-center'
             >
-              <StepperIndicator className='font-bold data-[state=completed]:bg-pn-accent data-[state=active]:bg-pn-accent/80 data-[state=inactive]:bg-pn-gray/75'>
+              <StepperIndicator className='font-bold'>
                 {index + 1}
               </StepperIndicator>
               <StepperTitle>{step.title}</StepperTitle>
@@ -65,7 +65,7 @@ export function Steps() {
                 className={cn(
                   'absolute top-3 inset-x-0 left-[calc(50%+0.875rem)] m-0',
                   'group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem+0.225rem)]',
-                  'group-data-[orientation=horizontal]/stepper-nav:flex-none group-data-[state=completed]/step:bg-pn-accent',
+                  'group-data-[orientation=horizontal]/stepper-nav:flex-none group-data-[state=completed]/step:bg-accent',
                 )}
               />
             )}

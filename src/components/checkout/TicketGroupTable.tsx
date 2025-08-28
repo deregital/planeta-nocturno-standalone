@@ -18,30 +18,30 @@ export function TicketGroupTable({
     .replace(/\s/g, '');
 
   return (
-    <div className='flex flex-col justify-center items-center border border-pn-gray p-4 rounded-sm w-full sm:w-xl md:w-2xl'>
+    <div className='flex flex-col justify-center items-center border border-stroke p-4 rounded-xl w-full sm:w-xl md:w-2xl'>
       <div className='grid grid-cols-3 w-full text-lg'>
-        <div className='text-pn-text-primary border-b border-pn-gray pb-1 pt-4'>
+        <div className='text-black border-b border-stroke pb-1 pt-4'>
           Tipo de Ticket
         </div>
-        <div className='text-pn-text-primary text-center border-b border-pn-gray pb-1 pt-4'>
+        <div className='text-black text-center border-b border-stroke pb-1 pt-4'>
           Valor
         </div>
-        <div className='text-pn-text-primary text-right border-b border-pn-gray pb-1 pt-4'>
+        <div className='text-black text-right border-b border-stroke pb-1 pt-4'>
           Cantidad
         </div>
         {ticketGroup.ticketTypePerGroups.map((type, index) => (
           <React.Fragment key={index}>
-            <div className='text-pn-text-primary py-4 border-b border-pn-gray/50'>
+            <div className='text-black py-4 border-b border-stroke/50'>
               {type.ticketType.name}
             </div>
-            <div className='text-pn-text-primary text-center py-4 border-b border-pn-gray/50'>
+            <div className='text-black text-center py-4 border-b border-stroke/50'>
               {type.ticketType.price ? (
                 <p>${type.ticketType.price}</p>
               ) : (
                 <p className='text-green-700 font-semibold'>GRATUITO</p>
               )}
             </div>
-            <div className='text-pn-text-primary text-right py-4 border-b border-pn-gray/50'>
+            <div className='text-black text-right py-4 border-b border-stroke/50'>
               {type.amount}
             </div>
           </React.Fragment>

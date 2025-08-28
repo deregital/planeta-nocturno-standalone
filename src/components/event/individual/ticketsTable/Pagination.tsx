@@ -72,13 +72,14 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
 
   return (
     <>
-      <div className='border-t border-black/10 bg-transparent px-3 py-3 text-black sm:px-6'>
+      <div className='border-t border-accent-dark/10 bg-transparent px-3 py-3 text-black sm:px-6'>
         <div className='flex items-center justify-between'>
           <div
             id='buttons-pagination'
             className='flex items-center justify-center gap-x-2 px-2'
           >
             <Button
+              variant={'accent'}
               className='w-8 rounded-md border p-0 text-center disabled:cursor-not-allowed'
               onClick={() => table.firstPage()}
               disabled={!table.getCanPreviousPage()}
@@ -86,6 +87,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
               <ChevronsLeft className='w-6' />
             </Button>
             <Button
+              variant={'accent'}
               className='w-8 rounded-md border p-0 text-center disabled:cursor-not-allowed'
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
@@ -103,6 +105,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
               </strong>
             </span>
             <Button
+              variant={'accent'}
               className='w-8 rounded-md border px-0 text-center disabled:cursor-not-allowed'
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
@@ -110,6 +113,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
               <ChevronRight className='w-6' />
             </Button>
             <Button
+              variant={'accent'}
               className='w-8 rounded-md border px-0 text-center disabled:cursor-not-allowed'
               onClick={() => table.lastPage()}
               disabled={!table.getCanNextPage()}

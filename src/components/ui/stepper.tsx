@@ -365,7 +365,7 @@ function StepperIndicator({
       data-slot='stepper-indicator'
       data-state={state}
       className={cn(
-        'relative flex items-center overflow-hidden justify-center size-6 shrink-0 border-background bg-accent text-accent-foreground rounded-full text-xs data-[state=completed]:bg-primary data-[state=completed]:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground',
+        'relative flex items-center overflow-hidden justify-center size-6 shrink-0 border-background bg-gray-500 text-accent-foreground rounded-full text-xs data-[state=completed]:bg-accent data-[state=completed]:text-on-accent data-[state=active]:bg-brand data-[state=active]:text-primary-foreground',
         className,
       )}
     >
@@ -393,7 +393,7 @@ function StepperSeparator({ className }: React.ComponentProps<'div'>) {
       data-slot='stepper-separator'
       data-state={state}
       className={cn(
-        'm-0.5 rounded-full bg-pn-gray group-data-[orientation=vertical]/stepper-nav:h-12 group-data-[orientation=vertical]/stepper-nav:w-0.5 group-data-[orientation=horizontal]/stepper-nav:h-0.5 group-data-[orientation=horizontal]/stepper-nav:flex-1',
+        'm-0.5 rounded-full bg-accent group-data-[orientation=vertical]/stepper-nav:h-12 group-data-[orientation=vertical]/stepper-nav:w-0.5 group-data-[orientation=horizontal]/stepper-nav:h-0.5 group-data-[orientation=horizontal]/stepper-nav:flex-1',
         className,
       )}
     />

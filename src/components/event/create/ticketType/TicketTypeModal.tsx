@@ -173,7 +173,7 @@ export default function TicketTypeModal({
           <div>
             <Button
               variant='ghost'
-              className='flex flex-col justify-center items-center border-2 rounded-2xl border-pn-accent p-16 bg-gray-100 hover:bg-pn-accent/20'
+              className='flex flex-col justify-center items-center border-2 rounded-2xl border-stroke p-16 bg-white hover:bg-accent-light/10'
             >
               <span className='text-3xl font-semibold'>{text}</span>
               <div>{icon}</div>
@@ -277,17 +277,17 @@ export default function TicketTypeModal({
                     id='scanLimit'
                     name='scanLimit'
                     label='Finalización de escaneo de entradas'
-                    type='datetime-local'
+                    type='text'
                     error={error.scanLimit}
                     value={
                       editingTicketType.scanLimit
-                        ? format(
+                        ? `${format(
                             editingTicketType.scanLimit,
-                            "yyyy-MM-dd'T'HH:mm",
-                          )
+                            'dd/MM/yyyy HH:mm b',
+                          )} (Fin del evento)`
                         : ''
                     }
-                    className='w-full text-pn-gray'
+                    className='w-full text-accent/50'
                     readOnly
                   />
                 )}
@@ -329,17 +329,17 @@ export default function TicketTypeModal({
                     id='maxSellDate'
                     name='maxSellDate'
                     label='Finalización de venta de entradas'
-                    type='datetime-local'
+                    type='text'
                     error={error.maxSellDate}
                     value={
                       editingTicketType.maxSellDate
-                        ? format(
+                        ? `${format(
                             editingTicketType.maxSellDate,
-                            "yyyy-MM-dd'T'HH:mm",
-                          )
+                            'dd/MM/yyyy HH:mm b',
+                          )} (Comienzo del evento)`
                         : ''
                     }
-                    className='w-full text-pn-gray'
+                    className='w-full text-accent/50'
                     readOnly
                   />
                 )}
@@ -357,7 +357,26 @@ export default function TicketTypeModal({
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className='flex !flex-col gap-4'>
+            <p className='text-sm text-accent'>
+              {`Esta entrada de tipo`}{' '}
+              <b>{ticketTypesTranslation[category].text}</b>{' '}
+              {`(cuesta $${editingTicketType.price}). Esta entrada solo se puede
+              vender por la WEB hasta hasta el día`}{' '}
+              <b>{format(editingTicketType.maxSellDate!, 'dd/MM/yyyy')}</b>,
+              hasta las <b>{format(editingTicketType.maxSellDate!, 'p')}</b>
+              {`, y es válida para ingresar hasta el día `}
+              <b>{format(editingTicketType.scanLimit!, 'dd/MM/yyyy')}</b>
+              {`, hasta
+              las `}
+              <b>{format(editingTicketType.scanLimit!, 'p')}</b>
+              {`. Solo se
+              pueden vender `}
+              <b>{editingTicketType.maxAvailable}</b>
+              {` entradas de
+              este tipo, y por compra solamente se pueden emitir `}
+              <b>{editingTicketType.maxPerPurchase}</b>.
+            </p>
             {action === 'CREATE' ? (
               <Button type='submit' className='w-full'>
                 Crear

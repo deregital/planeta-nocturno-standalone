@@ -17,14 +17,14 @@ type EmittedBuyerTableWithId = EmittedBuyerTable & { id: string };
 export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   {
     accessorKey: 'dni',
-    header: () => <p className='text-sm p-2 text-pn-slate'>DNI</p>,
+    header: () => <p className='text-sm p-2'>DNI</p>,
     cell: ({ row }) => {
       return <p className='text-sm p-2'>{row.original.dni}</p>;
     },
   },
   {
     accessorKey: 'fullName',
-    header: () => <p className='text-sm p-2 text-pn-slate'>Nombre</p>,
+    header: () => <p className='text-sm p-2'>Nombre</p>,
     cell: ({ row }) => {
       const fullName = row.original.fullName;
       return <p className='text-sm p-2'>{fullName}</p>;
@@ -32,7 +32,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'mail',
-    header: () => <p className='text-sm p-2 text-pn-slate'>Mail</p>,
+    header: () => <p className='text-sm p-2'>Mail</p>,
     cell: ({ row }) => {
       const mail = row.original.mail;
       return <p className='text-sm p-2'>{mail}</p>;
@@ -40,7 +40,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'age',
-    header: () => <p className='text-sm p-2 text-pn-slate'>Edad</p>,
+    header: () => <p className='text-sm p-2'>Edad</p>,
     cell: ({ row }) => {
       const age = row.original.age;
       return <p className='text-sm p-2'>{age}</p>;
@@ -48,7 +48,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'gender',
-    header: () => <p className='text-sm p-2 text-pn-slate'>Genero</p>,
+    header: () => <p className='text-sm p-2'>Genero</p>,
     cell: ({ row }) => {
       const gender = row.original.gender;
       return (
@@ -62,7 +62,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'phoneNumber',
-    header: () => <p className='text-sm p-2 text-pn-slate'>Teléfono</p>,
+    header: () => <p className='text-sm p-2'>Teléfono</p>,
     cell: ({ row }) => {
       const phoneNumber = row.original.phoneNumber;
       if (!phoneNumber) return '-';
@@ -75,7 +75,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'instagram',
-    header: () => <p className='text-sm p-2 text-pn-slate'>Instagram</p>,
+    header: () => <p className='text-sm p-2'>Instagram</p>,
     cell: ({ row }) => {
       const instagram = row.original.instagram;
       if (!instagram) return '-';
@@ -143,7 +143,7 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
             className='min-w-full'
           />
           {/* Results count */}
-          <p className='text-sm'>
+          <p className='text-sm text-accent'>
             {filteredData.length} de {data.length} resultados
           </p>
           {globalFilter && (

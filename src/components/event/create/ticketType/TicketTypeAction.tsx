@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,7 @@ export default function TicketTypeAction({
   }, [location, ticketTypes]);
 
   return (
-    <div className='w-full'>
+    <div className='w-full text-accent'>
       {back && (
         <Button className='self-baseline' onClick={back} variant={'outline'}>
           Volver
@@ -48,14 +49,24 @@ export default function TicketTypeAction({
           />
         ))}
       </div>
-      <Separator className='my-6 bg-pn-gray' />
+      <Separator className='my-6 bg-stroke' />
       <TicketTypeList
         action='EDIT'
         ticketTypes={ticketTypes}
         maxAvailableLeft={maxAvailableLeft}
       />
       {next && (
-        <Button onClick={next} variant={'accent'} className='w-full mt-8'>
+        <Button
+          onClick={() => {
+            if (ticketTypes.length === 0) {
+              toast.error('Debe agregar al menos una entrada');
+              return;
+            }
+            next();
+          }}
+          variant={'accent'}
+          className='w-full mt-8'
+        >
           Continuar
         </Button>
       )}

@@ -375,7 +375,7 @@ export const eventsRouter = router({
 
       try {
         const pdf = await generate({
-          template: presentismoPDFSchema,
+          template: presentismoPDFSchema(),
           inputs: pdfData,
           plugins,
           options: {

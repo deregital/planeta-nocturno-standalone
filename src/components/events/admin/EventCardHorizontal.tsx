@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Calendar, Pencil } from 'lucide-react';
+import { BadgeCheck, Calendar, Link2, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -24,10 +24,13 @@ export default function EventCardHorizontal({
     trpc.events.generatePresentismoGroupedTicketTypePDF.useMutation();
 
   return (
-    <Card className='flex flex-row bg-pn-accent py-2 rounded-lg'>
-      <CardContent className='flex w-full justify-between px-4 text-pn-text-accent'>
-        <div className='flex flex-row gap-4 items-center'>
-          <CardTitle>{event.name}</CardTitle>
+    <Card variant={'accent'} className='flex flex-row py-2 rounded-lg'>
+      <CardContent className='flex w-full justify-between px-4 text-on-accent'>
+        <div className='flex sm:flex-row flex-col sm:gap-4 gap-2 sm:items-center'>
+          <div className='flex flex-row items-center gap-2'>
+            {event.isActive && <BadgeCheck className='text-on-accent' />}
+            <CardTitle>{event.name}</CardTitle>
+          </div>
           <p className='text-sm'>
             {format(event.startingDate, 'dd/MM/yyyy HH:mm')} -{' '}
             {event.location.address}
@@ -35,14 +38,19 @@ export default function EventCardHorizontal({
         </div>
         <div className='flex flex-row gap-0.5 items-center'>
           <Button variant={'ghost'} size={'icon'} asChild>
+            <Link href={`/event/${event.slug}`} target='_blank'>
+              <Link2 className='w-4 h-4 text-on-accent' />
+            </Link>
+          </Button>
+          <Button variant={'ghost'} size={'icon'} asChild>
             <Link href={`/admin/event/${event.slug}`}>
-              <Calendar className='w-4 h-4' />
+              <Calendar className='w-4 h-4 text-on-accent' />
             </Link>
           </Button>
           <Button
             title='Generar presentismo por orden alfabético'
-            variant={'ghost'}
             size={'icon'}
+            variant={'ghost'}
             onClick={() => {
               generatePresentismoOrdenAlfPDF.mutate(
                 { eventId: event.id },
@@ -62,11 +70,13 @@ export default function EventCardHorizontal({
                 },
               );
             }}
+            className='text-on-accent'
           >
             <FileMarkdown />
           </Button>
 
           <Button
+            className='text-on-accent'
             variant={'ghost'}
             size={'icon'}
             onClick={() => {
@@ -94,6 +104,7 @@ export default function EventCardHorizontal({
 
           <Button
             variant={'ghost'}
+            className='text-on-accent'
             onClick={() => router.push(`/admin/event/edit/${event.slug}`)}
           >
             <Pencil />

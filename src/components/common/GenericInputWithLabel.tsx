@@ -22,12 +22,14 @@ export default function GenericInputWithLabel({
 }: GenericInputWithLabelProps) {
   const childrenClassName = cn(
     (children.props as { className?: string }).className,
-    error ? 'border-red-500 border-2' : 'border-pn-gray py-2',
+    error
+      ? 'border-red-500 border-2'
+      : 'border-stroke placeholder:text-accent-dark/40 py-2',
   );
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <Label htmlFor={id} className='pl-1 text-pn-accent gap-[2px]'>
+      <Label htmlFor={id} className='pl-1 text-accent gap-[2px]'>
         {label}
         {required && <span className='text-red-500'>*</span>}
       </Label>

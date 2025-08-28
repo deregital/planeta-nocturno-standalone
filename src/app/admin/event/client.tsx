@@ -18,7 +18,7 @@ export default function Client({
       <h1 className='text-4xl font-bold'>Gestor de Eventos</h1>
 
       <Button
-        className='w-fit bg-pn-gray text-black'
+        className='w-fit py-4 px-8'
         onClick={() => router.push('/admin/event/create')}
       >
         <Calendar /> Crear evento
