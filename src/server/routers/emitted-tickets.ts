@@ -1,22 +1,23 @@
-import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { and, eq } from 'drizzle-orm';
-import { format, differenceInYears } from 'date-fns';
+import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import { and, eq } from 'drizzle-orm';
+import { z } from 'zod';
 
-import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
 import {
   emittedTicket,
   ticketGroup,
   ticketType as ticketTypeTable,
 } from '@/drizzle/schema';
-import { decryptString } from '@/server/utils/utils';
 import {
   createManyTicketSchema,
   createTicketSchema,
+  emittedTicketSchema,
 } from '@/server/schemas/emitted-tickets';
-import { generatePdf } from '@/server/utils/ticket-template';
 import { sendMail } from '@/server/services/mail';
+import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { generatePdf } from '@/server/utils/ticket-template';
+import { decryptString } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
   create: protectedProcedure
@@ -92,7 +93,67 @@ export const emittedTicketsRouter = router({
 
     return dataWithAge;
   }),
+  getUniqueBuyer: protectedProcedure
+    .input(emittedTicketSchema.shape.dni)
+    .query(async ({ input, ctx }) => {
+      const buyerWithBirthDate = await ctx.db.query.emittedTicket.findFirst({
+        where: eq(emittedTicket.dni, input),
+        columns: {
+          fullName: true,
+          dni: true,
+          birthDate: true,
+          phoneNumber: true,
+          instagram: true,
+          gender: true,
+        },
+      });
 
+      const emittedTickets = await ctx.db.query.emittedTicket.findMany({
+        where: eq(emittedTicket.dni, input),
+        columns: {
+          id: true,
+        },
+        with: {
+          ticketGroup: {
+            columns: {
+              id: true,
+            },
+            with: {
+              event: {
+                columns: {
+                  id: true,
+                  name: true,
+                  startingDate: true,
+                },
+                with: {
+                  location: {
+                    columns: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!buyerWithBirthDate) {
+        return null;
+        // throw new TRPCError({
+        //   code: 'NOT_FOUND',
+        //   message: `Comprador con el DNI ${input} no encontrado`,
+        // });
+      }
+
+      const { birthDate, ...buyerWithoutBirthDate } = buyerWithBirthDate;
+      const buyer = {
+        ...buyerWithoutBirthDate,
+        age: differenceInYears(new Date(), new Date(birthDate)).toString(),
+      };
+
+      return { buyer, emittedTickets };
+    }),
   getPdf: protectedProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
