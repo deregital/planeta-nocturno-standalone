@@ -134,6 +134,7 @@ export function EventGeneralInformation({
             error={error.name}
             defaultValue={event.name ?? ''}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
           <InputWithLabel
             label='Descripción del evento'
@@ -146,6 +147,7 @@ export function EventGeneralInformation({
             error={error.description}
             defaultValue={event.description ?? ''}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
         </div>
         {action === 'PREVIEW' && (
@@ -223,6 +225,7 @@ export function EventGeneralInformation({
             }}
             error={error.startingDate}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
           <InputWithLabel
             label='Hora de fin'
@@ -246,6 +249,7 @@ export function EventGeneralInformation({
             }}
             error={error.endingDate}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
         </div>
       </section>
@@ -253,6 +257,7 @@ export function EventGeneralInformation({
         <InputWithLabel
           label='Edad mínima?'
           id='minAgeEnabled'
+          disabled={action === 'PREVIEW'}
           type='checkbox'
           className='[&>input]:w-6 items-center'
           placeholder='Edad mínima'
@@ -277,6 +282,7 @@ export function EventGeneralInformation({
             error={error.minAge}
             defaultValue={isNaN(event.minAge ?? 0) ? undefined : event.minAge!}
             readOnly={action === 'PREVIEW'}
+            disabled={action === 'PREVIEW'}
           />
         )}
       </section>
@@ -306,6 +312,7 @@ export function EventGeneralInformation({
           defaultValue={event.locationId}
           value={event.locationId}
           readOnly={action === 'PREVIEW'}
+          disabled={action === 'PREVIEW'}
         />
         <SelectWithLabel
           label='Categoría'
@@ -329,6 +336,7 @@ export function EventGeneralInformation({
           defaultValue={event.categoryId}
           value={event.categoryId}
           readOnly={action === 'PREVIEW'}
+          disabled={action === 'PREVIEW'}
         />
       </section>
 
