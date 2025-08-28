@@ -73,7 +73,7 @@ export default function Dashboard() {
             <BaseCard className='sm:col-start-1 sm:row-span-3 sm:col-span-2 sm:row-start-2 lg:row-span-5 p-12 gap-8 justify-center items-center'>
               <div className='flex justify-center lg:justify-baseline items-center w-full gap-6'>
                 <p className='text-3xl'>Tasa de asistencia:</p>
-                <p className='text-5xl font-medium text-pn-accent'>
+                <p className='text-5xl font-medium text-accent'>
                   {Intl.NumberFormat('es-AR', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -83,7 +83,7 @@ export default function Dashboard() {
               </div>
               <Progress
                 value={statistics.scannedPercentage}
-                className='h-12 [&>div]:bg-pn-accent [&>div]:rounded-full md:mt-8'
+                className='h-12 [&>div]:bg-accent [&>div]:rounded-full md:mt-8'
               />
             </BaseCard>
 
@@ -92,7 +92,7 @@ export default function Dashboard() {
               <p className='text-3xl font-light text-center'>
                 Dinero recaudado
               </p>
-              <p className='text-6xl lg:text-5xl xl:text-6xl text-pn-accent font-medium lg:py-16'>
+              <p className='text-6xl lg:text-5xl xl:text-6xl text-accent font-medium lg:py-16'>
                 {Intl.NumberFormat('es-AR', {
                   style: 'currency',
                   currency: 'ARS',
@@ -106,7 +106,7 @@ export default function Dashboard() {
               <p className='text-3xl font-light text-center'>
                 Entradas vendidas
               </p>
-              <p className='text-6xl lg:text-5xl xl:text-6xl text-pn-accent font-medium lg:py-16'>
+              <p className='text-6xl lg:text-5xl xl:text-6xl text-accent font-medium lg:py-16'>
                 {Intl.NumberFormat('es-AR').format(statistics.totalTickets)}
               </p>
             </BaseCard>

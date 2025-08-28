@@ -33,7 +33,6 @@ const config: Config = {
           '--accent-ultra-light-color': accentUltraLight,
           '--on-accent-color': textOnAccent,
           '--stroke-color': accentColor,
-          '--pn-black-color': accentDark
         },
       });
     }),

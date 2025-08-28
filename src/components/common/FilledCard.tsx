@@ -8,7 +8,7 @@ export function FilledCard({
   return (
     <div
       className={cn(
-        'border border-pn-stroke rounded-md bg-pn-accent/10 gap-4 ',
+        'border border-stroke rounded-md bg-accent/10 gap-4 ',
         className,
       )}
       {...props}
