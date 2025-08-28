@@ -10,6 +10,7 @@ import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTi
 import { ScanTicketModal } from '@/components/event/individual/ScanTicketModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
+import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
@@ -65,6 +66,7 @@ async function EventDetails({ slug }: { slug: string }) {
       <div className='flex flex-row gap-x-2'>
         <ScanTicketModal eventId={event.id} />
         <EmitTicketModal event={event} />
+        <ToggleActivateButton event={event} />
       </div>
       <TicketTableWithTabs ticketTypes={event.ticketTypes} />
     </div>

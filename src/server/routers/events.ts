@@ -505,4 +505,13 @@ export const eventsRouter = router({
         throw error;
       }
     }),
+  toggleActivate: protectedProcedure
+    .input(z.object({ id: z.string(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, isActive } = input;
+      await ctx.db
+        .update(eventSchema)
+        .set({ isActive })
+        .where(eq(eventSchema.id, id));
+    }),
 });
