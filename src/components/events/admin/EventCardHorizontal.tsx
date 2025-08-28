@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Calendar, Pencil } from 'lucide-react';
+import { Calendar, Link2, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -34,6 +34,11 @@ export default function EventCardHorizontal({
           </p>
         </div>
         <div className='flex flex-row gap-0.5 items-center'>
+          <Button variant={'ghost'} size={'icon'} asChild>
+            <Link href={`/event/${event.slug}`} target='_blank'>
+              <Link2 className='w-4 h-4 text-on-accent' />
+            </Link>
+          </Button>
           <Button variant={'ghost'} size={'icon'} asChild>
             <Link href={`/admin/event/${event.slug}`}>
               <Calendar className='w-4 h-4 text-on-accent' />

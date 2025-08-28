@@ -6,6 +6,7 @@ import PhoneInput from 'react-phone-number-input';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import z from 'zod';
+import Link from 'next/link';
 
 import {
   Dialog,
@@ -241,28 +242,36 @@ export function EmitTicketModal({
             </FormRow>
 
             <FormRow>
-              <SelectWithLabel
-                className='w-full'
-                label='Tipo de entrada'
-                id='ticketTypeId'
-                name='ticketTypeId'
-                defaultValue=''
-                values={event!.ticketTypes.map((type) => ({
-                  label: `${type.name} - $${type.price}`,
-                  value: type.id,
-                }))}
-                onValueChange={(value) => {
-                  setSelectedTicketTypeId(value);
-                  const select = formRef.current?.querySelector(
-                    '[name="ticketTypeId"]',
-                  ) as HTMLSelectElement;
-                  if (select) {
-                    select.value = value;
-                  }
-                }}
-                required={true}
-                error={error.ticketTypeId}
-              />
+              <div className='flex flex-col'>
+                <SelectWithLabel
+                  className='w-full'
+                  label='Tipo de entrada'
+                  id='ticketTypeId'
+                  name='ticketTypeId'
+                  defaultValue=''
+                  values={event!.ticketTypes.map((type) => ({
+                    label: `${type.name} - $${type.price}`,
+                    value: type.id,
+                  }))}
+                  onValueChange={(value) => {
+                    setSelectedTicketTypeId(value);
+                    const select = formRef.current?.querySelector(
+                      '[name="ticketTypeId"]',
+                    ) as HTMLSelectElement;
+                    if (select) {
+                      select.value = value;
+                    }
+                  }}
+                  required={true}
+                  error={error.ticketTypeId}
+                />
+                <Link
+                  href={`/admin/event/edit/${event?.slug}`}
+                  className='text-sm text-accent hover:underline'
+                >
+                  Crear nuevo tipo de entrada
+                </Link>
+              </div>
               <InputWithLabel
                 className='[&_[data-slot="input"]]:w-7 [&_[data-slot="input"]]:ml-1'
                 type='checkbox'

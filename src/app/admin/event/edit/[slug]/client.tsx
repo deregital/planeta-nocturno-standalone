@@ -83,7 +83,7 @@ export default function Client({
     <div className='w-full p-4 [&_section]:flex [&_section]:flex-col [&_section]:gap-4 [&_section]:p-4 [&_section]:border-2 [&_section]:bg-accent-ultra-light [&_section]:border-stroke [&_section]:rounded-md [&_section]:w-full'>
       <h1 className='text-4xl font-bold'>Editar Evento</h1>
       <EventGeneralInformation action='EDIT' />
-      <section className='my-6'>
+      <section className='my-6' id='ticket-types'>
         <h3 className='text-2xl text-accent font-bold'>Entradas</h3>
         <TicketTypeAction />
       </section>
