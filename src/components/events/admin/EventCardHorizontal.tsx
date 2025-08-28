@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Calendar, Link2, Pencil } from 'lucide-react';
+import { BadgeCheck, Calendar, Link2, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -26,8 +26,11 @@ export default function EventCardHorizontal({
   return (
     <Card variant={'accent'} className='flex flex-row py-2 rounded-lg'>
       <CardContent className='flex w-full justify-between px-4 text-on-accent'>
-        <div className='flex flex-row gap-4 items-center'>
-          <CardTitle>{event.name}</CardTitle>
+        <div className='flex sm:flex-row flex-col sm:gap-4 gap-2 sm:items-center'>
+          <div className='flex flex-row items-center gap-2'>
+            {event.isActive && <BadgeCheck className='text-on-accent' />}
+            <CardTitle>{event.name}</CardTitle>
+          </div>
           <p className='text-sm'>
             {format(event.startingDate, 'dd/MM/yyyy HH:mm')} -{' '}
             {event.location.address}
