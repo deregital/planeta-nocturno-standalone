@@ -19,12 +19,18 @@ export default function Client({
   const router = useRouter();
 
   return (
-    <div className='flex flex-col gap-8 p-4'>
-      <Button variant={'ghost'} className='block' onClick={() => router.back()}>
-        <ArrowLeft className='w-12! h-12!' />
+    <div className='flex flex-col gap-4 p-4'>
+      <Button
+        variant={'ghost'}
+        className='size-fit py-2'
+        onClick={() => router.back()}
+      >
+        <ArrowLeft className='size-12' />
       </Button>
       <div className='flex '>
-        <h1 className='text-4xl font-bold'>{buyer.fullName}</h1>
+        <h1 className='text-4xl font-bold text-accent-dark'>
+          {buyer.fullName}
+        </h1>
       </div>
 
       <div className='flex gap-8 flex-col lg:flex-row'>
