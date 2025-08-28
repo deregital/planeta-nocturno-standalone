@@ -100,7 +100,7 @@ export function EventGeneralInformation({
               height={1000}
               quality={100}
               src={event.coverImageUrl}
-              className='max-h-96 aspect-auto rounded-md w-fit max-w-full'
+              className='max-h-64 aspect-auto rounded-md w-fit max-w-full'
               alt='Event cover'
             />
             <Button
@@ -129,6 +129,7 @@ export function EventGeneralInformation({
             type='text'
             placeholder='Nombre del evento'
             name='name'
+            required
             onChange={(e) => handleChange('name', e.target.value)}
             error={error.name}
             defaultValue={event.name ?? ''}
@@ -139,6 +140,7 @@ export function EventGeneralInformation({
             id='description'
             type='text'
             placeholder='Descripción del evento'
+            required
             name='description'
             onChange={(e) => handleChange('description', e.target.value)}
             error={error.description}
@@ -167,6 +169,7 @@ export function EventGeneralInformation({
             id='eventDate'
             selected={event.startingDate}
             className='flex-1'
+            required
             onChange={(date) => {
               const startingDate = date;
 
@@ -193,6 +196,7 @@ export function EventGeneralInformation({
             label='Hora de inicio'
             id='startTime'
             type='time'
+            required
             className='flex-1'
             placeholder='Hora de inicio'
             name='startTime'
@@ -224,6 +228,7 @@ export function EventGeneralInformation({
             label='Hora de fin'
             id='endTime'
             type='time'
+            required
             className='flex-1'
             placeholder='Hora de fin'
             name='endTime'
