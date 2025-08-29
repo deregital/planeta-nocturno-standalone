@@ -1,9 +1,15 @@
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
+
 import GridEvents from '@/components/events/buyPage/GridEvents';
+import { EventFilter } from '@/components/events/buyPage/EventFilter';
 
 export default async function Home() {
   return (
-    <div className='h-main-screen flex justify-center p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
-      <GridEvents />
+    <div className='h-main-screen mx-auto w-full max-w-screen-2xl p-4 font-[family-name:var(--font-geist-sans)]'>
+      <NuqsAdapter>
+        <EventFilter />
+        <GridEvents />
+      </NuqsAdapter>
     </div>
   );
 }
