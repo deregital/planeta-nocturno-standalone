@@ -86,12 +86,18 @@ export const eventsRouter = router({
     return data;
   }),
   getBySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    const event = await ctx.db.query.event.findFirst({
+      where: eq(eventSchema.slug, input),
+    });
+
+    if (!event) throw 'Evento no encontrado';
+
     await ctx.db
       .delete(ticketGroup)
       .where(
         and(
           eq(ticketGroup.status, 'BOOKED'),
-          eq(ticketGroup.eventId, input),
+          eq(ticketGroup.eventId, event.id),
           lt(
             ticketGroup.createdAt,
             new Date(Date.now() - 1000 * 60 * 10).toISOString(),
