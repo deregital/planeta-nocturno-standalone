@@ -236,6 +236,7 @@ export default function TicketTypeModal({
             name='price'
             label='Precio de la entrada ($)'
             type='number'
+            min={0}
             error={error.price}
             placeholder='$'
             disabled={category === 'FREE'}
@@ -380,7 +381,7 @@ export default function TicketTypeModal({
             <p className='text-sm text-accent'>
               {`Esta entrada de tipo`}{' '}
               <b>{ticketTypesTranslation[category].text}</b>{' '}
-              {`(cuesta $${editingTicketType.price}). Esta entrada solo se puede
+              {`(cuesta $${editingTicketType.price ?? '-'}). Esta entrada solo se puede
               vender por la WEB hasta hasta el día`}{' '}
               <b>{format(editingTicketType.maxSellDate!, 'dd/MM/yyyy')}</b>,
               hasta las <b>{format(editingTicketType.maxSellDate!, 'p')}</b>

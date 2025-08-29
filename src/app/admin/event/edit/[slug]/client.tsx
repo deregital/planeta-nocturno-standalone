@@ -95,7 +95,7 @@ export default function Client({
         variant={'accent'}
         className='w-full justify-self-end'
       >
-        Editar evento
+        Actualizar
       </Button>
     </div>
   );
