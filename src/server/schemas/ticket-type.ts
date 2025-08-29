@@ -17,10 +17,10 @@ export const ticketTypeSchema = z.object({
   category: z.enum(ticketTypeCategory.enumValues, {
     error: 'La categoría es requerida',
   }),
-
   scanLimit: z.coerce
     .date({ error: 'La fecha de escaneo no es válida' })
     .nullable(),
+  visibleInWeb: z.boolean(),
 });
 
 export const createTicketTypeSchema = ticketTypeSchema;

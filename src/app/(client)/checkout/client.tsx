@@ -3,7 +3,6 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useActionState, useEffect, useState } from 'react';
-import PhoneInput from 'react-phone-number-input';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
@@ -24,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { type RouterOutputs } from '@/server/routers/app';
 import { handlePurchase } from '@/app/(client)/checkout/action';
 import 'react-phone-number-input/style.css';
+import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 
 export default function CheckoutClient({
   ticketGroup,
@@ -99,6 +99,13 @@ export default function CheckoutClient({
                     `fullName_${ticket.ticketType.id}-${indexAmount}`
                   ]
                 }
+                error={
+                  typeof state.errors === 'object' && state.errors !== null
+                    ? (state.errors as Record<string, string>)[
+                        `fullName_${ticket.ticketType.id}-${indexAmount}`
+                      ]
+                    : undefined
+                }
               />
               <InputWithLabel
                 name={`mail_${ticket.ticketType.id}-${indexAmount}`}
@@ -111,6 +118,13 @@ export default function CheckoutClient({
                     `mail_${ticket.ticketType.id}-${indexAmount}`
                   ]
                 }
+                error={
+                  typeof state.errors === 'object' && state.errors !== null
+                    ? (state.errors as Record<string, string>)[
+                        `mail_${ticket.ticketType.id}-${indexAmount}`
+                      ]
+                    : undefined
+                }
               />
               <InputWithLabel
                 name={`dni_${ticket.ticketType.id}-${indexAmount}`}
@@ -121,16 +135,20 @@ export default function CheckoutClient({
                 defaultValue={
                   state.formData?.[`dni_${ticket.ticketType.id}-${indexAmount}`]
                 }
+                error={
+                  typeof state.errors === 'object' && state.errors !== null
+                    ? (state.errors as Record<string, string>)[
+                        `dni_${ticket.ticketType.id}-${indexAmount}`
+                      ]
+                    : undefined
+                }
               />
 
               <div className='flex flex-col gap-1'>
-                <Label
-                  className='pl-1 text-accent gap-0.5'
-                  htmlFor={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
-                >
-                  Número de teléfono<span className='text-red-500'>*</span>
-                </Label>
-                <PhoneInput
+                <PhoneInputWithLabel
+                  label='Número de teléfono'
+                  name={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
+                  id={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
                   labels={esPhoneLocale}
                   defaultCountry='AR'
                   className='[&_[data-slot="input"]]:border-stroke'
@@ -147,6 +165,14 @@ export default function CheckoutClient({
                         v?.toString(),
                       );
                   }}
+                  required
+                  error={
+                    typeof state.errors === 'object' && state.errors !== null
+                      ? (state.errors as Record<string, string>)[
+                          `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
+                        ]
+                      : undefined
+                  }
                 />
               </div>
               <input
@@ -171,6 +197,13 @@ export default function CheckoutClient({
                   state.formData?.[
                     `birthDate_${ticket.ticketType.id}-${indexAmount}`
                   ]
+                }
+                error={
+                  typeof state.errors === 'object' && state.errors !== null
+                    ? (state.errors as Record<string, string>)[
+                        `birthDate_${ticket.ticketType.id}-${indexAmount}`
+                      ]
+                    : undefined
                 }
               />
               <div className='flex flex-col gap-1'>
@@ -201,6 +234,19 @@ export default function CheckoutClient({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
+                {typeof state.errors === 'object' &&
+                  state.errors !== null &&
+                  (state.errors as Record<string, string>)[
+                    `gender_${ticket.ticketType.id}-${indexAmount}`
+                  ] && (
+                    <p className='pl-1 font-bold text-xs text-red-500'>
+                      {
+                        (state.errors as Record<string, string>)[
+                          `gender_${ticket.ticketType.id}-${indexAmount}`
+                        ]
+                      }
+                    </p>
+                  )}
               </div>
               <InputWithLabel
                 name={`instagram_${ticket.ticketType.id}-${indexAmount}`}
@@ -212,6 +258,13 @@ export default function CheckoutClient({
                   state.formData?.[
                     `instagram_${ticket.ticketType.id}-${indexAmount}`
                   ]
+                }
+                error={
+                  typeof state.errors === 'object' && state.errors !== null
+                    ? (state.errors as Record<string, string>)[
+                        `instagram_${ticket.ticketType.id}-${indexAmount}`
+                      ]
+                    : undefined
                 }
               />
               <input
@@ -232,10 +285,6 @@ export default function CheckoutClient({
             </div>
           ));
         })}
-
-        {state.errors && (
-          <p className='text-red-500 font-bold'>{state.errors[0]}</p>
-        )}
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />
         <Button

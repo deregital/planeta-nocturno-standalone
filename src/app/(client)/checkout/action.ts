@@ -1,6 +1,8 @@
 'use server';
+
 import type z from 'zod';
 
+import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -9,7 +11,7 @@ import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
   ticketsInput: z.infer<typeof createManyTicketSchema>[];
-  errors?: string[];
+  errors?: string[] | Record<string, string>;
   formData?: Record<string, string>;
 };
 
@@ -43,7 +45,8 @@ export const handlePurchase = async (
     const [campo, id] = key.split('_');
     if (!campo || !id) continue;
 
-    if (id === 'ID' || campo === '$ACTION') continue;
+    // Filtrar campos generados automáticamente por react-phone-number-input
+    if (id === 'ID' || campo === '$ACTION' || id.endsWith('Country')) continue;
     const entrada = entradas.find((e) => e.id === id);
 
     const valueString = value.toString();
@@ -75,6 +78,15 @@ export const handlePurchase = async (
         campo === 'gender'
       ) {
         const index = entradas.findIndex((e) => e.id === id);
+        // Para phoneNumber, preferir el valor en formato internacional (que empieza con +)
+        if (
+          campo === 'phoneNumber' &&
+          entradas[index][campo] &&
+          !valueString.startsWith('+')
+        ) {
+          // No sobrescribir si ya tenemos un valor en formato internacional
+          continue;
+        }
         entradas[index][campo] = valueString;
       }
     }
@@ -82,10 +94,55 @@ export const handlePurchase = async (
 
   const validation = createManyTicketSchema.safeParse(entradas);
 
+  const errorsArray: Record<string, string> = {};
+  // Validar la edad minima del evento
+  const event = await trpc.events.getById(eventId.toString());
+  if (event.minAge) {
+    entradas.forEach((entrada) => {
+      if (entrada.birthDate) {
+        const birthDate = parseISO(entrada.birthDate.toString());
+        const today = new Date();
+        const age = differenceInYears(today, birthDate);
+        if (event.minAge) {
+          if (age < event.minAge) {
+            const formKey = `birthDate_${entrada.id}`;
+            errorsArray[formKey] =
+              `La edad mínima para este evento es ${event.minAge} años`;
+          }
+        }
+      }
+    });
+  }
+
   if (!validation.success) {
+    // Procesar errores de validación y mapearlos a las keys correctas del formulario
+    validation.error.issues.forEach((error: z.core.$ZodIssue) => {
+      const path = error.path;
+      if (path.length >= 2) {
+        const ticketIndex = path[0] as number;
+        const fieldName = path[1] as string;
+
+        // Obtener el ticket correspondiente para obtener su ID
+        const ticket = entradas[ticketIndex];
+        if (ticket) {
+          // El ticket.id ya contiene el formato ticketTypeId-idx que necesitamos
+          const formKey = `${fieldName}_${ticket.id}`;
+          errorsArray[formKey] = error.message;
+        }
+      }
+    });
+
     return {
       ticketsInput: prevState.ticketsInput,
-      errors: validation.error.flatten().fieldErrors[0],
+      errors: errorsArray,
+      formData: formDataRecord,
+    };
+  }
+
+  if (Object.keys(errorsArray).length > 0) {
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: errorsArray,
       formData: formDataRecord,
     };
   }
@@ -107,17 +164,25 @@ export const handlePurchase = async (
     const pdfs =
       await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
 
-    await Promise.all(
-      pdfs.map(async (pdf) =>
-        trpc.mail.send({
+    // Enviar emails de forma secuencial para evitar rate limits
+    try {
+      for (const pdf of pdfs) {
+        await trpc.mail.send({
           eventName: group.event.name,
           receiver: pdf.ticket.mail,
           subject: `Llegaron tus tickets para ${group.event.name}!`,
           body: `Te esperamos.`,
           attatchments: [pdf.pdf.blob],
-        }),
-      ),
-    );
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      return {
+        ticketsInput: prevState.ticketsInput,
+        errors: ['Error al enviar los emails, vuelva a intentarlo'],
+        formData: formDataRecord,
+      };
+    }
 
     (await cookies()).delete('carrito');
 

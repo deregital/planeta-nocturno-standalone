@@ -97,34 +97,6 @@ export const event = pgTable(
   ],
 );
 
-export const ticketType = pgTable(
-  'ticketType',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-    description: text().notNull(),
-    price: doublePrecision(),
-    maxAvailable: integer().notNull(),
-    maxPerPurchase: integer().notNull(),
-    category: ticketTypeCategory().notNull(),
-    maxSellDate: timestamp({ withTimezone: true, mode: 'string' }),
-    scanLimit: timestamp({ withTimezone: true, mode: 'string' }),
-    eventId: uuid().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.eventId],
-      foreignColumns: [event.id],
-      name: 'ticketType_eventId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
 export const ticketGroup = pgTable(
   'ticketGroup',
   {
@@ -141,6 +113,35 @@ export const ticketGroup = pgTable(
       columns: [table.eventId],
       foreignColumns: [event.id],
       name: 'ticketGroup_event_id_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+export const ticketType = pgTable(
+  'ticketType',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    description: text().notNull(),
+    price: doublePrecision(),
+    maxAvailable: integer().notNull(),
+    maxPerPurchase: integer().notNull(),
+    category: ticketTypeCategory().notNull(),
+    maxSellDate: timestamp({ withTimezone: true, mode: 'string' }),
+    scanLimit: timestamp({ withTimezone: true, mode: 'string' }),
+    eventId: uuid().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    visibleInWeb: boolean().default(true).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'ticketType_eventId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),

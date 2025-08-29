@@ -23,7 +23,7 @@ export default function GenericInputWithLabel({
   const childrenClassName = cn(
     (children.props as { className?: string }).className,
     error
-      ? 'border-red-500 border-2'
+      ? '[&_[data-slot="input"]]:border-2 [&_[data-slot="input"]]:border-red-500'
       : 'border-stroke placeholder:text-accent-dark/40 py-2',
   );
 

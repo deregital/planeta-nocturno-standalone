@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, eq, lt } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
@@ -33,19 +33,6 @@ export const ticketGroupRouter = router({
       }
 
       const result = await ctx.db.transaction(async (tx) => {
-        await tx
-          .delete(ticketGroup)
-          .where(
-            and(
-              eq(ticketGroup.status, 'BOOKED'),
-              eq(ticketGroup.eventId, input.eventId),
-              lt(
-                ticketGroup.createdAt,
-                new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-              ),
-            ),
-          );
-
         const ticketGroupData = {
           eventId: input.eventId,
           status: 'BOOKED' as const,

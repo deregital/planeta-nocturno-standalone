@@ -59,18 +59,16 @@ export async function POST(req: Request) {
       payment.external_reference,
     );
 
-    // enviar mail con los pdf
-    await Promise.all(
-      pdfs.map(async (pdf) =>
-        trpc.mail.send({
-          eventName: group.event.name,
-          receiver: pdf.ticket.mail,
-          subject: `Llegaron tus tickets para ${group.event.name}!`,
-          body: `Te esperamos.`,
-          attatchments: [pdf.pdf.blob],
-        }),
-      ),
-    );
+    // enviar mail con los pdf de forma secuencial para evitar rate limits
+    for (const pdf of pdfs) {
+      await trpc.mail.send({
+        eventName: group.event.name,
+        receiver: pdf.ticket.mail,
+        subject: `Llegaron tus tickets para ${group.event.name}!`,
+        body: `Te esperamos.`,
+        attatchments: [pdf.pdf.blob],
+      });
+    }
   }
 
   return new NextResponse(null, { status: 200 });

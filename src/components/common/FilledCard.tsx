@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
 
-//TODO: CAMBIAR BG A FILLED COMPONENT EN RETOQUES UI
 export function FilledCard({
   className,
   ...props

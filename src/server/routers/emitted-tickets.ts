@@ -6,6 +6,8 @@ import { z } from 'zod';
 
 import {
   emittedTicket,
+  event,
+  location,
   ticketGroup,
   ticketType as ticketTypeTable,
 } from '@/drizzle/schema';
@@ -105,45 +107,33 @@ export const emittedTicketsRouter = router({
           phoneNumber: true,
           instagram: true,
           gender: true,
+          mail: true,
         },
       });
 
-      const emittedTickets = await ctx.db.query.emittedTicket.findMany({
-        where: eq(emittedTicket.dni, input),
-        columns: {
-          id: true,
-        },
-        with: {
-          ticketGroup: {
-            columns: {
-              id: true,
-            },
-            with: {
-              event: {
-                columns: {
-                  id: true,
-                  name: true,
-                  startingDate: true,
-                },
-                with: {
-                  location: {
-                    columns: {
-                      name: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
+      const events = await ctx.db
+        .selectDistinctOn([event.id], {
+          // Event
+          id: event.id,
+          eventName: event.name,
+          eventStartingDate: event.startingDate,
+
+          // TicketGroup
+          ticketGroupId: ticketGroup.id,
+
+          // Location
+          locationName: location.name,
+        })
+        .from(emittedTicket)
+        .leftJoin(ticketGroup, eq(emittedTicket.ticketGroupId, ticketGroup.id))
+        .leftJoin(event, eq(ticketGroup.eventId, event.id))
+        .leftJoin(location, eq(event.locationId, location.id))
+        .where(
+          and(eq(emittedTicket.dni, input), eq(emittedTicket.scanned, true)),
+        );
 
       if (!buyerWithBirthDate) {
         return null;
-        // throw new TRPCError({
-        //   code: 'NOT_FOUND',
-        //   message: `Comprador con el DNI ${input} no encontrado`,
-        // });
       }
 
       const { birthDate, ...buyerWithoutBirthDate } = buyerWithBirthDate;
@@ -152,7 +142,7 @@ export const emittedTicketsRouter = router({
         age: differenceInYears(new Date(), new Date(birthDate)).toString(),
       };
 
-      return { buyer, emittedTickets };
+      return { buyer, events };
     }),
   getPdf: protectedProcedure
     .input(z.object({ ticketId: z.string() }))

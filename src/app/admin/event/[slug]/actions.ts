@@ -13,13 +13,17 @@ export async function emitTicket(
 
   const event = await trpc.events.getById(ticket.eventId);
 
-  await trpc.mail.send({
-    eventName: event.name,
-    receiver: pdf.ticket.mail,
-    subject: `Llegaron tus tickets para ${event.name}!`,
-    body: 'Te esperamos.',
-    attatchments: [pdf.pdf.blob],
-  });
+  try {
+    await trpc.mail.send({
+      eventName: event.name,
+      receiver: pdf.ticket.mail,
+      subject: `Llegaron tus tickets para ${event.name}!`,
+      body: 'Te esperamos.',
+      attatchments: [pdf.pdf.blob],
+    });
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 export async function downloadTicket(ticketId: string) {
