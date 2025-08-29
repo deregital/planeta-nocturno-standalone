@@ -105,6 +105,7 @@ export const emittedTicketsRouter = router({
           phoneNumber: true,
           instagram: true,
           gender: true,
+          mail: true,
         },
       });
 
