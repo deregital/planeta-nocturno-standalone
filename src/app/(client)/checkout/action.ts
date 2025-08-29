@@ -2,6 +2,7 @@
 
 import type z from 'zod';
 
+import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -93,9 +94,27 @@ export const handlePurchase = async (
 
   const validation = createManyTicketSchema.safeParse(entradas);
 
-  if (!validation.success) {
-    const errorsArray: Record<string, string> = {};
+  const errorsArray: Record<string, string> = {};
+  // Validar la edad minima del evento
+  const event = await trpc.events.getById(eventId.toString());
+  if (event.minAge) {
+    entradas.forEach((entrada) => {
+      if (entrada.birthDate) {
+        const birthDate = parseISO(entrada.birthDate.toString());
+        const today = new Date();
+        const age = differenceInYears(today, birthDate);
+        if (event.minAge) {
+          if (age < event.minAge) {
+            const formKey = `birthDate_${entrada.id}`;
+            errorsArray[formKey] =
+              `La edad mínima para este evento es ${event.minAge} años`;
+          }
+        }
+      }
+    });
+  }
 
+  if (!validation.success) {
     // Procesar errores de validación y mapearlos a las keys correctas del formulario
     validation.error.issues.forEach((error: z.core.$ZodIssue) => {
       const path = error.path;
@@ -113,6 +132,14 @@ export const handlePurchase = async (
       }
     });
 
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: errorsArray,
+      formData: formDataRecord,
+    };
+  }
+
+  if (Object.keys(errorsArray).length > 0) {
     return {
       ticketsInput: prevState.ticketsInput,
       errors: errorsArray,
