@@ -16,7 +16,7 @@ const buttonVariants = cva(
         outline:
           'bg-transparent border-2 border-button text-accent font-medium text-[12px] sm:text-[16px] leading-[100%] px-8 py-2 rounded-[10px] hover:bg-accent-ultra-light',
         ghost: 'hover:bg-accent/10 text-accent',
-        destructive: 'bg-red-500',
+        destructive: 'bg-red-500 text-white',
         success: 'bg-green-500 text-white hover:bg-green-500/90',
       },
 
