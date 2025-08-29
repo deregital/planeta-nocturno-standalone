@@ -7,10 +7,13 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { subMonths } from 'date-fns';
-import { useMemo, useState } from 'react';
-import { Loader, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
+import { ComparativeTableSkeleton } from '@/components/admin/DatabaseSkeleton';
+import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -19,8 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
-import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
@@ -167,7 +168,7 @@ export default function ComparativeTable() {
     isRefetchingEvents ||
     isRefetchingLocations
   ) {
-    return <Loader />;
+    return <ComparativeTableSkeleton />;
   }
 
   return (

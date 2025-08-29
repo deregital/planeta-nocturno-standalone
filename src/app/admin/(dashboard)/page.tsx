@@ -1,10 +1,10 @@
 'use client';
 import { addDays, subMonths } from 'date-fns';
-import { Loader } from 'lucide-react';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 
 import ComparativeTable from '@/components/admin/ComparativeTable';
+import { StatisticsSkeleton } from '@/components/admin/DatabaseSkeleton';
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
 import { BaseCard } from '@/components/common/BaseCard';
 import { Progress } from '@/components/ui/progress';
@@ -37,8 +37,9 @@ export default function Dashboard() {
     <div className='flex gap-8 flex-col my-16 px-4'>
       <BaseCard className='flex flex-col sm:grid sm:grid-rows-7 sm:grid-cols-2 md:1/6 lg:h-96 lg:grid-cols-4 p-3 border-2 '>
         {/* TImestamp */}
-        {isLoading ? (
-          <Loader className='animate-spin' />
+
+        {isLoading || !statistics ? (
+          <StatisticsSkeleton />
         ) : (
           <>
             <BaseCard className='sm:col-span-2 sm:row-span-1 lg:row-span-2 lg:row-start-1 col-span-2 flex justify-center items-center border-0'>
@@ -65,11 +66,6 @@ export default function Dashboard() {
                 }}
               />
             </BaseCard>
-          </>
-        )}
-        {/* Attendance % */}
-        {statistics && (
-          <>
             <BaseCard className='sm:col-start-1 sm:row-span-3 sm:col-span-2 sm:row-start-2 lg:row-span-5 p-12 gap-8 justify-center items-center'>
               <div className='flex justify-center lg:justify-baseline items-center w-full gap-6'>
                 <p className='text-3xl'>Tasa de asistencia:</p>
