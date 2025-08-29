@@ -1,4 +1,5 @@
 import { type ColumnDef } from '@tanstack/react-table';
+import { format } from 'date-fns';
 
 import { DataTable } from '@/components/common/DataTable';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -14,19 +15,17 @@ const columns: ColumnDef<AttendedEvent>[] = [
     accessorKey: 'eventName',
     header: 'Evento',
     accessorFn: (row) => row.eventName,
-    cell: (info) => info.getValue(),
   },
   {
     accessorKey: 'eventStartingDate',
     header: 'Fecha',
     accessorFn: (row) => row.eventStartingDate,
-    cell: (info) => new Date(info.getValue() as string).toLocaleDateString(),
+    cell: (info) => format(new Date(info.getValue() as string), 'dd/MM/yyyy'),
   },
   {
     accessorKey: 'locationName',
     header: 'Ubicación',
     accessorFn: (row) => row.locationName,
-    cell: (info) => info.getValue(),
   },
 ];
 
