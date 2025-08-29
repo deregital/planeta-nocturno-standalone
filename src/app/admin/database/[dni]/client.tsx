@@ -23,7 +23,7 @@ export default function Client({
 }: {
   data: RouterOutputs['emittedTickets']['getUniqueBuyer'];
 }) {
-  const { buyer, emittedTickets } = data!;
+  const { buyer, events } = data!;
   const router = useRouter();
 
   const normalizedInstagram = buyer.instagram
@@ -123,18 +123,17 @@ export default function Client({
         <FilledCard className='flex w-full p-4 flex-col text-accent-dark'>
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>
           <div className='space-y-4 max-h-96 overflow-y-auto my-4'>
-            {emittedTickets.map((ticket) => (
+            {events.map((event) => (
               <BaseCard
-                key={ticket.id + '_' + ticket.ticketGroup.id}
+                key={event.id + '_' + event.ticketGroupId}
                 className='flex flow-row justify-center bg-white p-2 text-lg font-medium'
               >
                 <p>
-                  {ticket.ticketGroup.event.name} -{' '}
-                  {format(
-                    parseISO(ticket.ticketGroup.event.startingDate),
-                    'dd/MM/yyyy',
-                  )}{' '}
-                  - {ticket.ticketGroup.event.location.name}
+                  {event.eventName} -{' '}
+                  {event.eventStartingDate
+                    ? format(parseISO(event.eventStartingDate), 'dd/MM/yyyy')
+                    : 'Fecha no definida'}{' '}
+                  - {event.locationName}
                 </p>
               </BaseCard>
             ))}
