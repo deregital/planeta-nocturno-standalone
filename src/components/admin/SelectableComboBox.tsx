@@ -21,12 +21,12 @@ import {
 
 export function SelectableComboBox({
   list,
-  onSelect,
+  onSelectAction: onSelect,
   title,
   listOf,
 }: {
   list: (ComparativeStatWithType & { name: string })[];
-  onSelect: (item: ComparativeStatWithType) => void;
+  onSelectAction: (item: ComparativeStatWithType) => void;
   title: string;
   listOf: string;
 }) {

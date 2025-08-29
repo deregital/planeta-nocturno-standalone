@@ -178,7 +178,7 @@ export default function ComparativeTable() {
           title='Agregar evento'
           listOf='evento'
           list={eventsList ?? []}
-          onSelect={(item) => {
+          onSelectAction={(item) => {
             setColsData([...colsData, { id: item.id, type: 'EVENT' }]);
           }}
         />
@@ -186,7 +186,7 @@ export default function ComparativeTable() {
           title='Agregar locación'
           listOf='locación'
           list={locationsList ?? []}
-          onSelect={(item) => {
+          onSelectAction={(item) => {
             setColsData([...colsData, { id: item.id, type: 'LOCATION' }]);
           }}
         />
