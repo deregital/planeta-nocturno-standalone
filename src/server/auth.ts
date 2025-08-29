@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth';
+import NextAuth, { CredentialsSignin } from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcrypt';
@@ -9,7 +9,7 @@ import { user as userTable } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 
 const credentialsSchema = userSchema.pick({
-  name: true,
+  username: true,
   password: true,
 });
 
@@ -29,13 +29,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       authorize: async (credentials) => {
-        const { name, password } = credentialsSchema.parse(credentials);
+        const { username, password } = credentialsSchema.parse(credentials);
         const user = await db.query.user.findFirst({
-          where: eq(userTable.name, name as string),
+          where: eq(userTable.name, username as string),
         });
-        if (!user) throw new Error('User not found');
+        if (!user) throw new CustomError('Usuario no encontrado');
         if (!(await compare(password as string, user.password)))
-          throw new Error('Invalid password');
+          throw new CustomError('Contraseña incorrecta');
         return {
           ...user,
           emailVerified: user.emailVerified
@@ -89,3 +89,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: '/login',
   },
 });
+
+export class CustomError extends CredentialsSignin {
+  code = CustomError.CUSTOM_ERROR_CODE;
+  static CUSTOM_ERROR_CODE = Symbol('CUSTOM_ERROR_CODE').toString();
+  constructor(msg: string) {
+    super();
+    this.message = msg;
+  }
+}
