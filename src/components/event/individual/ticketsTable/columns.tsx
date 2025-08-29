@@ -134,6 +134,7 @@ export function generateTicketColumns() {
         return (
           <div className='flex items-center justify-center'>
             <Input
+              /* disabled */
               type='checkbox'
               className='size-6'
               readOnly
