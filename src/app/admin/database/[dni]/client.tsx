@@ -1,5 +1,4 @@
 'use client';
-import { format, parseISO } from 'date-fns';
 import {
   ArrowLeft,
   Cake,
@@ -10,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-import { BaseCard } from '@/components/common/BaseCard';
+import AttendedEventsTable from '@/components/admin/BuyerTable';
 import { FilledCard } from '@/components/common/FilledCard';
 import { Instagram } from '@/components/icons/Instagram';
 import { WhatsApp } from '@/components/icons/WhatsApp';
@@ -23,7 +22,7 @@ export default function Client({
 }: {
   data: RouterOutputs['emittedTickets']['getUniqueBuyer'];
 }) {
-  const { buyer, emittedTickets } = data!;
+  const { buyer, events } = data!;
   const router = useRouter();
 
   const normalizedInstagram = buyer.instagram
@@ -42,7 +41,7 @@ export default function Client({
         <ArrowLeft className='size-12' />
       </Button>
 
-      <div className='flex '>
+      <div className='flex'>
         <h1 className='text-4xl font-bold text-accent'>{buyer.fullName}</h1>
         <div className='flex justify-center items-center gap-4 ml-8 [&>div]:w-9 [&>div]:h-9 [&>div]:inline-flex [&>div]:items-center [&>div]:justify-center [&>div]:border [&>div]:rounded-sm [&>div]:transition'>
           {buyer.instagram && (
@@ -88,7 +87,7 @@ export default function Client({
       </div>
 
       <div className='flex gap-8 flex-col lg:flex-row'>
-        <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark'>
+        <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
           <div>
             <IdCard />
             <p>DNI: {buyer.dni}</p>
@@ -122,23 +121,7 @@ export default function Client({
 
         <FilledCard className='flex w-full p-4 flex-col text-accent-dark'>
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>
-          <div className='space-y-4 max-h-96 overflow-y-auto my-4'>
-            {emittedTickets.map((ticket) => (
-              <BaseCard
-                key={ticket.id + '_' + ticket.ticketGroup.id}
-                className='flex flow-row justify-center bg-white p-2 text-lg font-medium'
-              >
-                <p>
-                  {ticket.ticketGroup.event.name} -{' '}
-                  {format(
-                    parseISO(ticket.ticketGroup.event.startingDate),
-                    'dd/MM/yyyy',
-                  )}{' '}
-                  - {ticket.ticketGroup.event.location.name}
-                </p>
-              </BaseCard>
-            ))}
-          </div>
+          <AttendedEventsTable events={events} />
         </FilledCard>
       </div>
     </div>
