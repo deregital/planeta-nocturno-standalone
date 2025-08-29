@@ -20,6 +20,7 @@ import { ticketTypesTranslation } from '@/lib/translations';
 import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
 import { type TicketTypeCategory } from '@/server/types';
 import { type EventState } from '@/app/admin/event/create/state';
+import { FormRow } from '@/components/common/FormRow';
 
 type TicketTypeModalProps = {
   category: TicketTypeCategory;
@@ -64,6 +65,7 @@ export default function TicketTypeModal({
         scanLimit: ticketType.scanLimit || event.endingDate,
         category,
         id: ticketType.id,
+        visibleInWeb: ticketType.visibleInWeb,
       };
     }
     return {
@@ -76,6 +78,7 @@ export default function TicketTypeModal({
       scanLimit: event.endingDate,
       category,
       id: crypto.randomUUID(),
+      visibleInWeb: true,
     };
   }
 
@@ -94,9 +97,9 @@ export default function TicketTypeModal({
     ticketType?.maxSellDate !== event.startingDate,
   );
 
-  function handleInputChange(
-    field: keyof CreateTicketTypeSchema,
-    value: string | number | Date,
+  function handleInputChange<T extends keyof CreateTicketTypeSchema>(
+    field: T,
+    value: CreateTicketTypeSchema[T],
   ) {
     setEditingTicketType((prev) => ({
       ...prev,
@@ -145,6 +148,8 @@ export default function TicketTypeModal({
       return;
     }
 
+    console.log(validation.data);
+
     if (action === 'CREATE') {
       addTicketType(validation.data);
     } else if (action === 'EDIT' && ticketType?.id) {
@@ -187,22 +192,38 @@ export default function TicketTypeModal({
       </DialogTrigger>
       <DialogContent className='!max-w-xl md:!max-w-3xl w-full lg:!max-w-4xl'>
         <DialogHeader>
-          <DialogTitle>Crear entrada de tipo {text}</DialogTitle>
+          <DialogTitle className='text-left'>
+            Crear entrada de tipo {text}
+          </DialogTitle>
           <DialogDescription hidden></DialogDescription>
         </DialogHeader>
         <form
           onSubmit={handleSubmit}
           className='flex flex-col gap-4 justify-center'
         >
-          <InputWithLabel
-            id='name'
-            name='name'
-            label='Nombre de la entrada'
-            required
-            error={error.name}
-            value={editingTicketType.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-          />
+          <FormRow>
+            <InputWithLabel
+              id='name'
+              name='name'
+              label='Nombre de la entrada'
+              required
+              error={error.name}
+              value={editingTicketType.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+            />
+            <InputWithLabel
+              className='flex-none! [&>input]:w-6 [&>input]:self-center'
+              id='visibleInWeb'
+              name='visibleInWeb'
+              label='¿Visible en la web?'
+              type='checkbox'
+              error={error.visibleInWeb}
+              checked={editingTicketType.visibleInWeb}
+              onChange={(e) =>
+                handleInputChange('visibleInWeb', e.target.checked)
+              }
+            />
+          </FormRow>
           <InputWithLabel
             id='description'
             name='description'
@@ -223,140 +244,140 @@ export default function TicketTypeModal({
             value={editingTicketType.price ?? ''}
             onChange={(e) => handleInputChange('price', Number(e.target.value))}
           />
-          <div className='grid grid-cols-2 gap-6'>
-            <div className='grid gap-4'>
+          <FormRow className='md:flex-row flex-col'>
+            <InputWithLabel
+              id='maxAvailable'
+              name='maxAvailable'
+              className='w-full'
+              label={`Cantidad maxima de entrada (Entradas restantes: ${maxAvailableLeftReal})`}
+              type='number'
+              required
+              error={error.maxAvailable}
+              max={maxAvailableLeftReal}
+              value={editingTicketType.maxAvailable}
+              onChange={(e) =>
+                handleInputChange('maxAvailable', Number(e.target.value))
+              }
+            />
+            <InputWithLabel
+              id='maxPerPurchase'
+              name='maxPerPurchase'
+              className='w-full'
+              label='Cantidad maxima de entradas por venta'
+              type='number'
+              error={error.maxPerPurchase}
+              value={editingTicketType.maxPerPurchase}
+              onChange={(e) =>
+                handleInputChange('maxPerPurchase', Number(e.target.value))
+              }
+            />
+          </FormRow>
+          <FormRow className='md:flex-row flex-col'>
+            <div className='flex w-full'>
+              {hasScanLimit ? (
+                <InputWithLabel
+                  id='scanLimit'
+                  name='scanLimit'
+                  label='Finalización de escaneo de entradas'
+                  type='datetime-local'
+                  error={error.scanLimit}
+                  value={
+                    editingTicketType.scanLimit
+                      ? format(
+                          editingTicketType.scanLimit,
+                          "yyyy-MM-dd'T'HH:mm",
+                        )
+                      : ''
+                  }
+                  onChange={(e) =>
+                    handleInputChange('scanLimit', new Date(e.target.value))
+                  }
+                  className='w-full'
+                />
+              ) : (
+                <InputWithLabel
+                  id='scanLimit'
+                  name='scanLimit'
+                  label='Finalización de escaneo de entradas'
+                  type='text'
+                  error={error.scanLimit}
+                  value={
+                    editingTicketType.scanLimit
+                      ? `${format(
+                          editingTicketType.scanLimit,
+                          'dd/MM/yyyy HH:mm b',
+                        )} (Fin del evento)`
+                      : ''
+                  }
+                  className='w-full text-accent/50'
+                  readOnly
+                />
+              )}
               <InputWithLabel
-                id='maxAvailable'
-                name='maxAvailable'
-                label={`Cantidad maxima de entrada (Entradas restantes: ${maxAvailableLeftReal})`}
-                type='number'
-                required
-                error={error.maxAvailable}
-                max={maxAvailableLeftReal}
-                value={editingTicketType.maxAvailable}
-                onChange={(e) =>
-                  handleInputChange('maxAvailable', Number(e.target.value))
-                }
-              />
-              <InputWithLabel
-                id='maxPerPurchase'
-                name='maxPerPurchase'
-                label='Cantidad maxima de entradas por venta'
-                type='number'
-                error={error.maxPerPurchase}
-                value={editingTicketType.maxPerPurchase}
-                onChange={(e) =>
-                  handleInputChange('maxPerPurchase', Number(e.target.value))
-                }
+                label='¿Tiene?'
+                id='scanLimitEnabled'
+                type='checkbox'
+                className='[&>input]:w-6 items-center'
+                name='scanLimitEnabled'
+                checked={hasScanLimit}
+                onChange={(e) => {
+                  handleScanLimitToggle(e.target.checked);
+                }}
               />
             </div>
-            <div className='grid gap-4'>
-              <div className='flex'>
-                {hasScanLimit ? (
-                  <InputWithLabel
-                    id='scanLimit'
-                    name='scanLimit'
-                    label='Finalización de escaneo de entradas'
-                    type='datetime-local'
-                    error={error.scanLimit}
-                    value={
-                      editingTicketType.scanLimit
-                        ? format(
-                            editingTicketType.scanLimit,
-                            "yyyy-MM-dd'T'HH:mm",
-                          )
-                        : ''
-                    }
-                    onChange={(e) =>
-                      handleInputChange('scanLimit', new Date(e.target.value))
-                    }
-                    className='w-full'
-                  />
-                ) : (
-                  <InputWithLabel
-                    id='scanLimit'
-                    name='scanLimit'
-                    label='Finalización de escaneo de entradas'
-                    type='text'
-                    error={error.scanLimit}
-                    value={
-                      editingTicketType.scanLimit
-                        ? `${format(
-                            editingTicketType.scanLimit,
-                            'dd/MM/yyyy HH:mm b',
-                          )} (Fin del evento)`
-                        : ''
-                    }
-                    className='w-full text-accent/50'
-                    readOnly
-                  />
-                )}
+            <div className='flex w-full'>
+              {hasMaxSellDate ? (
                 <InputWithLabel
-                  label='¿Tiene?'
-                  id='scanLimitEnabled'
-                  type='checkbox'
-                  className='[&>input]:w-6 items-center'
-                  name='scanLimitEnabled'
-                  checked={hasScanLimit}
-                  onChange={(e) => {
-                    handleScanLimitToggle(e.target.checked);
-                  }}
+                  id='maxSellDate'
+                  name='maxSellDate'
+                  label='Finalización de venta de entradas'
+                  type='datetime-local'
+                  error={error.maxSellDate}
+                  value={
+                    editingTicketType.maxSellDate
+                      ? format(
+                          editingTicketType.maxSellDate,
+                          "yyyy-MM-dd'T'HH:mm",
+                        )
+                      : ''
+                  }
+                  onChange={(e) =>
+                    handleInputChange('maxSellDate', new Date(e.target.value))
+                  }
+                  className='w-full'
                 />
-              </div>
-              <div className='flex'>
-                {hasMaxSellDate ? (
-                  <InputWithLabel
-                    id='maxSellDate'
-                    name='maxSellDate'
-                    label='Finalización de venta de entradas'
-                    type='datetime-local'
-                    error={error.maxSellDate}
-                    value={
-                      editingTicketType.maxSellDate
-                        ? format(
-                            editingTicketType.maxSellDate,
-                            "yyyy-MM-dd'T'HH:mm",
-                          )
-                        : ''
-                    }
-                    onChange={(e) =>
-                      handleInputChange('maxSellDate', new Date(e.target.value))
-                    }
-                    className='w-full'
-                  />
-                ) : (
-                  <InputWithLabel
-                    id='maxSellDate'
-                    name='maxSellDate'
-                    label='Finalización de venta de entradas'
-                    type='text'
-                    error={error.maxSellDate}
-                    value={
-                      editingTicketType.maxSellDate
-                        ? `${format(
-                            editingTicketType.maxSellDate,
-                            'dd/MM/yyyy HH:mm b',
-                          )} (Comienzo del evento)`
-                        : ''
-                    }
-                    className='w-full text-accent/50'
-                    readOnly
-                  />
-                )}
+              ) : (
                 <InputWithLabel
-                  label='¿Tiene?'
-                  id='maxSellDateEnabled'
-                  type='checkbox'
-                  className='[&>input]:w-6 items-center data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600'
-                  name='maxSellDateEnabled'
-                  checked={hasMaxSellDate}
-                  onChange={(e) => {
-                    handleMaxSellDateToggle(e.target.checked);
-                  }}
+                  id='maxSellDate'
+                  name='maxSellDate'
+                  label='Finalización de venta de entradas'
+                  type='text'
+                  error={error.maxSellDate}
+                  value={
+                    editingTicketType.maxSellDate
+                      ? `${format(
+                          editingTicketType.maxSellDate,
+                          'dd/MM/yyyy HH:mm b',
+                        )} (Comienzo del evento)`
+                      : ''
+                  }
+                  className='w-full text-accent/50'
+                  readOnly
                 />
-              </div>
+              )}
+              <InputWithLabel
+                label='¿Tiene?'
+                id='maxSellDateEnabled'
+                type='checkbox'
+                className='[&>input]:w-6 items-center data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600'
+                name='maxSellDateEnabled'
+                checked={hasMaxSellDate}
+                onChange={(e) => {
+                  handleMaxSellDateToggle(e.target.checked);
+                }}
+              />
             </div>
-          </div>
+          </FormRow>
           <DialogFooter className='flex !flex-col gap-4'>
             <p className='text-sm text-accent'>
               {`Esta entrada de tipo`}{' '}
@@ -392,12 +413,22 @@ export default function TicketTypeModal({
                   />
                 )}
                 {error.id ?? <p className='text-red-500'>{error.id}</p>}
-                <DialogClose asChild>
-                  <Button variant='ghost'>Cancelar</Button>
-                </DialogClose>
-                <Button type='submit' className='rounded-md'>
-                  Editar
-                </Button>
+                <div className='flex flex-col md:flex-row'>
+                  <DialogClose asChild>
+                    <Button
+                      variant='ghost'
+                      className='flex-1 md:order-1 order-2'
+                    >
+                      Cancelar
+                    </Button>
+                  </DialogClose>
+                  <Button
+                    type='submit'
+                    className='rounded-md order-1 md:order-2 flex-1'
+                  >
+                    Editar
+                  </Button>
+                </div>
               </>
             )}
           </DialogFooter>

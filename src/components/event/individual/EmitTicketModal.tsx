@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { emitTicket } from '@/app/admin/event/[slug]/actions';
 import { createTicketSchema } from '@/server/schemas/emitted-tickets';
 import 'react-phone-number-input/style.css';
+import { FormRow } from '@/components/common/FormRow';
 
 export function EmitTicketModal({
   event,
@@ -291,13 +292,5 @@ export function EmitTicketModal({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function FormRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div className='flex flex-row gap-3 items-start w-full [&>*]:flex-1'>
-      {children}
-    </div>
   );
 }
