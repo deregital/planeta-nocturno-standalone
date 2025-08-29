@@ -1,12 +1,16 @@
 import { barcodes, text, line, table } from '@pdfme/schemas';
-import { eq, inArray, like } from 'drizzle-orm';
+import { and, eq, inArray, like, lt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 import { formatInTimeZone } from 'date-fns-tz';
 import { generate } from '@pdfme/generator';
 import { type Font } from '@pdfme/common';
 
-import { event as eventSchema, ticketType } from '@/drizzle/schema';
+import {
+  event as eventSchema,
+  ticketGroup,
+  ticketType,
+} from '@/drizzle/schema';
 import {
   createEventSchema,
   eventSchema as eventSchemaZod,
@@ -82,6 +86,19 @@ export const eventsRouter = router({
     return data;
   }),
   getBySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    await ctx.db
+      .delete(ticketGroup)
+      .where(
+        and(
+          eq(ticketGroup.status, 'BOOKED'),
+          eq(ticketGroup.eventId, input),
+          lt(
+            ticketGroup.createdAt,
+            new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+          ),
+        ),
+      );
+
     const data = await ctx.db.query.event.findFirst({
       where: eq(eventSchema.slug, input),
       with: {
