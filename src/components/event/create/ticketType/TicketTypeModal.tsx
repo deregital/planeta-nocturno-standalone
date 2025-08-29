@@ -148,8 +148,6 @@ export default function TicketTypeModal({
       return;
     }
 
-    console.log(validation.data);
-
     if (action === 'CREATE') {
       addTicketType(validation.data);
     } else if (action === 'EDIT' && ticketType?.id) {
