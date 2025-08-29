@@ -165,14 +165,23 @@ export const handlePurchase = async (
       await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
 
     // Enviar emails de forma secuencial para evitar rate limits
-    for (const pdf of pdfs) {
-      await trpc.mail.send({
-        eventName: group.event.name,
-        receiver: pdf.ticket.mail,
-        subject: `Llegaron tus tickets para ${group.event.name}!`,
-        body: `Te esperamos.`,
-        attatchments: [pdf.pdf.blob],
-      });
+    try {
+      for (const pdf of pdfs) {
+        await trpc.mail.send({
+          eventName: group.event.name,
+          receiver: pdf.ticket.mail,
+          subject: `Llegaron tus tickets para ${group.event.name}!`,
+          body: `Te esperamos.`,
+          attatchments: [pdf.pdf.blob],
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      return {
+        ticketsInput: prevState.ticketsInput,
+        errors: ['Error al enviar los emails, vuelva a intentarlo'],
+        formData: formDataRecord,
+      };
     }
 
     (await cookies()).delete('carrito');

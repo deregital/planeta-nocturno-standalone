@@ -12,19 +12,12 @@ async function retryWithBackoff<T>(
 ): Promise<T> {
   let lastError: unknown;
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      return await fn();
+      const result = await fn();
+      return result;
     } catch (error: unknown) {
       lastError = error;
-
-      // Debug: imprimir el error completo para entender su estructura
-      console.log(
-        'Error caught in retry logic:',
-        JSON.stringify(error, null, 2),
-      );
-      console.log('Error type:', typeof error);
-      console.log('Error keys:', Object.keys(error as object));
 
       // Verificar si es un error 429 (rate limit) de diferentes formas posibles
       const isRateLimit =
@@ -39,18 +32,15 @@ async function retryWithBackoff<T>(
           ?.toLowerCase()
           .includes('too many requests');
 
-      console.log('Is rate limit detected:', isRateLimit);
-
-      if (isRateLimit && attempt < maxRetries) {
-        console.log(
-          `Rate limit reached, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries + 1})`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        continue;
+      if (!isRateLimit) {
+        throw error;
       }
 
-      // Si no es un error 429 o ya no tenemos más intentos, lanzar el error
-      throw error;
+      // Si es rate limit pero ya no tenemos más intentos, lanzar el error
+      if (attempt >= maxRetries - 1) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
@@ -75,29 +65,37 @@ export const mailRouter = router({
         ),
       );
 
-      const result = await retryWithBackoff(
-        async () =>
-          await sendMail({
-            to: input.receiver,
-            subject: input.subject,
-            body: input.body,
-            attachments,
-            eventName: input.eventName,
-          }),
-        3, // 3 reintentos
-        1000, // 1 segundo de delay
-      );
+      try {
+        const result = await retryWithBackoff(
+          async () =>
+            await sendMail({
+              to: input.receiver,
+              subject: input.subject,
+              body: input.body,
+              attachments,
+              eventName: input.eventName,
+            }),
+          3, // 3 intentos máximo
+          1000, // 1 segundo de delay
+        );
 
-      const { data, error } = result;
+        const { data, error } = result;
 
-      if (error) {
+        if (error) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Algo salió mal al enviar el mail',
+            cause: error,
+          });
+        }
+
+        return data;
+      } catch (error) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Algo salió mal al enviar el mail',
           cause: error,
         });
       }
-
-      return data;
     }),
 });
