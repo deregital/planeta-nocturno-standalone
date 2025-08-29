@@ -6,15 +6,15 @@ import { z } from 'zod';
 import { signIn } from '@/server/auth';
 
 const loginSchema = z.object({
-  name: z.string().min(1),
-  password: z.string().min(1),
+  username: z.string().min(1, 'El nombre de usuario es requerido'),
+  password: z.string().min(1, 'La contraseña es requerida'),
 });
 
 type LoginActionState = {
-  name?: string;
+  username?: string;
   password?: string;
   errors?: {
-    name?: string;
+    username?: string;
     password?: string;
     general?: string;
   };
@@ -25,7 +25,7 @@ export async function authenticate(
   formData: FormData,
 ): Promise<LoginActionState> {
   const rawData: z.infer<typeof loginSchema> = {
-    name: formData.get('name') as string,
+    username: formData.get('username') as string,
     password: formData.get('password') as string,
   };
   try {
@@ -35,7 +35,8 @@ export async function authenticate(
       return {
         ...rawData,
         errors: {
-          name: z.treeifyError(validatedData.error).properties?.name?.errors[0],
+          username: z.treeifyError(validatedData.error).properties?.username
+            ?.errors[0],
           password: z.treeifyError(validatedData.error).properties?.password
             ?.errors[0],
         },
@@ -43,14 +44,14 @@ export async function authenticate(
     }
 
     await signIn('credentials', {
-      name: validatedData.data.name,
+      username: validatedData.data.username,
       password: validatedData.data.password,
       redirect: false,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
-    console.log(err);
     return {
+      ...rawData,
       errors: {
         general: err.message,
       },

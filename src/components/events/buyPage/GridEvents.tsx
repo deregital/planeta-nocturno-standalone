@@ -29,7 +29,6 @@ function GridEvents() {
         return event.name.toLowerCase().includes(searchValue);
       })
       .filter((event) => {
-        console.log(selectedDateRange);
         if (!selectedDateRange) return true;
         return isWithinInterval(event.startingDate, {
           start: selectedDateRange?.from,
