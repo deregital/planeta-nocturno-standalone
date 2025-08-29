@@ -143,6 +143,7 @@ model TicketType {
   maxPerPurchase Int
   category       TicketTypeCategory
   maxSellDate    DateTime?          @db.Timestamptz
+  visibleInWeb   Boolean            @default(true)
 
   scanLimit DateTime? @db.Timestamptz
 

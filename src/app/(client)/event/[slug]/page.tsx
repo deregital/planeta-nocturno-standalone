@@ -35,7 +35,9 @@ async function EventPage({ params }: EventPageProps) {
           <div className='px-4 md:px-6 pb-4 md:col-span-12 overflow-hidden'>
             <TicketPurchase
               eventId={event.id}
-              ticketTypes={event.ticketTypes}
+              ticketTypes={event.ticketTypes.filter(
+                (ticketType) => ticketType.visibleInWeb,
+              )}
             />
           </div>
           <div className='px-4 md:col-span-4 flex flex-col justify-start items-center overflow-hidden'>
