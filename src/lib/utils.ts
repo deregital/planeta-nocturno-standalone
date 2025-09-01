@@ -18,3 +18,24 @@ export function formatEventDate(dateString: string) {
     dayOfWeek: format(date, 'EEE', { locale: es }),
   };
 }
+
+export function daysUntilBirthday(dateStr: string): number {
+  const today = new Date();
+  const birthDate = new Date(dateStr);
+
+  const thisYear = new Date(
+    today.getFullYear(),
+    birthDate.getMonth(),
+    birthDate.getDate(),
+  );
+  const nextYear = new Date(
+    today.getFullYear() + 1,
+    birthDate.getMonth(),
+    birthDate.getDate(),
+  );
+
+  const nextBirthday = thisYear >= today ? thisYear : nextYear;
+
+  const diff = nextBirthday.getTime() - today.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
