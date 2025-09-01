@@ -104,7 +104,9 @@ model Event {
   startingDate  DateTime @db.Timestamptz
   endingDate    DateTime @db.Timestamptz
   minAge        Int?
-  isActive      Boolean  @default(false)
+
+  isDeleted Boolean @default(false)
+  isActive  Boolean @default(false)
 
   locationId String    @db.Uuid
   location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id])
