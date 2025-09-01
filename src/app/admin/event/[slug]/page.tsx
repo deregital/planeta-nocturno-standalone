@@ -1,16 +1,17 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { CalendarIcon, ClockIcon, Loader2, MapPin } from 'lucide-react';
-import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
 import Image from 'next/image';
+import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import { Suspense } from 'react';
 
-import { trpc } from '@/server/trpc/server';
+import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
+import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicketModal } from '@/components/event/individual/ScanTicketModal';
-import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
+import { trpc } from '@/server/trpc/server';
 
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
@@ -63,10 +64,23 @@ async function EventDetails({ slug }: { slug: string }) {
         </h3>
         <QuantityTicketsEmitted event={event} />
       </div>
-      <div className='flex flex-row gap-x-2'>
-        <ScanTicketModal eventId={event.id} />
-        <EmitTicketModal event={event} />
-        <ToggleActivateButton event={event} />
+      <div className='flex justify-between w-full px-4'>
+        <div className='flex-1 flex justify-center items-center'>
+          <div className='md:flex md:gap-x-2 md:items-center grid grid-cols-2 gap-2 md:grid-cols-none'>
+            <div className='md:order-1 order-3'>
+              <DeleteEventModal event={event} />
+            </div>
+            <div className='md:order-2 order-1'>
+              <ScanTicketModal eventId={event.id} />
+            </div>
+            <div className='md:order-3 order-2'>
+              <EmitTicketModal event={event} />
+            </div>
+            <div className='md:order-4 order-4'>
+              <ToggleActivateButton event={event} />
+            </div>
+          </div>
+        </div>
       </div>
       <TicketTableWithTabs ticketTypes={event.ticketTypes} />
     </div>

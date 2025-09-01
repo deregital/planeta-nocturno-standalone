@@ -5,8 +5,11 @@ import { es } from 'date-fns/locale';
 import { useActionState, useEffect, useState } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
+import { handlePurchase } from '@/app/(client)/checkout/action';
 import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
+import GoBack from '@/components/common/GoBack';
 import InputWithLabel from '@/components/common/InputWithLabel';
+import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,9 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { type RouterOutputs } from '@/server/routers/app';
-import { handlePurchase } from '@/app/(client)/checkout/action';
 import 'react-phone-number-input/style.css';
-import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 
 export default function CheckoutClient({
   ticketGroup,
@@ -64,6 +65,9 @@ export default function CheckoutClient({
 
   return (
     <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
+      <div className='flex justify-baseline w-full'>
+        <GoBack />
+      </div>
       <div className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'>
         <p className='text-2xl'>{ticketGroup.event.name}</p>
         <p className='text-lg font-medium text-accent'>

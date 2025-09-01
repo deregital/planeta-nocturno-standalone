@@ -41,7 +41,7 @@ export const navRoutes: {
 export default function SideBar() {
   const pathname = usePathname();
   return (
-    <aside className='hidden w-48 md:flex flex-col py-3 min-h-full'>
+    <aside className='hidden w-[var(--sidebar-width)] md:flex flex-col py-3 min-h-full'>
       {navRoutes.map((route, index) => (
         <SideBarTile
           key={index}

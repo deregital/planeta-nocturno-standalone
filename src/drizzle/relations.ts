@@ -1,33 +1,30 @@
 import { relations } from 'drizzle-orm/relations';
 import {
-  user,
-  session,
-  location,
   event,
-  eventCategory,
-  ticketGroup,
   ticketType,
+  ticketGroup,
+  user,
   emittedTicket,
+  location,
+  eventCategory,
+  session,
   ticketTypePerGroup,
   authenticator,
   account,
 } from './schema';
 
-export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
-    fields: [session.userId],
-    references: [user.id],
+export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
+  event: one(event, {
+    fields: [ticketType.eventId],
+    references: [event.id],
   }),
-}));
-
-export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
   emittedTickets: many(emittedTicket),
-  authenticators: many(authenticator),
-  accounts: many(account),
+  ticketTypePerGroups: many(ticketTypePerGroup),
 }));
 
 export const eventRelations = relations(event, ({ one, many }) => ({
+  ticketTypes: many(ticketType),
+  ticketGroups: many(ticketGroup),
   location: one(location, {
     fields: [event.locationId],
     references: [location.id],
@@ -36,30 +33,11 @@ export const eventRelations = relations(event, ({ one, many }) => ({
     fields: [event.categoryId],
     references: [eventCategory.id],
   }),
-  ticketGroups: many(ticketGroup),
-  ticketTypes: many(ticketType),
-}));
-
-export const locationRelations = relations(location, ({ many }) => ({
-  events: many(event),
-}));
-
-export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
-  events: many(event),
 }));
 
 export const ticketGroupRelations = relations(ticketGroup, ({ one, many }) => ({
   event: one(event, {
     fields: [ticketGroup.eventId],
-    references: [event.id],
-  }),
-  emittedTickets: many(emittedTicket),
-  ticketTypePerGroups: many(ticketTypePerGroup),
-}));
-
-export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
-  event: one(event, {
-    fields: [ticketType.eventId],
     references: [event.id],
   }),
   emittedTickets: many(emittedTicket),
@@ -78,6 +56,28 @@ export const emittedTicketRelations = relations(emittedTicket, ({ one }) => ({
   ticketGroup: one(ticketGroup, {
     fields: [emittedTicket.ticketGroupId],
     references: [ticketGroup.id],
+  }),
+}));
+
+export const userRelations = relations(user, ({ many }) => ({
+  emittedTickets: many(emittedTicket),
+  sessions: many(session),
+  authenticators: many(authenticator),
+  accounts: many(account),
+}));
+
+export const locationRelations = relations(location, ({ many }) => ({
+  events: many(event),
+}));
+
+export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
+  events: many(event),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
   }),
 }));
 

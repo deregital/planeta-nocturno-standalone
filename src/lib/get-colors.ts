@@ -16,13 +16,14 @@ export function getTextColorByBg(bg: string) {
 
 export function getColors() {
   const hue = process.env.NEXT_PUBLIC_HUE ?? '200';
+  const saturation = process.env.NEXT_PUBLIC_SATURATION ?? '100';
 
-  const accentDark = `hsl(${hue}, 100%, 7%)`;
-  const accentColor = `hsl(${hue}, 100%, 20%)`;
-  const buttonColor = `hsl(${hue}, 100%, 36%)`;
-  const brandColor = `hsl(${hue}, 100%, 60%)`;
-  const accentLight = `hsl(${hue}, 100%, 70%)`;
-  const accentUltraLight = `hsl(${hue}, 100%, 97%)`;
+  const accentDark = `hsl(${hue}, ${saturation}%, 7%)`;
+  const accentColor = `hsl(${hue}, ${saturation}%, 20%)`;
+  const buttonColor = `hsl(${hue}, ${saturation}%, 36%)`;
+  const brandColor = `hsl(${hue}, ${saturation}%, 60%)`;
+  const accentLight = `hsl(${hue}, ${saturation}%, 70%)`;
+  const accentUltraLight = `hsl(${hue}, ${saturation}%, 97%)`;
   const textOnAccent = getTextColorByBg(accentColor);
 
   return {
@@ -53,16 +54,17 @@ function hslToHex(h: number, s: number, l: number): string {
 // Function to get colors as hex values
 export function getColorsAsHex() {
   const hue = parseInt(process.env.NEXT_PUBLIC_HUE ?? '200');
+  const saturation = parseInt(process.env.NEXT_PUBLIC_SATURATION ?? '100');
 
   return {
-    accentDark: hslToHex(hue, 100, 7),
-    accentColor: hslToHex(hue, 100, 20),
-    buttonColor: hslToHex(hue, 100, 36),
-    brandColor: hslToHex(hue, 100, 60),
-    accentLight: hslToHex(hue, 100, 70),
-    accentUltraLight: hslToHex(hue, 100, 97),
+    accentDark: hslToHex(hue, saturation, 7),
+    accentColor: hslToHex(hue, saturation, 20),
+    buttonColor: hslToHex(hue, saturation, 36),
+    brandColor: hslToHex(hue, saturation, 60),
+    accentLight: hslToHex(hue, saturation, 70),
+    accentUltraLight: hslToHex(hue, saturation, 97),
     textOnAccent:
-      getTextColorByBg(hslToHex(hue, 100, 20)) === 'white'
+      getTextColorByBg(hslToHex(hue, saturation, 20)) === 'white'
         ? '#ffffff'
         : '#000000', // Use hex version of accentColor
   };

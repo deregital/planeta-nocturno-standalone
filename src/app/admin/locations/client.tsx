@@ -8,7 +8,7 @@ import { type Location } from '@/server/schemas/location';
 export default function Client({ locations }: { locations: Location[] }) {
   return (
     <div className='p-4'>
-      <h1 className='text-4xl font-bold'>Locaciones</h1>
+      <h1 className='text-4xl font-bold text-accent'>Locaciones</h1>
       <Accordion type='multiple'>
         {locations &&
           locations.map((location, index) => (

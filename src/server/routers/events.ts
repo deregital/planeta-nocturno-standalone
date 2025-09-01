@@ -1,10 +1,11 @@
-import { barcodes, text, line, table } from '@pdfme/schemas';
+import { type Font } from '@pdfme/common';
+import { generate } from '@pdfme/generator';
+import { barcodes, line, table, text } from '@pdfme/schemas';
+import { TRPCError } from '@trpc/server';
+import { formatInTimeZone } from 'date-fns-tz';
 import { and, eq, inArray, like, lt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
-import { formatInTimeZone } from 'date-fns-tz';
-import { generate } from '@pdfme/generator';
-import { type Font } from '@pdfme/common';
 
 import {
   event as eventSchema,
@@ -21,17 +22,18 @@ import {
 } from '@/server/schemas/ticket-type';
 import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
-import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 import {
   type PDFDataGroupedTicketType,
-  presentismoPDFSchema,
   type PDFDataOrderName,
+  presentismoPDFSchema,
   presentismoPDFSchemaGroupedTicketType,
 } from '@/server/utils/presentismo-pdf';
+import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
+      where: eq(eventSchema.isDeleted, false),
       with: {
         ticketTypes: true,
         location: {
@@ -61,7 +63,7 @@ export const eventsRouter = router({
   }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const data = await ctx.db.query.event.findFirst({
-      where: eq(eventSchema.id, input),
+      where: and(eq(eventSchema.id, input), eq(eventSchema.isDeleted, false)),
       with: {
         ticketTypes: {
           columns: {
@@ -87,7 +89,7 @@ export const eventsRouter = router({
   }),
   getBySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const event = await ctx.db.query.event.findFirst({
-      where: eq(eventSchema.slug, input),
+      where: and(eq(eventSchema.slug, input), eq(eventSchema.isDeleted, false)),
     });
 
     if (!event) throw 'Evento no encontrado';
@@ -155,7 +157,7 @@ export const eventsRouter = router({
 
       // same slug is slug or slug-1, slug-2, etc
       const sameSlugAmount = existingEvent.filter((event) =>
-        event.slug.match(new RegExp(`^${slug}-(\\d+)$`)),
+        event.slug.match(new RegExp(`^${slug}(-\\d+)?$`)),
       ).length;
       const sameSlug =
         sameSlugAmount > 0 ? `${slug}-${sameSlugAmount + 1}` : slug;
@@ -410,7 +412,6 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-
   generatePresentismoGroupedTicketTypePDF: protectedProcedure
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -536,5 +537,41 @@ export const eventsRouter = router({
         .update(eventSchema)
         .set({ isActive })
         .where(eq(eventSchema.id, id));
+    }),
+  delete: protectedProcedure
+    .input(eventSchemaZod.shape.id)
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+      });
+
+      if (!event) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Evento no encontrado',
+        });
+      }
+
+      if (event.isActive) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No se puede eliminar un evento activo',
+        });
+      }
+
+      const deletedEvent = await ctx.db
+        .update(eventSchema)
+        .set({ isDeleted: true })
+        .where(and(eq(eventSchema.id, input), eq(eventSchema.isActive, false)))
+        .returning();
+
+      if (deletedEvent.length === 0) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Error al eliminar el evento',
+        });
+      }
+
+      return deletedEvent[0];
     }),
 });

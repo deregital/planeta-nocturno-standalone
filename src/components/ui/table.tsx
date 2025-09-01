@@ -4,15 +4,23 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-function Table({ className, ...props }: React.ComponentProps<'table'>) {
+function Table({
+  className,
+  fullWidth,
+  ...props
+}: React.ComponentProps<'table'> & { fullWidth?: boolean }) {
   return (
     <div
       data-slot='table-container'
-      className='relative w-full overflow-x-auto'
+      className={cn(
+        'relative overflow-x-auto w-full',
+        fullWidth &&
+          'max-w-screen w-[calc(100vw-16px)] md:w-[calc(100vw-16px-var(--sidebar-width))] ',
+      )}
     >
       <table
         data-slot='table'
-        className={cn('w-full caption-bottom text-sm', className)}
+        className={cn('caption-bottom text-sm w-full', className)}
         {...props}
       />
     </div>

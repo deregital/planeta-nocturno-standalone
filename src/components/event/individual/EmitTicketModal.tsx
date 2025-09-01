@@ -122,7 +122,7 @@ export function EmitTicketModal({
       }}
     >
       <DialogTrigger asChild>
-        <Button className='flex gap-x-5' variant='outline'>
+        <Button className='flex gap-x-5 w-full' variant='outline'>
           Emitir ticket
           <Ticket className='size-5' />
         </Button>

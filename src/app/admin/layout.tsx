@@ -14,7 +14,14 @@ export default async function AdminLayout({
   if (!session) redirect('/login');
 
   return (
-    <div className='grid grid-rows-[auto_1fr] min-h-screen h-full'>
+    <div
+      className='grid grid-rows-[auto_1fr] min-h-screen h-full'
+      style={
+        {
+          '--sidebar-width': '12rem',
+        } as React.CSSProperties
+      }
+    >
       <TopBar auth={session} />
       <div className='flex'>
         <SideBar />

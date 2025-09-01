@@ -1,19 +1,12 @@
 'use client';
-import {
-  ArrowLeft,
-  Cake,
-  IdCard,
-  Mail,
-  Phone,
-  VenusAndMars,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Cake, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
+import { format } from 'date-fns';
 
 import AttendedEventsTable from '@/components/admin/BuyerTable';
 import { FilledCard } from '@/components/common/FilledCard';
+import GoBack from '@/components/common/GoBack';
 import { Instagram } from '@/components/icons/Instagram';
 import { WhatsApp } from '@/components/icons/WhatsApp';
-import { Button } from '@/components/ui/button';
 import { genderTranslation } from '@/lib/translations';
 import { type RouterOutputs } from '@/server/routers/app';
 
@@ -23,7 +16,6 @@ export default function Client({
   data: RouterOutputs['emittedTickets']['getUniqueBuyer'];
 }) {
   const { buyer, events } = data!;
-  const router = useRouter();
 
   const normalizedInstagram = buyer.instagram
     ? buyer.instagram.startsWith('@')
@@ -33,14 +25,7 @@ export default function Client({
 
   return (
     <div className='flex flex-col gap-4 p-4'>
-      <Button
-        variant={'ghost'}
-        className='size-fit py-2'
-        onClick={() => router.back()}
-      >
-        <ArrowLeft className='size-12' />
-      </Button>
-
+      <GoBack route='/admin/database' className='size-fit my-2' />
       <div className='flex'>
         <h1 className='text-4xl font-bold text-accent'>{buyer.fullName}</h1>
         <div className='flex justify-center items-center gap-4 ml-8 [&>div]:w-9 [&>div]:h-9 [&>div]:inline-flex [&>div]:items-center [&>div]:justify-center [&>div]:border [&>div]:rounded-sm [&>div]:transition'>
@@ -94,7 +79,10 @@ export default function Client({
           </div>
           <div>
             <Cake />
-            <p>Edad: {buyer.age} años</p>
+            <p>
+              Fecha de nacimiento: {format(buyer.birthDate, 'dd/MM/yyyy')}{' '}
+              <span className='text-sm'>({buyer.age} años)</span>
+            </p>
           </div>
           <div>
             <VenusAndMars />
@@ -119,7 +107,7 @@ export default function Client({
           </div>
         </FilledCard>
 
-        <FilledCard className='flex w-full p-4 flex-col text-accent-dark'>
+        <FilledCard className='flex flex-1 max-w-full p-4 flex-col text-accent-dark'>
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>
           <AttendedEventsTable events={events} />
         </FilledCard>

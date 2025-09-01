@@ -53,6 +53,7 @@ export const emittedBuyerTableSchema = emittedTicketSchema
     gender: z.string(),
     age: z.string(),
     instagram: z.string().optional().nullish(),
+    birthDate: z.string(),
   });
 
 export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;

@@ -44,11 +44,11 @@ export function TicketTableWithTabs({
   return (
     <>
       <Tabs
-        className='w-full mt-4 overflow-x-hidden'
+        className='w-[calc(100vw-16px)] md:w-[calc(100vw-16px-var(--sidebar-width))] mt-4 overflow-x-hidden'
         onValueChange={(v) => setTab(v)}
         defaultValue={tab}
       >
-        <TabsList className='flex-1 w-full md:max-w-[98%] max-w-[95%] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
+        <TabsList className='flex-1 w-full md:max-w-[98%] max-w-[98%] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
           {Object.keys(ticketsByType).map((type) => (
             <TabsTrigger className='min-w-2xs px-4' key={type} value={type}>
               {type}

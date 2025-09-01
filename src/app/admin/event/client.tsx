@@ -15,7 +15,7 @@ export default function Client({
 
   return (
     <div className='flex w-full p-4 flex-col gap-6'>
-      <h1 className='text-4xl font-bold'>Gestor de Eventos</h1>
+      <h1 className='text-4xl font-bold text-accent'>Gestor de Eventos</h1>
 
       <Button
         className='w-fit py-4 px-8'

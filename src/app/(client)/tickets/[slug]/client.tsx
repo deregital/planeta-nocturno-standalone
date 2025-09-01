@@ -2,6 +2,7 @@
 
 import { Download } from 'lucide-react';
 
+import GoBack from '@/components/common/GoBack';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -52,7 +53,12 @@ export default function TicketsClient({
 
   return (
     <div className='flex justify-center items-center h-full'>
-      <Card className='max-w-md mx-auto text-center shadow-lg'>
+      <GoBack
+        route='/'
+        title='Volver al inicio'
+        className='absolute top-24 md:left-26 left-4'
+      />
+      <Card className='max-w-md mx-auto text-center shadow-lg m-4'>
         <CardHeader>
           <CardTitle className='text-2xl font-bold'>
             ¡Gracias por su compra!
