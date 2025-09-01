@@ -65,15 +65,22 @@ async function EventDetails({ slug }: { slug: string }) {
         <QuantityTicketsEmitted event={event} />
       </div>
       <div className='flex justify-between w-full px-4'>
-        <div className='flex-1'>
-          <DeleteEventModal event={event} />
+        <div className='flex-1 flex justify-center items-center'>
+          <div className='md:flex md:gap-x-2 md:items-center grid grid-cols-2 gap-2 md:grid-cols-none'>
+            <div className='md:order-1 order-3'>
+              <DeleteEventModal event={event} />
+            </div>
+            <div className='md:order-2 order-1'>
+              <ScanTicketModal eventId={event.id} />
+            </div>
+            <div className='md:order-3 order-2'>
+              <EmitTicketModal event={event} />
+            </div>
+            <div className='md:order-4 order-4'>
+              <ToggleActivateButton event={event} />
+            </div>
+          </div>
         </div>
-        <div className='flex-1 flex justify-center gap-x-2'>
-          <ScanTicketModal eventId={event.id} />
-          <EmitTicketModal event={event} />
-          <ToggleActivateButton event={event} />
-        </div>
-        <div className='flex-1' />
       </div>
       <TicketTableWithTabs ticketTypes={event.ticketTypes} />
     </div>

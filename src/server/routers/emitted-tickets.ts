@@ -98,7 +98,7 @@ export const emittedTicketsRouter = router({
   getUniqueBuyer: protectedProcedure
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
-      const buyerWithBirthDate = await ctx.db.query.emittedTicket.findFirst({
+      const buyer = await ctx.db.query.emittedTicket.findFirst({
         where: eq(emittedTicket.dni, input),
         columns: {
           fullName: true,
@@ -132,17 +132,19 @@ export const emittedTicketsRouter = router({
           and(eq(emittedTicket.dni, input), eq(emittedTicket.scanned, true)),
         );
 
-      if (!buyerWithBirthDate) {
+      if (!buyer) {
         return null;
       }
 
-      const { birthDate, ...buyerWithoutBirthDate } = buyerWithBirthDate;
-      const buyer = {
-        ...buyerWithoutBirthDate,
-        age: differenceInYears(new Date(), new Date(birthDate)).toString(),
+      const buyerWithAge = {
+        ...buyer,
+        age: differenceInYears(
+          new Date(),
+          new Date(buyer.birthDate),
+        ).toString(),
       };
 
-      return { buyer, events };
+      return { buyer: buyerWithAge, events };
     }),
   getPdf: protectedProcedure
     .input(z.object({ ticketId: z.string() }))

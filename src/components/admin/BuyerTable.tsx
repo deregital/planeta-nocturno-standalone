@@ -38,5 +38,5 @@ export default function AttendedEventsTable({
     .filter((e) => e.id !== null)
     .map((e) => ({ ...e, id: e.id as string }));
 
-  return <DataTable columns={columns} data={mappedEvents} />;
+  return <DataTable fullWidth={false} columns={columns} data={mappedEvents} />;
 }

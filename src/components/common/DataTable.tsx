@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
+  fullWidth?: boolean;
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
@@ -33,6 +34,7 @@ interface DataTableProps<TData extends { id: string }, TValue> {
 }
 
 export function DataTable<TData extends { id: string }, TValue>({
+  fullWidth = true,
   columns,
   data,
   isLoading,
@@ -75,8 +77,8 @@ export function DataTable<TData extends { id: string }, TValue>({
   });
 
   return (
-    <div className='rounded-md border-stroke/70 border overflow-x-auto w-full md:max-w-[98%] max-w-[95%] mx-auto'>
-      <Table className='bg-white'>
+    <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
+      <Table className='bg-white' fullWidth={fullWidth}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow className='hover:bg-inherit' key={headerGroup.id}>

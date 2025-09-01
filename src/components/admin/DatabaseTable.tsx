@@ -212,8 +212,8 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
     <div className='space-y-4'>
       {/* Filter and Actions */}
       <div className='flex items-center justify-between px-4'>
-        <div className='flex sm:items-center justify-start w-full gap-4 flex-col sm:flex-row'>
-          <div className='w-1/4'>
+        <div className='flex md:items-center justify-start w-full gap-4 flex-col md:flex-row'>
+          <div className='md:w-80 w-full'>
             <p className='text-sm text-accent'>
               Filtrar por nombre, DNI, teléfono, mail o Instagram
             </p>

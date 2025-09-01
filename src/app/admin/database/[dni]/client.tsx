@@ -1,5 +1,6 @@
 'use client';
 import { Cake, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
+import { format } from 'date-fns';
 
 import AttendedEventsTable from '@/components/admin/BuyerTable';
 import { FilledCard } from '@/components/common/FilledCard';
@@ -78,7 +79,10 @@ export default function Client({
           </div>
           <div>
             <Cake />
-            <p>Edad: {buyer.age} años</p>
+            <p>
+              Fecha de nacimiento: {format(buyer.birthDate, 'dd/MM/yyyy')}{' '}
+              <span className='text-sm'>({buyer.age} años)</span>
+            </p>
           </div>
           <div>
             <VenusAndMars />
@@ -103,7 +107,7 @@ export default function Client({
           </div>
         </FilledCard>
 
-        <FilledCard className='flex w-full p-4 flex-col text-accent-dark'>
+        <FilledCard className='flex flex-1 max-w-full p-4 flex-col text-accent-dark'>
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>
           <AttendedEventsTable events={events} />
         </FilledCard>

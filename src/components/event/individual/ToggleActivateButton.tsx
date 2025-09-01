@@ -34,9 +34,9 @@ export function ToggleActivateButton({
     <div>
       <Button
         variant={event.isActive ? 'destructive' : 'success'}
-        size='sm'
         disabled={isPending}
         onClick={handleToggle}
+        className='w-full'
       >
         {sure ? 'Estás seguro?' : event.isActive ? 'Desactivar' : 'Activar'}
       </Button>
