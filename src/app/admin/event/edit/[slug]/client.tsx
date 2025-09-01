@@ -3,13 +3,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
-import { Button } from '@/components/ui/button';
-import { trpc } from '@/server/trpc/client';
-import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
-import { type RouterOutputs } from '@/server/routers/app';
 import { validateGeneralInformation } from '@/app/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import GoBack from '@/components/common/GoBack';
+import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
+import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
+import { Button } from '@/components/ui/button';
+import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/client';
 
 export default function Client({
   event,
@@ -81,7 +82,10 @@ export default function Client({
 
   return (
     <div className='w-full p-4 [&_section]:flex [&_section]:flex-col [&_section]:gap-4 [&_section]:p-4 [&_section]:border-2 [&_section]:bg-accent-ultra-light [&_section]:border-stroke [&_section]:rounded-md [&_section]:w-full'>
-      <h1 className='text-4xl font-bold'>Editar Evento</h1>
+      <div className='flex gap-2 items-center'>
+        <GoBack className='self-baseline' />
+        <h1 className='text-4xl font-bold'>Editar Evento</h1>
+      </div>
       <EventGeneralInformation action='EDIT' />
       <section className='my-6' id='ticket-types'>
         <h3 className='text-2xl text-accent font-bold'>Entradas</h3>
