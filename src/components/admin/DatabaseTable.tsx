@@ -4,7 +4,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { SelectGroup } from '@radix-ui/react-select';
 import { format } from 'date-fns';
 
@@ -167,43 +167,44 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
   }));
 
   // Filter by month of birth
-  const dataWithIdFilteredByMonth =
-    selectedMonth !== '0'
+  const dataWithIdFilteredByMonth = useMemo(() => {
+    return selectedMonth !== '0'
       ? dataWithId.filter((p) => {
           const month = new Date(p.birthDate).getMonth() + 1;
-          console.log(month, p.birthDate, selectedMonth);
           return month === Number(selectedMonth);
         })
       : dataWithId;
+  }, [dataWithId, selectedMonth]);
 
   // Filter data based on global filter
-  const filteredData = dataWithIdFilteredByMonth.filter((item) => {
-    if (!globalFilter) return true;
+  const filteredData = useMemo(() => {
+    return dataWithIdFilteredByMonth.filter((item) => {
+      if (!globalFilter) return true;
 
-    const searchValue = globalFilter
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-
-    const searchableFields = [
-      item.dni,
-      item.fullName,
-      item.phoneNumber,
-      item.mail,
-      item.instagram,
-    ].filter(Boolean);
-
-    return searchableFields.some((field) => {
-      const normalizedField = String(field)
+      const searchValue = globalFilter
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
-      return normalizedField.includes(searchValue);
+
+      const searchableFields = [
+        item.dni,
+        item.fullName,
+        item.phoneNumber,
+        item.mail,
+        item.instagram,
+      ].filter(Boolean);
+
+      return searchableFields.some((field) => {
+        const normalizedField = String(field)
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        return normalizedField.includes(searchValue);
+      });
     });
-  });
+  }, [dataWithIdFilteredByMonth, globalFilter]);
 
   const handleRowClick = (id: string) => {
-    // Since we're using dni as id, we can directly use it for navigation
     router.push(`/admin/database/${id}`);
   };
 
