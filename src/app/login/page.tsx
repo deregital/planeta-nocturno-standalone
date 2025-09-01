@@ -1,19 +1,14 @@
-import { signIn } from '@/server/auth';
+import { redirect } from 'next/navigation';
 
-export default function Login() {
+import { auth } from '@/server/auth';
+import LoginClient from '@/app/login/client';
+
+export default async function Login() {
+  const session = await auth();
+  if (session) redirect('/admin');
   return (
     <div className='h-full flex items-center justify-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
-      <form
-        action={async () => {
-          'use server';
-          await signIn('credentials', { redirectTo: '/admin' });
-        }}
-        method='post'
-      >
-        <input type='email' name='email' placeholder='Email' />
-        <input type='password' name='password' placeholder='Password' />
-        <button type='submit'>Login</button>
-      </form>
+      <LoginClient />
     </div>
   );
 }

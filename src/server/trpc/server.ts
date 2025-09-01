@@ -1,10 +1,11 @@
 import 'server-only'; // <-- ensure this file cannot be imported from the client
 import { createHydrationHelpers } from '@trpc/react-query/rsc';
 import { cache } from 'react';
+import { headers } from 'next/headers';
+
 import { makeQueryClient } from '@/server/trpc/query-client';
 import { appRouter } from '@/server/routers/app';
 import { createCallerFactory, createTRPCContext } from '@/server/trpc';
-import { headers } from 'next/headers';
 
 export const createContext = cache(async () => {
   const heads = new Headers(await headers());
