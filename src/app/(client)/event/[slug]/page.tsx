@@ -25,7 +25,7 @@ async function EventPage({ params }: EventPageProps) {
 
   return (
     <div className='flex justify-center px-1 sm:px-4 my-14'>
-      <main className='w-full max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-5rem)] lg:max-w-6xl rounded-3xl border-2 border-stroke overflow-hidden'>
+      <main className='w-full max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-5rem)] lg:max-w-6xl rounded-3xl border-2 border-stroke overflow-hidden h-fit'>
         {/* Header - Usado tanto en móvil como en escritorio */}
         <div className='border-b border-stroke overflow-hidden'>
           <HeaderTickets event={event} />
