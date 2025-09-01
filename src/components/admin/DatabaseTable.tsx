@@ -2,14 +2,23 @@
 
 import { type ColumnDef } from '@tanstack/react-table';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
+import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { SelectGroup } from '@radix-ui/react-select';
 import { format } from 'date-fns';
-import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
 
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
 import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
@@ -57,7 +66,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
         <Button
           variant='ghost'
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className='flex items-center gap-2'
+          className='flex items-center gap-2 font-bold'
         >
           Fecha de Nacimiento
           {sorted === 'asc' && (
@@ -124,6 +133,22 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
 ];
 
+const months = [
+  'No seleccionado',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
+
 interface TicketsTableProps {
   columns: ColumnDef<EmittedBuyerTableWithId, unknown>[];
   data: EmittedBuyerTable[];
@@ -133,6 +158,7 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
   const router = useRouter();
 
   const [globalFilter, setGlobalFilter] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('0');
 
   // Add id field to data using dni as the unique identifier
   const dataWithId: EmittedBuyerTableWithId[] = data.map((item) => ({
@@ -140,8 +166,18 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
     id: item.dni,
   }));
 
+  // Filter by month of birth
+  const dataWithIdFilteredByMonth =
+    selectedMonth !== '0'
+      ? dataWithId.filter((p) => {
+          const month = new Date(p.birthDate).getMonth() + 1;
+          console.log(month, p.birthDate, selectedMonth);
+          return month === Number(selectedMonth);
+        })
+      : dataWithId;
+
   // Filter data based on global filter
-  const filteredData = dataWithId.filter((item) => {
+  const filteredData = dataWithIdFilteredByMonth.filter((item) => {
     if (!globalFilter) return true;
 
     const searchValue = globalFilter
@@ -175,22 +211,48 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
     <div className='space-y-4'>
       {/* Filter and Actions */}
       <div className='flex items-center justify-between px-4'>
-        <div className='flex sm:items-center justify-start gap-2 flex-col sm:flex-row'>
-          <Input
-            placeholder='Filtrar por nombre, DNI o teléfono...'
-            value={globalFilter}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className='min-w-full'
-          />
+        <div className='flex sm:items-center justify-start w-full gap-4 flex-col sm:flex-row'>
+          <div className='w-1/4'>
+            <p className='text-sm text-accent'>
+              Filtrar por nombre, DNI, teléfono, mail o Instagram
+            </p>
+            <Input
+              placeholder='Nombre, DNI, mail...'
+              value={globalFilter}
+              onChange={(event) => setGlobalFilter(event.target.value)}
+              className='max-full self-end'
+            />
+          </div>
+          <div className='flex flex-col'>
+            <p className='text-sm text-accent'>Filtrar por mes de nacimiento</p>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className='w-full'>
+                <SelectValue placeholder='Filtrar por mes de nacimiento' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Mes de nacimiento</SelectLabel>
+                  {months.map((m, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
           {/* Results count */}
-          <p className='text-sm text-accent'>
+          <p className='text-sm text-accent pt-4'>
             {filteredData.length} de {data.length} resultados
           </p>
-          {globalFilter && (
+          {(globalFilter || selectedMonth !== '0') && (
             <Button
               variant={'ghost'}
-              onClick={() => setGlobalFilter('')}
-              className='px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors'
+              onClick={() => {
+                setGlobalFilter('');
+                setSelectedMonth('0');
+              }}
+              className='px-3 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors self-end'
             >
               Limpiar
             </Button>
