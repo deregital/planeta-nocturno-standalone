@@ -9,7 +9,7 @@ export default function Client({
 }) {
   return (
     <div className='p-4'>
-      <h1 className='text-4xl font-bold'>Categorías</h1>
+      <h1 className='text-4xl font-bold text-accent'>Categorías</h1>
       <EventCategoryModal action='CREATE' />
       <div className='flex flex-wrap gap-4'>
         {categories &&
