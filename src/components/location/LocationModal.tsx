@@ -10,6 +10,7 @@ import {
   handleUpdate,
   type UpdateLocationActionState,
 } from '@/app/admin/locations/action';
+import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,7 +22,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { type Location } from '@/server/schemas/location';
-import InputWithLabel from '@/components/common/InputWithLabel';
 
 type LocationModalProps = {
   action: 'CREATE' | 'EDIT';
@@ -58,7 +58,11 @@ export default function LocationModal({
             <Button className='w-fit'>Crear nueva locación</Button>
           </div>
         ) : (
-          <Button variant='ghost' className='absolute top-0 right-0'>
+          <Button
+            variant='ghost'
+            size={'icon'}
+            className='absolute top-4 right-4'
+          >
             <Pencil />
           </Button>
         )}

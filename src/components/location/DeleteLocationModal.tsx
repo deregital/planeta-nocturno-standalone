@@ -32,7 +32,8 @@ export default function DeleteLocationModal({ id }: { id: string }) {
       <DialogTrigger asChild>
         <Button
           variant='destructive'
-          className='absolute bottom-4 right-2 !p-2 !size-8'
+          size={'icon'}
+          className='absolute bottom-4 right-4'
         >
           <Trash2 />
         </Button>
