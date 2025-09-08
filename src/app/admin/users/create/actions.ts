@@ -2,18 +2,23 @@
 
 import { redirect } from 'next/navigation';
 import z from 'zod';
-import { revalidatePath } from 'next/cache';
 
 import { trpc } from '@/server/trpc/server';
+import { type User } from '@/server/types';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
-import { type CreateUserActionState } from '@/app/admin/users/create/actions';
 
-export async function updateUser(
-  prevState: CreateUserActionState,
+type UserData = Pick<User, 'fullName' | 'name' | 'email' | 'role' | 'password'>;
+
+export type CreateUserActionState = {
+  data?: UserData;
+  errors?: Record<keyof UserData | 'general', string>;
+};
+
+export async function createUser(
+  prevValues: CreateUserActionState,
   formData: FormData,
 ): Promise<CreateUserActionState> {
-  const id = formData.get('id') as string;
   const fullName = formData.get('fullName') as string;
   const username = formData.get('username') as string;
   const email = formData.get('email') as string;
@@ -29,6 +34,7 @@ export async function updateUser(
   };
 
   const validation = userSchema.safeParse(data);
+
   if (!validation.success) {
     const validateErrors = z.treeifyError(validation.error).properties;
     return {
@@ -46,23 +52,18 @@ export async function updateUser(
       },
     };
   }
-  await trpc.user
-    .update({
-      ...data,
-      id,
-    })
-    .catch((error) => {
-      return {
-        data: {
-          ...data,
-          name: username,
-        },
-        errors: {
-          general: error.message,
-        },
-      };
-    });
 
-  revalidatePath('/admin/users');
+  await trpc.user.create(data).catch((error) => {
+    return {
+      data: {
+        ...data,
+        name: username,
+      },
+      errors: {
+        general: error.message,
+      },
+    };
+  });
+
   redirect('/admin/users');
 }

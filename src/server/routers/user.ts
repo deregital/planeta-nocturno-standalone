@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { hash } from 'bcrypt';
+import { revalidatePath } from 'next/cache';
 
 import { protectedProcedure, router } from '@/server/trpc';
 import { user as userTable } from '@/drizzle/schema';
@@ -25,9 +26,11 @@ export const userRouter = router({
       const hashedPassword = await hash(input.password, 10);
       const user = await ctx.db.insert(userTable).values({
         ...input,
+        fullName: input.fullName,
         name: input.username,
         password: hashedPassword,
       });
+      revalidatePath('/admin/users');
       return user;
     }),
   update: protectedProcedure
@@ -38,9 +41,12 @@ export const userRouter = router({
         .update(userTable)
         .set({
           ...input,
+          name: input.username,
           password: hashedPassword,
         })
         .where(eq(userTable.id, input.id));
+
+      revalidatePath('/admin/users');
       return user;
     }),
   delete: protectedProcedure
@@ -49,6 +55,8 @@ export const userRouter = router({
       const user = await ctx.db
         .delete(userTable)
         .where(eq(userTable.id, input));
+
+      revalidatePath('/admin/users');
       return user;
     }),
 });
