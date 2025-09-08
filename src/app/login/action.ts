@@ -3,7 +3,8 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-import { auth, signIn } from '@/server/auth';
+import { signIn } from '@/server/auth';
+import { trpc } from '@/server/trpc/server';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'El nombre de usuario es requerido'),
@@ -58,9 +59,9 @@ export async function authenticate(
     };
   }
 
-  const session = await auth();
+  const user = await trpc.user.getByName(rawData.username);
 
-  if (session?.user.role === 'DOOR') {
+  if (user?.role === 'DOOR') {
     redirect('/admin/event');
   } else {
     redirect('/admin');

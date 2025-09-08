@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { hash } from 'bcrypt';
 import { revalidatePath } from 'next/cache';
 
-import { adminProcedure, router } from '@/server/trpc';
+import { adminProcedure, router, publicProcedure } from '@/server/trpc';
 import { user as userTable } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 
@@ -15,6 +15,12 @@ export const userRouter = router({
   getById: adminProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const user = await ctx.db.query.user.findFirst({
       where: eq(userTable.id, input),
+    });
+    return user;
+  }),
+  getByName: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    const user = await ctx.db.query.user.findFirst({
+      where: eq(userTable.name, input),
     });
     return user;
   }),

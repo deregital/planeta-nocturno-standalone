@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { type User } from '@/server/types';
 import { Button } from '@/components/ui/button';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
+import { roleTranslation } from '@/lib/translations';
 
 export function UserCard({
   user,
@@ -22,7 +23,7 @@ export function UserCard({
         <span className='font-bold'>Email:</span> {user.email}
       </p>
       <p>
-        <span className='font-bold'>Rol:</span> {user.role}
+        <span className='font-bold'>Rol:</span> {roleTranslation[user.role]}
       </p>
       <p>
         <span className='font-bold'>Creado el:</span>{' '}
