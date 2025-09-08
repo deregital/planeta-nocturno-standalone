@@ -29,6 +29,5 @@ export const roleTranslation: Record<
   string
 > = {
   ADMIN: 'Administrador',
-  STAFF: 'Staff',
   DOOR: 'Puerta',
 };

@@ -20,7 +20,7 @@ import {
   createTicketTypeSchema,
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
-import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import {
   type PDFDataGroupedTicketType,
@@ -140,7 +140,7 @@ export const eventsRouter = router({
 
     return data;
   }),
-  create: protectedProcedure
+  create: adminProcedure
     .input(
       z.object({
         event: createEventSchema,
@@ -211,7 +211,7 @@ export const eventsRouter = router({
 
       return { eventCreated, ticketTypesCreated };
     }),
-  update: protectedProcedure
+  update: adminProcedure
     .input(
       z.object({
         event: eventSchemaZod,
@@ -317,7 +317,7 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  generatePresentismoOrderNamePDF: protectedProcedure
+  generatePresentismoOrderNamePDF: adminProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -412,7 +412,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  generatePresentismoGroupedTicketTypePDF: protectedProcedure
+  generatePresentismoGroupedTicketTypePDF: adminProcedure
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { eventId } = input;
@@ -529,7 +529,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  toggleActivate: protectedProcedure
+  toggleActivate: adminProcedure
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const { id, isActive } = input;
@@ -538,7 +538,7 @@ export const eventsRouter = router({
         .set({ isActive })
         .where(eq(eventSchema.id, id));
     }),
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(eventSchemaZod.shape.id)
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
