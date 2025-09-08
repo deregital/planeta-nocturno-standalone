@@ -56,6 +56,9 @@ export const emittedTicketsRouter = router({
               ...input,
               birthDate: input.birthDate.toISOString(),
               ticketGroupId: ticketGroupCreated.id,
+              scanned: true,
+              scannedAt: new Date().toISOString(),
+              scannedByUserId: ctx.session.user.id,
             })
             .returning();
 
@@ -151,7 +154,7 @@ export const emittedTicketsRouter = router({
 
       return { buyer: buyerWithAge, events };
     }),
-  getPdf: adminProcedure
+  getPdf: doorProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -318,7 +321,7 @@ export const emittedTicketsRouter = router({
       return tickets;
     }),
 
-  send: adminProcedure
+  send: doorProcedure
     .input(
       z.object({
         ticketId: z.string(),
