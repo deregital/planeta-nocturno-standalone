@@ -17,12 +17,17 @@ import {
   emittedTicketSchema,
 } from '@/server/schemas/emitted-tickets';
 import { sendMail } from '@/server/services/mail';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  adminProcedure,
+  doorProcedure,
+  publicProcedure,
+  router,
+} from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 import { decryptString } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
-  create: adminProcedure
+  create: doorProcedure
     .input(createTicketSchema)
     .mutation(async ({ ctx, input }) => {
       const ticketCreated = await ctx.db.transaction(async (tx) => {
@@ -186,7 +191,7 @@ export const emittedTicketsRouter = router({
       return pdf;
     }),
 
-  scan: adminProcedure
+  scan: doorProcedure
     .input(
       z.object({
         barcode: z.string(),
@@ -271,7 +276,7 @@ export const emittedTicketsRouter = router({
       };
     }),
 
-  manualScan: adminProcedure
+  manualScan: doorProcedure
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -295,7 +300,7 @@ export const emittedTicketsRouter = router({
 
       return { success: true, ticket };
     }),
-  getByEventId: adminProcedure
+  getByEventId: doorProcedure
     .input(
       z.object({
         eventId: z.string(),

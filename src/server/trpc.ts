@@ -96,9 +96,10 @@ export const adminProcedure = t.procedure.use(({ ctx, next }) => {
   const adminIndex = levelsOfAccess.indexOf('ADMIN');
   const index = levelsOfAccess.indexOf(session.user.role);
 
-  if (index < adminIndex) {
+  if (index > adminIndex) {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
+
   return next({
     ctx: {
       session: { ...session, user: session.user },
@@ -116,10 +117,16 @@ export const doorProcedure = t.procedure.use(({ ctx, next }) => {
 
   const doorIndex = levelsOfAccess.indexOf('DOOR');
   const index = levelsOfAccess.indexOf(session.user.role);
-  if (index < doorIndex) {
+  if (index > doorIndex) {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
-  return next({ ctx });
+
+  return next({
+    ctx: {
+      session: { ...session, user: session.user },
+      db: db,
+    },
+  });
 });
 
 export const router = t.router;
