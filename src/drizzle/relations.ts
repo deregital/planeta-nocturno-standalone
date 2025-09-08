@@ -1,8 +1,8 @@
 import { relations } from 'drizzle-orm/relations';
 import {
   event,
-  ticketType,
   ticketGroup,
+  ticketType,
   user,
   emittedTicket,
   location,
@@ -13,9 +13,9 @@ import {
   account,
 } from './schema';
 
-export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
+export const ticketGroupRelations = relations(ticketGroup, ({ one, many }) => ({
   event: one(event, {
-    fields: [ticketType.eventId],
+    fields: [ticketGroup.eventId],
     references: [event.id],
   }),
   emittedTickets: many(emittedTicket),
@@ -23,8 +23,8 @@ export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
 }));
 
 export const eventRelations = relations(event, ({ one, many }) => ({
-  ticketTypes: many(ticketType),
   ticketGroups: many(ticketGroup),
+  ticketTypes: many(ticketType),
   location: one(location, {
     fields: [event.locationId],
     references: [location.id],
@@ -35,9 +35,9 @@ export const eventRelations = relations(event, ({ one, many }) => ({
   }),
 }));
 
-export const ticketGroupRelations = relations(ticketGroup, ({ one, many }) => ({
+export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
   event: one(event, {
-    fields: [ticketGroup.eventId],
+    fields: [ticketType.eventId],
     references: [event.id],
   }),
   emittedTickets: many(emittedTicket),
