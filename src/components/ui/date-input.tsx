@@ -11,7 +11,7 @@ interface DateParts {
   year: number;
 }
 
-const DateInput: React.FC<DateInputProps> = ({ value, onChange }) => {
+function DateInput({ value, onChange }: DateInputProps) {
   const [date, setDate] = React.useState<DateParts>(() => {
     const d = value ? new Date(value) : new Date();
     return {
@@ -255,7 +255,7 @@ const DateInput: React.FC<DateInputProps> = ({ value, onChange }) => {
       />
     </div>
   );
-};
+}
 
 DateInput.displayName = 'DateInput';
 
