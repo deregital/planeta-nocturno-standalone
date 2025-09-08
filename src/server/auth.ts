@@ -5,7 +5,7 @@ import { compare } from 'bcrypt';
 
 import { db } from '@/drizzle';
 
-import { user as userTable } from '@/drizzle/schema';
+import { user as userTable, type role as roleEnum } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 
 const credentialsSchema = userSchema.pick({
@@ -63,7 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: token.name as string,
           email: token.email as string,
           emailVerified: token.emailVerified as Date | null,
-          role: token.role as string,
+          role: token.role as (typeof roleEnum.enumValues)[number],
           fullName: token.fullName as string,
           image: token.image as string | null,
         };

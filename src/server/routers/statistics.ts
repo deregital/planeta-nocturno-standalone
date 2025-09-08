@@ -2,10 +2,10 @@ import { and, between, ne } from 'drizzle-orm';
 import z from 'zod';
 
 import { emittedTicket, ticketGroup } from '@/drizzle/schema';
-import { protectedProcedure, router } from '@/server/trpc';
+import { adminProcedure, router } from '@/server/trpc';
 
 export const statisticsRouter = router({
-  getStatistics: protectedProcedure
+  getStatistics: adminProcedure
     .input(
       z.object({
         from: z.date(),
@@ -84,7 +84,7 @@ export const statisticsRouter = router({
         // data,
       };
     }),
-  getEventsStats: protectedProcedure
+  getEventsStats: adminProcedure
     .input(
       z.object({
         from: z.date(),
@@ -157,7 +157,7 @@ export const statisticsRouter = router({
 
       return stats;
     }),
-  getLocationsStats: protectedProcedure
+  getLocationsStats: adminProcedure
     .input(
       z.object({
         from: z.date(),

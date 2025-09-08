@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +29,10 @@ import { Input } from '@/components/ui/input';
 import { downloadTicket } from '@/app/admin/event/[slug]/actions';
 
 export function generateTicketColumns() {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const session = useSession();
+  const isAdmin = session.data?.user.role === 'ADMIN';
+
   const columns: ColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
@@ -272,7 +277,7 @@ export function generateTicketColumns() {
                   setSure(true);
                 }}
                 data-sure={sure}
-                disabled={deleteTicketMutation.isPending}
+                disabled={deleteTicketMutation.isPending || !isAdmin}
                 className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
               >
                 {sure ? 'Estás seguro?' : 'Eliminar ticket'}

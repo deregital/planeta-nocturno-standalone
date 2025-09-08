@@ -9,13 +9,15 @@ export default function SideBarTile<T extends string>({
   icon,
   href,
   isActive,
+  show,
 }: {
   title: string;
   icon: ReactNode;
   href: Route<T>;
   isActive: boolean;
+  show: boolean;
 }) {
-  return (
+  return show ? (
     <Link
       href={href}
       className={cn(
@@ -29,5 +31,5 @@ export default function SideBarTile<T extends string>({
         <p className='text-xl flex-1 whitespace-nowrap'>{title}</p>
       </div>
     </Link>
-  );
+  ) : null;
 }

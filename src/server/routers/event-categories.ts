@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 
 import { eventCategory } from '@/drizzle/schema';
-import { publicProcedure, router } from '@/server/trpc';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { eventCategorySchema } from '@/server/schemas/event-category';
 
 export const eventCategoriesRouter = router({
@@ -25,12 +25,12 @@ export const eventCategoriesRouter = router({
 
       return data;
     }),
-  create: publicProcedure
+  create: adminProcedure
     .input(eventCategorySchema.omit({ id: true }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.insert(eventCategory).values(input);
     }),
-  edit: publicProcedure
+  edit: adminProcedure
     .input(eventCategorySchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.db
