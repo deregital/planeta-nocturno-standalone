@@ -185,6 +185,17 @@ export const ticketGroupRouter = router({
 
       return result[0];
     }),
+  updateInvitedBy: publicProcedure
+    .input(z.object({ id: ticketGroupSchema.shape.id, invitedBy: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const group = await ctx.db
+        .update(ticketGroup)
+        .set({ invitedBy: input.invitedBy })
+        .where(eq(ticketGroup.id, input.id))
+        .returning();
+
+      return group[0];
+    }),
   delete: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const result = await ctx.db
       .delete(ticketGroup)
