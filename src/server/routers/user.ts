@@ -31,13 +31,16 @@ export const userRouter = router({
       return user;
     }),
   update: protectedProcedure
-    .input(userSchema)
+    .input(userSchema.extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const hashedPassword = await hash(input.password, 10);
-      const user = await ctx.db.update(userTable).set({
-        ...input,
-        password: hashedPassword,
-      });
+      const user = await ctx.db
+        .update(userTable)
+        .set({
+          ...input,
+          password: hashedPassword,
+        })
+        .where(eq(userTable.id, input.id));
       return user;
     }),
   delete: protectedProcedure

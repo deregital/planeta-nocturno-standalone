@@ -7,7 +7,7 @@ declare module 'next-auth' {
       name: string;
       email: string;
       emailVerified: Date | null;
-      role: string;
+      role: (typeof roleEnum.enumValues)[number];
       fullName: string;
       image: string | null;
     } & DefaultSession['user'];
@@ -17,7 +17,7 @@ declare module 'next-auth' {
     id: string;
     name: string;
     email: string;
-    role: string;
+    role: (typeof roleEnum.enumValues)[number];
     fullName: string;
     emailVerified: Date | null;
     image: string | null;

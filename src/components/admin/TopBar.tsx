@@ -48,6 +48,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                 <nav className='flex flex-col py-4 dark'>
                   {navRoutes.map((route, index) => (
                     <SideBarTile
+                      show={route.roles.includes(auth.user.role)}
                       key={index}
                       href={route.href}
                       icon={route.icon}
