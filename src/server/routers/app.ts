@@ -9,6 +9,7 @@ import { mailRouter } from '@/server/routers/mail';
 import { eventCategoriesRouter } from '@/server/routers/event-categories';
 import { locationRouter } from '@/server/routers/location';
 import { statisticsRouter } from '@/server/routers/statistics';
+import { userRouter } from '@/server/routers/user';
 
 export const appRouter = router({
   events: eventsRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   location: locationRouter,
   eventCategory: eventCategoriesRouter,
   statistics: statisticsRouter,
+  user: userRouter,
 });
 
 export type AppRouter = typeof appRouter;
