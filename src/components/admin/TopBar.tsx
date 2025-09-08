@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import InstanceLogo from '@/components/header/InstanceLogo';
 import { navRoutes } from '@/components/admin/SideBar';
 import SideBarTile from '@/components/admin/SideBarTile';
+import { roleTranslation } from '@/lib/translations';
 
 export default function TopBar({ auth }: { auth: Session | null }) {
   const pathname = usePathname();
@@ -23,7 +24,9 @@ export default function TopBar({ auth }: { auth: Session | null }) {
       {auth && (
         <>
           <div className='hidden md:flex flex-row gap-16 items-center text-white'>
-            <span className='text-brand'>{auth.user.fullName} (admin)</span>
+            <span className='text-brand'>
+              {auth.user.fullName} ({roleTranslation[auth.user.role]})
+            </span>
             <Button variant={'accent'} onClick={() => signOut()}>
               Cerrar Sesión
             </Button>
@@ -42,7 +45,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                     </div>
                   </SheetTitle>
                   <span className='text-brand'>
-                    {auth.user.fullName} (admin)
+                    {auth.user.fullName} ({roleTranslation[auth.user.role]})
                   </span>
                 </div>
                 <nav className='flex flex-col py-4 dark'>

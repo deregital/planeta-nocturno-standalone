@@ -3,6 +3,7 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
 import { role } from '@/drizzle/schema';
+import { roleTranslation } from '@/lib/translations';
 
 export function UserForm({
   userId,
@@ -54,7 +55,7 @@ export function UserForm({
         defaultValue={state?.role}
         className='w-full'
         values={role.enumValues.map((roleValue) => ({
-          label: roleValue,
+          label: roleTranslation[roleValue],
           value: roleValue,
         }))}
         error={errors?.role}

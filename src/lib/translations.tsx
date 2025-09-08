@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 
 import FreeIcon from '@/components/icons/FreeIcon';
 import TableBar from '@/components/icons/TableBar';
+import { type role as roleEnum } from '@/drizzle/schema';
 import { type TicketTypeCategory } from '@/server/types';
 
 export const ticketTypesTranslation: Record<
@@ -21,4 +22,13 @@ export const genderTranslation: Record<'male' | 'female' | 'other', string> = {
   female: 'Femenino',
   male: 'Masculino',
   other: 'Otro',
+};
+
+export const roleTranslation: Record<
+  (typeof roleEnum.enumValues)[number],
+  string
+> = {
+  ADMIN: 'Administrador',
+  STAFF: 'Staff',
+  DOOR: 'Puerta',
 };

@@ -1,5 +1,7 @@
 import { type DefaultSession } from 'next-auth';
 
+import { type role as roleEnum } from '@/drizzle/schema';
+
 declare module 'next-auth' {
   interface Session {
     user: {
