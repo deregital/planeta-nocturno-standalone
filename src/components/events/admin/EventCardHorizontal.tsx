@@ -3,6 +3,7 @@ import { BadgeCheck, Calendar, Link2, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
@@ -17,6 +18,10 @@ export default function EventCardHorizontal({
   event: RouterOutputs['events']['getAll'][number];
 }) {
   const router = useRouter();
+  const session = useSession();
+
+  const isAdmin = session.data?.user.role === 'ADMIN';
+
   const generatePresentismoOrdenAlfPDF =
     trpc.events.generatePresentismoOrderNamePDF.useMutation();
 
@@ -43,7 +48,7 @@ export default function EventCardHorizontal({
             </Link>
           </Button>
           <Button variant={'ghost'} size={'icon'} asChild>
-            <Link href={`/admin/event/${event.slug}`}>
+            <Link href={`/admin/event/${event.slug}`} aria-disabled={!isAdmin}>
               <Calendar className='w-4 h-4 text-on-accent' />
             </Link>
           </Button>
@@ -51,6 +56,7 @@ export default function EventCardHorizontal({
             title='Generar presentismo por orden alfabético'
             size={'icon'}
             variant={'ghost'}
+            disabled={!isAdmin}
             onClick={() => {
               generatePresentismoOrdenAlfPDF.mutate(
                 { eventId: event.id },
@@ -79,6 +85,7 @@ export default function EventCardHorizontal({
             className='text-on-accent'
             variant={'ghost'}
             size={'icon'}
+            disabled={!isAdmin}
             onClick={() => {
               generatePresentismoGroupedTicketTypePDF.mutate(
                 { eventId: event.id },
@@ -105,6 +112,7 @@ export default function EventCardHorizontal({
           <Button
             variant={'ghost'}
             className='text-on-accent'
+            disabled={!isAdmin}
             onClick={() => router.push(`/admin/event/edit/${event.slug}`)}
           >
             <Pencil />

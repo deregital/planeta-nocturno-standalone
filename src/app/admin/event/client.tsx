@@ -1,6 +1,7 @@
 'use client';
 import { Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 import EventList from '@/components/events/admin/EventList';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ export default function Client({
 }: {
   events: RouterOutputs['events']['getAll'];
 }) {
+  const session = useSession();
   const router = useRouter();
 
   return (
@@ -20,6 +22,7 @@ export default function Client({
       <Button
         className='w-fit py-4 px-8'
         onClick={() => router.push('/admin/event/create')}
+        disabled={session.data?.user.role !== 'ADMIN'}
       >
         <Calendar /> Crear evento
       </Button>

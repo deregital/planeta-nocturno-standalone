@@ -2,6 +2,7 @@
 
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
+import { SessionProvider } from 'next-auth/react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type TicketType } from '@/server/types';
@@ -57,7 +58,9 @@ export function TicketTableWithTabs({
         </TabsList>
         {Object.keys(ticketsByType).map((type) => (
           <TabsContent key={type} value={type}>
-            <TicketTableSection tickets={ticketsByType[type]} />
+            <SessionProvider>
+              <TicketTableSection tickets={ticketsByType[type]} />
+            </SessionProvider>
           </TabsContent>
         ))}
       </Tabs>
