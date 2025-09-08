@@ -56,7 +56,6 @@ export default function EventCardHorizontal({
             title='Generar presentismo por orden alfabético'
             size={'icon'}
             variant={'ghost'}
-            disabled={!isAdmin}
             onClick={() => {
               generatePresentismoOrdenAlfPDF.mutate(
                 { eventId: event.id },
@@ -85,7 +84,6 @@ export default function EventCardHorizontal({
             className='text-on-accent'
             variant={'ghost'}
             size={'icon'}
-            disabled={!isAdmin}
             onClick={() => {
               generatePresentismoGroupedTicketTypePDF.mutate(
                 { eventId: event.id },
