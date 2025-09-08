@@ -122,7 +122,7 @@ export function generateTicketColumns() {
       cell: ({ row }) => {
         return (
           <p className='w-full text-center'>
-            {row.original.ticketGroup.invitedBy}
+            {row.original.ticketGroup.invitedBy ?? '-'}
           </p>
         );
       },
