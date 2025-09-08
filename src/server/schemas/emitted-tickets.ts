@@ -63,3 +63,10 @@ export const createTicketSchema = emittedTicketSchema
     eventId: eventSchema.shape.id,
     ticketTypeId: ticketTypeSchema.shape.id,
   });
+
+export const invitedBySchema = z
+  .string()
+  .max(40, {
+    error: 'El nombre no es demasiado largo',
+  })
+  .optional();

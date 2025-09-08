@@ -6,7 +6,10 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { createManyTicketSchema } from '@/server/schemas/emitted-tickets';
+import {
+  createManyTicketSchema,
+  invitedBySchema,
+} from '@/server/schemas/emitted-tickets';
 import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
@@ -24,6 +27,7 @@ export const handlePurchase = async (
   > = [];
   const eventId = formData.get('eventId');
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
+  const invitedBy = formData.get('invitedBy')?.toString() || '';
 
   if (!eventId || !ticketGroupId) {
     return {
@@ -93,6 +97,7 @@ export const handlePurchase = async (
   }
 
   const validation = createManyTicketSchema.safeParse(entradas);
+  const validationInvitedBy = invitedBySchema.safeParse(invitedBy);
 
   const errorsArray: Record<string, string> = {};
   // Validar la edad minima del evento
@@ -114,6 +119,9 @@ export const handlePurchase = async (
     });
   }
 
+  if (!validationInvitedBy.success) {
+    errorsArray['invitedBy'] = validationInvitedBy.error.issues[0].message;
+  }
   if (!validation.success) {
     // Procesar errores de validación y mapearlos a las keys correctas del formulario
     validation.error.issues.forEach((error: z.core.$ZodIssue) => {
@@ -152,6 +160,11 @@ export const handlePurchase = async (
   );
 
   await trpc.emittedTickets.createMany(entradas);
+
+  await trpc.ticketGroup.updateInvitedBy({
+    id: ticketGroupId,
+    invitedBy,
+  });
 
   if (totalPrice === 0) {
     await trpc.ticketGroup.updateStatus({
