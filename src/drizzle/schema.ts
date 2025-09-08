@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const role = pgEnum('Role', ['ADMIN', 'STAFF']);
+export const role = pgEnum('Role', ['ADMIN', 'STAFF', 'DOOR']);
 export const ticketGroupStatus = pgEnum('TicketGroupStatus', [
   'BOOKED',
   'PAID',

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-import { signIn } from '@/server/auth';
+import { auth, signIn } from '@/server/auth';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'El nombre de usuario es requerido'),
@@ -58,5 +58,11 @@ export async function authenticate(
     };
   }
 
-  redirect('/admin');
+  const session = await auth();
+
+  if (session?.user.role === 'DOOR') {
+    redirect('/admin/event');
+  } else {
+    redirect('/admin');
+  }
 }
