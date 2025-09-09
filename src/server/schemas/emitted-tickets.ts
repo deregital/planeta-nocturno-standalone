@@ -61,6 +61,7 @@ export const invitedBySchema = z
   .max(40, {
     error: 'El nombre no es demasiado largo',
   })
+  .nullable()
   .optional();
 
 export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;
