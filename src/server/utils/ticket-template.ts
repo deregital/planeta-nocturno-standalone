@@ -4,8 +4,8 @@ import { barcodes, image, line, rectangle, text } from '@pdfme/schemas';
 import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
 
-import { getDMSansFonts, encryptString } from '@/server/utils/utils';
 import { getColorsAsHex } from '@/lib/get-colors';
+import { encryptString, getDMSansFonts } from '@/server/utils/utils';
 
 export function generateTicketTemplate(first_word: string): Template {
   const { accentColor, textOnAccent: accentText } = getColorsAsHex();
@@ -189,7 +189,7 @@ export function generateTicketTemplate(first_word: string): Template {
           name: 'dni_title',
           type: 'text',
           content: 'DNI del titular del ticket:',
-          position: { x: 47, y: 273 },
+          position: { x: 47, y: 253 },
           width: 201.08,
           height: 10.05,
           rotate: 0,
@@ -211,7 +211,7 @@ export function generateTicketTemplate(first_word: string): Template {
           name: 'dni',
           type: 'text',
           content: '38.092.954',
-          position: { x: 47, y: 285.37 },
+          position: { x: 47, y: 265.37 },
           width: 225.69,
           height: 19.05,
           rotate: 0,
@@ -233,7 +233,7 @@ export function generateTicketTemplate(first_word: string): Template {
           name: 'ticketType_title',
           type: 'text',
           content: 'Tipo de entrada:',
-          position: { x: 47, y: 362 },
+          position: { x: 47, y: 322 },
           width: 201.08,
           height: 10.05,
           rotate: 0,
@@ -255,7 +255,51 @@ export function generateTicketTemplate(first_word: string): Template {
           name: 'ticketType',
           type: 'text',
           content: 'ticketType',
-          position: { x: 47, y: 374.38 },
+          position: { x: 47, y: 334.38 },
+          width: 225.69,
+          height: 19.05,
+          rotate: 0,
+          alignment: 'left',
+          verticalAlignment: 'top',
+          fontSize: 46.25,
+          lineHeight: 1,
+          characterSpacing: 0,
+          fontColor: accentColor,
+          fontName: 'DMSans-SemiBold',
+          backgroundColor: '',
+          opacity: 1,
+          strikethrough: false,
+          underline: false,
+          required: true,
+          readOnly: false,
+        },
+        {
+          name: 'invitedBy_title',
+          type: 'text',
+          content: 'Invitada por:',
+          position: { x: 47, y: 382 },
+          width: 201.08,
+          height: 10.05,
+          rotate: 0,
+          alignment: 'left',
+          verticalAlignment: 'top',
+          fontSize: 25,
+          lineHeight: 1,
+          characterSpacing: 0,
+          fontColor: '#000000',
+          fontName: 'DMSans-Light',
+          backgroundColor: '',
+          opacity: 1,
+          strikethrough: false,
+          underline: false,
+          required: false,
+          readOnly: true,
+        },
+        {
+          name: 'invitedBy',
+          type: 'text',
+          content: 'invitedBy',
+          position: { x: 47, y: 394.38 },
           width: 225.69,
           height: 19.05,
           rotate: 0,
@@ -416,6 +460,7 @@ interface GenerateTicketProps {
   id: string;
   createdAt: string;
   ticketType: string;
+  invitedBy: string | null;
 }
 
 export async function generatePdf(ticket: GenerateTicketProps) {
@@ -462,6 +507,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       ticketType: ticket.ticketType,
       name_first_word: firstWord,
       name_second_word: rest.join(' '),
+      invitedBy: ticket.invitedBy ?? '-',
     },
   ];
 

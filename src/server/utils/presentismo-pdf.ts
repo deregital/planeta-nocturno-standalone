@@ -9,7 +9,7 @@ export type PDFDataOrderName = [
     ubicacion: string;
     nombre: string;
     fecha: string;
-    datos: Array<[string, string, string, string, string]>; // [nombre, Tipo de entrada, telefono, dni, si/no]
+    datos: Array<[string, string, string, string, string, string]>; // [nombre, Tipo de entrada, telefono, dni, si/no, invitado por]
   },
 ];
 
@@ -19,7 +19,9 @@ export type PDFDataGroupedTicketType = [
     ubicacion: string;
     nombre: string;
     fecha: string;
-    [key: `datos_${string}`]: Array<[string, string, string, string, string]>; // Dynamic keys for each ticket type (datos_${ticketType})
+    [key: `datos_${string}`]: Array<
+      [string, string, string, string, string, string]
+    >; // Dynamic keys for each ticket type (datos_${ticketType}) - [nombre, Tipo de entrada, telefono, dni, si/no, invitado por]
     [key: `tipo_entrada_${string}`]: string; // Dynamic keys for each ticket type (tipo_entrada_${ticketType})
   },
 ];
@@ -194,23 +196,21 @@ export function presentismoPDFSchema(): Template {
           width: 202.65,
           height: 52.932,
           content:
-            '[["Aylen Katherine Naiquen Alegre Fanelli","99999","54 9 11 6534 4651 980","46581349","Sí"],["Ariel Colton","1948","1136005044","46501954",""]]',
+            '[["Aylen Katherine Naiquen Alegre Fanelli","99999","54 9 11 6534 4651 980","46581349","Juan Pérez","Sí"],["Ariel Colton","1948","1136005044","46501954","María García",""]]',
           showHead: true,
           head: [
             'Nombre',
             'Tipo de entrada',
             'Núm. de teléfono',
             'DNI',
+            'Invitado por',
             '¿Asistió?',
           ],
-          headWidthPercentages: [
-            22.13974216629657, 16.103719467061442, 25.901924500370086,
-            20.21800723743734, 15.63660662883455,
-          ],
+          headWidthPercentages: [20.0, 14.0, 20.0, 16.0, 15.0, 15.0],
           tableStyles: { borderWidth: 0.3, borderColor: '#000000' },
           headStyles: {
             fontName: 'DMSans-Bold',
-            fontSize: 13,
+            fontSize: 12,
             characterSpacing: 0,
             alignment: 'left',
             verticalAlignment: 'middle',
@@ -223,7 +223,7 @@ export function presentismoPDFSchema(): Template {
           },
           bodyStyles: {
             fontName: 'Symbols',
-            fontSize: 13,
+            fontSize: 11,
             characterSpacing: 0,
             alignment: 'left',
             verticalAlignment: 'middle',
@@ -307,19 +307,17 @@ export function presentismoPDFSchemaGroupedTicketType(
               width: 202.65,
               height: 52.932 * (tickets.length + 1),
               content:
-                '[["Aylen Katherine Naiquen Alegre Fanelli","99999","54 9 11 6534 4651 980","46581349","Sí"],["Ariel Colton","1948","1136005044","46501954",""]]',
+                '[["Aylen Katherine Naiquen Alegre Fanelli","99999","54 9 11 6534 4651 980","46581349","Juan Pérez","Sí"],["Ariel Colton","1948","1136005044","46501954","María García",""]]',
               showHead: true,
               head: [
                 'Nombre',
                 'Tipo de entrada',
                 'Núm. de teléfono',
                 'DNI',
+                'Invitado por',
                 '¿Asistió?',
               ],
-              headWidthPercentages: [
-                22.13974216629657, 16.103719467061442, 25.901924500370086,
-                20.21800723743734, 15.63660662883455,
-              ],
+              headWidthPercentages: [20.0, 14.0, 20.0, 16.0, 15.0, 15.0],
               tableStyles: { borderWidth: 0.3, borderColor: '#000000' },
               headStyles: {
                 fontName: 'DMSans-Bold',
@@ -336,7 +334,7 @@ export function presentismoPDFSchemaGroupedTicketType(
               },
               bodyStyles: {
                 fontName: 'Symbols',
-                fontSize: 13,
+                fontSize: 11,
                 characterSpacing: 0,
                 alignment: 'left',
                 verticalAlignment: 'middle',
