@@ -110,24 +110,6 @@ export function generateTicketColumns() {
       },
     },
     {
-      id: 'invitedBy',
-      accessorKey: 'invitedBy',
-      header: () => {
-        return <p className='w-full text-center'>Invita</p>;
-      },
-      minSize: 50,
-      size: 50,
-      maxSize: 50,
-      enableResizing: false,
-      cell: ({ row }) => {
-        return (
-          <p className='w-full text-center'>
-            {row.original.ticketGroup.invitedBy ?? '-'}
-          </p>
-        );
-      },
-    },
-    {
       id: 'scanned',
       accessorKey: 'scanned',
       header: ({ column }) => {
