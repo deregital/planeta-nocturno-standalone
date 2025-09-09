@@ -42,6 +42,7 @@ export const emittedTicketsRouter = router({
                     ? 'PAID'
                     : 'BOOKED',
               amountTickets: 1,
+              invitedBy: input.invitedBy,
             })
             .returning();
 
