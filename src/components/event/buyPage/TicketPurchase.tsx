@@ -16,9 +16,11 @@ import { type RouterOutputs } from '@/server/routers/app';
 function TicketPurchase({
   ticketTypes,
   eventId,
+  invitedBy,
 }: {
   ticketTypes: RouterOutputs['events']['getById']['ticketTypes'];
   eventId: string;
+  invitedBy: string | null;
 }) {
   const [, handlePurchase, pending] = useActionState(
     handlePurchaseAction,
@@ -105,7 +107,7 @@ function TicketPurchase({
           variant='accent'
           onClick={() =>
             startTransition(() =>
-              handlePurchase({ eventId, ticketsPerType: quantity }),
+              handlePurchase({ eventId, ticketsPerType: quantity, invitedBy }),
             )
           }
           disabled={

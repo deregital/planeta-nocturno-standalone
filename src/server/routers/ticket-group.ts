@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
+import { invitedBySchema } from '@/server/schemas/emitted-tickets';
 import { publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 
@@ -25,6 +26,7 @@ export const ticketGroupRouter = router({
             amount: z.number().int().min(0),
           })
           .array(),
+        invitedBy: invitedBySchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -40,6 +42,7 @@ export const ticketGroupRouter = router({
             (sum, ticket) => sum + ticket.amount,
             0,
           ),
+          invitedBy: input.invitedBy,
         };
 
         const result = await tx

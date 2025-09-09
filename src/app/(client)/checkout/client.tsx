@@ -296,6 +296,7 @@ export default function CheckoutClient({
           label='Invita... (ingresar el nombre del pública)'
           type='text'
           placeholder='ej. Pablo Perez'
+          defaultValue={ticketGroup.invitedBy ?? ''}
           error={
             typeof state.errors === 'object' && state.errors !== null
               ? (state.errors as Record<string, string>)['invitedBy']
