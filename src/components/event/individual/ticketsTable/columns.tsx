@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,11 +27,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { downloadTicket } from '@/app/admin/event/[slug]/actions';
 
-export function generateTicketColumns() {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const session = useSession();
-  const isAdmin = session.data?.user.role === 'ADMIN';
-
+export function generateTicketColumns(isAdmin: boolean) {
   const columns: ColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
@@ -106,9 +101,9 @@ export function generateTicketColumns() {
           </Button>
         );
       },
-      minSize: 50,
-      size: 50,
-      maxSize: 50,
+      minSize: 30,
+      size: 30,
+      maxSize: 30,
       enableResizing: false,
       cell: ({ row }) => {
         return <p className='w-full text-center'>{row.original.mail}</p>;
@@ -152,7 +147,7 @@ export function generateTicketColumns() {
     {
       id: 'actions',
       enableHiding: false,
-      size: 20,
+      size: 10,
       cell: ({ row }) => {
         const ticket = row.original;
         // eslint-disable-next-line react-hooks/rules-of-hooks
