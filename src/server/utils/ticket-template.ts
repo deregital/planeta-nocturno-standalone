@@ -507,7 +507,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       ticketType: ticket.ticketType,
       name_first_word: firstWord,
       name_second_word: rest.join(' '),
-      invitedBy: ticket.invitedBy ?? '-',
+      invitedBy: ticket.invitedBy || '-',
     },
   ];
 
