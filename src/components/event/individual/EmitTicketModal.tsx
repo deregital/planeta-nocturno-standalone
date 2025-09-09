@@ -1,33 +1,33 @@
 'use client';
 
 import { Ticket } from 'lucide-react';
-import esPhoneLocale from 'react-phone-number-input/locale/es';
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PhoneInput from 'react-phone-number-input';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import esPhoneLocale from 'react-phone-number-input/locale/es';
 import { toast } from 'sonner';
 import z from 'zod';
-import Link from 'next/link';
 
+import { emitTicket } from '@/app/admin/event/[slug]/actions';
+import { FormRow } from '@/components/common/FormRow';
+import InputDateWithLabel from '@/components/common/InputDateWithLabel';
+import InputWithLabel from '@/components/common/InputWithLabel';
+import SelectWithLabel from '@/components/common/SelectWithLabel';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogTrigger,
-  DialogTitle,
   DialogDescription,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { type RouterOutputs } from '@/server/routers/app';
-import { trpc } from '@/server/trpc/client';
-import InputWithLabel from '@/components/common/InputWithLabel';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import InputDateWithLabel from '@/components/common/InputDateWithLabel';
-import SelectWithLabel from '@/components/common/SelectWithLabel';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { emitTicket } from '@/app/admin/event/[slug]/actions';
+import { type RouterOutputs } from '@/server/routers/app';
 import { createTicketSchema } from '@/server/schemas/emitted-tickets';
+import { trpc } from '@/server/trpc/client';
 import 'react-phone-number-input/style.css';
-import { FormRow } from '@/components/common/FormRow';
 
 export function EmitTicketModal({
   event,
@@ -78,6 +78,7 @@ export function EmitTicketModal({
       paidOnLocation: formData.get('paidOnLocation') === 'on',
       ticketTypeId: selectedTicketTypeId,
       instagram: (formData.get('instagram') as string) || undefined,
+      invitedBy: formData.get('invitedBy') as string,
     };
 
     const validation = createTicketSchema.safeParse(ticketData);
@@ -284,7 +285,14 @@ export function EmitTicketModal({
                 error={error.paidOnLocation}
               />
             </FormRow>
-
+            <FormRow>
+              <InputWithLabel
+                label='Invitada por:'
+                id='invitedBy'
+                name='invitedBy'
+                error={error.invitedBy}
+              />
+            </FormRow>
             <Button type='submit' disabled={emitTicketLoading}>
               Emitir ticket
             </Button>

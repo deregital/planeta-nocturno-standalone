@@ -56,17 +56,18 @@ export const emittedBuyerTableSchema = emittedTicketSchema
     birthDate: z.string(),
   });
 
-export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;
-export const createTicketSchema = emittedTicketSchema
-  .omit({ id: true })
-  .extend({
-    eventId: eventSchema.shape.id,
-    ticketTypeId: ticketTypeSchema.shape.id,
-  });
-
 export const invitedBySchema = z
   .string()
   .max(40, {
     error: 'El nombre no es demasiado largo',
   })
   .optional();
+
+export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;
+export const createTicketSchema = emittedTicketSchema
+  .omit({ id: true })
+  .extend({
+    eventId: eventSchema.shape.id,
+    ticketTypeId: ticketTypeSchema.shape.id,
+    invitedBy: invitedBySchema,
+  });
