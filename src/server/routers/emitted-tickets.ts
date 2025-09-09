@@ -248,7 +248,7 @@ export const emittedTicketsRouter = router({
                   new Date(ticket.scannedAt),
                   'America/Argentina/Buenos_Aires',
                   'HH:mm',
-                )}`
+                )} ${ticket.ticketGroup.invitedBy ? `- Invitado por ${ticket.ticketGroup.invitedBy}` : ''}`
               : ''
           }`,
         };
@@ -277,7 +277,7 @@ export const emittedTicketsRouter = router({
         success: true,
         ticket,
         text: `Escaneado con éxito: ${ticket.fullName}`,
-        extraInfo,
+        extraInfo: `${extraInfo} ${ticket.ticketGroup.invitedBy ? `- Invitado por ${ticket.ticketGroup.invitedBy}` : ''}`,
       };
     }),
 
