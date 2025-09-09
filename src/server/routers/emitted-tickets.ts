@@ -47,6 +47,7 @@ export const emittedTicketsRouter = router({
                     ? 'PAID'
                     : 'BOOKED',
               amountTickets: 1,
+              invitedBy: input.invitedBy,
             })
             .returning();
 
@@ -189,6 +190,7 @@ export const emittedTicketsRouter = router({
         dni: ticket.dni,
         fullName: ticket.fullName,
         id: ticket.id,
+        invitedBy: ticket.ticketGroup.invitedBy,
       });
 
       return pdf;
@@ -360,6 +362,7 @@ export const emittedTicketsRouter = router({
         dni: ticket.dni,
         fullName: ticket.fullName,
         id: ticket.id,
+        invitedBy: ticket.ticketGroup.invitedBy,
       });
 
       const { data, error } = await sendMail({

@@ -54,14 +54,6 @@ export const ticketType = pgTable(
   ],
 );
 
-export const eventCategory = pgTable('eventCategory', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-  createdAt: timestamp({ withTimezone: true, mode: 'string' })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
-
 export const ticketGroup = pgTable(
   'ticketGroup',
   {
@@ -72,6 +64,7 @@ export const ticketGroup = pgTable(
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    invitedBy: text(),
   },
   (table) => [
     foreignKey({
@@ -83,6 +76,14 @@ export const ticketGroup = pgTable(
       .onDelete('cascade'),
   ],
 );
+
+export const eventCategory = pgTable('eventCategory', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
 
 export const emittedTicket = pgTable(
   'emittedTicket',
@@ -168,33 +169,6 @@ export const event = pgTable(
   ],
 );
 
-export const user = pgTable(
-  'user',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-    password: text().notNull(),
-    email: text().notNull(),
-    emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
-    image: text(),
-    fullName: text().notNull(),
-    role: role().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('user_email_key').using(
-      'btree',
-      table.email.asc().nullsLast().op('text_ops'),
-    ),
-    uniqueIndex('user_name_key').using(
-      'btree',
-      table.name.asc().nullsLast().op('text_ops'),
-    ),
-  ],
-);
-
 export const session = pgTable(
   'session',
   {
@@ -230,6 +204,33 @@ export const location = pgTable('location', {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+export const user = pgTable(
+  'user',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    password: text().notNull(),
+    email: text().notNull(),
+    emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
+    image: text(),
+    fullName: text().notNull(),
+    role: role().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('user_email_key').using(
+      'btree',
+      table.email.asc().nullsLast().op('text_ops'),
+    ),
+    uniqueIndex('user_name_key').using(
+      'btree',
+      table.name.asc().nullsLast().op('text_ops'),
+    ),
+  ],
+);
 
 export const ticketTypePerGroup = pgTable(
   'ticketTypePerGroup',
