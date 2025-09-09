@@ -22,6 +22,7 @@ function LoginPage() {
               type='text'
               name='username'
               id='username'
+              autoComplete='username'
               defaultValue={state.username}
               placeholder='Nombre de usuario'
             />
@@ -37,6 +38,7 @@ function LoginPage() {
               type='password'
               name='password'
               id='password'
+              autoComplete='current-password'
               defaultValue={state.password}
               placeholder='Contraseña'
             />
