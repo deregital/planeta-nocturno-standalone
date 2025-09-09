@@ -20,7 +20,12 @@ import {
   createTicketTypeSchema,
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  adminProcedure,
+  doorProcedure,
+  publicProcedure,
+  router,
+} from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import {
   type PDFDataGroupedTicketType,
@@ -317,7 +322,7 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  generatePresentismoOrderNamePDF: adminProcedure
+  generatePresentismoOrderNamePDF: doorProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -418,7 +423,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  generatePresentismoGroupedTicketTypePDF: adminProcedure
+  generatePresentismoGroupedTicketTypePDF: doorProcedure
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { eventId } = input;
