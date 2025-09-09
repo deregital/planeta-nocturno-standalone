@@ -1,9 +1,8 @@
 'use client';
-import { LogOut } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { type Session } from 'next-auth';
-import { useEffect, useState } from 'react';
 
 import {
   Sheet,
@@ -19,11 +18,6 @@ import { roleTranslation } from '@/lib/translations';
 
 export default function TopBar({ auth }: { auth: Session | null }) {
   const pathname = usePathname();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   return (
     <div className='w-full h-16 flex items-center justify-between px-8 bg-accent-dark'>
@@ -39,7 +33,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
             </Button>
           </div>
           <div className='flex md:hidden'>
-            {isMounted ? (
+            {auth ? (
               <Sheet>
                 <SheetTrigger className='text-brand'>☰</SheetTrigger>
                 <SheetContent
@@ -79,7 +73,9 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                 </SheetContent>
               </Sheet>
             ) : (
-              <div className='text-brand'>☰</div>
+              <div className='text-brand'>
+                <Loader2 className='animate-spin' />
+              </div>
             )}
           </div>
         </>

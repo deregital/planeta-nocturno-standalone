@@ -10,7 +10,7 @@ import {
   useReactTable,
   getPaginationRowModel,
 } from '@tanstack/react-table';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Loader } from 'lucide-react';
 
 import {
@@ -31,6 +31,7 @@ interface DataTableProps<TData extends { id: string }, TValue> {
   isLoading?: boolean;
   onClickRow?: (id: string) => void;
   initialSortingColumn?: { id: keyof TData; desc: boolean };
+  highlightedRowId?: string | null;
 }
 
 export function DataTable<TData extends { id: string }, TValue>({
@@ -40,6 +41,7 @@ export function DataTable<TData extends { id: string }, TValue>({
   isLoading,
   onClickRow,
   initialSortingColumn,
+  highlightedRowId,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
@@ -57,6 +59,26 @@ export function DataTable<TData extends { id: string }, TValue>({
     pageSize: 10,
   });
 
+  const targetPageIndex = useMemo(() => {
+    if (highlightedRowId && data.length > 0) {
+      const highlightedIndex = data.findIndex(
+        (item) => item.id === highlightedRowId,
+      );
+      if (highlightedIndex !== -1) {
+        return Math.floor(highlightedIndex / pagination.pageSize);
+      }
+    }
+    return pagination.pageIndex;
+  }, [highlightedRowId, data, pagination.pageSize, pagination.pageIndex]);
+
+  const effectivePagination = useMemo(
+    () => ({
+      ...pagination,
+      pageIndex: targetPageIndex,
+    }),
+    [pagination, targetPageIndex],
+  );
+
   const table = useReactTable({
     data,
     columns,
@@ -68,7 +90,7 @@ export function DataTable<TData extends { id: string }, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
     state: {
       sorting,
-      pagination,
+      pagination: effectivePagination,
     },
     defaultColumn: {
       maxSize: 150, //starting column size
@@ -118,6 +140,10 @@ export function DataTable<TData extends { id: string }, TValue>({
                 onClick={() => onClickRow && onClickRow(row.original.id)}
                 className={cn(
                   onClickRow && 'cursor-pointer',
+                  {
+                    'border-stroke! border-dashed! border-2! bg-accent-light/50!':
+                      highlightedRowId === row.original.id,
+                  },
                   idx % 2 === 0
                     ? 'bg-accent-ultra-light hover:bg-gray-500/15'
                     : 'hover:bg-gray-500/15',

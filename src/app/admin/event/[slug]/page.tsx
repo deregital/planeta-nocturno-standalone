@@ -65,10 +65,10 @@ async function EventDetails({ slug }: { slug: string }) {
         </h3>
         <QuantityTicketsEmitted event={event} />
       </div>
-      <div className='flex justify-between w-full px-4'>
-        <div className='flex-1 flex justify-center items-center'>
-          <div className='md:flex md:gap-x-2 md:items-center grid grid-cols-2 gap-2 md:grid-cols-none'>
-            <SessionProvider>
+      <SessionProvider>
+        <div className='flex justify-between w-full px-4'>
+          <div className='flex-1 flex justify-center items-center'>
+            <div className='md:flex md:gap-x-2 md:items-center grid grid-cols-2 gap-2 md:grid-cols-none'>
               <div className='md:order-1 order-3'>
                 <DeleteEventModal event={event} />
               </div>
@@ -81,11 +81,11 @@ async function EventDetails({ slug }: { slug: string }) {
               <div className='md:order-4 order-4'>
                 <ToggleActivateButton event={event} />
               </div>
-            </SessionProvider>
+            </div>
           </div>
         </div>
-      </div>
-      <TicketTableWithTabs ticketTypes={event.ticketTypes} />
+        <TicketTableWithTabs ticketTypes={event.ticketTypes} />
+      </SessionProvider>
     </div>
   );
 }
