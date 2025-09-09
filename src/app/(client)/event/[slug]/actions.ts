@@ -9,18 +9,18 @@ export const handlePurchase = async (
   {
     eventId,
     ticketsPerType,
+    invitedBy,
   }: {
     eventId: string;
     ticketsPerType: { ticketTypeId: string; amount: number }[];
+    invitedBy: string | null;
   },
 ) => {
-  // if (quantity === '0') return;
-  // if (ticketsAvailable < parseInt(quantity)) return;
-
   await trpc.ticketGroup
     .create({
       eventId,
       ticketsPerType,
+      invitedBy,
     })
     .then(async (ticketGroupId) => {
       if (!ticketGroupId) {
