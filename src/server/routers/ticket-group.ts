@@ -250,6 +250,7 @@ export const ticketGroupRouter = router({
         where: eq(ticketGroup.id, input),
         columns: {
           status: true,
+          invitedBy: true,
         },
         with: {
           emittedTickets: {
@@ -314,6 +315,7 @@ export const ticketGroupRouter = router({
           fullName: ticket.fullName,
           id: ticket.id,
           ticketType: ticket.ticketType.name,
+          invitedBy: group.invitedBy,
         });
         return {
           ticket,
