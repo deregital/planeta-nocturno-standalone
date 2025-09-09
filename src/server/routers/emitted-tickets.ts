@@ -17,12 +17,17 @@ import {
   emittedTicketSchema,
 } from '@/server/schemas/emitted-tickets';
 import { sendMail } from '@/server/services/mail';
-import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  adminProcedure,
+  doorProcedure,
+  publicProcedure,
+  router,
+} from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 import { decryptString } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
-  create: protectedProcedure
+  create: doorProcedure
     .input(createTicketSchema)
     .mutation(async ({ ctx, input }) => {
       const ticketCreated = await ctx.db.transaction(async (tx) => {
@@ -52,6 +57,9 @@ export const emittedTicketsRouter = router({
               ...input,
               birthDate: input.birthDate.toISOString(),
               ticketGroupId: ticketGroupCreated.id,
+              scanned: true,
+              scannedAt: new Date().toISOString(),
+              scannedByUserId: ctx.session.user.id,
             })
             .returning();
 
@@ -76,7 +84,7 @@ export const emittedTicketsRouter = router({
       if (!res) throw 'Error al crear ticket/s';
       return res;
     }),
-  getAllUniqueBuyer: protectedProcedure.query(async ({ ctx }) => {
+  getAllUniqueBuyer: adminProcedure.query(async ({ ctx }) => {
     const data = await ctx.db
       .selectDistinctOn([emittedTicket.dni], {
         dni: emittedTicket.dni,
@@ -96,7 +104,7 @@ export const emittedTicketsRouter = router({
 
     return dataWithAge;
   }),
-  getUniqueBuyer: protectedProcedure
+  getUniqueBuyer: adminProcedure
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
       const buyer = await ctx.db.query.emittedTicket.findFirst({
@@ -147,7 +155,7 @@ export const emittedTicketsRouter = router({
 
       return { buyer: buyerWithAge, events };
     }),
-  getPdf: protectedProcedure
+  getPdf: doorProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -188,7 +196,7 @@ export const emittedTicketsRouter = router({
       return pdf;
     }),
 
-  scan: protectedProcedure
+  scan: doorProcedure
     .input(
       z.object({
         barcode: z.string(),
@@ -273,7 +281,7 @@ export const emittedTicketsRouter = router({
       };
     }),
 
-  manualScan: protectedProcedure
+  manualScan: doorProcedure
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -297,7 +305,7 @@ export const emittedTicketsRouter = router({
 
       return { success: true, ticket };
     }),
-  getByEventId: protectedProcedure
+  getByEventId: doorProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -315,7 +323,7 @@ export const emittedTicketsRouter = router({
       return tickets;
     }),
 
-  send: protectedProcedure
+  send: doorProcedure
     .input(
       z.object({
         ticketId: z.string(),
@@ -375,7 +383,7 @@ export const emittedTicketsRouter = router({
       return { success: true, data };
     }),
 
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db

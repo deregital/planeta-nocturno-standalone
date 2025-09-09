@@ -6,6 +6,7 @@ import { db } from '@/drizzle';
 
 import { auth } from '@/server/auth';
 import { type appRouter } from '@/server/routers/app';
+import { type role as roleEnum } from '@/drizzle/schema';
 
 export function handleError(error: {
   message: string[];
@@ -80,10 +81,43 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   },
 });
 
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+const levelsOfAccess: (typeof roleEnum.enumValues)[number][] = [
+  'ADMIN',
+  'DOOR',
+];
+
+export const adminProcedure = t.procedure.use(({ ctx, next }) => {
   const session = ctx.session;
 
   if (!session || !session.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+
+  const adminIndex = levelsOfAccess.indexOf('ADMIN');
+  const index = levelsOfAccess.indexOf(session.user.role);
+
+  if (index > adminIndex) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+
+  return next({
+    ctx: {
+      session: { ...session, user: session.user },
+      db: db,
+    },
+  });
+});
+
+export const doorProcedure = t.procedure.use(({ ctx, next }) => {
+  const session = ctx.session;
+
+  if (!session || !session.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+
+  const doorIndex = levelsOfAccess.indexOf('DOOR');
+  const index = levelsOfAccess.indexOf(session.user.role);
+  if (index > doorIndex) {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 

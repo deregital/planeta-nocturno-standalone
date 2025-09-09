@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const role = pgEnum('Role', ['ADMIN', 'STAFF']);
+export const role = pgEnum('Role', ['ADMIN', 'DOOR']);
 export const ticketGroupStatus = pgEnum('TicketGroupStatus', [
   'BOOKED',
   'PAID',
@@ -207,6 +207,33 @@ export const event = pgTable(
   ],
 );
 
+export const user = pgTable(
+  'user',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    password: text().notNull(),
+    email: text().notNull(),
+    emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
+    image: text(),
+    fullName: text().notNull(),
+    role: role().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('user_email_key').using(
+      'btree',
+      table.email.asc().nullsLast().op('text_ops'),
+    ),
+    uniqueIndex('user_name_key').using(
+      'btree',
+      table.name.asc().nullsLast().op('text_ops'),
+    ),
+  ],
+);
+
 export const session = pgTable(
   'session',
   {
@@ -231,6 +258,17 @@ export const session = pgTable(
       .onDelete('cascade'),
   ],
 );
+
+export const location = pgTable('location', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+  address: text().notNull(),
+  googleMapsUrl: text().notNull(),
+  capacity: integer().notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
 
 export const ticketTypePerGroup = pgTable(
   'ticketTypePerGroup',

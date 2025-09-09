@@ -233,7 +233,7 @@ model EventCategory {
 
 enum Role {
   ADMIN
-  STAFF
+  DOOR
 }
 
 enum TicketGroupStatus {

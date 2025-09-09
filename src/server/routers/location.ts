@@ -7,7 +7,7 @@ import {
   locationSchema,
   updateLocationSchema,
 } from '@/server/schemas/location';
-import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 
 export const locationRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -32,7 +32,7 @@ export const locationRouter = router({
 
       return data;
     }),
-  create: protectedProcedure
+  create: adminProcedure
     .input(createLocationSchema)
     .mutation(async ({ input, ctx }) => {
       const data = await ctx.db.insert(location).values(input);
@@ -46,7 +46,7 @@ export const locationRouter = router({
 
       return data;
     }),
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(locationSchema.shape.id)
     .mutation(async ({ input, ctx }) => {
       const data = await ctx.db.delete(location).where(eq(location.id, input));
@@ -60,7 +60,7 @@ export const locationRouter = router({
 
       return data;
     }),
-  update: protectedProcedure
+  update: adminProcedure
     .input(updateLocationSchema)
     .mutation(async ({ input, ctx }) => {
       const data = await ctx.db
