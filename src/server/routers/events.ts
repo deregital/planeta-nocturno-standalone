@@ -369,6 +369,10 @@ export const eventsRouter = router({
             ticket.dni,
             ticket.scanned ? '☑' : '☐',
           ]),
+          entradasVendidas: `${tickets.length} de ${event.ticketTypes.reduce(
+            (acc, ticketType) => acc + ticketType.maxAvailable,
+            0,
+          )}`,
         },
       ];
 
@@ -485,6 +489,13 @@ export const eventsRouter = router({
             },
             {} as Record<`tipo_entrada_${string}`, string>,
           ),
+          entradasVendidas: `${tickets.reduce(
+            (acc, ticket) => acc + ticket.tickets.length,
+            0,
+          )} de ${event.ticketTypes.reduce(
+            (acc, ticketType) => acc + ticketType.maxAvailable,
+            0,
+          )}`,
         },
       ];
 
