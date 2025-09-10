@@ -1,3 +1,5 @@
+import { isAfter } from 'date-fns';
+
 import GoBack from '@/components/common/GoBack';
 import HeaderTickets from '@/components/event/buyPage/HeaderTickets';
 import InformationEvent from '@/components/event/buyPage/InformationEvent';
@@ -41,7 +43,10 @@ async function EventPage({ params }: EventPageProps) {
               <TicketPurchase
                 eventId={event.id}
                 ticketTypes={event.ticketTypes.filter(
-                  (ticketType) => ticketType.visibleInWeb,
+                  (ticketType) =>
+                    ticketType.visibleInWeb &&
+                    (!ticketType.maxSellDate ||
+                      isAfter(new Date(ticketType.maxSellDate), new Date())),
                 )}
               />
             </div>
