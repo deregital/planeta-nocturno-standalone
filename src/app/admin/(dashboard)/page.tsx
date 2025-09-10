@@ -3,7 +3,7 @@ import { addDays, subMonths } from 'date-fns';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 
-import AttendanceChart from '@/components/admin/AttendanceChart';
+import BuyPerHourChart from '@/components/admin/BuyPerHourChart';
 import ComparativeTable from '@/components/admin/ComparativeTable';
 import { StatisticsSkeleton } from '@/components/admin/DatabaseSkeleton';
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
@@ -125,9 +125,9 @@ export default function Dashboard() {
               </BaseCard>
               <BaseCard className='flex w-full lg:w-1/2 flex-col mb-3'>
                 <p className='text-xl sm:text-2xl lg:text-3xl pt-6 font-light text-center mb-2'>
-                  Asistencia por hora
+                  Entradas emitidas por hora
                 </p>
-                <AttendanceChart />
+                <BuyPerHourChart />
               </BaseCard>
             </>
           ) : (
