@@ -87,7 +87,6 @@ export const statisticsRouter = router({
         genderCounts[gender]++;
       }
 
-      console.log(genderCounts);
       return {
         totalRaised,
         totalSold,
