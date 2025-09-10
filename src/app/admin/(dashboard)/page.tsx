@@ -115,13 +115,13 @@ export default function Dashboard() {
         </BaseCard>
 
         <div className='flex flex-col lg:flex-row w-full p-1 px-3 gap-4'>
-          {statistics?.genderCounts ? (
+          {statistics ? (
             <>
               <BaseCard className='flex w-full lg:w-1/2 flex-col lg:mb-3'>
                 <p className='text-xl sm:text-2xl lg:text-3xl pt-6 font-light text-center mb-2'>
                   Asistencia por género
                 </p>
-                <GenderPie data={statistics?.genderCounts ?? {}} />
+                <GenderPie data={statistics.genderCounts} />
               </BaseCard>
               <BaseCard className='flex w-full lg:w-1/2 flex-col mb-3'>
                 <p className='text-xl sm:text-2xl lg:text-3xl pt-6 font-light text-center mb-2'>
