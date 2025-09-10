@@ -113,20 +113,20 @@ export default function Dashboard() {
           )}
         </BaseCard>
 
-        {statistics?.genderCounts ? (
-          <div className='p-3'>
+        <div className='p-3'>
+          {statistics?.genderCounts ? (
             <BaseCard className='flex flex-col py-6'>
               <p className='text-3xl font-light text-center'>
                 Asistencia por género
               </p>
               <GenderPie data={statistics?.genderCounts ?? {}} />
             </BaseCard>
-          </div>
-        ) : (
-          <Skeleton className='flex flex-col py-6 p-3'>
-            <Skeleton className='w-full h-full' />
-          </Skeleton>
-        )}
+          ) : (
+            <Skeleton className='flex flex-col'>
+              <Skeleton className='w-full h-96 py-6 p-3' />
+            </Skeleton>
+          )}
+        </div>
       </BaseCard>
       {/* Comparative table */}
       <BaseCard className='flex flex-col gap-4 border-2 p-3 py-6 max-w-[calc(100vw-3rem)] md:max-w-[calc(100vw-14rem)]'>
