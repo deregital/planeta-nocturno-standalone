@@ -38,6 +38,7 @@ export const statisticsRouter = router({
           emittedTickets: {
             columns: {
               scanned: true,
+              gender: true,
             },
           },
         },
@@ -75,13 +76,25 @@ export const statisticsRouter = router({
       const scannedPercentage =
         totalTickets > 0 ? (totalScanned / totalTickets) * 100 : 0;
 
+      // Asistencia por genero
+      const genderCounts: Record<string, number> = {};
+      for (const ticket of allTickets) {
+        if (!ticket.scanned) continue;
+        const gender = ticket.gender;
+        if (!genderCounts[gender]) {
+          genderCounts[gender] = 0;
+        }
+        genderCounts[gender]++;
+      }
+
+      console.log(genderCounts);
       return {
         totalRaised,
         totalSold,
         totalTickets,
         totalScanned,
         scannedPercentage,
-        // data,
+        genderCounts,
       };
     }),
   getEventsStats: adminProcedure
