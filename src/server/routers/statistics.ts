@@ -1,7 +1,8 @@
-import { and, between, ne } from 'drizzle-orm';
+import { format, getHours, isSameDay, parseISO } from 'date-fns';
+import { and, between, eq, ne } from 'drizzle-orm';
 import z from 'zod';
 
-import { emittedTicket, ticketGroup } from '@/drizzle/schema';
+import { emittedTicket, event, ticketGroup } from '@/drizzle/schema';
 import { adminProcedure, router } from '@/server/trpc';
 
 export const statisticsRouter = router({
@@ -39,6 +40,7 @@ export const statisticsRouter = router({
             columns: {
               scanned: true,
               gender: true,
+              scannedAt: true,
             },
           },
         },
@@ -76,8 +78,9 @@ export const statisticsRouter = router({
       const scannedPercentage =
         totalTickets > 0 ? (totalScanned / totalTickets) * 100 : 0;
 
-      // Asistencia por genero
+      // Asistencia por genero y por hora
       const genderCounts: Record<string, number> = {};
+
       for (const ticket of allTickets) {
         if (!ticket.scanned) continue;
         const gender = ticket.gender;
@@ -105,6 +108,11 @@ export const statisticsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const data = await ctx.db.query.event.findMany({
+        where: between(
+          event.startingDate,
+          input.from.toISOString(),
+          input.to.toISOString(),
+        ),
         with: {
           ticketGroups: {
             where: ne(ticketGroup.status, 'BOOKED'),
@@ -252,5 +260,99 @@ export const statisticsRouter = router({
       });
 
       return stats;
+    }),
+  getEventHourlyAttendance: adminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        from: z.date(),
+        to: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const data = await ctx.db.query.event.findFirst({
+        where: (event, { eq }) => eq(event.id, input.eventId),
+        with: {
+          ticketGroups: {
+            where: ne(ticketGroup.status, 'BOOKED'),
+            with: {
+              emittedTickets: {
+                where: and(
+                  between(
+                    emittedTicket.createdAt,
+                    input.from.toISOString(),
+                    input.to.toISOString(),
+                  ),
+                  eq(emittedTicket.scanned, true),
+                ),
+                columns: {
+                  scannedAt: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!data) {
+        return {
+          chartData: [],
+          eventStart: null,
+          eventEnd: null,
+        };
+      }
+
+      const eventStart = parseISO(data.startingDate);
+      const eventEnd = parseISO(data.endingDate);
+
+      const scannedTickets = data.ticketGroups.flatMap((tg) =>
+        tg.emittedTickets.filter((et) => et.scannedAt),
+      );
+
+      const startHour = getHours(eventStart);
+      const endHour = getHours(eventEnd);
+
+      // Diferentes dias
+      const eventSpansMultipleDays = !isSameDay(eventStart, eventEnd);
+
+      const hoursToShow: number[] = [];
+
+      if (!eventSpansMultipleDays) {
+        for (let hour = startHour; hour <= endHour; hour++) {
+          hoursToShow.push(hour);
+        }
+      } else {
+        for (let hour = 0; hour < 24; hour++) {
+          hoursToShow.push(hour);
+        }
+      }
+
+      const hourlyData: Record<number, number> = {};
+
+      hoursToShow.forEach((hour) => {
+        hourlyData[hour] = 0;
+      });
+
+      // Cantidad de tickets por hora
+      scannedTickets.forEach((ticket) => {
+        if (ticket.scannedAt) {
+          const scanDate = parseISO(ticket.scannedAt);
+          const hour = getHours(scanDate);
+          if (hourlyData.hasOwnProperty(hour)) {
+            hourlyData[hour]++;
+          }
+        }
+      });
+
+      const chartData = Object.entries(hourlyData).map(([hour, count]) => ({
+        hour: format(new Date(0, 0, 0, parseInt(hour)), 'HH:mm'),
+        attendance: count,
+      }));
+
+      return {
+        chartData,
+        eventStart: eventStart.toISOString(),
+        eventEnd: eventEnd.toISOString(),
+      };
     }),
 });

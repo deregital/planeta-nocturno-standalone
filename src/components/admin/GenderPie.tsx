@@ -1,14 +1,13 @@
 'use client';
 
-import {
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-} from 'recharts';
+import { Cell, Legend, Pie, PieChart } from 'recharts';
 
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
 import { getColors } from '@/lib/get-colors';
 import { genderTranslation } from '@/lib/translations';
 
@@ -22,17 +21,23 @@ export default function GenderPie({ data }: { data: Record<string, number> }) {
     value,
   }));
 
+  const config = {
+    gender: {
+      label: 'Género',
+    },
+  } satisfies ChartConfig;
+
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
   return (
-    <div className='flex flex-col gap-4 justify-center items-center'>
-      <ResponsiveContainer width='60%' height={400}>
+    <div className='flex flex-col gap-2 sm:gap-4 justify-center items-center w-full h-full'>
+      <ChartContainer config={config} className='h-48 sm:h-64 md:h-80 w-full'>
         <PieChart>
           <Pie
             data={chartData}
             cx='50%'
             cy='50%'
-            outerRadius={120}
-            innerRadius={40}
+            outerRadius={80}
+            innerRadius={30}
             dataKey='value'
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             label={(entry: any) => {
@@ -40,6 +45,7 @@ export default function GenderPie({ data }: { data: Record<string, number> }) {
                 total > 0 ? ((entry.value || 0) / total) * 100 : 0;
               return `${entry.name}: ${percentage.toFixed(1)}%`;
             }}
+            className='text-xs sm:text-sm md:text-base'
             labelLine={false}
           >
             {chartData.map((entry, index) => (
@@ -49,21 +55,24 @@ export default function GenderPie({ data }: { data: Record<string, number> }) {
               />
             ))}
           </Pie>
-          <Tooltip
-            formatter={(value: number) => [
-              Intl.NumberFormat('es-AR').format(value),
-              'Cantidad',
-            ]}
-            labelFormatter={(label) => `Género: ${label}`}
+          <ChartTooltip
+            cursor={false}
+            content={<ChartTooltipContent className='bg-white' />}
           />
           <Legend
             iconType='circle'
             formatter={(value) => (
-              <span className='font-medium text-lg align-middle'>{value}</span>
+              <span className='font-medium text-xs sm:text-sm md:text-base align-middle'>
+                {value}
+              </span>
             )}
+            wrapperStyle={{
+              fontSize: '12px',
+              paddingTop: '10px',
+            }}
           />
         </PieChart>
-      </ResponsiveContainer>
+      </ChartContainer>
     </div>
   );
 }

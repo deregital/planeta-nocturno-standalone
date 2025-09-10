@@ -3,6 +3,7 @@ import { addDays, subMonths } from 'date-fns';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 
+import AttendanceChart from '@/components/admin/AttendanceChart';
 import ComparativeTable from '@/components/admin/ComparativeTable';
 import { StatisticsSkeleton } from '@/components/admin/DatabaseSkeleton';
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
@@ -113,18 +114,27 @@ export default function Dashboard() {
           )}
         </BaseCard>
 
-        <div className='p-3'>
-          {statistics?.genderCounts ? (
-            <BaseCard className='flex flex-col py-6'>
-              <p className='text-3xl font-light text-center'>
-                Asistencia por género
-              </p>
-              <GenderPie data={statistics?.genderCounts ?? {}} />
-            </BaseCard>
+        <div className='flex flex-col lg:flex-row w-full p-1 px-3 gap-4'>
+          {statistics ? (
+            <>
+              <BaseCard className='flex w-full lg:w-1/2 flex-col lg:mb-3'>
+                <p className='text-xl sm:text-2xl lg:text-3xl pt-6 font-light text-center mb-2'>
+                  Asistencia por género
+                </p>
+                <GenderPie data={statistics.genderCounts} />
+              </BaseCard>
+              <BaseCard className='flex w-full lg:w-1/2 flex-col mb-3'>
+                <p className='text-xl sm:text-2xl lg:text-3xl pt-6 font-light text-center mb-2'>
+                  Asistencia por hora
+                </p>
+                <AttendanceChart />
+              </BaseCard>
+            </>
           ) : (
-            <Skeleton className='flex flex-col'>
-              <Skeleton className='w-full h-96 py-6 p-3' />
-            </Skeleton>
+            <div className='flex flex-col lg:flex-row w-full gap-4'>
+              <Skeleton className='w-full lg:w-1/2 h-64 sm:h-80 lg:h-96 py-6 p-3' />
+              <Skeleton className='w-full lg:w-1/2 h-64 sm:h-80 lg:h-96 py-6 p-3' />
+            </div>
           )}
         </div>
       </BaseCard>
