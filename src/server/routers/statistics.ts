@@ -1,7 +1,8 @@
-import { and, between, ne } from 'drizzle-orm';
+import { format, getHours, parseISO } from 'date-fns';
+import { and, between, gte, lte, ne } from 'drizzle-orm';
 import z from 'zod';
 
-import { emittedTicket, ticketGroup } from '@/drizzle/schema';
+import { emittedTicket, event, ticketGroup } from '@/drizzle/schema';
 import { adminProcedure, router } from '@/server/trpc';
 
 export const statisticsRouter = router({
@@ -38,6 +39,8 @@ export const statisticsRouter = router({
           emittedTickets: {
             columns: {
               scanned: true,
+              gender: true,
+              scannedAt: true,
             },
           },
         },
@@ -75,13 +78,25 @@ export const statisticsRouter = router({
       const scannedPercentage =
         totalTickets > 0 ? (totalScanned / totalTickets) * 100 : 0;
 
+      // Asistencia por genero y por hora
+      const genderCounts: Record<string, number> = {};
+
+      for (const ticket of allTickets) {
+        if (!ticket.scanned) continue;
+        const gender = ticket.gender;
+        if (!genderCounts[gender]) {
+          genderCounts[gender] = 0;
+        }
+        genderCounts[gender]++;
+      }
+
       return {
         totalRaised,
         totalSold,
         totalTickets,
         totalScanned,
         scannedPercentage,
-        // data,
+        genderCounts,
       };
     }),
   getEventsStats: adminProcedure
@@ -93,6 +108,11 @@ export const statisticsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const data = await ctx.db.query.event.findMany({
+        where: between(
+          event.startingDate,
+          input.from.toISOString(),
+          input.to.toISOString(),
+        ),
         with: {
           ticketGroups: {
             where: ne(ticketGroup.status, 'BOOKED'),
@@ -240,5 +260,125 @@ export const statisticsRouter = router({
       });
 
       return stats;
+    }),
+  getEmittedTicketsPerHour: adminProcedure
+    .input(
+      z.object({
+        from: z.date(),
+        to: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const data = await ctx.db.query.event.findMany({
+        where: and(
+          gte(event.createdAt, input.from.toISOString()),
+          lte(event.endingDate, input.to.toISOString()),
+        ),
+        columns: {
+          id: true,
+          name: true,
+        },
+        with: {
+          ticketGroups: {
+            where: ne(ticketGroup.status, 'BOOKED'),
+            columns: {
+              createdAt: true,
+            },
+            with: {
+              emittedTickets: {
+                columns: {
+                  createdAt: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!data || data.length === 0) {
+        return {
+          chartData: [],
+          events: [],
+        };
+      }
+
+      const eventsWithEmittedTickets = data.filter((event) => {
+        const totalEmittedTickets = event.ticketGroups.reduce(
+          (total, ticketGroup) => total + ticketGroup.emittedTickets.length,
+          0,
+        );
+        return totalEmittedTickets > 0;
+      });
+
+      if (eventsWithEmittedTickets.length === 0) {
+        return {
+          chartData: [],
+          events: [],
+        };
+      }
+
+      const hoursWithSales = new Set<number>();
+      eventsWithEmittedTickets.forEach((event) => {
+        event.ticketGroups.forEach((ticketGroup) => {
+          ticketGroup.emittedTickets.forEach((emittedTicket) => {
+            const creationDate = parseISO(emittedTicket.createdAt);
+            const hour = getHours(creationDate);
+            hoursWithSales.add(hour);
+          });
+        });
+      });
+
+      if (hoursWithSales.size === 0) {
+        return {
+          chartData: [],
+          events: [],
+        };
+      }
+
+      const minHour = Math.min(...hoursWithSales);
+      const maxHour = Math.max(...hoursWithSales);
+
+      const hoursToShow: number[] = Array.from(
+        { length: maxHour - minHour + 1 },
+        (_, i) => minHour + i,
+      );
+
+      const chartData: Array<Record<string, string | number>> = hoursToShow.map(
+        (hour) => {
+          const hourData: Record<string, string | number> = {
+            hour: format(new Date(0, 0, 0, hour), 'HH:mm'),
+          };
+
+          eventsWithEmittedTickets.forEach((event) => {
+            hourData[event.name] = 0;
+          });
+
+          return hourData;
+        },
+      );
+
+      eventsWithEmittedTickets.forEach((event) => {
+        event.ticketGroups.forEach((ticketGroup) => {
+          ticketGroup.emittedTickets.forEach((emittedTicket) => {
+            const creationDate = parseISO(emittedTicket.createdAt);
+            const hour = getHours(creationDate);
+            const hourIndex = hoursToShow.indexOf(hour);
+
+            if (hourIndex !== -1) {
+              (chartData[hourIndex][event.name] as number)++;
+            }
+          });
+        });
+      });
+
+      const events = eventsWithEmittedTickets.map((event) => ({
+        id: event.id,
+        name: event.name,
+      }));
+
+      return {
+        chartData,
+        events,
+      };
     }),
 });

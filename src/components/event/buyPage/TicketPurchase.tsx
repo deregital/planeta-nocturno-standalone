@@ -50,56 +50,62 @@ function TicketPurchase({
       </div>
 
       {/* Fila de ticket */}
-      <div className='grid grid-cols-3 py-4 gap-2 items-center'>
-        {ticketsTypeAvailable.map((type, index) => {
-          return (
-            <React.Fragment key={index}>
-              <div className='text-black text-[12px] sm:text-[16px] font-normal'>
-                {type.name}
-              </div>
-              <div className='text-black text-[12px] sm:text-[16px] font-normal text-center'>
-                {type.price ? (
-                  <p>${type.price}</p>
-                ) : (
-                  <p className='text-accent '>GRATUITO</p>
-                )}
-              </div>
-              <div className='flex justify-end'>
-                {!type.disabled ? (
-                  <Select
-                    value={quantity
-                      .find((q) => q.ticketTypeId === type.id)!
-                      .amount.toString()}
-                    onValueChange={(value) =>
-                      setQuantity([
-                        ...quantity.filter((q) => q.ticketTypeId !== type.id),
-                        { ticketTypeId: type.id, amount: parseInt(value) },
-                      ])
-                    }
-                  >
-                    <SelectTrigger className='w-24 bg-white text-black border border-stroke'>
-                      <SelectValue placeholder='0' />
-                    </SelectTrigger>
-                    <SelectContent align='end'>
-                      {[...Array(type.maxPerPurchase + 1).keys()]
-                        .map((i) => i)
-                        .map((num) => (
-                          <SelectItem key={num} value={num.toString()}>
-                            {num.toString()}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className='text-red-500 font-medium text-[12px] sm:text-[16px]'>
-                    Entradas agotadas!
-                  </div>
-                )}
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
+      {ticketTypes.length === 0 ? (
+        <div className='text-red-500 font-medium my-4'>
+          No hay tickets disponibles
+        </div>
+      ) : (
+        <div className='grid grid-cols-3 py-4 gap-2 items-center'>
+          {ticketsTypeAvailable.map((type, index) => {
+            return (
+              <React.Fragment key={index}>
+                <div className='text-black text-[12px] sm:text-[16px] font-normal'>
+                  {type.name}
+                </div>
+                <div className='text-black text-[12px] sm:text-[16px] font-normal text-center'>
+                  {type.price ? (
+                    <p>${type.price}</p>
+                  ) : (
+                    <p className='text-accent '>GRATUITO</p>
+                  )}
+                </div>
+                <div className='flex justify-end'>
+                  {!type.disabled ? (
+                    <Select
+                      value={quantity
+                        .find((q) => q.ticketTypeId === type.id)!
+                        .amount.toString()}
+                      onValueChange={(value) =>
+                        setQuantity([
+                          ...quantity.filter((q) => q.ticketTypeId !== type.id),
+                          { ticketTypeId: type.id, amount: parseInt(value) },
+                        ])
+                      }
+                    >
+                      <SelectTrigger className='w-24 bg-white text-black border border-stroke'>
+                        <SelectValue placeholder='0' />
+                      </SelectTrigger>
+                      <SelectContent align='end'>
+                        {[...Array(type.maxPerPurchase + 1).keys()]
+                          .map((i) => i)
+                          .map((num) => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num.toString()}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className='text-red-500 font-medium text-[12px] sm:text-[16px]'>
+                      Entradas agotadas!
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
 
       {/* Botón de compra */}
       <div className='mt-4 grid grid-cols-3'>

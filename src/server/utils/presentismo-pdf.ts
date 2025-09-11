@@ -9,6 +9,7 @@ export type PDFDataOrderName = [
     ubicacion: string;
     nombre: string;
     fecha: string;
+    entradasVendidas: string;
     datos: Array<[string, string, string, string, string, string]>; // [nombre, Tipo de entrada, telefono, dni, si/no, invitado por]
   },
 ];
@@ -19,6 +20,7 @@ export type PDFDataGroupedTicketType = [
     ubicacion: string;
     nombre: string;
     fecha: string;
+    entradasVendidas: string;
     [key: `datos_${string}`]: Array<
       [string, string, string, string, string, string]
     >; // Dynamic keys for each ticket type (datos_${ticketType}) - [nombre, Tipo de entrada, telefono, dni, si/no, invitado por]
@@ -53,7 +55,7 @@ const commonSchema = [
     name: 'field2',
     type: 'text',
     content: 'Fecha:',
-    position: { x: 9, y: 24.9 },
+    position: { x: 9, y: 20.9 },
     width: 15.63,
     height: 10,
     rotate: 0,
@@ -75,7 +77,7 @@ const commonSchema = [
     name: 'field2 copy',
     type: 'text',
     content: 'Ubicación:',
-    position: { x: 8.94, y: 35.7 },
+    position: { x: 9, y: 31.7 },
     width: 24.1,
     height: 10,
     rotate: 0,
@@ -96,7 +98,7 @@ const commonSchema = [
   {
     name: 'ubicacion',
     type: 'text',
-    position: { x: 33.6, y: 36.03 },
+    position: { x: 33.6, y: 31.7 },
     required: true,
     content: 'Juan B. Justo 1579',
     width: 118.55,
@@ -117,7 +119,7 @@ const commonSchema = [
   {
     name: 'nombre',
     type: 'text',
-    position: { x: 69.33, y: 8.61 },
+    position: { x: 69.33, y: 9.3 },
     required: true,
     content: 'Entrenamiento 1 - New Face 1 - T17',
     width: 88.66,
@@ -138,9 +140,52 @@ const commonSchema = [
   {
     name: 'fecha',
     type: 'text',
-    position: { x: 25.14, y: 24.9 },
+    position: { x: 25.14, y: 20.9 },
     required: true,
     content: '11/08/2024',
+    width: 127.29,
+    height: 10,
+    rotate: 0,
+    alignment: 'left',
+    verticalAlignment: 'middle',
+    fontSize: 13,
+    lineHeight: 1,
+    characterSpacing: 0,
+    fontColor: '#000000',
+    backgroundColor: '',
+    opacity: 1,
+    strikethrough: false,
+    underline: false,
+    fontName: 'DMSans-Light',
+  },
+  {
+    name: 'entradas-vendidas-title',
+    readOnly: true,
+    type: 'text',
+    position: { x: 9, y: 40.7 },
+    required: false,
+    content: 'Entradas vendidas:',
+    width: 127.29,
+    height: 10,
+    rotate: 0,
+    alignment: 'left',
+    verticalAlignment: 'middle',
+    fontSize: 13,
+    lineHeight: 1,
+    characterSpacing: 0,
+    fontColor: '#000000',
+    backgroundColor: '',
+    opacity: 1,
+    strikethrough: false,
+    underline: true,
+    fontName: 'DMSans-Light',
+  },
+  {
+    name: 'entradasVendidas',
+    type: 'text',
+    position: { x: 50.14, y: 40.7 },
+    required: true,
+    content: '12 de 5000',
     width: 127.29,
     height: 10,
     rotate: 0,
