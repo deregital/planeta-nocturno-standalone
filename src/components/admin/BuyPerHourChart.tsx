@@ -60,11 +60,11 @@ export default function BuyPerHourChart() {
   }, [data?.events]);
 
   return (
-    <div className='flex justify-center space-y-4 overflow-hidden'>
+    <div className='flex justify-center space-y-4 overflow-hidden h-full'>
       {!data ? (
         <p className='text-center'>No hay datos de entradas emitidas</p>
       ) : (
-        <ChartContainer config={config} className='h-48 sm:h-64 md:h-72'>
+        <ChartContainer config={config} className='h-full w-full'>
           <BarChart data={data?.chartData ?? []}>
             <XAxis
               dataKey='hour'

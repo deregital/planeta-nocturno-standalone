@@ -30,14 +30,14 @@ export default function GenderPie({ data }: { data: Record<string, number> }) {
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
   return (
     <div className='flex flex-col gap-2 sm:gap-4 justify-center items-center w-full h-full'>
-      <ChartContainer config={config} className='h-48 sm:h-64 md:h-80 w-full'>
+      <ChartContainer config={config} className='h-48 sm:h-64 md:h-72 w-full'>
         <PieChart>
           <Pie
             data={chartData}
             cx='50%'
             cy='50%'
-            outerRadius={80}
-            innerRadius={30}
+            outerRadius={90}
+            innerRadius={35}
             dataKey='value'
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             label={(entry: any) => {
@@ -45,7 +45,7 @@ export default function GenderPie({ data }: { data: Record<string, number> }) {
                 total > 0 ? ((entry.value || 0) / total) * 100 : 0;
               return `${entry.name}: ${percentage.toFixed(1)}%`;
             }}
-            className='text-xs sm:text-sm md:text-base'
+            className='text-xs sm:text-sm'
             labelLine={false}
           >
             {chartData.map((entry, index) => (
@@ -61,11 +61,19 @@ export default function GenderPie({ data }: { data: Record<string, number> }) {
           />
           <Legend
             iconType='circle'
-            formatter={(value) => (
-              <span className='font-medium text-xs sm:text-sm md:text-base align-middle'>
-                {value}
-              </span>
-            )}
+            formatter={(value) => {
+              const entry = chartData.find((item) => item.name === value);
+              const count = entry?.value || 0;
+              const percentage =
+                total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+              return (
+                <span className='font-medium text-xs sm:text-sm md:text-base lg:text-sm align-middle'>
+                  <span>
+                    {value}: {count} ({percentage}%)
+                  </span>
+                </span>
+              );
+            }}
             wrapperStyle={{
               fontSize: '12px',
               paddingTop: '10px',
