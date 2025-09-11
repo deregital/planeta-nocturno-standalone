@@ -381,9 +381,17 @@ export default function TicketTypeModal({
             <p className='text-sm text-accent'>
               {`Esta entrada de tipo`}{' '}
               <b>{ticketTypesTranslation[category].text}</b>{' '}
-              {`(cuesta $${editingTicketType.price ?? '-'}). Solo se puede
-              vender por la WEB hasta el día`}{' '}
-              <b>{format(editingTicketType.maxSellDate!, 'dd/MM/yyyy p')}</b>
+              {`(cuesta $${editingTicketType.price ?? '-'}).`}
+              {editingTicketType.visibleInWeb ? (
+                <>
+                  Solo se puede vender por la WEB hasta el día{' '}
+                  <b>
+                    {format(editingTicketType.maxSellDate!, 'dd/MM/yyyy p')}
+                  </b>
+                </>
+              ) : (
+                <>Solo puede venderse en PUERTA</>
+              )}
               {`, y es válida para ingresar hasta el día `}
               <b>{format(editingTicketType.scanLimit!, 'dd/MM/yyyy p')}</b>
               {`. Solo se
