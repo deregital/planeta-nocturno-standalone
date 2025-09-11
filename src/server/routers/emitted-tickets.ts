@@ -47,6 +47,7 @@ export const emittedTicketsRouter = router({
                     ? 'PAID'
                     : 'BOOKED',
               amountTickets: 1,
+              invitedBy: input.invitedBy,
             })
             .returning();
 
@@ -189,6 +190,7 @@ export const emittedTicketsRouter = router({
         dni: ticket.dni,
         fullName: ticket.fullName,
         id: ticket.id,
+        invitedBy: ticket.ticketGroup.invitedBy,
       });
 
       return pdf;
@@ -246,7 +248,7 @@ export const emittedTicketsRouter = router({
                   new Date(ticket.scannedAt),
                   'America/Argentina/Buenos_Aires',
                   'HH:mm',
-                )}`
+                )} ${ticket.ticketGroup.invitedBy ? `- Invitado por ${ticket.ticketGroup.invitedBy}` : ''}`
               : ''
           }`,
         };
@@ -275,7 +277,7 @@ export const emittedTicketsRouter = router({
         success: true,
         ticket,
         text: `Escaneado con éxito: ${ticket.fullName}`,
-        extraInfo,
+        extraInfo: `${extraInfo} ${ticket.ticketGroup.invitedBy ? `- Invitado por ${ticket.ticketGroup.invitedBy}` : ''}`,
       };
     }),
 
@@ -360,6 +362,7 @@ export const emittedTicketsRouter = router({
         dni: ticket.dni,
         fullName: ticket.fullName,
         id: ticket.id,
+        invitedBy: ticket.ticketGroup.invitedBy,
       });
 
       const { data, error } = await sendMail({

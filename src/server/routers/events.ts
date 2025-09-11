@@ -20,7 +20,12 @@ import {
   createTicketTypeSchema,
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  adminProcedure,
+  doorProcedure,
+  publicProcedure,
+  router,
+} from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import {
   type PDFDataGroupedTicketType,
@@ -317,7 +322,7 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  generatePresentismoOrderNamePDF: adminProcedure
+  generatePresentismoOrderNamePDF: doorProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -349,7 +354,12 @@ export const eventsRouter = router({
       if (!event) throw 'Evento no encontrado';
 
       const tickets = event.ticketGroups
-        .flatMap((group) => group.emittedTickets)
+        .flatMap((group) =>
+          group.emittedTickets.map((ticket) => ({
+            ...ticket,
+            invitedBy: group.invitedBy,
+          })),
+        )
         .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
       const pdfData: PDFDataOrderName = [
@@ -367,6 +377,7 @@ export const eventsRouter = router({
             ticket.ticketType.name,
             ticket.phoneNumber,
             ticket.dni,
+            ticket.invitedBy || '-',
             ticket.scanned ? '☑' : '☐',
           ]),
           entradasVendidas: `${tickets.length} de ${event.ticketTypes.reduce(
@@ -416,7 +427,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  generatePresentismoGroupedTicketTypePDF: adminProcedure
+  generatePresentismoGroupedTicketTypePDF: doorProcedure
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { eventId } = input;
@@ -447,7 +458,12 @@ export const eventsRouter = router({
         return {
           ticketType: ticketType.name,
           tickets: event.ticketGroups
-            .flatMap((group) => group.emittedTickets)
+            .flatMap((group) =>
+              group.emittedTickets.map((ticket) => ({
+                ...ticket,
+                invitedBy: group.invitedBy,
+              })),
+            )
             .filter((ticket) => ticket.ticketType.id === ticketType.id)
             .sort((a, b) => a.fullName.localeCompare(b.fullName)),
         };
@@ -471,6 +487,7 @@ export const eventsRouter = router({
                   ticket.ticketType.name,
                   ticket.phoneNumber,
                   ticket.dni,
+                  ticket.invitedBy || '-',
                   ticket.scanned ? '☑' : '☐',
                 ],
               );
@@ -478,7 +495,7 @@ export const eventsRouter = router({
             },
             {} as Record<
               `datos_${string}`,
-              [string, string, string, string, string][]
+              [string, string, string, string, string, string][]
             >,
           ),
           ...tickets.reduce(

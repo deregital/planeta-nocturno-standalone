@@ -289,6 +289,22 @@ export default function CheckoutClient({
             </div>
           ));
         })}
+        <Separator className='mt-12 mb-6 bg-accent-dark/70' />
+        <InputWithLabel
+          name={'invitedBy'}
+          id={'invitedBy'}
+          label='Invita... (ingresar el nombre del pública)'
+          type='text'
+          placeholder='ej. Pablo Perez'
+          defaultValue={ticketGroup.invitedBy ?? ''}
+          error={
+            typeof state.errors === 'object' && state.errors !== null
+              ? (state.errors as Record<string, string>)['invitedBy']
+              : undefined
+          }
+          className='[&>input]:border-dashed'
+        />
+
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />
         <Button
