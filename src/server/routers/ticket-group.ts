@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
+import { invitedBySchema } from '@/server/schemas/emitted-tickets';
 import { publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 
@@ -25,6 +26,7 @@ export const ticketGroupRouter = router({
             amount: z.number().int().min(0),
           })
           .array(),
+        invitedBy: invitedBySchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -40,6 +42,7 @@ export const ticketGroupRouter = router({
             (sum, ticket) => sum + ticket.amount,
             0,
           ),
+          invitedBy: input.invitedBy,
         };
 
         const result = await tx
@@ -185,6 +188,17 @@ export const ticketGroupRouter = router({
 
       return result[0];
     }),
+  updateInvitedBy: publicProcedure
+    .input(z.object({ id: ticketGroupSchema.shape.id, invitedBy: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const group = await ctx.db
+        .update(ticketGroup)
+        .set({ invitedBy: input.invitedBy })
+        .where(eq(ticketGroup.id, input.id))
+        .returning();
+
+      return group[0];
+    }),
   delete: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const result = await ctx.db
       .delete(ticketGroup)
@@ -239,6 +253,7 @@ export const ticketGroupRouter = router({
         where: eq(ticketGroup.id, input),
         columns: {
           status: true,
+          invitedBy: true,
         },
         with: {
           emittedTickets: {
@@ -303,6 +318,7 @@ export const ticketGroupRouter = router({
           fullName: ticket.fullName,
           id: ticket.id,
           ticketType: ticket.ticketType.name,
+          invitedBy: group.invitedBy,
         });
         return {
           ticket,

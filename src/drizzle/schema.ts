@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const role = pgEnum('Role', ['ADMIN', 'STAFF']);
+export const role = pgEnum('Role', ['ADMIN', 'DOOR']);
 export const ticketGroupStatus = pgEnum('TicketGroupStatus', [
   'BOOKED',
   'PAID',
@@ -54,14 +54,6 @@ export const ticketType = pgTable(
   ],
 );
 
-export const eventCategory = pgTable('eventCategory', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-  createdAt: timestamp({ withTimezone: true, mode: 'string' })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
-
 export const ticketGroup = pgTable(
   'ticketGroup',
   {
@@ -72,6 +64,7 @@ export const ticketGroup = pgTable(
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    invitedBy: text(),
   },
   (table) => [
     foreignKey({
@@ -83,6 +76,14 @@ export const ticketGroup = pgTable(
       .onDelete('cascade'),
   ],
 );
+
+export const eventCategory = pgTable('eventCategory', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
 
 export const emittedTicket = pgTable(
   'emittedTicket',

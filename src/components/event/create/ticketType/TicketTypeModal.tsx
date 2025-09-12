@@ -2,8 +2,10 @@ import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { validateTicketType } from '@/app/admin/event/create/actions';
+import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { type EventState } from '@/app/admin/event/create/state';
+import { FormRow } from '@/components/common/FormRow';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,8 +21,6 @@ import {
 import { ticketTypesTranslation } from '@/lib/translations';
 import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
 import { type TicketTypeCategory } from '@/server/types';
-import { type EventState } from '@/app/admin/event/create/state';
-import { FormRow } from '@/components/common/FormRow';
 
 type TicketTypeModalProps = {
   category: TicketTypeCategory;
@@ -381,15 +381,19 @@ export default function TicketTypeModal({
             <p className='text-sm text-accent'>
               {`Esta entrada de tipo`}{' '}
               <b>{ticketTypesTranslation[category].text}</b>{' '}
-              {`(cuesta $${editingTicketType.price ?? '-'}). Esta entrada solo se puede
-              vender por la WEB hasta hasta el día`}{' '}
-              <b>{format(editingTicketType.maxSellDate!, 'dd/MM/yyyy')}</b>,
-              hasta las <b>{format(editingTicketType.maxSellDate!, 'p')}</b>
+              {`(cuesta $${editingTicketType.price ?? '-'}).`}
+              {editingTicketType.visibleInWeb ? (
+                <>
+                  Solo se puede vender por la WEB hasta el día{' '}
+                  <b>
+                    {format(editingTicketType.maxSellDate!, 'dd/MM/yyyy p')}
+                  </b>
+                </>
+              ) : (
+                <>Solo puede venderse en PUERTA</>
+              )}
               {`, y es válida para ingresar hasta el día `}
-              <b>{format(editingTicketType.scanLimit!, 'dd/MM/yyyy')}</b>
-              {`, hasta
-              las `}
-              <b>{format(editingTicketType.scanLimit!, 'p')}</b>
+              <b>{format(editingTicketType.scanLimit!, 'dd/MM/yyyy p')}</b>
               {`. Solo se
               pueden vender `}
               <b>{editingTicketType.maxAvailable}</b>

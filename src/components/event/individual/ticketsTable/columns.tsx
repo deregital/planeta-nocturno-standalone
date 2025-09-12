@@ -1,7 +1,6 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { useState } from 'react';
 import {
   ArrowDownAZ,
   DownloadIcon,
@@ -10,9 +9,12 @@ import {
   SendIcon,
   TrashIcon,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
+import { downloadTicket } from '@/app/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,13 +23,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { trpc } from '@/server/trpc/client';
-import { type RouterOutputs } from '@/server/routers/app';
-import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { downloadTicket } from '@/app/admin/event/[slug]/actions';
+import { cn } from '@/lib/utils';
+import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/client';
 
-export function generateTicketColumns() {
+export function generateTicketColumns(isAdmin: boolean) {
   const columns: ColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
@@ -101,9 +102,9 @@ export function generateTicketColumns() {
           </Button>
         );
       },
-      minSize: 50,
-      size: 50,
-      maxSize: 50,
+      minSize: 30,
+      size: 30,
+      maxSize: 30,
       enableResizing: false,
       cell: ({ row }) => {
         return <p className='w-full text-center'>{row.original.mail}</p>;
@@ -147,7 +148,7 @@ export function generateTicketColumns() {
     {
       id: 'actions',
       enableHiding: false,
-      size: 20,
+      size: 10,
       cell: ({ row }) => {
         const ticket = row.original;
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -272,7 +273,7 @@ export function generateTicketColumns() {
                   setSure(true);
                 }}
                 data-sure={sure}
-                disabled={deleteTicketMutation.isPending}
+                disabled={deleteTicketMutation.isPending || !isAdmin}
                 className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
               >
                 {sure ? 'Estás seguro?' : 'Eliminar ticket'}

@@ -20,7 +20,12 @@ import {
   createTicketTypeSchema,
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
-import { protectedProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  adminProcedure,
+  doorProcedure,
+  publicProcedure,
+  router,
+} from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import {
   type PDFDataGroupedTicketType,
@@ -140,7 +145,7 @@ export const eventsRouter = router({
 
     return data;
   }),
-  create: protectedProcedure
+  create: adminProcedure
     .input(
       z.object({
         event: createEventSchema,
@@ -211,7 +216,7 @@ export const eventsRouter = router({
 
       return { eventCreated, ticketTypesCreated };
     }),
-  update: protectedProcedure
+  update: adminProcedure
     .input(
       z.object({
         event: eventSchemaZod,
@@ -317,7 +322,7 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  generatePresentismoOrderNamePDF: protectedProcedure
+  generatePresentismoOrderNamePDF: doorProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -349,7 +354,12 @@ export const eventsRouter = router({
       if (!event) throw 'Evento no encontrado';
 
       const tickets = event.ticketGroups
-        .flatMap((group) => group.emittedTickets)
+        .flatMap((group) =>
+          group.emittedTickets.map((ticket) => ({
+            ...ticket,
+            invitedBy: group.invitedBy,
+          })),
+        )
         .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
       const pdfData: PDFDataOrderName = [
@@ -367,8 +377,13 @@ export const eventsRouter = router({
             ticket.ticketType.name,
             ticket.phoneNumber,
             ticket.dni,
+            ticket.invitedBy || '-',
             ticket.scanned ? '☑' : '☐',
           ]),
+          entradasVendidas: `${tickets.length} de ${event.ticketTypes.reduce(
+            (acc, ticketType) => acc + ticketType.maxAvailable,
+            0,
+          )}`,
         },
       ];
 
@@ -412,7 +427,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  generatePresentismoGroupedTicketTypePDF: protectedProcedure
+  generatePresentismoGroupedTicketTypePDF: doorProcedure
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { eventId } = input;
@@ -443,7 +458,12 @@ export const eventsRouter = router({
         return {
           ticketType: ticketType.name,
           tickets: event.ticketGroups
-            .flatMap((group) => group.emittedTickets)
+            .flatMap((group) =>
+              group.emittedTickets.map((ticket) => ({
+                ...ticket,
+                invitedBy: group.invitedBy,
+              })),
+            )
             .filter((ticket) => ticket.ticketType.id === ticketType.id)
             .sort((a, b) => a.fullName.localeCompare(b.fullName)),
         };
@@ -467,6 +487,7 @@ export const eventsRouter = router({
                   ticket.ticketType.name,
                   ticket.phoneNumber,
                   ticket.dni,
+                  ticket.invitedBy || '-',
                   ticket.scanned ? '☑' : '☐',
                 ],
               );
@@ -474,7 +495,7 @@ export const eventsRouter = router({
             },
             {} as Record<
               `datos_${string}`,
-              [string, string, string, string, string][]
+              [string, string, string, string, string, string][]
             >,
           ),
           ...tickets.reduce(
@@ -485,6 +506,13 @@ export const eventsRouter = router({
             },
             {} as Record<`tipo_entrada_${string}`, string>,
           ),
+          entradasVendidas: `${tickets.reduce(
+            (acc, ticket) => acc + ticket.tickets.length,
+            0,
+          )} de ${event.ticketTypes.reduce(
+            (acc, ticketType) => acc + ticketType.maxAvailable,
+            0,
+          )}`,
         },
       ];
 
@@ -529,7 +557,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  toggleActivate: protectedProcedure
+  toggleActivate: adminProcedure
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const { id, isActive } = input;
@@ -538,7 +566,7 @@ export const eventsRouter = router({
         .set({ isActive })
         .where(eq(eventSchema.id, id));
     }),
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(eventSchemaZod.shape.id)
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
