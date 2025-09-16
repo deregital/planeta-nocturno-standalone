@@ -9,6 +9,7 @@ import z from 'zod';
 
 import {
   event as eventSchema,
+  eventXUser,
   ticketGroup,
   ticketType,
 } from '@/drizzle/schema';
@@ -138,6 +139,16 @@ export const eventsRouter = router({
             name: true,
           },
         },
+        eventXUsers: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -204,6 +215,15 @@ export const eventsRouter = router({
                   })),
                 )
                 .returning();
+            }
+
+            if (event.authorizedUsers.length !== 0) {
+              await tx.insert(eventXUser).values(
+                event.authorizedUsers.map((user) => ({
+                  a: eventCreated.id,
+                  b: user.id,
+                })),
+              );
             }
 
             return { eventCreated, ticketTypesCreated };
@@ -309,6 +329,19 @@ export const eventsRouter = router({
                 }
               }),
             );
+
+            await tx
+              .delete(eventXUser)
+              .where(eq(eventXUser.a, eventUpdated.id));
+
+            if (event.authorizedUsers.length !== 0) {
+              await tx.insert(eventXUser).values(
+                event.authorizedUsers.map((user) => ({
+                  a: eventUpdated.id,
+                  b: user.id,
+                })),
+              );
+            }
 
             return { eventUpdated, ticketTypesUpdated };
           } catch (error) {

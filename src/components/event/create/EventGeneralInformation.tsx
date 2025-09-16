@@ -7,13 +7,15 @@ import { useState } from 'react';
 
 import { validateGeneralInformation } from '@/app/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
+import { UserBox } from '@/components/event/create/UserBox';
 import { Button } from '@/components/ui/button';
-import { generateS3Url } from '@/lib/utils-client';
 import { cn } from '@/lib/utils';
+import { generateS3Url } from '@/lib/utils-client';
 import { trpc } from '@/server/trpc/client';
 
 function isBeforeHoursAndMinutes(date1: Date, date2: Date) {
@@ -43,6 +45,7 @@ export function EventGeneralInformation({
 
   const { data: locations } = trpc.location.getAll.useQuery();
   const { data: categories } = trpc.eventCategory.getAll.useQuery();
+  const { data: users } = trpc.user.getTicketingUsers.useQuery();
 
   const [error, setError] = useState<{
     [key: string]: string;
@@ -339,7 +342,66 @@ export function EventGeneralInformation({
           disabled={action === 'PREVIEW'}
         />
       </section>
-
+      <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Usuarios autorizados
+        </h3>
+        <div>
+          {action !== 'PREVIEW' && (
+            <SelectableComboBox
+              list={
+                users
+                  ? users
+                      .filter(
+                        (user) =>
+                          !event.authorizedUsers
+                            .map((u) => u.id)
+                            .includes(user.id),
+                      )
+                      .map((user) => ({
+                        id: user.id,
+                        name: user.name,
+                        type: 'EVENT' as const,
+                      }))
+                  : []
+              }
+              onSelectAction={(user) => {
+                handleChange('authorizedUsers', [
+                  ...event.authorizedUsers,
+                  { id: user.id, name: user.name || '' },
+                ]);
+              }}
+              title='Agregar'
+              listOf='usuario'
+            />
+          )}
+          {error.authorizedUsersId && (
+            <p className='text-red-500 text-sm'>{error.authorizedUsersId}</p>
+          )}
+        </div>
+        <div className='flex gap-2'>
+          {event.authorizedUsers?.map((user) => (
+            <UserBox
+              key={user.id}
+              id={user.id}
+              name={user.name}
+              remove={() => {
+                handleChange(
+                  'authorizedUsers',
+                  event.authorizedUsers.filter((u) => u.id !== user.id),
+                );
+              }}
+              disabled={action === 'PREVIEW'}
+            />
+          ))}
+        </div>
+        <p className='text-sm'>
+          Los usuarios autorizados podrán{' '}
+          <span className='font-bold'>ver el evento</span> hasta la fecha de
+          finalización, <span className='font-bold'>emitir tickets</span> y{' '}
+          <span className='font-bold'>escanear entradas</span>.
+        </p>
+      </section>
       {action === 'CREATE' && (
         <Button type='submit' variant={'accent'}>
           Continuar
