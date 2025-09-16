@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
 import { Input } from '@/components/ui/input';
 
@@ -21,13 +23,16 @@ export default function InputDateWithLabel({
 }: InputDateWithLabelProps) {
   const formatDateForInput = (date: Date | undefined): string => {
     if (!date) return '';
-    return date.toISOString().split('T')[0];
+    // Format date in local timezone using date-fns
+    return format(date, 'yyyy-MM-dd');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value) {
-      const date = new Date(value);
+      // Parse date in local timezone to avoid timezone conversion issues
+      const [year, month, day] = value.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
       // Verificar que la fecha sea válida
       if (!isNaN(date.getTime())) {
         onChange(date);
