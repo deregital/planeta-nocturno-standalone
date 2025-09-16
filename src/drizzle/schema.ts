@@ -162,7 +162,6 @@ export const event = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     isDeleted: boolean().default(false).notNull(),
-    authorizedUsersId: uuid().array(),
   },
   (table) => [
     foreignKey({

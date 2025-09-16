@@ -116,8 +116,7 @@ model Event {
   categoryId String        @db.Uuid
   category   EventCategory @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id])
 
-  authorizedUsersId String[] @db.Uuid
-  authorizedUsers   User[]   @relation("EVENT_X_USER")
+  authorizedUsers User[] @relation("EVENT_X_USER")
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
