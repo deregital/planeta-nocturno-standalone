@@ -61,7 +61,7 @@ export async function authenticate(
 
   const user = await trpc.user.getByName(rawData.username);
 
-  if (user?.role === 'DOOR') {
+  if (user?.role === 'TICKETING') {
     redirect('/admin/event');
   } else {
     redirect('/admin');
