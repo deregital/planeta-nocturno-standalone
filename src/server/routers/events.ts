@@ -3,7 +3,7 @@ import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq, inArray, like, lt } from 'drizzle-orm';
+import { and, eq, gt, inArray, like, lt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 
@@ -12,6 +12,7 @@ import {
   eventXUser,
   ticketGroup,
   ticketType,
+  user,
 } from '@/drizzle/schema';
 import {
   createEventSchema,
@@ -52,6 +53,42 @@ export const eventsRouter = router({
       },
     });
   }),
+  getAuthorized: publicProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const userFound = await ctx.db.query.user.findFirst({
+        where: eq(user.id, input),
+        with: {
+          eventXUsers: {
+            with: {
+              event: true,
+            },
+          },
+        },
+      });
+
+      if (!userFound) throw 'Usuario no encontrado';
+
+      const eventIds = userFound.eventXUsers.map((event) => event.event.id);
+
+      return ctx.db.query.event.findMany({
+        where: and(
+          eq(eventSchema.isDeleted, false),
+          gt(eventSchema.endingDate, new Date().toISOString()),
+          inArray(eventSchema.id, eventIds),
+        ),
+        with: {
+          ticketTypes: true,
+          location: {
+            columns: {
+              id: true,
+              name: true,
+              address: true,
+            },
+          },
+        },
+      });
+    }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
       where: eq(eventSchema.isActive, true),
