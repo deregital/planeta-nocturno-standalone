@@ -4,9 +4,9 @@ import { z, ZodError } from 'zod';
 
 import { db } from '@/drizzle';
 
+import { type role as roleEnum } from '@/drizzle/schema';
 import { auth } from '@/server/auth';
 import { type appRouter } from '@/server/routers/app';
-import { type role as roleEnum } from '@/drizzle/schema';
 
 export function handleError(error: {
   message: string[];
@@ -83,7 +83,7 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 
 const levelsOfAccess: (typeof roleEnum.enumValues)[number][] = [
   'ADMIN',
-  'DOOR',
+  'TICKETING',
 ];
 
 export const adminProcedure = t.procedure.use(({ ctx, next }) => {
@@ -108,16 +108,16 @@ export const adminProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-export const doorProcedure = t.procedure.use(({ ctx, next }) => {
+export const ticketingProcedure = t.procedure.use(({ ctx, next }) => {
   const session = ctx.session;
 
   if (!session || !session.user) {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 
-  const doorIndex = levelsOfAccess.indexOf('DOOR');
+  const ticketingIndex = levelsOfAccess.indexOf('TICKETING');
   const index = levelsOfAccess.indexOf(session.user.role);
-  if (index > doorIndex) {
+  if (index > ticketingIndex) {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 

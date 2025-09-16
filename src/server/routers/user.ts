@@ -1,15 +1,21 @@
-import { z } from 'zod';
-import { eq } from 'drizzle-orm';
 import { hash } from 'bcrypt';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 
-import { adminProcedure, router, publicProcedure } from '@/server/trpc';
 import { user as userTable } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany();
+    return users;
+  }),
+  getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
+    const users = await ctx.db.query.user.findMany({
+      where: eq(userTable.role, 'TICKETING'),
+    });
     return users;
   }),
   getById: adminProcedure.input(z.string()).query(async ({ ctx, input }) => {

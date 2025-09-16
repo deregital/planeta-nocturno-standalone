@@ -29,7 +29,7 @@ export const navRoutes: {
     href: '/admin/event',
     icon: <Calendar />,
     title: 'Eventos',
-    roles: ['ADMIN', 'DOOR'],
+    roles: ['ADMIN', 'TICKETING'],
   },
   {
     href: '/admin/locations',
