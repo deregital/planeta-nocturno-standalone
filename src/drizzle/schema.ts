@@ -2,18 +2,19 @@ import {
   pgTable,
   foreignKey,
   uuid,
-  text,
-  doublePrecision,
   integer,
   timestamp,
+  text,
+  doublePrecision,
   boolean,
   uniqueIndex,
+  index,
   primaryKey,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const role = pgEnum('Role', ['ADMIN', 'DOOR']);
+export const role = pgEnum('Role', ['ADMIN', 'TICKETING']);
 export const ticketGroupStatus = pgEnum('TicketGroupStatus', [
   'BOOKED',
   'PAID',
@@ -24,6 +25,29 @@ export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'PAID',
   'TABLE',
 ]);
+
+export const ticketGroup = pgTable(
+  'ticketGroup',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    status: ticketGroupStatus().notNull(),
+    amountTickets: integer().default(0).notNull(),
+    eventId: uuid('event_id').notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    invitedBy: text(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'ticketGroup_event_id_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
 
 export const ticketType = pgTable(
   'ticketType',
@@ -54,28 +78,16 @@ export const ticketType = pgTable(
   ],
 );
 
-export const ticketGroup = pgTable(
-  'ticketGroup',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    status: ticketGroupStatus().notNull(),
-    amountTickets: integer().default(0).notNull(),
-    eventId: uuid('event_id').notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    invitedBy: text(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.eventId],
-      foreignColumns: [event.id],
-      name: 'ticketGroup_event_id_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
+export const location = pgTable('location', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+  address: text().notNull(),
+  googleMapsUrl: text().notNull(),
+  capacity: integer().notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
 
 export const eventCategory = pgTable('eventCategory', {
   id: uuid().defaultRandom().primaryKey().notNull(),
@@ -150,6 +162,7 @@ export const event = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     isDeleted: boolean().default(false).notNull(),
+    authorizedUsersId: uuid().array(),
   },
   (table) => [
     foreignKey({
@@ -166,6 +179,33 @@ export const event = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('restrict'),
+  ],
+);
+
+export const user = pgTable(
+  'user',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    password: text().notNull(),
+    email: text().notNull(),
+    emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
+    image: text(),
+    fullName: text().notNull(),
+    role: role().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('user_email_key').using(
+      'btree',
+      table.email.asc().nullsLast().op('text_ops'),
+    ),
+    uniqueIndex('user_name_key').using(
+      'btree',
+      table.name.asc().nullsLast().op('text_ops'),
+    ),
   ],
 );
 
@@ -194,41 +234,29 @@ export const session = pgTable(
   ],
 );
 
-export const location = pgTable('location', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-  address: text().notNull(),
-  googleMapsUrl: text().notNull(),
-  capacity: integer().notNull(),
-  createdAt: timestamp({ withTimezone: true, mode: 'string' })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
-
-export const user = pgTable(
-  'user',
+export const eventXUser = pgTable(
+  '_EVENT_X_USER',
   {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-    password: text().notNull(),
-    email: text().notNull(),
-    emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
-    image: text(),
-    fullName: text().notNull(),
-    role: role().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    a: uuid('A').notNull(),
+    b: uuid('B').notNull(),
   },
   (table) => [
-    uniqueIndex('user_email_key').using(
-      'btree',
-      table.email.asc().nullsLast().op('text_ops'),
-    ),
-    uniqueIndex('user_name_key').using(
-      'btree',
-      table.name.asc().nullsLast().op('text_ops'),
-    ),
+    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.a],
+      foreignColumns: [event.id],
+      name: '_EVENT_X_USER_A_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.b],
+      foreignColumns: [user.id],
+      name: '_EVENT_X_USER_B_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    primaryKey({ columns: [table.a, table.b], name: '_EVENT_X_USER_AB_pkey' }),
   ],
 );
 
