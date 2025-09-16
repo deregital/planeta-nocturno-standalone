@@ -133,7 +133,7 @@ export default function CheckoutClient({
               <InputWithLabel
                 name={`dni_${ticket.ticketType.id}-${indexAmount}`}
                 id={`dni_${ticket.ticketType.id}-${indexAmount}`}
-                label='DNI'
+                label='DNI/Pasaporte'
                 type='text'
                 required
                 defaultValue={

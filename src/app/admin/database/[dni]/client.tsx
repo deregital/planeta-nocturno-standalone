@@ -75,7 +75,7 @@ export default function Client({
         <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
           <div>
             <IdCard />
-            <p>DNI: {buyer.dni}</p>
+            <p>DNI/Pasaporte: {buyer.dni}</p>
           </div>
           <div>
             <Cake />
