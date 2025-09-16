@@ -353,7 +353,10 @@ export function EventGeneralInformation({
                 users
                   ? users
                       .filter(
-                        (user) => !event.authorizedUsersId.includes(user.id),
+                        (user) =>
+                          !event.authorizedUsers
+                            .map((u) => u.id)
+                            .includes(user.id),
                       )
                       .map((user) => ({
                         id: user.id,
@@ -363,9 +366,9 @@ export function EventGeneralInformation({
                   : []
               }
               onSelectAction={(user) => {
-                handleChange('authorizedUsersId', [
-                  ...event.authorizedUsersId,
-                  user.id,
+                handleChange('authorizedUsers', [
+                  ...event.authorizedUsers,
+                  { id: user.id, name: user.name || '' },
                 ]);
               }}
               title='Agregar'
@@ -377,15 +380,15 @@ export function EventGeneralInformation({
           )}
         </div>
         <div className='flex gap-2'>
-          {event.authorizedUsersId?.map((userId) => (
+          {event.authorizedUsers?.map((user) => (
             <UserBox
-              key={userId}
-              id={userId}
-              name={users?.find((user) => user.id === userId)?.name ?? ''}
+              key={user.id}
+              id={user.id}
+              name={user.name}
               remove={() => {
                 handleChange(
-                  'authorizedUsersId',
-                  event.authorizedUsersId.filter((id) => id !== userId),
+                  'authorizedUsers',
+                  event.authorizedUsers.filter((u) => u.id !== user.id),
                 );
               }}
               disabled={action === 'PREVIEW'}
