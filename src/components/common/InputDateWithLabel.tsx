@@ -1,33 +1,54 @@
 import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
-import { DatePicker } from '@/components/ui/date-picker';
+import { Input } from '@/components/ui/input';
 
 type InputDateWithLabelProps = Omit<
-  React.ComponentProps<typeof DatePicker>,
-  'onSelectAction'
+  React.ComponentProps<typeof Input>,
+  'onChange' | 'value' | 'type' | 'id'
 > & {
   label: string;
-  onChange: (date: Date) => void;
   id: string;
+  onChange: (date: Date) => void;
   error?: string;
+  selected?: Date;
 };
 
 export default function InputDateWithLabel({
   label,
-  id,
-  className,
   error,
   onChange,
+  selected,
   ...inputProps
 }: InputDateWithLabelProps) {
+  const formatDateForInput = (date: Date | undefined): string => {
+    if (!date) return '';
+    return date.toISOString().split('T')[0];
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value) {
+      const date = new Date(value);
+      // Verificar que la fecha sea válida
+      if (!isNaN(date.getTime())) {
+        onChange(date);
+      }
+    }
+  };
+
   return (
     <GenericInputWithLabel
       label={label}
-      id={id}
-      className={className}
+      id={inputProps.id || ''}
+      className={inputProps.className}
       required={inputProps.required}
       error={error}
     >
-      <DatePicker onSelectAction={onChange} {...inputProps} />
+      <Input
+        {...inputProps}
+        type='date'
+        value={formatDateForInput(selected)}
+        onChange={handleInputChange}
+      />
     </GenericInputWithLabel>
   );
 }
