@@ -12,7 +12,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
 
 import { downloadTicket } from '@/app/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
@@ -67,7 +66,7 @@ export function generateTicketColumns(isAdmin: boolean) {
         return (
           <Button
             variant='ghost'
-            className='pl-0 mx-auto'
+            className='pl-0 mx-auto font-bold'
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Nombre
@@ -92,7 +91,7 @@ export function generateTicketColumns(isAdmin: boolean) {
         return (
           <Button
             variant='ghost'
-            className='pl-0 text-center w-full'
+            className='pl-0 text-center w-full font-bold text-sm'
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Correo
@@ -111,13 +110,42 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
     },
     {
+      id: 'invitedBy',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant='ghost'
+            className='text-sm text-center p-2 font-bold w-full'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Invitado por
+            <ArrowDownAZ
+              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
+            />
+          </Button>
+        );
+      },
+      accessorFn: (row) => row.ticketGroup.invitedBy,
+      minSize: 30,
+      size: 30,
+      maxSize: 30,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return (
+          <p className='w-full text-center'>
+            {row.original.ticketGroup.invitedBy || '-'}
+          </p>
+        );
+      },
+    },
+    {
       id: 'scanned',
       accessorKey: 'scanned',
       header: ({ column }) => {
         return (
           <Button
             variant='ghost'
-            className='pl-0 text-center w-full'
+            className='pl-0 text-center w-full font-bold text-sm'
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
             Usado

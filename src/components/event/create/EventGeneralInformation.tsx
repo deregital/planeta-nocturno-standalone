@@ -252,6 +252,13 @@ export function EventGeneralInformation({
             disabled={action === 'PREVIEW'}
           />
         </div>
+        <span className='text-xs text-accent-dark ml-2'>
+          El evento comenzará el{' '}
+          <b>{format(event.startingDate, 'dd/MM/yyyy')}</b> a las{' '}
+          <b>{format(event.startingDate, 'HH:mm a')}</b> y finalizará el{' '}
+          <b>{format(event.endingDate, 'dd/MM/yyyy')}</b> a las{' '}
+          <b>{format(event.endingDate, 'HH:mm a')}</b>
+        </span>
       </section>
       <section className='flex !flex-row gap-2'>
         <InputWithLabel

@@ -29,7 +29,7 @@ type EmittedBuyerTableWithId = EmittedBuyerTable & { id: string };
 export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   {
     accessorKey: 'dni',
-    header: () => <p className='text-sm p-2'>DNI</p>,
+    header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
     cell: ({ row }) => {
       return <p className='text-sm p-2'>{row.original.dni}</p>;
     },
@@ -160,7 +160,6 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
   const [globalFilter, setGlobalFilter] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<string>('0');
 
-  // Add id field to data using dni as the unique identifier
   const dataWithId: EmittedBuyerTableWithId[] = data.map((item) => ({
     ...item,
     id: item.dni,
