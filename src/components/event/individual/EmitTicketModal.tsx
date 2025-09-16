@@ -151,7 +151,7 @@ export function EmitTicketModal({
             </FormRow>
             <FormRow>
               <InputWithLabel
-                label='DNI'
+                label='DNI/Pasaporte'
                 id='dni'
                 name='dni'
                 defaultValue=''
