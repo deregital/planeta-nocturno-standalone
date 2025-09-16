@@ -34,6 +34,7 @@ const initialState: EventState = {
     isActive: false,
     locationId: '',
     minAge: null,
+    authorizedUsersId: [],
   },
   ticketTypes: [],
 };

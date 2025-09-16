@@ -9,6 +9,7 @@ import z from 'zod';
 
 import {
   event as eventSchema,
+  eventXUser,
   ticketGroup,
   ticketType,
 } from '@/drizzle/schema';
@@ -204,6 +205,15 @@ export const eventsRouter = router({
                   })),
                 )
                 .returning();
+            }
+
+            if (event.authorizedUsersId.length !== 0) {
+              await tx.insert(eventXUser).values(
+                event.authorizedUsersId.map((userId) => ({
+                  a: eventCreated.id,
+                  b: userId,
+                })),
+              );
             }
 
             return { eventCreated, ticketTypesCreated };

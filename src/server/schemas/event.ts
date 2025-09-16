@@ -32,6 +32,7 @@ export const eventSchema = z.object({
   categoryId: z.uuid({
     error: 'La categoría es requerida',
   }),
+  authorizedUsersId: z.uuid().array(),
 });
 
 export const createEventSchema = eventSchema.omit({
