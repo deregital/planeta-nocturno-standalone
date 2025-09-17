@@ -29,6 +29,8 @@ model User {
 
   scannedTickets EmittedTicket[] @relation("USER_X_EMITTED_TICKET")
 
+  authorizedEvents Event[] @relation("EVENT_X_USER")
+
   // Optional for WebAuthn support
   Authenticator Authenticator[]
 
@@ -113,6 +115,8 @@ model Event {
 
   categoryId String        @db.Uuid
   category   EventCategory @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id])
+
+  authorizedUsers User[] @relation("EVENT_X_USER")
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
@@ -233,7 +237,7 @@ model EventCategory {
 
 enum Role {
   ADMIN
-  DOOR
+  TICKETING
 }
 
 enum TicketGroupStatus {

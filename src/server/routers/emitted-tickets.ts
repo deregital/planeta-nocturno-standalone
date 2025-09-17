@@ -19,15 +19,15 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
-  doorProcedure,
   publicProcedure,
   router,
+  ticketingProcedure,
 } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 import { decryptString } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
-  create: doorProcedure
+  create: ticketingProcedure
     .input(createTicketSchema)
     .mutation(async ({ ctx, input }) => {
       const ticketCreated = await ctx.db.transaction(async (tx) => {
@@ -155,7 +155,7 @@ export const emittedTicketsRouter = router({
 
       return { buyer: buyerWithAge, events };
     }),
-  getPdf: doorProcedure
+  getPdf: ticketingProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -196,7 +196,7 @@ export const emittedTicketsRouter = router({
       return pdf;
     }),
 
-  scan: doorProcedure
+  scan: ticketingProcedure
     .input(
       z.object({
         barcode: z.string(),
@@ -281,7 +281,7 @@ export const emittedTicketsRouter = router({
       };
     }),
 
-  manualScan: doorProcedure
+  manualScan: ticketingProcedure
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -305,7 +305,7 @@ export const emittedTicketsRouter = router({
 
       return { success: true, ticket };
     }),
-  getByEventId: doorProcedure
+  getByEventId: ticketingProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -323,7 +323,7 @@ export const emittedTicketsRouter = router({
       return tickets;
     }),
 
-  send: doorProcedure
+  send: ticketingProcedure
     .input(
       z.object({
         ticketId: z.string(),

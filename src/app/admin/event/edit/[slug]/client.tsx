@@ -36,6 +36,10 @@ export default function Client({
         ...event,
         startingDate: new Date(event.startingDate),
         endingDate: new Date(event.endingDate),
+        authorizedUsers: event.eventXUsers.map((e) => ({
+          id: e.user.id,
+          name: e.user.name,
+        })),
       });
       setTicketTypes(
         event.ticketTypes.map((t) => ({

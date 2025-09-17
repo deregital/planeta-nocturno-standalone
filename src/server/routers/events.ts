@@ -3,14 +3,16 @@ import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq, inArray, like, lt } from 'drizzle-orm';
+import { and, eq, gt, inArray, like, lt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 
 import {
   event as eventSchema,
+  eventXUser,
   ticketGroup,
   ticketType,
+  user,
 } from '@/drizzle/schema';
 import {
   createEventSchema,
@@ -22,9 +24,9 @@ import {
 } from '@/server/schemas/ticket-type';
 import {
   adminProcedure,
-  doorProcedure,
   publicProcedure,
   router,
+  ticketingProcedure,
 } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import {
@@ -51,6 +53,42 @@ export const eventsRouter = router({
       },
     });
   }),
+  getAuthorized: publicProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const userFound = await ctx.db.query.user.findFirst({
+        where: eq(user.id, input),
+        with: {
+          eventXUsers: {
+            with: {
+              event: true,
+            },
+          },
+        },
+      });
+
+      if (!userFound) throw 'Usuario no encontrado';
+
+      const eventIds = userFound.eventXUsers.map((event) => event.event.id);
+
+      return ctx.db.query.event.findMany({
+        where: and(
+          eq(eventSchema.isDeleted, false),
+          gt(eventSchema.endingDate, new Date().toISOString()),
+          inArray(eventSchema.id, eventIds),
+        ),
+        with: {
+          ticketTypes: true,
+          location: {
+            columns: {
+              id: true,
+              name: true,
+              address: true,
+            },
+          },
+        },
+      });
+    }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
       where: eq(eventSchema.isActive, true),
@@ -138,6 +176,16 @@ export const eventsRouter = router({
             name: true,
           },
         },
+        eventXUsers: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -204,6 +252,15 @@ export const eventsRouter = router({
                   })),
                 )
                 .returning();
+            }
+
+            if (event.authorizedUsers.length !== 0) {
+              await tx.insert(eventXUser).values(
+                event.authorizedUsers.map((user) => ({
+                  a: eventCreated.id,
+                  b: user.id,
+                })),
+              );
             }
 
             return { eventCreated, ticketTypesCreated };
@@ -310,6 +367,19 @@ export const eventsRouter = router({
               }),
             );
 
+            await tx
+              .delete(eventXUser)
+              .where(eq(eventXUser.a, eventUpdated.id));
+
+            if (event.authorizedUsers.length !== 0) {
+              await tx.insert(eventXUser).values(
+                event.authorizedUsers.map((user) => ({
+                  a: eventUpdated.id,
+                  b: user.id,
+                })),
+              );
+            }
+
             return { eventUpdated, ticketTypesUpdated };
           } catch (error) {
             tx.rollback();
@@ -322,7 +392,7 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  generatePresentismoOrderNamePDF: doorProcedure
+  generatePresentismoOrderNamePDF: ticketingProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -427,7 +497,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  generatePresentismoGroupedTicketTypePDF: doorProcedure
+  generatePresentismoGroupedTicketTypePDF: ticketingProcedure
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { eventId } = input;

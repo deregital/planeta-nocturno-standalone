@@ -26,7 +26,7 @@ export function SelectableComboBox({
   listOf,
 }: {
   list: (ComparativeStatWithType & { name: string })[];
-  onSelectAction: (item: ComparativeStatWithType) => void;
+  onSelectAction: (item: ComparativeStatWithType & { name?: string }) => void;
   title: string;
   listOf: string;
 }) {
