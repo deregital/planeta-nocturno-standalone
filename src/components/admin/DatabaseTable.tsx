@@ -1,12 +1,12 @@
 'use client';
 
+import { SelectGroup } from '@radix-ui/react-select';
 import { type ColumnDef } from '@tanstack/react-table';
+import { format } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { SelectGroup } from '@radix-ui/react-select';
-import { format } from 'date-fns';
 
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/ui/button';
@@ -116,9 +116,14 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
       const phoneNumber = row.original.phoneNumber;
       if (!phoneNumber) return '-';
       return (
-        <p className='text-sm p-2'>
+        <a
+          href={`https://wa.me/${row.original.phoneNumber}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
+        >
           {formatPhoneNumber(phoneNumber, 'INTERNATIONAL')}
-        </p>
+        </a>
       );
     },
   },
