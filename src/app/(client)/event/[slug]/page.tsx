@@ -1,9 +1,3 @@
-import { isAfter } from 'date-fns';
-
-import GoBack from '@/components/common/GoBack';
-import HeaderTickets from '@/components/event/buyPage/HeaderTickets';
-import InformationEvent from '@/components/event/buyPage/InformationEvent';
-import TicketPurchase from '@/components/event/buyPage/TicketPurchase';
 import Client from '@/app/(client)/event/[slug]/client';
 import { trpc } from '@/server/trpc/server';
 
