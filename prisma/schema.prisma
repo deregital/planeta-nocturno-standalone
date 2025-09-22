@@ -237,7 +237,7 @@ model EventCategory {
 
 enum Role {
   ADMIN
-  TICKETINGModificado
+  TICKETING
 }
 
 enum TicketGroupStatus {
