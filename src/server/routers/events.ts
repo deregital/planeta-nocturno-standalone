@@ -3,7 +3,7 @@ import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq, gt, inArray, like, lt } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, like, lt, lte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 
@@ -39,8 +39,29 @@ import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.event.findMany({
-      where: eq(eventSchema.isDeleted, false),
+    const pastEvents = await ctx.db.query.event.findMany({
+      where: and(
+        eq(eventSchema.isDeleted, false),
+        lte(eventSchema.endingDate, new Date().toISOString()),
+      ),
+      with: {
+        ticketTypes: true,
+        location: {
+          columns: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+      orderBy: desc(eventSchema.endingDate),
+    });
+
+    const upcomingEvents = await ctx.db.query.event.findMany({
+      where: and(
+        eq(eventSchema.isDeleted, false),
+        gt(eventSchema.endingDate, new Date().toISOString()),
+      ),
       with: {
         ticketTypes: true,
         location: {
@@ -52,6 +73,8 @@ export const eventsRouter = router({
         },
       },
     });
+
+    return { pastEvents, upcomingEvents };
   }),
   getAuthorized: publicProcedure
     .input(z.string())
