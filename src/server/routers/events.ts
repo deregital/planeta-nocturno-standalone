@@ -94,7 +94,26 @@ export const eventsRouter = router({
 
       const eventIds = userFound.eventXUsers.map((event) => event.event.id);
 
-      return ctx.db.query.event.findMany({
+      const pastEvents = await ctx.db.query.event.findMany({
+        where: and(
+          eq(eventSchema.isDeleted, false),
+          lte(eventSchema.endingDate, new Date().toISOString()),
+          inArray(eventSchema.id, eventIds),
+        ),
+        with: {
+          ticketTypes: true,
+          location: {
+            columns: {
+              id: true,
+              name: true,
+              address: true,
+            },
+          },
+        },
+        orderBy: desc(eventSchema.endingDate),
+      });
+
+      const upcomingEvents = await ctx.db.query.event.findMany({
         where: and(
           eq(eventSchema.isDeleted, false),
           gt(eventSchema.endingDate, new Date().toISOString()),
@@ -111,6 +130,8 @@ export const eventsRouter = router({
           },
         },
       });
+
+      return { pastEvents, upcomingEvents };
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({

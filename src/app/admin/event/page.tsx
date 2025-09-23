@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation';
 
 import Client from '@/app/admin/event/client';
 import { auth } from '@/server/auth';
-import { trpc } from '@/server/trpc/server';
 import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/server';
 
 export default async function Page() {
   const session = await auth();
@@ -13,7 +13,10 @@ export default async function Page() {
     redirect('/login');
   }
 
-  let events: RouterOutputs['events']['getAll'] = [];
+  let events: RouterOutputs['events']['getAll'] = {
+    pastEvents: [],
+    upcomingEvents: [],
+  };
 
   if (session.user.role === 'ADMIN') {
     events = await trpc.events.getAll();
