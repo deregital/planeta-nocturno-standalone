@@ -1,11 +1,13 @@
 'use client';
 import Link from 'next/link';
 
+import CardEvent from '@/components/events/buyPage/CardEvent';
 import { formatEventDate } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
-import CardEvent from '@/components/events/buyPage/CardEvent';
 
-type Event = RouterOutputs['events']['getAll'][number];
+type Event = RouterOutputs['events']['getAll'][
+  | 'upcomingEvents'
+  | 'pastEvents'][number];
 
 interface EventCardContainerProps {
   event: Event;
