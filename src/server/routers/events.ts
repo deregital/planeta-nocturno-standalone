@@ -177,25 +177,6 @@ export const eventsRouter = router({
   getBySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const event = await ctx.db.query.event.findFirst({
       where: and(eq(eventSchema.slug, input), eq(eventSchema.isDeleted, false)),
-    });
-
-    if (!event) throw 'Evento no encontrado';
-
-    await ctx.db
-      .delete(ticketGroup)
-      .where(
-        and(
-          eq(ticketGroup.status, 'BOOKED'),
-          eq(ticketGroup.eventId, event.id),
-          lt(
-            ticketGroup.createdAt,
-            new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-          ),
-        ),
-      );
-
-    const data = await ctx.db.query.event.findFirst({
-      where: eq(eventSchema.slug, input),
       with: {
         ticketGroups: {
           with: {
@@ -233,9 +214,22 @@ export const eventsRouter = router({
       },
     });
 
-    if (!data) return null;
+    if (!event) return null;
 
-    return data;
+    await ctx.db
+      .delete(ticketGroup)
+      .where(
+        and(
+          eq(ticketGroup.status, 'BOOKED'),
+          eq(ticketGroup.eventId, event.id),
+          lt(
+            ticketGroup.createdAt,
+            new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+          ),
+        ),
+      );
+
+    return event;
   }),
   create: adminProcedure
     .input(
