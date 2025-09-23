@@ -1,10 +1,11 @@
 'use client';
 import { Calendar } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 import EventList from '@/components/events/admin/EventList';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { type RouterOutputs } from '@/server/routers/app';
 
 export default function Client({
@@ -26,7 +27,11 @@ export default function Client({
       >
         <Calendar /> Crear evento
       </Button>
-      <EventList events={events} />
+      <p className='text-2xl font-bold text-accent'>Próximos Eventos</p>
+      <EventList events={events.upcomingEvents} />
+      <Separator className='border rounded-full border-accent-light' />
+      <p className='text-2xl font-bold text-accent'>Eventos Pasados</p>
+      <EventList events={events.pastEvents} />
     </div>
   );
 }
