@@ -24,7 +24,7 @@ async function EventDetails({ slug }: { slug: string }) {
   return (
     <div className='flex flex-col items-center mt-4'>
       <div className='flex w-full px-4'>
-        <GoBack />
+        <GoBack route='/admin/event' />
       </div>
       <Image
         width={1000}
