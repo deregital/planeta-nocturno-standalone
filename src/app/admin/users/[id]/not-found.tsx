@@ -1,7 +1,11 @@
+import ErrorCard from '@/components/common/ErrorCard';
+
 export default function NotFound() {
   return (
-    <div className='flex flex-col gap-4 items-center justify-center h-screen'>
-      <h1 className='text-3xl font-bold text-center'>Usuario no encontrado</h1>
-    </div>
+    <ErrorCard
+      title='Usuario no encontrado'
+      description='El usuario que buscas no existe. Verificá que el enlace sea correcto.'
+      route='/admin/users'
+    />
   );
 }
