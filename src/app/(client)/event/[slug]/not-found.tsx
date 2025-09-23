@@ -5,7 +5,7 @@ export default function NotFound() {
     <ErrorCard
       title='Evento no encontrado'
       description='El evento que buscas no existe. Verificá que el enlace sea correcto.'
-      route='/admin/event'
+      route='/event'
     />
   );
 }
