@@ -1,9 +1,9 @@
 import { format } from 'date-fns';
 import { BadgeCheck, Calendar, Link2, Pencil } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
 
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
@@ -15,7 +15,9 @@ import { trpc } from '@/server/trpc/client';
 export default function EventCardHorizontal({
   event,
 }: {
-  event: RouterOutputs['events']['getAll'][number];
+  event: RouterOutputs['events']['getAll'][
+    | 'upcomingEvents'
+    | 'pastEvents'][number];
 }) {
   const router = useRouter();
   const session = useSession();
