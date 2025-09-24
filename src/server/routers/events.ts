@@ -541,6 +541,17 @@ export const eventsRouter = router({
   exportXlsxByTicketType: adminProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+        with: {
+          ticketTypes: true,
+        },
+      });
+
+      if (!event) {
+        throw 'Evento no encontrado';
+      }
+
       const tickets = await ctx.db.query.emittedTicket.findMany({
         where: eq(emittedTicket.eventId, input),
         with: {
@@ -556,13 +567,12 @@ export const eventsRouter = router({
         grouped[key].push(t);
       }
 
-      // No se puede generar el XLSX sin tickets
-      if (tickets.length === 0) {
-        throw 'El evento no tiene tickets';
-      }
-
       const wb = XLSX.utils.book_new();
-      for (const [typeName, rows] of Object.entries(grouped)) {
+
+      for (const ticketType of event.ticketTypes) {
+        const typeName = ticketType.name;
+        const rows = grouped[typeName] || [];
+
         const headers = [
           'DNI/Pasaporte',
           'Nombre',
@@ -573,6 +583,7 @@ export const eventsRouter = router({
           'Fecha de Nacimiento',
           'Fecha de Emisión',
           'Usado',
+          'Invitado por',
         ];
         const aoa = [
           headers,
@@ -590,6 +601,7 @@ export const eventsRouter = router({
             t.birthDate ? new Date(t.birthDate) : '',
             t.createdAt ? new Date(t.createdAt) : '',
             t.scanned ? 'Sí' : 'No',
+            t.ticketGroup.invitedBy ?? '',
           ]),
         ];
         const ws = XLSX.utils.aoa_to_sheet(aoa);
