@@ -116,7 +116,7 @@ export default function EventCardHorizontal({
                 <span className='mr-2 inline-flex'>
                   <FileMarkdown />
                 </span>
-                Presentismo por orden alfabético
+                PDF en orden alfabético
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -144,7 +144,7 @@ export default function EventCardHorizontal({
                 <span className='mr-2 inline-flex'>
                   <FileSmile />
                 </span>
-                Presentismo por tipo de ticket
+                PDF agrupado por tipo de ticket
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={async () => {
@@ -170,7 +170,7 @@ export default function EventCardHorizontal({
                 <span className='mr-2 inline-flex'>
                   <FileSpreadsheet />
                 </span>
-                Exportar tickets a Excel
+                Excel por tipo de ticket
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
