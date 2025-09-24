@@ -15,12 +15,12 @@ export default function ErrorCard({
   title = 'Ha ocurrido un error',
   description = 'Hubo un error al realizar la acción. Intentá nuevamente.',
   route,
-  disabledLink = false,
+  children,
 }: {
   title?: string;
   description?: string;
   route?: Route;
-  disabledLink?: boolean;
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   return (
@@ -34,7 +34,11 @@ export default function ErrorCard({
         <CardContent>
           <p className='text-muted-foreground'>{description}</p>
         </CardContent>
-        {!disabledLink && (
+        {children ? (
+          <CardFooter className='flex justify-center w-full h-10'>
+            {children}
+          </CardFooter>
+        ) : (
           <CardFooter>
             <Button
               onClick={() => (route ? router.push(route) : router.back())}

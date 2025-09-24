@@ -1,7 +1,7 @@
 'use client';
 
 import { SelectGroup } from '@radix-ui/react-select';
-import { type ColumnDef } from '@tanstack/react-table';
+import { type StrictColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
@@ -26,12 +26,16 @@ import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
 // Create a wrapper type that includes an id field for the DataTable
 type EmittedBuyerTableWithId = EmittedBuyerTable & { id: string };
 
-export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
+export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
   {
     accessorKey: 'dni',
     header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
     cell: ({ row }) => {
       return <p className='text-sm p-2'>{row.original.dni}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.dni,
+      exportHeader: 'DNI/Pasaporte',
     },
   },
   {
@@ -41,6 +45,10 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
       const fullName = row.original.fullName;
       return <p className='text-sm p-2'>{fullName}</p>;
     },
+    meta: {
+      exportValue: (row) => row.original.fullName,
+      exportHeader: 'Nombre',
+    },
   },
   {
     accessorKey: 'mail',
@@ -49,6 +57,10 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
       const mail = row.original.mail;
       return <p className='text-sm p-2'>{mail}</p>;
     },
+    meta: {
+      exportValue: (row) => row.original.mail,
+      exportHeader: 'Mail',
+    },
   },
   {
     accessorKey: 'age',
@@ -56,6 +68,10 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
     cell: ({ row }) => {
       const age = row.original.age;
       return <p className='text-sm p-2'>{age}</p>;
+    },
+    meta: {
+      exportValue: (row) => String(row.original.age),
+      exportHeader: 'Edad',
     },
   },
   {
@@ -85,6 +101,10 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
         </Button>
       );
     },
+    meta: {
+      exportValue: (row) => format(row.original.birthDate, 'dd/MM/yyyy'),
+      exportHeader: 'Fecha de Nacimiento',
+    },
     sortingFn: (rowA, rowB, columnId) => {
       const a = daysUntilBirthday(rowA.getValue(columnId) as string);
       const b = daysUntilBirthday(rowB.getValue(columnId) as string);
@@ -97,7 +117,16 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'gender',
-    header: () => <p className='text-sm p-2'>Genero</p>,
+    header: () => <p className='text-sm p-2'>Género</p>,
+    meta: {
+      exportValue: (row) => {
+        const gender = row.original.gender;
+        return gender
+          ? genderTranslation[gender as keyof typeof genderTranslation]
+          : '-';
+      },
+      exportHeader: 'Género',
+    },
     cell: ({ row }) => {
       const gender = row.original.gender;
       return (
@@ -117,7 +146,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
       if (!phoneNumber) return '-';
       return (
         <a
-          href={`https://wa.me/${row.original.phoneNumber}`}
+          href={`https://wa.me/${phoneNumber}`}
           target='_blank'
           rel='noopener noreferrer'
           className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
@@ -125,6 +154,11 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
           {formatPhoneNumber(phoneNumber, 'INTERNATIONAL')}
         </a>
       );
+    },
+    meta: {
+      exportValue: (row) =>
+        formatPhoneNumber(row.original.phoneNumber, 'INTERNATIONAL') || '-',
+      exportHeader: 'Teléfono',
     },
   },
   {
@@ -134,6 +168,10 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
       const instagram = row.original.instagram;
       if (!instagram) return '-';
       return <p className='text-sm p-2'>{instagram}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.instagram || '-',
+      exportHeader: 'Instagram',
     },
   },
 ];
@@ -155,7 +193,7 @@ const months = [
 ];
 
 interface TicketsTableProps {
-  columns: ColumnDef<EmittedBuyerTableWithId, unknown>[];
+  columns: StrictColumnDef<EmittedBuyerTableWithId, unknown>[];
   data: EmittedBuyerTable[];
 }
 
@@ -269,6 +307,7 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
         columns={columns}
         data={filteredData}
         onClickRow={handleRowClick}
+        exportFileName={'Base de Datos'}
       />
     </div>
   );

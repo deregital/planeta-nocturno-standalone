@@ -1,18 +1,19 @@
 'use client';
-import * as React from 'react';
 import {
-  type ColumnDef,
-  type SortingState,
   type PaginationState,
+  type SortingState,
+  type StrictColumnDef,
   flexRender,
   getCoreRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  getPaginationRowModel,
 } from '@tanstack/react-table';
-import { useState, useMemo } from 'react';
-import { Loader } from 'lucide-react';
+import { Download, Loader } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
+import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -22,16 +23,19 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
+import { exportTableToXlsx, extractTextFromReact } from '@/lib/utils-client';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
   fullWidth?: boolean;
-  columns: ColumnDef<TData, TValue>[];
+  columns: StrictColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
   onClickRow?: (id: string) => void;
   initialSortingColumn?: { id: keyof TData; desc: boolean };
   highlightedRowId?: string | null;
+  exportFileName?: string;
+  exportExcludeColumnIds?: string[]; // Ver type safety
+  disableExport?: boolean;
 }
 
 export function DataTable<TData extends { id: string }, TValue>({
@@ -42,6 +46,9 @@ export function DataTable<TData extends { id: string }, TValue>({
   onClickRow,
   initialSortingColumn,
   highlightedRowId,
+  exportFileName = 'tabla',
+  exportExcludeColumnIds = [],
+  disableExport = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
@@ -98,8 +105,55 @@ export function DataTable<TData extends { id: string }, TValue>({
     },
   });
 
+  function extractText(node: unknown): string {
+    return extractTextFromReact(node);
+  }
+
+  function handleExportXlsx() {
+    const headerGroup = table.getHeaderGroups()[0];
+    const headers = headerGroup.headers
+      .filter((h) => !exportExcludeColumnIds.includes(h.column.id as string))
+      .map((h) => {
+        const meta = h.column.columnDef.meta?.exportHeader;
+
+        if (meta) {
+          return meta;
+        }
+
+        return h.id;
+      });
+
+    const rows = table.getRowModel().rows.map((row) =>
+      row
+        .getVisibleCells()
+        .filter(
+          (cell) => !exportExcludeColumnIds.includes(cell.column.id as string),
+        )
+        .map((cell) => {
+          const meta = cell.column.columnDef.meta?.exportValue;
+
+          if (meta) {
+            return meta(row);
+          }
+
+          return row.getValue(cell.column.id) as string;
+        }),
+    );
+
+    const flatRows = rows.map((cells) => cells.map((value) => value));
+
+    exportTableToXlsx(headers, flatRows, exportFileName);
+  }
+
   return (
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
+      {!disableExport && (
+        <div className='flex justify-end p-2'>
+          <Button variant='outline' size='sm' onClick={handleExportXlsx}>
+            <Download className='size-4 mr-2' /> Exportar a Excel
+          </Button>
+        </div>
+      )}
       <Table className='bg-white' fullWidth={fullWidth}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

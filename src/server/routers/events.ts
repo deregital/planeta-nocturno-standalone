@@ -5,15 +5,18 @@ import { TRPCError } from '@trpc/server';
 import { formatInTimeZone } from 'date-fns-tz';
 import { and, desc, eq, gt, inArray, like, lt, lte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import * as XLSX from 'xlsx';
 import z from 'zod';
 
 import {
+  emittedTicket,
   event as eventSchema,
   eventXUser,
   ticketGroup,
   ticketType,
   user,
 } from '@/drizzle/schema';
+import { genderTranslation } from '@/lib/translations';
 import {
   createEventSchema,
   eventSchema as eventSchemaZod,
@@ -534,6 +537,79 @@ export const eventsRouter = router({
       } catch (error) {
         throw error;
       }
+    }),
+  exportXlsxByTicketType: adminProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+        with: {
+          ticketTypes: true,
+        },
+      });
+
+      if (!event) {
+        throw 'Evento no encontrado';
+      }
+
+      const tickets = await ctx.db.query.emittedTicket.findMany({
+        where: eq(emittedTicket.eventId, input),
+        with: {
+          ticketType: true,
+          ticketGroup: true,
+        },
+      });
+
+      const grouped: Record<string, typeof tickets> = {};
+      for (const t of tickets) {
+        const key = t.ticketType?.name ?? 'Sin tipo';
+        if (!grouped[key]) grouped[key] = [] as typeof tickets;
+        grouped[key].push(t);
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      for (const ticketType of event.ticketTypes) {
+        const typeName = ticketType.name;
+        const rows = grouped[typeName] || [];
+
+        const headers = [
+          'DNI/Pasaporte',
+          'Nombre',
+          'Mail',
+          'Teléfono',
+          'Instagram',
+          'Género',
+          'Fecha de Nacimiento',
+          'Fecha de Emisión',
+          'Usado',
+          'Invitado por',
+        ];
+        const aoa = [
+          headers,
+          ...rows.map((t) => [
+            t.dni,
+            t.fullName,
+            t.mail,
+            t.phoneNumber ?? '',
+            t.instagram ?? '',
+            t.gender
+              ? (genderTranslation[
+                  t.gender as keyof typeof genderTranslation
+                ] ?? t.gender)
+              : '',
+            t.birthDate ? new Date(t.birthDate) : '',
+            t.createdAt ? new Date(t.createdAt) : '',
+            t.scanned ? 'Sí' : 'No',
+            t.ticketGroup.invitedBy ?? '',
+          ]),
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        XLSX.utils.book_append_sheet(wb, ws, typeName.slice(0, 31));
+      }
+
+      const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      return new Uint8Array(out as ArrayBuffer);
     }),
   generatePresentismoGroupedTicketTypePDF: ticketingProcedure
     .input(z.object({ eventId: z.string() }))

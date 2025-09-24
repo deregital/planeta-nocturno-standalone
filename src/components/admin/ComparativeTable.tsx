@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  type ColumnDef,
+  type StrictColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -131,11 +131,15 @@ export default function ComparativeTable() {
     ];
   }, [selectedData]);
 
-  const columns = useMemo<ColumnDef<StatRow>[]>(
+  const columns = useMemo<StrictColumnDef<StatRow>[]>(
     () => [
       {
         accessorKey: 'label',
         header: () => <span className='font-medium text-2xl'>Información</span>,
+        meta: {
+          exportValue: (row) => row.original.label,
+          exportHeader: 'Información',
+        },
       },
       ...selectedData.map((col) => ({
         accessorKey: col.id,
@@ -150,6 +154,10 @@ export default function ComparativeTable() {
             </Button>
           </div>
         ),
+        meta: {
+          exportValue: null,
+          exportHeader: col.name,
+        },
       })),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
