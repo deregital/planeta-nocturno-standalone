@@ -1,5 +1,6 @@
 'use client';
 
+import { type StrictColumnDef } from '@tanstack/react-table';
 import {
   ArrowDownAZ,
   DownloadIcon,
@@ -11,7 +12,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { type StrictColumnDef } from '@tanstack/react-table';
 
 import { downloadTicket } from '@/app/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
       meta: {
         exportValue: (row) => row.original.ticketType.name,
+        exportHeader: 'Tipo',
       },
     },
     {
@@ -88,6 +89,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
       meta: {
         exportValue: (row) => row.original.fullName,
+        exportHeader: 'Nombre',
       },
     },
     {
@@ -116,6 +118,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
       meta: {
         exportValue: (row) => row.original.mail,
+        exportHeader: 'Correo',
       },
     },
     {
@@ -148,6 +151,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
       meta: {
         exportValue: (row) => row.original.ticketGroup.invitedBy || '-',
+        exportHeader: 'Invitado por',
       },
     },
     {
@@ -155,6 +159,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       accessorKey: 'scanned',
       meta: {
         exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
+        exportHeader: 'Usado',
       },
       header: ({ column }) => {
         return (
@@ -194,6 +199,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       size: 10,
       meta: {
         exportValue: () => '',
+        exportHeader: 'Acciones',
       },
       cell: ({ row }) => {
         const ticket = row.original;
