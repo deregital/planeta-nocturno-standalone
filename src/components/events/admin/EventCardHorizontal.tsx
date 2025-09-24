@@ -1,5 +1,12 @@
 import { format } from 'date-fns';
-import { BadgeCheck, Calendar, Link2, Pencil } from 'lucide-react';
+import {
+  BadgeCheck,
+  Calendar,
+  FileSpreadsheet,
+  Link2,
+  MoreVertical,
+  Pencil,
+} from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -9,6 +16,12 @@ import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
@@ -29,6 +42,9 @@ export default function EventCardHorizontal({
 
   const generatePresentismoGroupedTicketTypePDF =
     trpc.events.generatePresentismoGroupedTicketTypePDF.useMutation();
+
+  const exportXlsxByTicketType =
+    trpc.events.exportXlsxByTicketType.useMutation();
 
   return (
     <Card variant={'accent'} className='flex flex-row py-2 rounded-lg'>
@@ -54,60 +70,6 @@ export default function EventCardHorizontal({
               <Calendar className='w-4 h-4 text-on-accent' />
             </Link>
           </Button>
-          <Button
-            title='Generar presentismo por orden alfabético'
-            size={'icon'}
-            variant={'ghost'}
-            onClick={() => {
-              generatePresentismoOrdenAlfPDF.mutate(
-                { eventId: event.id },
-                {
-                  onError: (error) => {
-                    toast.error(error.message);
-                  },
-                  onSuccess: (pdf) => {
-                    // download pdf
-                    const blob = new Blob([pdf], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Asistencia ${event.slug}.pdf`;
-                    a.click();
-                  },
-                },
-              );
-            }}
-            className='text-on-accent'
-          >
-            <FileMarkdown />
-          </Button>
-
-          <Button
-            className='text-on-accent'
-            variant={'ghost'}
-            size={'icon'}
-            onClick={() => {
-              generatePresentismoGroupedTicketTypePDF.mutate(
-                { eventId: event.id },
-                {
-                  onError: (error) => {
-                    toast.error(error.message);
-                  },
-                  onSuccess: (pdf) => {
-                    // download pdf
-                    const blob = new Blob([pdf!], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Asistencia ${event.slug}.pdf`;
-                    a.click();
-                  },
-                },
-              );
-            }}
-          >
-            <FileSmile />
-          </Button>
 
           <Button
             variant={'ghost'}
@@ -117,6 +79,101 @@ export default function EventCardHorizontal({
           >
             <Pencil />
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={'ghost'}
+                size={'icon'}
+                className='text-on-accent'
+              >
+                <MoreVertical className='w-4 h-4' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end'>
+              <DropdownMenuItem
+                onClick={() => {
+                  generatePresentismoOrdenAlfPDF.mutate(
+                    { eventId: event.id },
+                    {
+                      onError: (error) => {
+                        toast.error(error.message);
+                      },
+                      onSuccess: (pdf) => {
+                        const blob = new Blob([pdf as unknown as ArrayBuffer], {
+                          type: 'application/pdf',
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Asistencia ${event.slug}.pdf`;
+                        a.click();
+                      },
+                    },
+                  );
+                }}
+                className='cursor-pointer'
+              >
+                <span className='mr-2 inline-flex'>
+                  <FileMarkdown />
+                </span>
+                Presentismo por orden alfabético
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  generatePresentismoGroupedTicketTypePDF.mutate(
+                    { eventId: event.id },
+                    {
+                      onError: (error) => {
+                        toast.error(error.message);
+                      },
+                      onSuccess: (pdf) => {
+                        const blob = new Blob([pdf as unknown as ArrayBuffer], {
+                          type: 'application/pdf',
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Asistencia ${event.slug}.pdf`;
+                        a.click();
+                      },
+                    },
+                  );
+                }}
+                className='cursor-pointer'
+              >
+                <span className='mr-2 inline-flex'>
+                  <FileSmile />
+                </span>
+                Presentismo por tipo de ticket
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  await exportXlsxByTicketType.mutateAsync(event.id, {
+                    onError: (error) => {
+                      toast.error(error.message);
+                    },
+                    onSuccess: (out) => {
+                      const blob = new Blob([out], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `tickets-${event.slug}.xlsx`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    },
+                  });
+                }}
+                className='cursor-pointer'
+              >
+                <span className='mr-2 inline-flex'>
+                  <FileSpreadsheet />
+                </span>
+                Exportar tickets a Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
