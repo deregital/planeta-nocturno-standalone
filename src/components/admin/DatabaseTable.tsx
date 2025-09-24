@@ -85,6 +85,7 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
         </Button>
       );
     },
+    meta: { exportDateFormat: 'dd-MM-yyyy' },
     sortingFn: (rowA, rowB, columnId) => {
       const a = daysUntilBirthday(rowA.getValue(columnId) as string);
       const b = daysUntilBirthday(rowB.getValue(columnId) as string);
@@ -97,7 +98,13 @@ export const emittedBuyerColumns: ColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'gender',
-    header: () => <p className='text-sm p-2'>Genero</p>,
+    header: () => <p className='text-sm p-2'>Género</p>,
+    meta: {
+      exportTransform: (value: unknown) => {
+        const v = String(value || '') as keyof typeof genderTranslation;
+        return genderTranslation[v] ?? '';
+      },
+    },
     cell: ({ row }) => {
       const gender = row.original.gender;
       return (
@@ -269,6 +276,7 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
         columns={columns}
         data={filteredData}
         onClickRow={handleRowClick}
+        exportFileName={'Base de Datos'}
       />
     </div>
   );
