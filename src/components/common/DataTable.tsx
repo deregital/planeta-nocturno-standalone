@@ -1,18 +1,20 @@
 'use client';
-import * as React from 'react';
 import {
   type ColumnDef,
-  type SortingState,
   type PaginationState,
+  type SortingState,
   flexRender,
   getCoreRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  getPaginationRowModel,
 } from '@tanstack/react-table';
-import { useState, useMemo } from 'react';
-import { Loader } from 'lucide-react';
+import { format as formatDate } from 'date-fns';
+import { Download, Loader } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
+import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -22,7 +24,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
+import {
+  exportTableToXlsx,
+  extractTextFromReact,
+  stringifyValue,
+} from '@/lib/utils-client';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
   fullWidth?: boolean;
@@ -32,6 +38,8 @@ interface DataTableProps<TData extends { id: string }, TValue> {
   onClickRow?: (id: string) => void;
   initialSortingColumn?: { id: keyof TData; desc: boolean };
   highlightedRowId?: string | null;
+  exportFileName?: string;
+  exportExcludeColumnIds?: string[];
 }
 
 export function DataTable<TData extends { id: string }, TValue>({
@@ -42,6 +50,8 @@ export function DataTable<TData extends { id: string }, TValue>({
   onClickRow,
   initialSortingColumn,
   highlightedRowId,
+  exportFileName = 'tabla',
+  exportExcludeColumnIds = [],
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
@@ -98,8 +108,70 @@ export function DataTable<TData extends { id: string }, TValue>({
     },
   });
 
+  function extractText(node: unknown): string {
+    return extractTextFromReact(node);
+  }
+
+  function handleExportXlsx() {
+    const headerGroup = table.getHeaderGroups()[0];
+    const headers = headerGroup.headers
+      .filter((h) => !exportExcludeColumnIds.includes(h.column.id as string))
+      .map((h) => {
+        const def = h.column.columnDef;
+        if (typeof def.header === 'string') return def.header;
+        if (typeof def.header === 'function') {
+          const rendered = def.header(h.getContext());
+          const text = extractText(rendered);
+          if (text) return text;
+        }
+        return (h.column.id as string) ?? '';
+      });
+
+    const rows = table.getRowModel().rows.map((row) =>
+      row
+        .getVisibleCells()
+        .filter(
+          (cell) => !exportExcludeColumnIds.includes(cell.column.id as string),
+        )
+        .map((cell) => {
+          const meta = (
+            cell.column.columnDef as {
+              meta?: {
+                exportDateFormat?: string;
+                exportTransform?: (value: unknown) => string;
+              };
+            }
+          ).meta;
+          const raw = cell.getValue() as unknown;
+          let value: string;
+          if (meta?.exportTransform) {
+            value = meta.exportTransform(raw);
+          } else if (meta?.exportDateFormat) {
+            const date = raw instanceof Date ? raw : new Date(String(raw));
+            if (!isNaN(date.getTime())) {
+              value = formatDate(date, meta.exportDateFormat);
+            } else {
+              value = stringifyValue(raw);
+            }
+          } else {
+            value = stringifyValue(raw);
+          }
+          return value;
+        }),
+    );
+
+    const flatRows = rows.map((cells) => cells.map((value) => value));
+
+    exportTableToXlsx(headers, flatRows, exportFileName);
+  }
+
   return (
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
+      <div className='flex justify-end p-2'>
+        <Button variant='outline' size='sm' onClick={handleExportXlsx}>
+          <Download className='size-4 mr-2' /> Exportar a Excel
+        </Button>
+      </div>
       <Table className='bg-white' fullWidth={fullWidth}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
