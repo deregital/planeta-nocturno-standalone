@@ -1,0 +1,42 @@
+name: Prisma Migrate Deploy
+
+on:
+  push:
+    branches: [dev, master]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run Migrations on DEV DBs
+        if: github.ref == 'refs/heads/dev'
+        run: |
+          for var in $(compgen -e | grep '^DEV_DATABASE_URL_'); do
+            echo "▶ Running migrate deploy for ${!var}"
+            DATABASE_URL=${!var} npx prisma migrate deploy
+          done
+        env:
+          DEV_DATABASE_URL_PLANETA_NOCTURNO: ${{ secrets.DEV_DATABASE_URL_PLANETA_NOCTURNO }}
+          # Agregá más DEV_DATABASE_URL_X sin tocar el script
+
+      - name: Run Migrations on PROD DBs
+        if: github.ref == 'refs/heads/master'
+        run: |
+          for var in $(compgen -e | grep '^PROD_DATABASE_URL_'); do
+            echo "▶ Running migrate deploy for ${!var}"
+            DATABASE_URL=${!var} npx prisma migrate deploy
+          done
+        env:
+          PROD_DATABASE_URL_DEMO_PLANETA_NOCTURNO: ${{ secrets.PROD_DATABASE_URL_DEMO_PLANETA_NOCTURNO }}
+          # PROD_DATABASE_URL_JUANA_TICKETS: ${{ secrets.PROD_DATABASE_URL_JUANA_TICKETS }}
+          # Agregá más PROD_DATABASE_URL_X sin tocar el script
