@@ -1,6 +1,5 @@
 'use client';
 
-import { type ColumnDef } from '@tanstack/react-table';
 import {
   ArrowDownAZ,
   DownloadIcon,
@@ -12,6 +11,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { type StrictColumnDef } from '@tanstack/react-table';
 
 import { downloadTicket } from '@/app/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
 export function generateTicketColumns(isAdmin: boolean) {
-  const columns: ColumnDef<
+  const columns: StrictColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
     {
@@ -57,6 +57,9 @@ export function generateTicketColumns(isAdmin: boolean) {
           </div>
         );
       },
+      meta: {
+        exportValue: (row) => row.original.ticketType.name,
+      },
     },
     {
       id: 'fullName',
@@ -83,6 +86,9 @@ export function generateTicketColumns(isAdmin: boolean) {
       cell: ({ row }) => {
         return <p className='w-full capitalize'>{row.original.fullName}</p>;
       },
+      meta: {
+        exportValue: (row) => row.original.fullName,
+      },
     },
     {
       id: 'mail',
@@ -107,6 +113,9 @@ export function generateTicketColumns(isAdmin: boolean) {
       enableResizing: false,
       cell: ({ row }) => {
         return <p className='w-full text-center'>{row.original.mail}</p>;
+      },
+      meta: {
+        exportValue: (row) => row.original.mail,
       },
     },
     {
@@ -137,12 +146,15 @@ export function generateTicketColumns(isAdmin: boolean) {
           </p>
         );
       },
+      meta: {
+        exportValue: (row) => row.original.ticketGroup.invitedBy || '-',
+      },
     },
     {
       id: 'scanned',
       accessorKey: 'scanned',
       meta: {
-        exportTransform: (value: unknown) => (value ? 'Sí' : 'No'),
+        exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
       },
       header: ({ column }) => {
         return (
@@ -180,6 +192,9 @@ export function generateTicketColumns(isAdmin: boolean) {
       id: 'actions',
       enableHiding: false,
       size: 10,
+      meta: {
+        exportValue: () => '',
+      },
       cell: ({ row }) => {
         const ticket = row.original;
         // eslint-disable-next-line react-hooks/rules-of-hooks

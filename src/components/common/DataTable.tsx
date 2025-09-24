@@ -1,15 +1,14 @@
 'use client';
 import {
-  type ColumnDef,
   type PaginationState,
   type SortingState,
+  type StrictColumnDef,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { format as formatDate } from 'date-fns';
 import { Download, Loader } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -24,22 +23,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import {
-  exportTableToXlsx,
-  extractTextFromReact,
-  stringifyValue,
-} from '@/lib/utils-client';
+import { exportTableToXlsx, extractTextFromReact } from '@/lib/utils-client';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
   fullWidth?: boolean;
-  columns: ColumnDef<TData, TValue>[];
+  columns: StrictColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
   onClickRow?: (id: string) => void;
   initialSortingColumn?: { id: keyof TData; desc: boolean };
   highlightedRowId?: string | null;
   exportFileName?: string;
-  exportExcludeColumnIds?: string[];
+  exportExcludeColumnIds?: string[]; // Ver type safety
   disableExport?: boolean;
 }
 
@@ -136,29 +131,13 @@ export function DataTable<TData extends { id: string }, TValue>({
           (cell) => !exportExcludeColumnIds.includes(cell.column.id as string),
         )
         .map((cell) => {
-          const meta = (
-            cell.column.columnDef as {
-              meta?: {
-                exportDateFormat?: string;
-                exportTransform?: (value: unknown) => string;
-              };
-            }
-          ).meta;
-          const raw = cell.getValue() as unknown;
-          let value: string;
-          if (meta?.exportTransform) {
-            value = meta.exportTransform(raw);
-          } else if (meta?.exportDateFormat) {
-            const date = raw instanceof Date ? raw : new Date(String(raw));
-            if (!isNaN(date.getTime())) {
-              value = formatDate(date, meta.exportDateFormat);
-            } else {
-              value = stringifyValue(raw);
-            }
-          } else {
-            value = stringifyValue(raw);
+          const meta = cell.column.columnDef.meta?.exportValue;
+
+          if (meta) {
+            return meta(row);
           }
-          return value;
+
+          return row.getValue(cell.column.id) as string;
         }),
     );
 
