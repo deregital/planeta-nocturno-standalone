@@ -40,6 +40,7 @@ interface DataTableProps<TData extends { id: string }, TValue> {
   highlightedRowId?: string | null;
   exportFileName?: string;
   exportExcludeColumnIds?: string[];
+  disableExport?: boolean;
 }
 
 export function DataTable<TData extends { id: string }, TValue>({
@@ -52,6 +53,7 @@ export function DataTable<TData extends { id: string }, TValue>({
   highlightedRowId,
   exportFileName = 'tabla',
   exportExcludeColumnIds = [],
+  disableExport = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
@@ -167,11 +169,13 @@ export function DataTable<TData extends { id: string }, TValue>({
 
   return (
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
-      <div className='flex justify-end p-2'>
-        <Button variant='outline' size='sm' onClick={handleExportXlsx}>
-          <Download className='size-4 mr-2' /> Exportar a Excel
-        </Button>
-      </div>
+      {!disableExport && (
+        <div className='flex justify-end p-2'>
+          <Button variant='outline' size='sm' onClick={handleExportXlsx}>
+            <Download className='size-4 mr-2' /> Exportar a Excel
+          </Button>
+        </div>
+      )}
       <Table className='bg-white' fullWidth={fullWidth}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
