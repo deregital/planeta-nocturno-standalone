@@ -1,13 +1,13 @@
 'use client';
-import { Calendar, ChevronDown } from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@radix-ui/react-accordion';
+import { Calendar, ChevronDown } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 import EventList from '@/components/events/admin/EventList';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,7 @@ export default function Client({
       <Separator className='border rounded-full border-accent-light' />
       <Accordion type='single' collapsible className='w-full'>
         <AccordionItem value='item-1' className='border-none'>
-          <AccordionTrigger className='hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-between'>
+          <AccordionTrigger className='cursor-pointer hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-between'>
             <p className='text-2xl font-bold text-accent group-hover:text-accent/80 transition-colors duration-200'>
               Eventos Pasados
             </p>
