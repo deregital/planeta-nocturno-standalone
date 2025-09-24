@@ -33,7 +33,7 @@ export function generateTicketColumns(isAdmin: boolean) {
   >[] = [
     {
       id: 'ticketType',
-      accessorKey: 'ticketType',
+      accessorFn: (row) => row.ticketType.name,
       header: ({ column }) => {
         return (
           <div
@@ -141,6 +141,9 @@ export function generateTicketColumns(isAdmin: boolean) {
     {
       id: 'scanned',
       accessorKey: 'scanned',
+      meta: {
+        exportTransform: (value: unknown) => (value ? 'Sí' : 'No'),
+      },
       header: ({ column }) => {
         return (
           <Button
