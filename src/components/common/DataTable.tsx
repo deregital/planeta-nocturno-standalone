@@ -114,14 +114,13 @@ export function DataTable<TData extends { id: string }, TValue>({
     const headers = headerGroup.headers
       .filter((h) => !exportExcludeColumnIds.includes(h.column.id as string))
       .map((h) => {
-        const def = h.column.columnDef;
-        if (typeof def.header === 'string') return def.header;
-        if (typeof def.header === 'function') {
-          const rendered = def.header(h.getContext());
-          const text = extractText(rendered);
-          if (text) return text;
+        const meta = h.column.columnDef.meta?.exportHeader;
+
+        if (meta) {
+          return meta;
         }
-        return (h.column.id as string) ?? '';
+
+        return h.id;
       });
 
     const rows = table.getRowModel().rows.map((row) =>

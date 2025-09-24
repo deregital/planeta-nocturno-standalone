@@ -138,6 +138,7 @@ export default function ComparativeTable() {
         header: () => <span className='font-medium text-2xl'>Información</span>,
         meta: {
           exportValue: (row) => row.original.label,
+          exportHeader: 'Información',
         },
       },
       ...selectedData.map((col) => ({
@@ -155,6 +156,7 @@ export default function ComparativeTable() {
         ),
         meta: {
           exportValue: null,
+          exportHeader: col.name,
         },
       })),
     ],

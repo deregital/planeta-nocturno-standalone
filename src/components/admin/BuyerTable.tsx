@@ -17,6 +17,7 @@ const columns: StrictColumnDef<AttendedEvent>[] = [
     accessorFn: (row) => row.eventName,
     meta: {
       exportValue: (row) => row.original.eventName || '-',
+      exportHeader: 'Evento',
     },
   },
   {
@@ -26,6 +27,7 @@ const columns: StrictColumnDef<AttendedEvent>[] = [
     cell: (info) => format(new Date(info.getValue() as string), 'dd/MM/yyyy'),
     meta: {
       exportValue: (row) => row.original.eventStartingDate || '-',
+      exportHeader: 'Fecha',
     },
   },
   {
@@ -34,6 +36,7 @@ const columns: StrictColumnDef<AttendedEvent>[] = [
     accessorFn: (row) => row.locationName,
     meta: {
       exportValue: (row) => row.original.locationName || '-',
+      exportHeader: 'Ubicación',
     },
   },
 ];

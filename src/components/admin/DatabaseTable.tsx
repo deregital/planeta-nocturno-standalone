@@ -35,6 +35,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     meta: {
       exportValue: (row) => row.original.dni,
+      exportHeader: 'DNI/Pasaporte',
     },
   },
   {
@@ -46,6 +47,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     meta: {
       exportValue: (row) => row.original.fullName,
+      exportHeader: 'Nombre',
     },
   },
   {
@@ -57,6 +59,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     meta: {
       exportValue: (row) => row.original.mail,
+      exportHeader: 'Mail',
     },
   },
   {
@@ -68,6 +71,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     meta: {
       exportValue: (row) => String(row.original.age),
+      exportHeader: 'Edad',
     },
   },
   {
@@ -99,6 +103,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     meta: {
       exportValue: (row) => format(row.original.birthDate, 'dd/MM/yyyy'),
+      exportHeader: 'Fecha de Nacimiento',
     },
     sortingFn: (rowA, rowB, columnId) => {
       const a = daysUntilBirthday(rowA.getValue(columnId) as string);
@@ -120,6 +125,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
           ? genderTranslation[gender as keyof typeof genderTranslation]
           : '-';
       },
+      exportHeader: 'Género',
     },
     cell: ({ row }) => {
       const gender = row.original.gender;
@@ -152,6 +158,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     meta: {
       exportValue: (row) =>
         formatPhoneNumber(row.original.phoneNumber, 'INTERNATIONAL') || '-',
+      exportHeader: 'Teléfono',
     },
   },
   {
@@ -164,6 +171,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     meta: {
       exportValue: (row) => row.original.instagram || '-',
+      exportHeader: 'Instagram',
     },
   },
 ];
