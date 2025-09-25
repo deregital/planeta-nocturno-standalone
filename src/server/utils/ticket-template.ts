@@ -5,12 +5,19 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
 
 import { getColorsAsHex } from '@/lib/get-colors';
-import { encryptString, getDMSansFonts } from '@/server/utils/utils';
+import {
+  encryptString,
+  getDMSansFonts,
+  measureTextWidth,
+} from '@/server/utils/utils';
 
-export function generateTicketTemplate(first_word: string): Template {
+export async function generateTicketTemplate(
+  first_word: string,
+  fontBold: Buffer<ArrayBufferLike>,
+): Promise<Template> {
   const { accentColor, textOnAccent: accentText } = getColorsAsHex();
 
-  const offset = (first_word.length + 1) * 9.7;
+  const offset = await measureTextWidth(`${first_word} `, fontBold, 20);
   return {
     schemas: [
       [
@@ -481,6 +488,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       locale: es,
     },
   );
+  const { fontBold, fontSemiBold, fontLight } = await getDMSansFonts();
 
   const normalizedDni = Number.isNaN(Number(ticket.dni))
     ? ticket.dni
@@ -488,7 +496,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
 
   const [firstWord, ...rest] =
     process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
-  const template = generateTicketTemplate(firstWord);
+  const template = await generateTicketTemplate(firstWord, fontBold);
 
   const inputs = [
     {
@@ -510,8 +518,6 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       invitedBy: ticket.invitedBy || '-',
     },
   ];
-
-  const { fontBold, fontSemiBold, fontLight } = await getDMSansFonts();
 
   const font: Font = {
     'DMSans-Bold': {

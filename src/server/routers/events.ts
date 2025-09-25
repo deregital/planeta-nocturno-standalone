@@ -3,17 +3,20 @@ import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq, gt, inArray, like, lt } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, like, lt, lte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import * as XLSX from 'xlsx';
 import z from 'zod';
 
 import {
+  emittedTicket,
   event as eventSchema,
   eventXUser,
   ticketGroup,
   ticketType,
   user,
 } from '@/drizzle/schema';
+import { genderTranslation } from '@/lib/translations';
 import {
   createEventSchema,
   eventSchema as eventSchemaZod,
@@ -39,8 +42,29 @@ import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.event.findMany({
-      where: eq(eventSchema.isDeleted, false),
+    const pastEvents = await ctx.db.query.event.findMany({
+      where: and(
+        eq(eventSchema.isDeleted, false),
+        lte(eventSchema.endingDate, new Date().toISOString()),
+      ),
+      with: {
+        ticketTypes: true,
+        location: {
+          columns: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+      orderBy: desc(eventSchema.endingDate),
+    });
+
+    const upcomingEvents = await ctx.db.query.event.findMany({
+      where: and(
+        eq(eventSchema.isDeleted, false),
+        gt(eventSchema.endingDate, new Date().toISOString()),
+      ),
       with: {
         ticketTypes: true,
         location: {
@@ -52,6 +76,8 @@ export const eventsRouter = router({
         },
       },
     });
+
+    return { pastEvents, upcomingEvents };
   }),
   getAuthorized: publicProcedure
     .input(z.string())
@@ -71,7 +97,26 @@ export const eventsRouter = router({
 
       const eventIds = userFound.eventXUsers.map((event) => event.event.id);
 
-      return ctx.db.query.event.findMany({
+      const pastEvents = await ctx.db.query.event.findMany({
+        where: and(
+          eq(eventSchema.isDeleted, false),
+          lte(eventSchema.endingDate, new Date().toISOString()),
+          inArray(eventSchema.id, eventIds),
+        ),
+        with: {
+          ticketTypes: true,
+          location: {
+            columns: {
+              id: true,
+              name: true,
+              address: true,
+            },
+          },
+        },
+        orderBy: desc(eventSchema.endingDate),
+      });
+
+      const upcomingEvents = await ctx.db.query.event.findMany({
         where: and(
           eq(eventSchema.isDeleted, false),
           gt(eventSchema.endingDate, new Date().toISOString()),
@@ -88,6 +133,8 @@ export const eventsRouter = router({
           },
         },
       });
+
+      return { pastEvents, upcomingEvents };
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
@@ -133,25 +180,6 @@ export const eventsRouter = router({
   getBySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const event = await ctx.db.query.event.findFirst({
       where: and(eq(eventSchema.slug, input), eq(eventSchema.isDeleted, false)),
-    });
-
-    if (!event) throw 'Evento no encontrado';
-
-    await ctx.db
-      .delete(ticketGroup)
-      .where(
-        and(
-          eq(ticketGroup.status, 'BOOKED'),
-          eq(ticketGroup.eventId, event.id),
-          lt(
-            ticketGroup.createdAt,
-            new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-          ),
-        ),
-      );
-
-    const data = await ctx.db.query.event.findFirst({
-      where: eq(eventSchema.slug, input),
       with: {
         ticketGroups: {
           with: {
@@ -189,9 +217,22 @@ export const eventsRouter = router({
       },
     });
 
-    if (!data) return null;
+    if (!event) return null;
 
-    return data;
+    await ctx.db
+      .delete(ticketGroup)
+      .where(
+        and(
+          eq(ticketGroup.status, 'BOOKED'),
+          eq(ticketGroup.eventId, event.id),
+          lt(
+            ticketGroup.createdAt,
+            new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+          ),
+        ),
+      );
+
+    return event;
   }),
   create: adminProcedure
     .input(
@@ -496,6 +537,79 @@ export const eventsRouter = router({
       } catch (error) {
         throw error;
       }
+    }),
+  exportXlsxByTicketType: adminProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+        with: {
+          ticketTypes: true,
+        },
+      });
+
+      if (!event) {
+        throw 'Evento no encontrado';
+      }
+
+      const tickets = await ctx.db.query.emittedTicket.findMany({
+        where: eq(emittedTicket.eventId, input),
+        with: {
+          ticketType: true,
+          ticketGroup: true,
+        },
+      });
+
+      const grouped: Record<string, typeof tickets> = {};
+      for (const t of tickets) {
+        const key = t.ticketType?.name ?? 'Sin tipo';
+        if (!grouped[key]) grouped[key] = [] as typeof tickets;
+        grouped[key].push(t);
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      for (const ticketType of event.ticketTypes) {
+        const typeName = ticketType.name;
+        const rows = grouped[typeName] || [];
+
+        const headers = [
+          'DNI/Pasaporte',
+          'Nombre',
+          'Mail',
+          'Teléfono',
+          'Instagram',
+          'Género',
+          'Fecha de Nacimiento',
+          'Fecha de Emisión',
+          'Usado',
+          'Invitado por',
+        ];
+        const aoa = [
+          headers,
+          ...rows.map((t) => [
+            t.dni,
+            t.fullName,
+            t.mail,
+            t.phoneNumber ?? '',
+            t.instagram ?? '',
+            t.gender
+              ? (genderTranslation[
+                  t.gender as keyof typeof genderTranslation
+                ] ?? t.gender)
+              : '',
+            t.birthDate ? new Date(t.birthDate) : '',
+            t.createdAt ? new Date(t.createdAt) : '',
+            t.scanned ? 'Sí' : 'No',
+            t.ticketGroup.invitedBy ?? '',
+          ]),
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        XLSX.utils.book_append_sheet(wb, ws, typeName.slice(0, 31));
+      }
+
+      const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      return new Uint8Array(out as ArrayBuffer);
     }),
   generatePresentismoGroupedTicketTypePDF: ticketingProcedure
     .input(z.object({ eventId: z.string() }))

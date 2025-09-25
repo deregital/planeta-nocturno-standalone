@@ -1,11 +1,12 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { CalendarIcon, ClockIcon, Loader2, MapPin } from 'lucide-react';
+import { SessionProvider } from 'next-auth/react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
-import { SessionProvider } from 'next-auth/react';
 
+import GoBack from '@/components/common/GoBack';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
@@ -13,7 +14,6 @@ import { ScanTicketModal } from '@/components/event/individual/ScanTicketModal';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { trpc } from '@/server/trpc/server';
-
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
 
@@ -23,6 +23,9 @@ async function EventDetails({ slug }: { slug: string }) {
 
   return (
     <div className='flex flex-col items-center mt-4'>
+      <div className='flex w-full px-4'>
+        <GoBack route='/admin/event' />
+      </div>
       <Image
         width={1000}
         height={1000}

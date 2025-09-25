@@ -1,30 +1,11 @@
-import { AlertTriangle } from 'lucide-react';
-
-import GoBack from '@/components/common/GoBack';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ErrorCard from '@/components/common/ErrorCard';
 
 export default function Page() {
   return (
-    <div className='flex justify-center items-center h-main-screen pb-64'>
-      <GoBack
-        route='/'
-        title='Volver al inicio'
-        className='absolute top-24 md:left-26 left-4'
-      />
-      <Card className='max-w-md w-full text-center shadow-lg m-4'>
-        <CardHeader>
-          <CardTitle className='text-2xl font-bold text-destructive flex items-center justify-center gap-2'>
-            <AlertTriangle className='w-6 h-6' />
-            Ha ocurrido un error
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className='text-muted-foreground'>
-            Algo salió mal, probablemente durante el proceso de pago. Intentá
-            nuevamente.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <ErrorCard
+      title='Ha ocurrido un error'
+      description='Algo salió mal, probablemente durante el proceso de pago. Intentá nuevamente.'
+      route='/'
+    />
   );
 }

@@ -7,6 +7,10 @@ import {
 import fs from 'fs';
 import path from 'path';
 
+import { PDFDocument } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import { type Fontkit } from 'pdf-lib/cjs/types/fontkit';
+
 export async function getDMSansFonts(): Promise<{
   fontBold: Buffer<ArrayBufferLike>;
   fontSemiBold: Buffer<ArrayBufferLike>;
@@ -78,4 +82,16 @@ export function decryptString(encryptedString: string): string {
   } catch (error) {
     throw error;
   }
+}
+
+export async function measureTextWidth(
+  text: string,
+  fontBytes: Buffer<ArrayBufferLike>,
+  fontSize: number,
+): Promise<number> {
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit as unknown as Fontkit);
+  const font = await pdfDoc.embedFont(fontBytes);
+
+  return font.widthOfTextAtSize(text, fontSize);
 }
