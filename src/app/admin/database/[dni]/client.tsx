@@ -1,6 +1,7 @@
 'use client';
-import { Cake, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
 import { format } from 'date-fns';
+import { format as formatPhoneNumber } from 'libphonenumber-js';
+import { Cake, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
 
 import AttendedEventsTable from '@/components/admin/BuyerTable';
 import { FilledCard } from '@/components/common/FilledCard';
@@ -45,7 +46,7 @@ export default function Client({
           {buyer.phoneNumber && (
             <div className='bg-[#00C500] hover:bg-[#00C500]/75'>
               <a
-                href={`https://wa.me/${buyer.phoneNumber.replace(/\D/g, '')}`}
+                href={`https://wa.me/${buyer.phoneNumber}`}
                 target='_blank'
                 rel='noopener noreferrer'
                 aria-label='WhatsApp'
@@ -97,7 +98,10 @@ export default function Client({
           </div>
           <div>
             <Phone />
-            <p>Número de teléfono: {buyer.phoneNumber}</p>
+            <p>
+              Número de teléfono:{' '}
+              {formatPhoneNumber(buyer.phoneNumber, 'INTERNATIONAL')}
+            </p>
           </div>
           <div>
             <Instagram />
@@ -109,7 +113,7 @@ export default function Client({
 
         <FilledCard className='flex flex-1 max-w-full p-4 flex-col text-accent-dark'>
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>
-          <AttendedEventsTable events={events} />
+          <AttendedEventsTable events={events} buyerName={buyer.fullName} />
         </FilledCard>
       </div>
     </div>

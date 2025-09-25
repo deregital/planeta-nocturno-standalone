@@ -1,8 +1,8 @@
 'use client';
 
-import { type RouterOutputs } from '@/server/routers/app';
 import { DataTable } from '@/components/common/DataTable';
 import { generateTicketColumns } from '@/components/event/individual/ticketsTable/columns';
+import { type RouterOutputs } from '@/server/routers/app';
 
 export function TicketTableSection({
   tickets,
@@ -18,6 +18,8 @@ export function TicketTableSection({
       columns={generateTicketColumns(isAdmin)}
       data={tickets}
       highlightedRowId={highlightedTicketId}
+      exportExcludeColumnIds={['actions']}
+      exportFileName={'Tickets'}
     />
   );
 }

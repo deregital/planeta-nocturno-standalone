@@ -1,6 +1,6 @@
 'use client';
 
-import { type ColumnDef } from '@tanstack/react-table';
+import { type StrictColumnDef } from '@tanstack/react-table';
 import {
   ArrowDownAZ,
   DownloadIcon,
@@ -28,12 +28,12 @@ import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
 export function generateTicketColumns(isAdmin: boolean) {
-  const columns: ColumnDef<
+  const columns: StrictColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
     {
       id: 'ticketType',
-      accessorKey: 'ticketType',
+      accessorFn: (row) => row.ticketType.name,
       header: ({ column }) => {
         return (
           <div
@@ -56,6 +56,10 @@ export function generateTicketColumns(isAdmin: boolean) {
             <span>{row.original.ticketType.name}</span>
           </div>
         );
+      },
+      meta: {
+        exportValue: (row) => row.original.ticketType.name,
+        exportHeader: 'Tipo',
       },
     },
     {
@@ -83,6 +87,10 @@ export function generateTicketColumns(isAdmin: boolean) {
       cell: ({ row }) => {
         return <p className='w-full capitalize'>{row.original.fullName}</p>;
       },
+      meta: {
+        exportValue: (row) => row.original.fullName,
+        exportHeader: 'Nombre',
+      },
     },
     {
       id: 'mail',
@@ -107,6 +115,10 @@ export function generateTicketColumns(isAdmin: boolean) {
       enableResizing: false,
       cell: ({ row }) => {
         return <p className='w-full text-center'>{row.original.mail}</p>;
+      },
+      meta: {
+        exportValue: (row) => row.original.mail,
+        exportHeader: 'Correo',
       },
     },
     {
@@ -137,10 +149,18 @@ export function generateTicketColumns(isAdmin: boolean) {
           </p>
         );
       },
+      meta: {
+        exportValue: (row) => row.original.ticketGroup.invitedBy || '-',
+        exportHeader: 'Invitado por',
+      },
     },
     {
       id: 'scanned',
       accessorKey: 'scanned',
+      meta: {
+        exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
+        exportHeader: 'Usado',
+      },
       header: ({ column }) => {
         return (
           <Button
@@ -177,6 +197,10 @@ export function generateTicketColumns(isAdmin: boolean) {
       id: 'actions',
       enableHiding: false,
       size: 10,
+      meta: {
+        exportValue: () => '',
+        exportHeader: 'Acciones',
+      },
       cell: ({ row }) => {
         const ticket = row.original;
         // eslint-disable-next-line react-hooks/rules-of-hooks
