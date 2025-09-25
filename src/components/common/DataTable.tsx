@@ -123,7 +123,7 @@ export function DataTable<TData extends { id: string }, TValue>({
         return h.id;
       });
 
-    const rows = table.getRowModel().rows.map((row) =>
+    const rows = table.getCoreRowModel().rows.map((row) =>
       row
         .getVisibleCells()
         .filter(
