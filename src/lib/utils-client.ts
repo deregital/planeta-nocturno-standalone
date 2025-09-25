@@ -1,4 +1,5 @@
 'use client';
+
 import * as XLSX from 'xlsx';
 export function generateS3Url(objectKey: string): string {
   const bucketUrl = process.env.NEXT_PUBLIC_S3_BUCKET_URL;
@@ -6,25 +7,6 @@ export function generateS3Url(objectKey: string): string {
     throw new Error('S3_BUCKET_URL is not set');
   }
   return `${bucketUrl}/${objectKey}`;
-}
-
-export function stringifyValue(value: unknown): string {
-  if (value == null) return '';
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
-
-export function extractTextFromReact(node: unknown): string {
-  if (node == null) return '';
-  if (typeof node === 'string' || typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map(extractTextFromReact).join('');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((node as any)?.props?.children !== undefined) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return extractTextFromReact((node as any).props.children);
-  }
-  return '';
 }
 
 export function exportTableToXlsx(

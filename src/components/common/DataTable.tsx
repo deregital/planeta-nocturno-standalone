@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { exportTableToXlsx, extractTextFromReact } from '@/lib/utils-client';
+import { exportTableToXlsx } from '@/lib/utils-client';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
   fullWidth?: boolean;
@@ -104,10 +104,6 @@ export function DataTable<TData extends { id: string }, TValue>({
       enableResizing: false,
     },
   });
-
-  function extractText(node: unknown): string {
-    return extractTextFromReact(node);
-  }
 
   function handleExportXlsx() {
     const headerGroup = table.getHeaderGroups()[0];
