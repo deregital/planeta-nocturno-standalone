@@ -44,7 +44,10 @@ export default function Client({
               <TicketPurchase
                 eventId={event.id}
                 ticketTypes={event.ticketTypes.filter(
-                  (ticketType) => ticketType.visibleInWeb,
+                  (ticketType) =>
+                    ticketType.visibleInWeb &&
+                    ticketType.maxSellDate &&
+                    ticketType.maxSellDate > new Date().toISOString(),
                 )}
                 invitedBy={publica}
               />
