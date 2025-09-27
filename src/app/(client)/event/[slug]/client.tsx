@@ -1,6 +1,7 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 
+import ErrorCard from '@/components/common/ErrorCard';
 import GoBack from '@/components/common/GoBack';
 import HeaderTickets from '@/components/event/buyPage/HeaderTickets';
 import InformationEvent from '@/components/event/buyPage/InformationEvent';
@@ -15,6 +16,16 @@ export default function Client({
   const searchParams = useSearchParams();
 
   const publica = searchParams.get('publica');
+
+  if (event.endingDate < new Date().toISOString()) {
+    return (
+      <ErrorCard
+        title='Evento finalizado'
+        description='El evento que buscas ya finalizó. Podés ver todos nuestros eventos en la página principal.'
+        route='/'
+      />
+    );
+  }
 
   return (
     <div>
@@ -33,7 +44,10 @@ export default function Client({
               <TicketPurchase
                 eventId={event.id}
                 ticketTypes={event.ticketTypes.filter(
-                  (ticketType) => ticketType.visibleInWeb,
+                  (ticketType) =>
+                    ticketType.visibleInWeb &&
+                    ticketType.maxSellDate &&
+                    ticketType.maxSellDate > new Date().toISOString(),
                 )}
                 invitedBy={publica}
               />
