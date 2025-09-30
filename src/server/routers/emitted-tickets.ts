@@ -208,10 +208,12 @@ export const emittedTicketsRouter = router({
       try {
         decryptedTicketId = decryptString(input.barcode);
       } catch {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Cadena inválida',
-        });
+        return {
+          success: false,
+          ticket: null,
+          text: 'Ticket no encontrado',
+          extraInfo: '',
+        };
       }
 
       const ticket = await ctx.db.query.emittedTicket.findFirst({
