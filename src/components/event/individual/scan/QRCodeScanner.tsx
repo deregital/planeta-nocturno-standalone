@@ -3,10 +3,10 @@
 import { Scanner } from '@yudiel/react-qr-scanner';
 
 export function QRCodeScanner({
-  onScanSuccess,
+  onScanSuccessAction,
   isLoading,
 }: {
-  onScanSuccess: (result: string) => void;
+  onScanSuccessAction: (result: string) => void;
   isLoading: boolean;
 }) {
   return (
@@ -25,7 +25,7 @@ export function QRCodeScanner({
         }}
         scanDelay={100}
         formats={['qr_code']}
-        onScan={(result) => onScanSuccess(result[0].rawValue)}
+        onScan={(result) => onScanSuccessAction(result[0].rawValue)}
       />
     </div>
   );

@@ -1,30 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { type ExternalToast, toast } from 'sonner';
+import { X, Check } from 'lucide-react';
 
 import { QRCodeScanner } from '@/components/event/individual/scan/QRCodeScanner';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
+
+const successOptions: ExternalToast = {
+  dismissible: true,
+  richColors: true,
+  cancel: true,
+  duration: 10000,
+  position: 'bottom-center',
+  icon: <Check className='size-4 text-green-500' />,
+};
+
+const errorOptions: ExternalToast = {
+  dismissible: true,
+  richColors: true,
+  cancel: true,
+  duration: 10000,
+  position: 'bottom-center',
+  icon: <X className='size-4 text-red-500' />,
+};
 
 export default function ScanClient({
   event,
 }: {
   event: NonNullable<RouterOutputs['events']['getBySlug']>;
 }) {
-  const [results, setResults] = useState<
-    RouterOutputs['emittedTickets']['scan'][]
-  >([]);
   const scanMutation = trpc.emittedTickets.scan.useMutation({
     onError: (error) => {
-      setResults((prev) => [
-        ...prev,
-        {
-          success: false,
-          ticket: null,
-          text: error.message,
-          extraInfo: '',
-        },
-      ]);
+      toast.error(`${error.message}`, {
+        ...errorOptions,
+      });
     },
   });
 
@@ -32,30 +42,25 @@ export default function ScanClient({
     <div>
       <QRCodeScanner
         isLoading={scanMutation.isPending}
-        onScanSuccess={async (raw) => {
-          const result = await scanMutation.mutateAsync({
-            eventId: event.id,
-            barcode: raw,
-          });
-
-          setResults((prev) => [...prev, result]);
+        onScanSuccessAction={async (raw) => {
+          await scanMutation
+            .mutateAsync({
+              eventId: event.id,
+              barcode: raw,
+            })
+            .then((result) => {
+              if (result.success) {
+                toast.success(`${result.text}\n${result.extraInfo}`, {
+                  ...successOptions,
+                });
+              } else {
+                toast.error(`${result.text}\n${result.extraInfo}`, {
+                  ...errorOptions,
+                });
+              }
+            });
         }}
       />
-      <div className='w-screen'>
-        {results.map((result, idx) =>
-          result.success ? (
-            <div className='bg-green-500' key={idx}>
-              <p>{result.text}</p>
-              <p>{result.extraInfo}</p>
-            </div>
-          ) : (
-            <div className='bg-red-500' key={idx}>
-              <p>{result.text}</p>
-              <p>{result.extraInfo}</p>
-            </div>
-          ),
-        )}
-      </div>
     </div>
   );
 }
