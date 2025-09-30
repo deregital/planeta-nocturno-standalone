@@ -11,14 +11,27 @@ export default function ScanClient({
 }: {
   event: NonNullable<RouterOutputs['events']['getBySlug']>;
 }) {
-  const scanMutation = trpc.emittedTickets.scan.useMutation();
   const [results, setResults] = useState<
     RouterOutputs['emittedTickets']['scan'][]
   >([]);
+  const scanMutation = trpc.emittedTickets.scan.useMutation({
+    onError: (error) => {
+      setResults((prev) => [
+        ...prev,
+        {
+          success: false,
+          ticket: null,
+          text: error.message,
+          extraInfo: '',
+        },
+      ]);
+    },
+  });
 
   return (
     <div>
       <QRCodeScanner
+        isLoading={scanMutation.isPending}
         onScanSuccess={async (raw) => {
           const result = await scanMutation.mutateAsync({
             eventId: event.id,
@@ -27,7 +40,6 @@ export default function ScanClient({
 
           setResults((prev) => [...prev, result]);
         }}
-        onScanError={() => {}}
       />
       <div className='w-screen'>
         {results.map((result, idx) =>

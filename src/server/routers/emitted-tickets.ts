@@ -232,10 +232,12 @@ export const emittedTicketsRouter = router({
       });
 
       if (!ticket) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Ticket no encontrado',
-        });
+        return {
+          success: false,
+          ticket: null,
+          text: 'Ticket no encontrado',
+          extraInfo: '',
+        };
       }
       let extraInfo: string = '';
 
