@@ -65,7 +65,7 @@ export default function EventCategoryModal({
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
     }
-  }, [createMutation.isSuccess, toastMsg]);
+  }, [createMutation.isSuccess, toastMsg, setOpen]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
