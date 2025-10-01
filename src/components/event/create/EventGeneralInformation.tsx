@@ -379,7 +379,7 @@ export function EventGeneralInformation({
                   }))
                   .concat([
                     {
-                      label: '+ Crear categoria',
+                      label: '+ Crear categoría',
                       value: 'CREATE_NEW',
                     },
                   ])
