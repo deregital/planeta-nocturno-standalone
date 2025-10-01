@@ -18,7 +18,7 @@ function TicketPurchase({
   eventId,
   invitedBy,
 }: {
-  ticketTypes: RouterOutputs['events']['getById']['ticketTypes'];
+  ticketTypes: NonNullable<RouterOutputs['events']['getBySlug']>['ticketTypes'];
   eventId: string;
   invitedBy: string | null;
 }) {
@@ -59,7 +59,11 @@ function TicketPurchase({
           {ticketsTypeAvailable.map((type, index) => {
             return (
               <React.Fragment key={index}>
-                <div className='text-black text-[12px] sm:text-[16px] font-normal'>
+                <div
+                  className={`text-[12px] sm:text-[16px] font-normal ${
+                    type.leftAvailable ? 'text-red-500' : 'text-black'
+                  }`}
+                >
                   {type.name}
                 </div>
                 <div className='text-black text-[12px] sm:text-[16px] font-normal text-center'>
@@ -70,6 +74,13 @@ function TicketPurchase({
                   )}
                 </div>
                 <div className='flex justify-end'>
+                  {type.leftAvailable && (
+                    <div className='justify-center items-center hidden lg:flex max-w-36'>
+                      <span className='self-center text-red-500 font-medium text-[12px] sm:text-[16px]'>
+                        ¡Quedan {type.leftAvailable} entradas!
+                      </span>
+                    </div>
+                  )}
                   {!type.disabled ? (
                     <Select
                       value={quantity
@@ -106,6 +117,20 @@ function TicketPurchase({
           })}
         </div>
       )}
+      <div className='flex flex-col justify-center items-center lg:hidden'>
+        {ticketsTypeAvailable.map(
+          (ticket) =>
+            ticket.leftAvailable !== null && (
+              <span
+                key={ticket.id}
+                className='self-center text-red-500 font-medium text-[12px] sm:text-[16px] lg:hidden'
+              >
+                ¡Quedan {ticket.leftAvailable} entradas para{' '}
+                <span className='font-bold'>{ticket.name}</span>!
+              </span>
+            ),
+        )}
+      </div>
 
       {/* Botón de compra */}
       <div className='mt-4 grid grid-cols-3'>
