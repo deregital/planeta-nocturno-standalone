@@ -211,6 +211,10 @@ export function EventGeneralInformation({
             name='startTime'
             value={format(event.startingDate, 'HH:mm')}
             onChange={(e) => {
+              if (!e.target.value) {
+                return;
+              }
+
               const [hours, minutes] = e.target.value.split(':');
               const newDate = toDate(event.startingDate, {});
               newDate.setHours(parseInt(hours), parseInt(minutes));
@@ -244,6 +248,10 @@ export function EventGeneralInformation({
             name='endTime'
             value={format(event.endingDate, 'HH:mm')}
             onChange={(e) => {
+              if (!e.target.value) {
+                return;
+              }
+
               const [hours, minutes] = e.target.value.split(':');
               const newDate = toDate(event.startingDate, {});
               newDate.setHours(parseInt(hours), parseInt(minutes));
