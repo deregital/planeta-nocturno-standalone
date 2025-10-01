@@ -165,9 +165,7 @@ export function EventGeneralInformation({
         )}
       </section>
       <section>
-        <h3 className='text-accent-dark text-lg font-semibold'>
-          Descripción general del evento
-        </h3>
+        <h3 className='text-accent-dark text-lg font-semibold'>Fecha y hora</h3>
         <div className='flex flex-col gap-2 md:!flex-row'>
           <InputDateWithLabel
             label='Fecha del evento'
