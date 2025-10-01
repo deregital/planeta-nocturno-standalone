@@ -58,7 +58,7 @@ export default function LocationModal({
       toast(`¡Se ha ${toastMsg} la locación con éxito!`);
       onSuccess?.();
     }
-  }, [state, toastMsg, onSuccess]);
+  }, [state, toastMsg, onSuccess, setOpen]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -124,7 +124,7 @@ export function DataTable<TData extends { id: string }, TValue>({
     if (state.ok) {
       handleExportXlsx();
     }
-  }, [state.ok]);
+  }, [state.ok, handleExportXlsx]);
 
   function handleExportXlsx() {
     const headerGroup = table.getHeaderGroups()[0];
