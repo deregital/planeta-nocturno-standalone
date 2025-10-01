@@ -290,9 +290,12 @@ export default function TicketTypeModal({
                         )
                       : ''
                   }
-                  onChange={(e) =>
-                    handleInputChange('scanLimit', new Date(e.target.value))
-                  }
+                  onChange={(e) => {
+                    if (!e.target.value) {
+                      return;
+                    }
+                    handleInputChange('scanLimit', new Date(e.target.value));
+                  }}
                   className='w-full'
                 />
               ) : (
@@ -342,9 +345,12 @@ export default function TicketTypeModal({
                         )
                       : ''
                   }
-                  onChange={(e) =>
-                    handleInputChange('maxSellDate', new Date(e.target.value))
-                  }
+                  onChange={(e) => {
+                    if (!e.target.value) {
+                      return;
+                    }
+                    handleInputChange('maxSellDate', new Date(e.target.value));
+                  }}
                   className='w-full'
                 />
               ) : (
