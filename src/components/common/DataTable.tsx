@@ -10,10 +10,21 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Download, Loader } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useActionState, useEffect, useMemo, useState } from 'react';
 
+import { validatePassword } from '@/app/actions/DataTable';
 import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -105,6 +116,16 @@ export function DataTable<TData extends { id: string }, TValue>({
     },
   });
 
+  const [state, action, isPending] = useActionState(validatePassword, {
+    ok: false,
+  });
+
+  useEffect(() => {
+    if (state.ok) {
+      handleExportXlsx();
+    }
+  }, [state.ok]);
+
   function handleExportXlsx() {
     const headerGroup = table.getHeaderGroups()[0];
     const headers = headerGroup.headers
@@ -145,9 +166,42 @@ export function DataTable<TData extends { id: string }, TValue>({
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
       {!disableExport && (
         <div className='flex justify-end p-2'>
-          <Button variant='outline' size='sm' onClick={handleExportXlsx}>
-            <Download className='size-4 mr-2' /> Exportar a Excel
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant='outline' size='sm'>
+                <Download className='size-4 mr-2' /> Exportar a Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form action={action}>
+                <DialogHeader>
+                  <DialogTitle>Introducí tu contraseña</DialogTitle>
+                  <DialogDescription>
+                    Para exportar la tabla, introducí la contraseña de tu
+                    cuenta.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className='mt-2 mb-4'>
+                  <Input
+                    type='password'
+                    id='password'
+                    name='password'
+                    placeholder='******'
+                  />
+                  {state.error && (
+                    <p className='text-sm pl-1 font-bold text-red-500'>
+                      {state.error}
+                    </p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button size='sm' type='submit' disabled={isPending}>
+                    Verificar y exportar
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
       <Table className='bg-white' fullWidth={fullWidth}>
