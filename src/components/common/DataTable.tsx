@@ -10,7 +10,13 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Download, Loader } from 'lucide-react';
-import { useActionState, useEffect, useMemo, useState } from 'react';
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { validatePassword } from '@/app/actions/DataTable';
 import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
@@ -124,9 +130,9 @@ export function DataTable<TData extends { id: string }, TValue>({
     if (state.ok) {
       handleExportXlsx();
     }
-  }, [state.ok, handleExportXlsx]);
+  }, [state.ok]);
 
-  function handleExportXlsx() {
+  const handleExportXlsx = useCallback(() => {
     const headerGroup = table.getHeaderGroups()[0];
     const headers = headerGroup.headers
       .filter((h) => !exportExcludeColumnIds.includes(h.column.id as string))
@@ -160,7 +166,7 @@ export function DataTable<TData extends { id: string }, TValue>({
     const flatRows = rows.map((cells) => cells.map((value) => value));
 
     exportTableToXlsx(headers, flatRows, exportFileName);
-  }
+  }, [table, exportExcludeColumnIds, exportFileName]);
 
   return (
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
