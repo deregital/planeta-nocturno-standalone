@@ -66,6 +66,7 @@ export default function TicketTypeModal({
         category,
         id: ticketType.id,
         visibleInWeb: ticketType.visibleInWeb,
+        lowStockThreshold: ticketType.lowStockThreshold,
       };
     }
     return {
@@ -79,6 +80,7 @@ export default function TicketTypeModal({
       category,
       id: crypto.randomUUID(),
       visibleInWeb: true,
+      lowStockThreshold: null,
     };
   }
 
@@ -376,6 +378,21 @@ export default function TicketTypeModal({
                 }}
               />
             </div>
+          </FormRow>
+          <FormRow>
+            <InputWithLabel
+              id='lowStockThreshold'
+              name='lowStockThreshold'
+              label='Cantidad de entradas para mostrar baja disponibilidad'
+              type='number'
+              error={error.lowStockThreshold}
+              value={editingTicketType.lowStockThreshold ?? 0}
+              onChange={(e) => {
+                const value = e.target.value;
+                const numericValue = Number(value) === 0 ? null : Number(value);
+                handleInputChange('lowStockThreshold', numericValue);
+              }}
+            />
           </FormRow>
           <DialogFooter className='flex !flex-col gap-4'>
             <p className='text-sm text-accent'>

@@ -120,6 +120,18 @@ export async function validateTicketType(
     };
   }
 
+  // Validate lowStockThreshold is not greater than maxAvailable
+  if (
+    validation.data.lowStockThreshold &&
+    validation.data.lowStockThreshold > validation.data.maxAvailable
+  ) {
+    errors.lowStockThreshold = {
+      errors: [
+        `La cantidad de entradas no puede ser mayor a la cantidad de entradas disponibles (${validation.data.maxAvailable})`,
+      ],
+    };
+  }
+
   if (Object.keys(errors).length > 0) {
     return {
       success: false,

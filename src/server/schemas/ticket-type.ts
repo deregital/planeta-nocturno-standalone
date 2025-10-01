@@ -21,6 +21,13 @@ export const ticketTypeSchema = z.object({
     .date({ error: 'La fecha de escaneo no es válida' })
     .nullable(),
   visibleInWeb: z.boolean(),
+  lowStockThreshold: z
+    .number()
+    .min(0, {
+      error:
+        'La cantidad de entradas para mostrar baja disponibilidad debe ser mayor o igual a 0',
+    })
+    .nullable(),
 });
 
 export const createTicketTypeSchema = ticketTypeSchema;
