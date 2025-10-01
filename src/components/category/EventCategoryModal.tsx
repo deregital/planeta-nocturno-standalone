@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
-import { type EventCategory } from '@/server/schemas/event-category';
+import InputWithLabel from '@/components/common/InputWithLabel';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -16,18 +17,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import InputWithLabel from '@/components/common/InputWithLabel';
+import { type EventCategory } from '@/server/schemas/event-category';
 import { trpc } from '@/server/trpc/client';
 
 type EventCategoryModalProps = {
   action: 'CREATE' | 'EDIT';
   category?: EventCategory;
+  onSuccess?: () => void;
+  openController?: (open: boolean) => void;
+  open?: boolean;
 };
 
 export default function EventCategoryModal({
   action,
   category,
+  onSuccess,
+  openController,
+  open: controlledOpen,
 }: EventCategoryModalProps) {
   const router = useRouter();
   const createMutation = trpc.eventCategory.create.useMutation({
@@ -35,6 +41,7 @@ export default function EventCategoryModal({
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
       router.refresh();
+      onSuccess?.();
     },
   });
   const editMutation = trpc.eventCategory.edit.useMutation({
@@ -42,10 +49,16 @@ export default function EventCategoryModal({
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
       router.refresh();
+      onSuccess?.();
     },
   });
   const [name, setName] = useState(category?.name || '');
   const toastMsg = action === 'CREATE' ? 'creado' : 'modificado';
+
+  const [internalOpen, internalSetOpen] = useState(false);
+
+  const open = controlledOpen || internalOpen;
+  const setOpen = openController || internalSetOpen;
 
   useEffect(() => {
     if (createMutation.isSuccess) {
@@ -53,8 +66,6 @@ export default function EventCategoryModal({
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
     }
   }, [createMutation.isSuccess, toastMsg]);
-
-  const [open, setOpen] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

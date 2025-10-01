@@ -26,11 +26,17 @@ import { type Location } from '@/server/schemas/location';
 type LocationModalProps = {
   action: 'CREATE' | 'EDIT';
   location?: Location;
+  onSuccess?: () => void;
+  openController?: (open: boolean) => void;
+  open?: boolean;
 };
 
 export default function LocationModal({
   action,
   location,
+  onSuccess,
+  openController,
+  open: controlledOpen,
 }: LocationModalProps) {
   const actionHandler = action === 'CREATE' ? handleCreate : handleUpdate;
   const toastMsg = action === 'CREATE' ? 'creado' : 'modificado';
@@ -41,14 +47,18 @@ export default function LocationModal({
     FormData
   >(actionHandler, location ?? {});
 
+  const [internalOpen, internalSetOpen] = useState(false);
+
+  const open = controlledOpen || internalOpen;
+  const setOpen = openController || internalSetOpen;
+
   useEffect(() => {
     if (state.success) {
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la locación con éxito!`);
+      onSuccess?.();
     }
-  }, [state, toastMsg]);
-
-  const [open, setOpen] = useState(false);
+  }, [state, toastMsg, onSuccess]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -68,7 +78,12 @@ export default function LocationModal({
         )}
       </DialogTrigger>
       <DialogContent>
-        <form action={createAction}>
+        <form
+          action={createAction}
+          onSubmit={(e) => {
+            e.stopPropagation();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               <p className='font-bold text-xl'>Crear locación</p>
