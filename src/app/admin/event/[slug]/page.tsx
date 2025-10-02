@@ -10,10 +10,11 @@ import GoBack from '@/components/common/GoBack';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
-import { ScanTicketModal } from '@/components/event/individual/ScanTicketModal';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { trpc } from '@/server/trpc/server';
+import { ScanTicket } from '@/components/event/individual/ScanTicket';
+
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
 
@@ -76,7 +77,7 @@ async function EventDetails({ slug }: { slug: string }) {
                 <DeleteEventModal event={event} />
               </div>
               <div className='md:order-2 order-1'>
-                <ScanTicketModal eventId={event.id} />
+                <ScanTicket eventId={event.id} eventSlug={event.slug} />
               </div>
               <div className='md:order-3 order-2'>
                 <EmitTicketModal event={event} />

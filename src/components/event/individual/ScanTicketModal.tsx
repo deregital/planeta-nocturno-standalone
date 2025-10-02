@@ -1,6 +1,5 @@
 'use client';
 
-import { ScanBarcode } from 'lucide-react';
 import { useRef } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,13 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
-export function ScanTicketModal({ eventId }: { eventId: string }) {
+export function ScanTicketModal({
+  eventId,
+  trigger,
+}: {
+  eventId: string;
+  trigger: React.ReactNode;
+}) {
   const scanMutation = trpc.emittedTickets.scan.useMutation();
   const utils = trpc.useUtils();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,12 +32,7 @@ export function ScanTicketModal({ eventId }: { eventId: string }) {
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button className='flex gap-x-5'>
-          Escanear ticket
-          <ScanBarcode className='size-5' />
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogTitle className='text-lg font-semibold'>
           Escanear ticket
