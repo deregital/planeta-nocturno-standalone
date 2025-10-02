@@ -1,20 +1,13 @@
 'use client';
 
 import { type ExternalToast, toast } from 'sonner';
-import { X, Check } from 'lucide-react';
+import { X } from 'lucide-react';
+import { useState } from 'react';
 
 import { QRCodeScanner } from '@/components/event/individual/scan/QRCodeScanner';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
-
-const successOptions: ExternalToast = {
-  dismissible: true,
-  richColors: true,
-  cancel: true,
-  duration: 10000,
-  position: 'bottom-center',
-  icon: <Check className='size-4 text-green-500' />,
-};
+import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
 
 const errorOptions: ExternalToast = {
   dismissible: true,
@@ -30,6 +23,9 @@ export default function ScanClient({
 }: {
   event: NonNullable<RouterOutputs['events']['getBySlug']>;
 }) {
+  const [lastScans, setLastScans] = useState<
+    RouterOutputs['emittedTickets']['scan'][]
+  >([]);
   const scanMutation = trpc.emittedTickets.scan.useMutation({
     onError: (error) => {
       toast.error(`${error.message}`, {
@@ -49,18 +45,13 @@ export default function ScanClient({
               barcode: raw,
             })
             .then((result) => {
-              if (result.success) {
-                toast.success(`${result.text}\n${result.extraInfo}`, {
-                  ...successOptions,
-                });
-              } else {
-                toast.error(`${result.text}\n${result.extraInfo}`, {
-                  ...errorOptions,
-                });
-              }
+              setLastScans([result, ...lastScans]);
             });
         }}
       />
+      <div className='p-4 w-full h-full'>
+        {lastScans.length > 0 && <LastScanCard lastScan={lastScans[0]} />}
+      </div>
     </div>
   );
 }
