@@ -6,7 +6,7 @@ export function LastScanCard({
   lastScan: RouterOutputs['emittedTickets']['scan'];
 }) {
   return (
-    <div className='w-full h-full rounded-2xl border-2 border-stroke overflow-hidden'>
+    <div className='w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
       {lastScan.success ? (
         <>
           <div className='bg-accent border-b border-stroke'>

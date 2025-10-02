@@ -8,6 +8,7 @@ import { QRCodeScanner } from '@/components/event/individual/scan/QRCodeScanner'
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
+import { LastScansHistory } from '@/components/event/individual/scan/LastScansHistory';
 
 const errorOptions: ExternalToast = {
   dismissible: true,
@@ -35,7 +36,10 @@ export default function ScanClient({
   });
 
   return (
-    <div>
+    <div className='relative'>
+      <div className='absolute top-2 right-2 z-10'>
+        <LastScansHistory lastScans={lastScans} />
+      </div>
       <QRCodeScanner
         isLoading={scanMutation.isPending}
         onScanSuccessAction={async (raw) => {
@@ -45,7 +49,7 @@ export default function ScanClient({
               barcode: raw,
             })
             .then((result) => {
-              setLastScans([result, ...lastScans]);
+              setLastScans((prev) => [result, ...prev]);
             });
         }}
       />
