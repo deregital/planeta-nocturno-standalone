@@ -138,7 +138,11 @@ export const eventsRouter = router({
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
-      where: eq(eventSchema.isActive, true),
+      where: and(
+        eq(eventSchema.isActive, true),
+        eq(eventSchema.isDeleted, false),
+        gt(eventSchema.endingDate, new Date().toISOString()),
+      ),
       with: {
         ticketTypes: true,
         location: {

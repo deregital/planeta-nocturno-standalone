@@ -173,7 +173,7 @@ export function EventGeneralInformation({
             label='Fecha del evento'
             id='eventDate'
             selected={event.startingDate}
-            className='flex-1'
+            className='flex-1 max-h-min'
             required
             onChange={(date) => {
               const startingDate = date;

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "migrate": "npx prisma migrate deploy && npx drizzle-kit introspect",
-    "dev": "next dev --turbopack --experimental-https",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --fix",
@@ -34,6 +34,7 @@
     "@trpc/client": "^11.4.3",
     "@trpc/react-query": "^11.4.3",
     "@trpc/server": "^11.4.3",
+    "@yudiel/react-qr-scanner": "^2.3.1",
     "bcrypt": "^6.0.0",
     "better-upload": "^1.0.2",
     "class-variance-authority": "^0.7.1",
@@ -63,6 +64,7 @@
     "sonner": "^2.0.7",
     "superjson": "^2.2.2",
     "tailwind-merge": "^3.3.1",
+    "vaul": "^1.1.2",
     "xlsx": "^0.18.5",
     "zod": "^4.0.5",
     "zustand": "^5.0.7"
