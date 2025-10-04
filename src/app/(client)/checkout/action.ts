@@ -1,5 +1,6 @@
 'use server';
 
+import type { Route } from 'next';
 import type z from 'zod';
 
 import { differenceInYears, parseISO } from 'date-fns';
@@ -213,6 +214,6 @@ export const handlePurchase = async (
 
     (await cookies()).delete('carrito');
 
-    redirect(url);
+    redirect(url as Route);
   }
 };

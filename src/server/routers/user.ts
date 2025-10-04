@@ -1,4 +1,4 @@
-import { hash } from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -30,6 +30,25 @@ export const userRouter = router({
     });
     return user;
   }),
+  isPasswordValid: publicProcedure
+    .input(
+      z.object({
+        username: z.string(),
+        password: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.db.query.user.findFirst({
+        where: eq(userTable.name, input.username),
+        columns: {
+          password: true,
+        },
+      });
+
+      if (!user) return null;
+
+      return await compare(input.password, user.password);
+    }),
   create: adminProcedure.input(userSchema).mutation(async ({ ctx, input }) => {
     const hashedPassword = await hash(input.password, 10);
     const user = await ctx.db.insert(userTable).values({

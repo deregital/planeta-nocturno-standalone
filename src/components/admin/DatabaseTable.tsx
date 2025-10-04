@@ -51,30 +51,6 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
   },
   {
-    accessorKey: 'mail',
-    header: () => <p className='text-sm p-2'>Mail</p>,
-    cell: ({ row }) => {
-      const mail = row.original.mail;
-      return <p className='text-sm p-2'>{mail}</p>;
-    },
-    meta: {
-      exportValue: (row) => row.original.mail,
-      exportHeader: 'Mail',
-    },
-  },
-  {
-    accessorKey: 'age',
-    header: () => <p className='text-sm p-2'>Edad</p>,
-    cell: ({ row }) => {
-      const age = row.original.age;
-      return <p className='text-sm p-2'>{age}</p>;
-    },
-    meta: {
-      exportValue: (row) => String(row.original.age),
-      exportHeader: 'Edad',
-    },
-  },
-  {
     accessorKey: 'birthDate',
     header: ({ column }) => {
       const sorted = column.getIsSorted();
@@ -113,6 +89,18 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     cell: ({ row }) => {
       const birthDate = row.original.birthDate;
       return <p className='text-sm p-2'>{format(birthDate, 'dd/MM/yyyy')}</p>;
+    },
+  },
+  {
+    accessorKey: 'age',
+    header: () => <p className='text-sm p-2'>Edad</p>,
+    cell: ({ row }) => {
+      const age = row.original.age;
+      return <p className='text-sm p-2'>{age}</p>;
+    },
+    meta: {
+      exportValue: (row) => String(row.original.age),
+      exportHeader: 'Edad',
     },
   },
   {
@@ -172,6 +160,19 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     meta: {
       exportValue: (row) => row.original.instagram || '-',
       exportHeader: 'Instagram',
+    },
+  },
+
+  {
+    accessorKey: 'mail',
+    header: () => <p className='text-sm p-2'>Mail</p>,
+    cell: ({ row }) => {
+      const mail = row.original.mail;
+      return <p className='text-sm p-2'>{mail}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.mail,
+      exportHeader: 'Mail',
     },
   },
 ];
