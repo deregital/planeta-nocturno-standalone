@@ -21,22 +21,19 @@ jobs:
       - name: Run Migrations on DEV DBs
         if: github.ref == 'refs/heads/dev'
         run: |
-          for var in $(compgen -e | grep '^DEV_DATABASE_URL_'); do
-            echo "▶ Running migrate deploy for ${!var}"
-            DATABASE_URL=${!var} npx prisma migrate deploy
+          SECRETS='${{ toJSON(secrets) }}'
+          echo "$SECRETS" | jq -r 'keys[] | select(startswith("DEV_DATABASE_URL_"))' | while read -r secret_name; do
+            DATABASE_URL=$(echo "$SECRETS" | jq -r ".[\"$secret_name\"]")
+            echo "▶ Running migrate deploy for $secret_name"
+            DATABASE_URL="$DATABASE_URL" npx prisma migrate deploy
           done
-        env:
-          DEV_DATABASE_URL_PLANETA_NOCTURNO: ${{ secrets.DEV_DATABASE_URL_PLANETA_NOCTURNO }}
-          # Agregá más DEV_DATABASE_URL_X sin tocar el script
 
       - name: Run Migrations on PROD DBs
         if: github.ref == 'refs/heads/master'
         run: |
-          for var in $(compgen -e | grep '^PROD_DATABASE_URL_'); do
-            echo "▶ Running migrate deploy for ${!var}"
-            DATABASE_URL=${!var} npx prisma migrate deploy
+          SECRETS='${{ toJSON(secrets) }}'
+          echo "$SECRETS" | jq -r 'keys[] | select(startswith("PROD_DATABASE_URL_"))' | while read -r secret_name; do
+            DATABASE_URL=$(echo "$SECRETS" | jq -r ".[\"$secret_name\"]")
+            echo "▶ Running migrate deploy for $secret_name"
+            DATABASE_URL="$DATABASE_URL" npx prisma migrate deploy
           done
-        env:
-          PROD_DATABASE_URL_DEMO_PLANETA_NOCTURNO: ${{ secrets.PROD_DATABASE_URL_DEMO_PLANETA_NOCTURNO }}
-          # PROD_DATABASE_URL_JUANA_TICKETS: ${{ secrets.PROD_DATABASE_URL_JUANA_TICKETS }}
-          # Agregá más PROD_DATABASE_URL_X sin tocar el script

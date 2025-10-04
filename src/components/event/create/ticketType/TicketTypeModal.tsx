@@ -409,6 +409,7 @@ export default function TicketTypeModal({
                 label='Cantidad de entradas para mostrar baja disponibilidad'
                 type='number'
                 min={0}
+                max={editingTicketType.maxAvailable}
                 error={error.lowStockThreshold}
                 value={editingTicketType.lowStockThreshold ?? 0}
                 className='w-full'
