@@ -29,6 +29,87 @@ export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
 
 export const ticketGroup = pgTable(
   'ticketGroup',
+export const prismaMigrations = pgTable('_prisma_migrations', {
+  id: varchar({ length: 36 }).primaryKey().notNull(),
+  checksum: varchar({ length: 64 }).notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
+  migrationName: varchar('migration_name', { length: 255 }).notNull(),
+  logs: text(),
+  rolledBackAt: timestamp('rolled_back_at', {
+    withTimezone: true,
+    mode: 'string',
+  }),
+  startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' })
+    .defaultNow()
+    .notNull(),
+  appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
+});
+
+export const user = pgTable(
+  'user',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    password: text().notNull(),
+    email: text().notNull(),
+    emailVerified: timestamp({ withTimezone: true, mode: 'string' }),
+    image: text(),
+    fullName: text().notNull(),
+    role: role().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('user_email_key').using(
+      'btree',
+      table.email.asc().nullsLast().op('text_ops'),
+    ),
+    uniqueIndex('user_name_key').using(
+      'btree',
+      table.name.asc().nullsLast().op('text_ops'),
+    ),
+  ],
+);
+
+export const session = pgTable(
+  'session',
+  {
+    sessionToken: text().notNull(),
+    userId: uuid().notNull(),
+    expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('session_sessionToken_key').using(
+      'btree',
+      table.sessionToken.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'session_userId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+export const location = pgTable('location', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+  address: text().notNull(),
+  googleMapsUrl: text().notNull(),
+  capacity: integer().notNull(),
+  createdAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export const event = pgTable(
+  'event',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
     status: ticketGroupStatus().notNull(),
