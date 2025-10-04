@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -7,7 +7,7 @@ import { type TicketType } from '@/server/types';
 
 export function useEventTickets(
   eventId: string,
-  ticketTypes: RouterOutputs['events']['getById']['ticketTypes'],
+  ticketTypes: NonNullable<RouterOutputs['events']['getBySlug']>['ticketTypes'],
 ) {
   const [quantity, setQuantity] = useState<
     { ticketTypeId: string; amount: number }[]
@@ -18,7 +18,7 @@ export function useEventTickets(
       Pick<
         TicketType,
         'id' | 'maxPerPurchase' | 'name' | 'description' | 'price'
-      > & { disabled: boolean }
+      > & { disabled: boolean; leftAvailable: number | null }
     >
   >([]);
 
@@ -40,6 +40,15 @@ export function useEventTickets(
 
         const disabled = ticketTypeEmitted >= type.maxAvailable;
 
+        const available = type.maxAvailable - ticketTypeEmitted;
+
+        const leftAvailable =
+          type.lowStockThreshold === null
+            ? null
+            : available <= type.lowStockThreshold
+              ? available
+              : null;
+
         const maxPerPurchase =
           type.maxAvailable - ticketTypeEmitted < type.maxPerPurchase
             ? type.maxAvailable - ticketTypeEmitted
@@ -52,6 +61,7 @@ export function useEventTickets(
           price: type.price,
           disabled,
           maxPerPurchase,
+          leftAvailable,
         };
       }),
     );

@@ -66,6 +66,7 @@ export default function TicketTypeModal({
         category,
         id: ticketType.id,
         visibleInWeb: ticketType.visibleInWeb,
+        lowStockThreshold: ticketType.lowStockThreshold,
       };
     }
     return {
@@ -79,6 +80,7 @@ export default function TicketTypeModal({
       category,
       id: crypto.randomUUID(),
       visibleInWeb: true,
+      lowStockThreshold: null,
     };
   }
 
@@ -96,6 +98,12 @@ export default function TicketTypeModal({
   const [hasMaxSellDate, setHasMaxSellDate] = useState(
     ticketType?.maxSellDate !== event.startingDate,
   );
+
+  const [hasLowStockThreshold, setHasLowStockThreshold] = useState(
+    ticketType?.lowStockThreshold !== undefined &&
+      ticketType?.lowStockThreshold !== null,
+  );
+  console.log(hasLowStockThreshold);
 
   function handleInputChange<T extends keyof CreateTicketTypeSchema>(
     field: T,
@@ -123,6 +131,16 @@ export default function TicketTypeModal({
       setEditingTicketType((prev) => ({
         ...prev,
         maxSellDate: event.startingDate,
+      }));
+    }
+  }
+
+  function handleLowStockThresholdToggle(checked: boolean) {
+    setHasLowStockThreshold(checked);
+    if (!checked) {
+      setEditingTicketType((prev) => ({
+        ...prev,
+        lowStockThreshold: null,
       }));
     }
   }
@@ -288,9 +306,12 @@ export default function TicketTypeModal({
                         )
                       : ''
                   }
-                  onChange={(e) =>
-                    handleInputChange('scanLimit', new Date(e.target.value))
-                  }
+                  onChange={(e) => {
+                    if (!e.target.value) {
+                      return;
+                    }
+                    handleInputChange('scanLimit', new Date(e.target.value));
+                  }}
                   className='w-full'
                 />
               ) : (
@@ -340,9 +361,12 @@ export default function TicketTypeModal({
                         )
                       : ''
                   }
-                  onChange={(e) =>
-                    handleInputChange('maxSellDate', new Date(e.target.value))
-                  }
+                  onChange={(e) => {
+                    if (!e.target.value) {
+                      return;
+                    }
+                    handleInputChange('maxSellDate', new Date(e.target.value));
+                  }}
                   className='w-full'
                 />
               ) : (
@@ -377,6 +401,53 @@ export default function TicketTypeModal({
               />
             </div>
           </FormRow>
+          <div className='flex'>
+            {hasLowStockThreshold ? (
+              <InputWithLabel
+                id='lowStockThreshold'
+                name='lowStockThreshold'
+                label='Cantidad de entradas para mostrar baja disponibilidad'
+                type='number'
+                min={0}
+                max={editingTicketType.maxAvailable}
+                error={error.lowStockThreshold}
+                value={editingTicketType.lowStockThreshold ?? 0}
+                className='w-full'
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const numericValue =
+                    Number(value) === 0 ? null : Number(value);
+                  handleInputChange('lowStockThreshold', numericValue);
+                }}
+              />
+            ) : (
+              <InputWithLabel
+                id='lowStockThreshold'
+                name='lowStockThreshold'
+                label='Cantidad de entradas para mostrar baja disponibilidad'
+                type='number'
+                error={error.lowStockThreshold}
+                value={
+                  editingTicketType.lowStockThreshold
+                    ? editingTicketType.lowStockThreshold
+                    : 0
+                }
+                className='w-full text-accent/50'
+                readOnly
+              />
+            )}
+            <InputWithLabel
+              label='¿Tiene?'
+              id='lowStockThresholdEnabled'
+              type='checkbox'
+              className='[&>input]:w-6 items-center'
+              name='lowStockThresholdEnabled'
+              checked={hasLowStockThreshold}
+              onChange={(e) => {
+                handleLowStockThresholdToggle(e.target.checked);
+              }}
+            />
+          </div>
           <DialogFooter className='flex !flex-col gap-4'>
             <p className='text-sm text-accent'>
               {`Esta entrada de tipo`}{' '}

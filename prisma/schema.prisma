@@ -141,15 +141,16 @@ model Location {
 }
 
 model TicketType {
-  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name           String
-  description    String
-  price          Float?
-  maxAvailable   Int
-  maxPerPurchase Int
-  category       TicketTypeCategory
-  maxSellDate    DateTime?          @db.Timestamptz
-  visibleInWeb   Boolean            @default(true)
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  description       String
+  price             Float?
+  maxAvailable      Int
+  maxPerPurchase    Int
+  category          TicketTypeCategory
+  maxSellDate       DateTime?          @db.Timestamptz
+  visibleInWeb      Boolean            @default(true)
+  lowStockThreshold Int?
 
   scanLimit DateTime? @db.Timestamptz
 

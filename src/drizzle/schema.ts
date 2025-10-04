@@ -4,11 +4,11 @@ import {
   timestamp,
   text,
   integer,
-  uniqueIndex,
-  uuid,
   foreignKey,
-  boolean,
+  uuid,
   doublePrecision,
+  boolean,
+  uniqueIndex,
   index,
   primaryKey,
   pgEnum,
@@ -42,6 +42,36 @@ export const prismaMigrations = pgTable('_prisma_migrations', {
     .notNull(),
   appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
 });
+
+export const ticketType = pgTable(
+  'ticketType',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    description: text().notNull(),
+    price: doublePrecision(),
+    maxAvailable: integer().notNull(),
+    maxPerPurchase: integer().notNull(),
+    category: ticketTypeCategory().notNull(),
+    maxSellDate: timestamp({ withTimezone: true, mode: 'string' }),
+    visibleInWeb: boolean().default(true).notNull(),
+    scanLimit: timestamp({ withTimezone: true, mode: 'string' }),
+    eventId: uuid().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    lowStockThreshold: integer(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'ticketType_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
 
 export const user = pgTable(
   'user',
@@ -150,35 +180,6 @@ export const eventCategory = pgTable('eventCategory', {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
-
-export const ticketType = pgTable(
-  'ticketType',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-    description: text().notNull(),
-    price: doublePrecision(),
-    maxAvailable: integer().notNull(),
-    maxPerPurchase: integer().notNull(),
-    category: ticketTypeCategory().notNull(),
-    maxSellDate: timestamp({ withTimezone: true, mode: 'string' }),
-    visibleInWeb: boolean().default(true).notNull(),
-    scanLimit: timestamp({ withTimezone: true, mode: 'string' }),
-    eventId: uuid().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.eventId],
-      foreignColumns: [event.id],
-      name: 'ticketType_eventId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
 
 export const ticketGroup = pgTable(
   'ticketGroup',

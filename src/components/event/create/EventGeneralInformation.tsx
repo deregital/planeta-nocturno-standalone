@@ -8,11 +8,13 @@ import { useState } from 'react';
 import { validateGeneralInformation } from '@/app/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
+import EventCategoryModal from '@/components/category/EventCategoryModal';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { UserBox } from '@/components/event/create/UserBox';
+import LocationModal from '@/components/location/LocationModal';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { generateS3Url } from '@/lib/utils-client';
@@ -42,10 +44,14 @@ export function EventGeneralInformation({
 }: EventGeneralInformationProps) {
   const event = useCreateEventStore((state) => state.event);
   const setEvent = useCreateEventStore((state) => state.setEvent);
+  const utils = trpc.useUtils();
 
   const { data: locations } = trpc.location.getAll.useQuery();
   const { data: categories } = trpc.eventCategory.getAll.useQuery();
   const { data: users } = trpc.user.getTicketingUsers.useQuery();
+
+  const [openLocationModal, setOpenLocationModal] = useState(false);
+  const [openCategoryModal, setOpenCategoryModal] = useState(false);
 
   const [error, setError] = useState<{
     [key: string]: string;
@@ -165,9 +171,7 @@ export function EventGeneralInformation({
         )}
       </section>
       <section>
-        <h3 className='text-accent-dark text-lg font-semibold'>
-          Descripción general del evento
-        </h3>
+        <h3 className='text-accent-dark text-lg font-semibold'>Fecha y hora</h3>
         <div className='flex flex-col gap-2 md:!flex-row'>
           <InputDateWithLabel
             label='Fecha del evento'
@@ -207,6 +211,10 @@ export function EventGeneralInformation({
             name='startTime'
             value={format(event.startingDate, 'HH:mm')}
             onChange={(e) => {
+              if (!e.target.value) {
+                return;
+              }
+
               const [hours, minutes] = e.target.value.split(':');
               const newDate = toDate(event.startingDate, {});
               newDate.setHours(parseInt(hours), parseInt(minutes));
@@ -240,6 +248,10 @@ export function EventGeneralInformation({
             name='endTime'
             value={format(event.endingDate, 'HH:mm')}
             onChange={(e) => {
+              if (!e.target.value) {
+                return;
+              }
+
               const [hours, minutes] = e.target.value.split(':');
               const newDate = toDate(event.startingDate, {});
               newDate.setHours(parseInt(hours), parseInt(minutes));
@@ -300,6 +312,30 @@ export function EventGeneralInformation({
         <h3 className='text-accent-dark text-lg font-semibold'>
           Ubicación y categoría
         </h3>
+        {action !== 'PREVIEW' && openLocationModal && (
+          <div className='hidden'>
+            <LocationModal
+              action='CREATE'
+              onSuccess={() => {
+                utils.location.getAll.invalidate();
+              }}
+              openController={setOpenLocationModal}
+              open={openLocationModal}
+            />
+          </div>
+        )}
+        {action !== 'PREVIEW' && openCategoryModal && (
+          <div className='hidden'>
+            <EventCategoryModal
+              action='CREATE'
+              onSuccess={() => {
+                utils.eventCategory.getAll.invalidate();
+              }}
+              openController={setOpenCategoryModal}
+              open={openCategoryModal}
+            />
+          </div>
+        )}
         <SelectWithLabel
           label='Locación'
           id='locationId'
@@ -308,13 +344,25 @@ export function EventGeneralInformation({
           required
           values={
             locations
-              ? locations.map((location) => ({
-                  label: `${location.name} (${location.address})`,
-                  value: location.id,
-                }))
+              ? locations
+                  .map((location) => ({
+                    label: `${location.name} (${location.address})`,
+                    value: location.id,
+                  }))
+                  .concat([
+                    {
+                      label: '+ Crear locación',
+                      value: 'CREATE_NEW',
+                    },
+                  ])
               : []
           }
           onValueChange={(value) => {
+            if (value === 'CREATE_NEW') {
+              setOpenLocationModal(true);
+              return;
+            }
+
             if (value === '') return;
             handleChange('locationId', value);
           }}
@@ -332,13 +380,25 @@ export function EventGeneralInformation({
           required
           values={
             categories
-              ? categories.map((category) => ({
-                  label: category.name,
-                  value: category.id,
-                }))
+              ? categories
+                  .map((category) => ({
+                    label: category.name,
+                    value: category.id,
+                  }))
+                  .concat([
+                    {
+                      label: '+ Crear categoría',
+                      value: 'CREATE_NEW',
+                    },
+                  ])
               : []
           }
           onValueChange={(value) => {
+            if (value === 'CREATE_NEW') {
+              setOpenCategoryModal(true);
+              return;
+            }
+
             if (value === '') return;
             handleChange('categoryId', value);
           }}
