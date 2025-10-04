@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-table';
 import { Download, Loader } from 'lucide-react';
 import {
+  startTransition,
   useActionState,
   useCallback,
   useEffect,
@@ -126,11 +127,17 @@ export function DataTable<TData extends { id: string }, TValue>({
     ok: false,
   });
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   useEffect(() => {
     if (state.ok) {
       handleExportXlsx();
+      setIsDialogOpen(false);
+      startTransition(() => {
+        action(new FormData());
+      });
     }
-  }, [state.ok]);
+  }, [state.ok, action]);
 
   const handleExportXlsx = useCallback(() => {
     const headerGroup = table.getHeaderGroups()[0];
@@ -172,7 +179,7 @@ export function DataTable<TData extends { id: string }, TValue>({
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
       {!disableExport && (
         <div className='flex justify-end p-2'>
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button variant='outline' size='sm'>
                 <Download className='size-4 mr-2' /> Exportar a Excel
