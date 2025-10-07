@@ -251,14 +251,24 @@ export const prismaMigrations = pgTable('_prisma_migrations', {
   appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
 });
 
-export const feature = pgTable('feature', {
-  key: uuid().defaultRandom().primaryKey().notNull(),
-  enabled: boolean().default(false).notNull(),
-  value: text(),
-  createdAt: timestamp({ withTimezone: true, mode: 'string' })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-});
+export const feature = pgTable(
+  'feature',
+  {
+    key: text().notNull(),
+    enabled: boolean().default(false).notNull(),
+    value: text(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    id: uuid().defaultRandom().primaryKey().notNull(),
+  },
+  (table) => [
+    uniqueIndex('feature_key_key').using(
+      'btree',
+      table.key.asc().nullsLast().op('text_ops'),
+    ),
+  ],
+);
 
 export const eventXUser = pgTable(
   '_EVENT_X_USER',

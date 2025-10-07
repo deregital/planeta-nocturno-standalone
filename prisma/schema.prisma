@@ -237,7 +237,8 @@ model EventCategory {
 }
 
 model Feature {
-  key     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key     String  @unique
   enabled Boolean @default(false)
   value   String?
 
