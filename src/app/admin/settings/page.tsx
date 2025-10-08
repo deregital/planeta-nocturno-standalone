@@ -7,13 +7,14 @@ import { toast } from 'sonner';
 import { handleUpdate } from '@/app/admin/settings/action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { trpc } from '@/server/trpc/client';
 
 const FEATURE_CONFIG = {
   [FEATURE_KEYS.DATATABLE_EXPORT]: {
-    label: 'Exportar base de datos',
+    label: 'Exportar tablas a Excel',
     valueType: '',
   },
   [FEATURE_KEYS.EMAIL_NOTIFICATION]: {
@@ -53,12 +54,12 @@ export default function Page() {
         return (
           <div key={featureKey} className='flex flex-col gap-2'>
             <div className='flex items-center gap-4'>
-              <label
+              <Label
                 htmlFor={`${featureKey}-enabled`}
                 className='text-lg font-medium'
               >
                 {config.label}
-              </label>
+              </Label>
               {config.valueType && (
                 <Input
                   id={`${featureKey}-value`}
