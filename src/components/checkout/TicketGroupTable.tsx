@@ -1,14 +1,36 @@
 import React from 'react';
 
+import { Skeleton } from '@/components/ui/skeleton';
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/client';
 
 export function TicketGroupTable({
   ticketGroup,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
 }) {
-  const totalPrice = ticketGroup.ticketTypePerGroups
-    .reduce((acc, type) => acc + (type.ticketType.price || 0) * type.amount, 0)
+  const { data: serviceFee, isLoading } = trpc.feature.getByKey.useQuery(
+    FEATURE_KEYS.SERVICE_FEE,
+  );
+
+  const subtotalPrice = ticketGroup.ticketTypePerGroups.reduce(
+    (acc, type) => acc + (type.ticketType.price || 0) * type.amount,
+    0,
+  );
+
+  const serviceFeePrice = subtotalPrice * Number(serviceFee?.value ?? 0);
+
+  const serviceFeeString = serviceFeePrice
+    .toLocaleString('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+    .replace(/\s/g, '');
+
+  const totalPriceString = (subtotalPrice + serviceFeePrice)
     .toLocaleString('es-AR', {
       style: 'currency',
       currency: 'ARS',
@@ -47,7 +69,24 @@ export function TicketGroupTable({
           </React.Fragment>
         ))}
       </div>
-      <p className='w-full text-start text-lg mt-6'>Total: {totalPrice}</p>
+
+      {isLoading ? (
+        <div className='flex flex-col gap-4 items-center w-full mt-4'>
+          <Skeleton className='w-full h-9' />
+          <Skeleton className='w-full h-9' />
+        </div>
+      ) : (
+        <>
+          {serviceFee?.enabled && (
+            <p className='w-full text-start text-lg mt-6'>
+              Costo de servicio: {serviceFeeString}
+            </p>
+          )}
+          <p className='w-full text-start text-lg mt-6'>
+            Total: {totalPriceString}
+          </p>
+        </>
+      )}
     </div>
   );
 }
