@@ -19,7 +19,9 @@ export function TicketGroupTable({
     0,
   );
 
-  const serviceFeePrice = subtotalPrice * Number(serviceFee?.value ?? 0);
+  const serviceFeePrice = serviceFee?.enabled
+    ? subtotalPrice * (Number(serviceFee?.value ?? 0) / 100)
+    : 0;
 
   const serviceFeeString = serviceFeePrice
     .toLocaleString('es-AR', {
