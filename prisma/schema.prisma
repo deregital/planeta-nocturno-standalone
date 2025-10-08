@@ -15,28 +15,40 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String    @unique
-  password      String
-  email         String    @unique
-  emailVerified DateTime? @db.Timestamptz
-  image         String?
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String @unique
+  fullName String
+  password String
+  email    String @unique
+  role     Role
+  code     String @unique @default(dbgenerated("upper(translate(substr(md5(random()::text), 1, 6),'0123456789abcdef','ABCDEFGHIJKLMNOPQRSTUVWXYZ'))"))
+  tags     Tag[]  @relation("USER_X_TAG")
+
   accounts      Account[]
   sessions      Session[]
+  emailVerified DateTime? @db.Timestamptz
+  image         String?
 
-  fullName String
-  role     Role
-
-  scannedTickets EmittedTicket[] @relation("USER_X_EMITTED_TICKET")
-
-  authorizedEvents Event[] @relation("EVENT_X_USER")
+  scannedTickets   EmittedTicket[] @relation("USER_X_EMITTED_TICKET")
+  authorizedEvents Event[]         @relation("EVENT_X_USER")
+  eventsRrpp       Event[]         @relation("EVENT_X_RRPP")
+  ticketXRRPP      TicketXRRPP[]   @relation("RRPP_X_TICKET")
 
   // Optional for WebAuthn support
   Authenticator Authenticator[]
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([code])
   @@map("user")
+}
+
+model Tag {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String
+  user User[] @relation("USER_X_TAG")
+
+  @@map("tag")
 }
 
 model Account {
@@ -118,6 +130,9 @@ model Event {
 
   authorizedUsers User[] @relation("EVENT_X_USER")
 
+  rrpps           User[]          @relation("EVENT_X_RRPP")
+  inviteCondition InviteCondition @default(TRADITIONAL)
+
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
   ticketGroups TicketGroup[] @relation("EVENT_X_TICKET_GROUP")
@@ -175,9 +190,10 @@ model TicketGroup {
   event         Event             @relation("EVENT_X_TICKET_GROUP", fields: [eventId], references: [id], onDelete: Cascade)
   invitedBy     String?
 
-  tickets EmittedTicket[] @relation("TICKET_X_TICKET_GROUP")
-
+  tickets            EmittedTicket[]      @relation("TICKET_X_TICKET_GROUP")
   ticketTypePerGroup TicketTypePerGroup[] @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP")
+
+  ticketXRRPP TicketXRRPP? @relation("TICKET_X_RRPP")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
@@ -236,9 +252,25 @@ model EventCategory {
   @@map("eventCategory")
 }
 
+model TicketXRRPP {
+  ticketGroupId String      @db.Uuid
+  ticketGroup   TicketGroup @relation("TICKET_X_RRPP", fields: [ticketGroupId], references: [id], onDelete: Cascade)
+
+  rrppId String @db.Uuid
+  rrpp   User   @relation("RRPP_X_TICKET", fields: [rrppId], references: [id])
+
+  code String @unique @default(dbgenerated("upper(translate(substr(md5(random()::text), 1, 6),'0123456789abcdef','ABCDEFGHIJKLMNOPQRSTUVWXYZ'))"))
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@id([ticketGroupId])
+  @@map("ticketXRRPP")
+}
+
 enum Role {
   ADMIN
   TICKETING
+  RRPP
 }
 
 enum TicketGroupStatus {
@@ -251,4 +283,9 @@ enum TicketTypeCategory {
   FREE
   PAID
   TABLE
+}
+
+enum InviteCondition {
+  TRADITIONAL
+  INVITATION
 }
