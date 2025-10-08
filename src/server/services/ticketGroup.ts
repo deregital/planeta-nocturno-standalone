@@ -43,7 +43,7 @@ export async function calculateTotalPrice({
   });
 
   if (serviceFee?.enabled) {
-    totalPrice += totalPrice * Number(serviceFee.value);
+    totalPrice += totalPrice * (Number(serviceFee.value) / 100);
   }
 
   return totalPrice;
