@@ -6,10 +6,17 @@ import { FEATURE_KEYS, type FeatureKey } from '@/server/constants/feature-keys';
 import { adminProcedure, router } from '@/server/trpc';
 
 const featureKeySchema = z.enum(
-  Object.keys(FEATURE_KEYS) as [FeatureKey, ...FeatureKey[]],
+  Object.values(FEATURE_KEYS) as [FeatureKey, ...FeatureKey[]],
 );
 
 export const featureRouter = router({
+  getByKey: adminProcedure
+    .input(featureKeySchema)
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.query.feature.findFirst({
+        where: eq(featureSchema.key, input),
+      });
+    }),
   isEnabledByKey: adminProcedure
     .input(featureKeySchema)
     .query(async ({ ctx, input }) => {
