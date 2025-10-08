@@ -103,7 +103,6 @@ export default function TicketTypeModal({
     ticketType?.lowStockThreshold !== undefined &&
       ticketType?.lowStockThreshold !== null,
   );
-  console.log(hasLowStockThreshold);
 
   function handleInputChange<T extends keyof CreateTicketTypeSchema>(
     field: T,

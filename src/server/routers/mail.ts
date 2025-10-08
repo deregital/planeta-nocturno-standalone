@@ -1,8 +1,10 @@
-import z from 'zod';
 import { TRPCError } from '@trpc/server';
+import { eq } from 'drizzle-orm';
+import z from 'zod';
 
+import { user } from '@/drizzle/schema';
+import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { publicProcedure, router } from '@/server/trpc';
-import { sendMail } from '@/server/services/mail';
 
 // Función de retry para manejar rate limits
 async function retryWithBackoff<T>(
@@ -74,6 +76,59 @@ export const mailRouter = router({
               body: input.body,
               attachments,
               eventName: input.eventName,
+            }),
+          3, // 3 intentos máximo
+          1000, // 1 segundo de delay
+        );
+
+        const { data, error } = result;
+
+        if (error) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Algo salió mal al enviar el mail',
+            cause: error,
+          });
+        }
+
+        return data;
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Algo salió mal al enviar el mail',
+          cause: error,
+        });
+      }
+    }),
+  sendNotification: publicProcedure
+    .input(
+      z.object({
+        eventName: z.string(),
+        ticketType: z.string(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { eventName, ticketType } = input;
+
+      const admin = await ctx.db.query.user.findFirst({
+        where: eq(user.role, 'ADMIN'),
+      });
+
+      // No deberia ser posible
+      if (!admin) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'No se encontró el administrador',
+        });
+      }
+
+      try {
+        const result = await retryWithBackoff(
+          async () =>
+            await sendMailWithoutAttachments({
+              to: admin.email,
+              subject: `Entrada vendida - ${eventName} - ${ticketType}`,
+              body: `Se ha vendido una entrada para ${eventName} de tipo ${ticketType}. Para más información, ingresá a la plataforma.`,
             }),
           3, // 3 intentos máximo
           1000, // 1 segundo de delay

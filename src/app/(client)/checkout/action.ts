@@ -7,6 +7,7 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import {
   createManyTicketSchema,
   invitedBySchema,
@@ -196,6 +197,23 @@ export const handlePurchase = async (
         errors: ['Error al enviar los emails, vuelva a intentarlo'],
         formData: formDataRecord,
       };
+    }
+
+    try {
+      const isEnabledNotification = await trpc.feature.isEnabledByKey(
+        FEATURE_KEYS.EMAIL_NOTIFICATION,
+      );
+
+      if (isEnabledNotification) {
+        for (const pdf of pdfs) {
+          await trpc.mail.sendNotification({
+            eventName: group.event.name,
+            ticketType: pdf.ticket.ticketType.name,
+          });
+        }
+      }
+    } catch (error) {
+      console.log('Error al enviar mail de notificación: ', error);
     }
 
     (await cookies()).delete('carrito');

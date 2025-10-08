@@ -42,6 +42,8 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { exportTableToXlsx } from '@/lib/utils-client';
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
+import { trpc } from '@/server/trpc/client';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
   fullWidth?: boolean;
@@ -123,6 +125,10 @@ export function DataTable<TData extends { id: string }, TValue>({
     },
   });
 
+  const { data: isEnabled } = trpc.feature.isEnabledByKey.useQuery(
+    FEATURE_KEYS.DATATABLE_EXPORT,
+  );
+
   const [state, action, isPending] = useActionState(validatePassword, {
     ok: false,
   });
@@ -177,7 +183,7 @@ export function DataTable<TData extends { id: string }, TValue>({
 
   return (
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
-      {!disableExport && (
+      {!disableExport && isEnabled && (
         <div className='flex justify-end p-2'>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
