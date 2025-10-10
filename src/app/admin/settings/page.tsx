@@ -38,30 +38,31 @@ export default function Page() {
 
         return (
           <div key={featureKey} className='flex flex-col gap-2'>
-            <div className='flex items-center gap-4'>
+            <div className='grid grid-cols-3 gap-4 max-w-3xl'>
               <Label
                 htmlFor={`${featureKey}-enabled`}
-                className='text-lg font-medium'
+                className='text-lg font-medium col-span-2'
               >
                 {config.label}
               </Label>
 
-              <InputFromSchema
-                id={`${featureKey}-value`}
-                name={`${featureKey}-value`}
-                field={config.validator}
-                defaultValue={
-                  state.formData?.[index].value ?? feature?.value ?? ''
-                }
-                className='w-24'
-              />
-
-              <Switch
-                className='h-6 w-10 [&_[data-slot=switch-thumb]]:size-5'
-                id={`${featureKey}-enabled`}
-                name={`${featureKey}-enabled`}
-                defaultChecked={feature?.enabled ?? false}
-              />
+              <div className='flex gap-4 justify-end items-center'>
+                <InputFromSchema
+                  id={`${featureKey}-value`}
+                  name={`${featureKey}-value`}
+                  field={config.validator}
+                  defaultValue={
+                    state.formData?.[index].value ?? feature?.value ?? ''
+                  }
+                  className='w-24'
+                />
+                <Switch
+                  className='h-6 w-10 [&_[data-slot=switch-thumb]]:size-5'
+                  id={`${featureKey}-enabled`}
+                  name={`${featureKey}-enabled`}
+                  defaultChecked={feature?.enabled ?? false}
+                />
+              </div>
             </div>
             {error?.value && (
               <p className='text-sm text-red-500 font-bold ml-4'>
