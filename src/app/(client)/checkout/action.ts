@@ -214,20 +214,10 @@ export const handlePurchase = async (
     }
 
     await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
-      try {
-        for (const pdf of pdfs) {
-          await trpc.mail.sendNotification({
-            eventName: group.event.name,
-            ticketType: pdf.ticket.ticketType.name,
-          });
-        }
-      } catch {
-        return {
-          ticketsInput: prevState.ticketsInput,
-          errors: ['Error al enviar los emails, vuelva a intentarlo'],
-          formData: formDataRecord,
-        };
-      }
+      await trpc.mail.sendNotification({
+        eventName: group.event.name,
+        ticketGroupId,
+      });
     });
 
     (await cookies()).delete('carrito');

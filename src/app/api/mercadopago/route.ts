@@ -73,12 +73,10 @@ export async function POST(req: Request) {
     }
 
     await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
-      for (const pdf of pdfs) {
-        await trpc.mail.sendNotification({
-          eventName: group.event.name,
-          ticketType: pdf.ticket.ticketType.name,
-        });
-      }
+      await trpc.mail.sendNotification({
+        eventName: group.event.name,
+        ticketGroupId: group.id,
+      });
     });
   }
 

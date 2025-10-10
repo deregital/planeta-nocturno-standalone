@@ -5,6 +5,8 @@ import z from 'zod';
 import { user } from '@/drizzle/schema';
 import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { publicProcedure, router } from '@/server/trpc';
+import { calculateTotalPrice } from '@/server/services/ticketGroup';
+import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 
 // Función de retry para manejar rate limits
 export async function retryWithBackoff<T>(
@@ -104,11 +106,26 @@ export const mailRouter = router({
     .input(
       z.object({
         eventName: z.string(),
-        ticketType: z.string(),
+        ticketGroupId: z.string(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const { eventName, ticketType } = input;
+      const { eventName, ticketGroupId } = input;
+
+      const ticketGroup = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroupSchema.id, ticketGroupId),
+        with: {
+          ticketTypePerGroups: {
+            with: {
+              ticketType: {
+                columns: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
       const admin = await ctx.db.query.user.findFirst({
         where: eq(user.role, 'ADMIN'),
@@ -122,16 +139,28 @@ export const mailRouter = router({
         });
       }
 
+      const totalPrice = await calculateTotalPrice({
+        ticketGroupId: input.ticketGroupId,
+      });
+
+      const ticketTypeText = ticketGroup?.ticketTypePerGroups
+        .map(
+          (ticketType) =>
+            `${ticketType.amount} entradas de ${ticketType.ticketType.name}`,
+        )
+        .join(', ');
+      const bodyText = `Se han vendido entradas para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${totalPrice}. Para más información, ingresá a la plataforma.`;
+
       try {
         const result = await retryWithBackoff(
           async () =>
             await sendMailWithoutAttachments({
               to: admin.email,
-              subject: `Entrada vendida - ${eventName} - ${ticketType}`,
-              body: `Se ha vendido una entrada para ${eventName} de tipo ${ticketType}. Para más información, ingresá a la plataforma.`,
+              subject: `Entrada vendida - ${eventName}`,
+              body: bodyText,
             }),
           3, // 3 intentos máximo
-          2000, // 1 segundo de delay
+          1000, // 1 segundo de delay
         );
 
         const { data, error } = result;
