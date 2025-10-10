@@ -7,6 +7,8 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { checkFeature } from '@/components/admin/config/checkFeature';
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import {
   createManyTicketSchema,
   invitedBySchema,
@@ -96,6 +98,19 @@ export const handlePurchase = async (
       }
     }
   }
+
+  await checkFeature(
+    FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
+    () => {
+      const entradaWithMail = entradas.find((e) => e.mail && e.mail !== '');
+      if (entradaWithMail) {
+        for (const entrada of entradas) {
+          entrada.mail = entradaWithMail.mail;
+        }
+      }
+    },
+    true,
+  );
 
   const validation = createManyTicketSchema.safeParse(entradas);
   const validationInvitedBy = invitedBySchema.safeParse(invitedBy);
@@ -197,6 +212,13 @@ export const handlePurchase = async (
         formData: formDataRecord,
       };
     }
+
+    await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+      await trpc.mail.sendNotification({
+        eventName: group.event.name,
+        ticketGroupId,
+      });
+    });
 
     (await cookies()).delete('carrito');
 

@@ -15,6 +15,8 @@ const credentialsSchema = userSchema.pick({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db),
+  secret: process.env.AUTH_SECRET,
+  trustHost: true,
   providers: [
     {
       type: 'credentials',

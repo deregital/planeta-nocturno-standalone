@@ -1,11 +1,15 @@
-import z from 'zod';
 import { TRPCError } from '@trpc/server';
+import { eq } from 'drizzle-orm';
+import z from 'zod';
 
+import { user } from '@/drizzle/schema';
+import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { publicProcedure, router } from '@/server/trpc';
-import { sendMail } from '@/server/services/mail';
+import { calculateTotalPrice } from '@/server/services/ticketGroup';
+import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 
 // Función de retry para manejar rate limits
-async function retryWithBackoff<T>(
+export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
   delayMs: number = 1000,
@@ -74,6 +78,86 @@ export const mailRouter = router({
               body: input.body,
               attachments,
               eventName: input.eventName,
+            }),
+          3, // 3 intentos máximo
+          2000, // 1 segundo de delay
+        );
+
+        const { data, error } = result;
+
+        if (error) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Algo salió mal al enviar el mail',
+            cause: error,
+          });
+        }
+
+        return data;
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Algo salió mal al enviar el mail',
+          cause: error,
+        });
+      }
+    }),
+  sendNotification: publicProcedure
+    .input(
+      z.object({
+        eventName: z.string(),
+        ticketGroupId: z.string(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { eventName, ticketGroupId } = input;
+
+      const ticketGroup = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroupSchema.id, ticketGroupId),
+        with: {
+          ticketTypePerGroups: {
+            with: {
+              ticketType: {
+                columns: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const admin = await ctx.db.query.user.findFirst({
+        where: eq(user.role, 'ADMIN'),
+      });
+
+      // No deberia ser posible
+      if (!admin) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'No se encontró el administrador',
+        });
+      }
+
+      const totalPrice = await calculateTotalPrice({
+        ticketGroupId: input.ticketGroupId,
+      });
+
+      const ticketTypeText = ticketGroup?.ticketTypePerGroups
+        .map(
+          (ticketType) =>
+            `${ticketType.amount} entradas de ${ticketType.ticketType.name}`,
+        )
+        .join(', ');
+      const bodyText = `Se han vendido entradas para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${totalPrice}. Para más información, ingresá a la plataforma.`;
+
+      try {
+        const result = await retryWithBackoff(
+          async () =>
+            await sendMailWithoutAttachments({
+              to: admin.email,
+              subject: `Entrada vendida - ${eventName}`,
+              body: bodyText,
             }),
           3, // 3 intentos máximo
           1000, // 1 segundo de delay
