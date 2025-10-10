@@ -31,3 +31,5 @@ export const updateFeaturesSchema = featureSchema
     },
   )
   .array();
+
+export type FeatureSchema = z.infer<typeof featureSchema>;

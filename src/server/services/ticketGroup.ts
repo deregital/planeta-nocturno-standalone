@@ -1,10 +1,9 @@
-// src/server/services/ticketGroup.ts
-
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/drizzle';
 
-import { feature, ticketGroup } from '@/drizzle/schema';
+import { checkFeature } from '@/components/admin/config/checkFeature';
+import { ticketGroup } from '@/drizzle/schema';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 
 export async function calculateTotalPrice({
@@ -38,13 +37,10 @@ export async function calculateTotalPrice({
     return total + ticketType.amount * (ticketType.ticketType.price ?? 0);
   }, 0);
 
-  const serviceFee = await db.query.feature.findFirst({
-    where: eq(feature.key, FEATURE_KEYS.SERVICE_FEE),
-  });
-
-  if (serviceFee?.enabled) {
-    totalPrice += totalPrice * (Number(serviceFee.value) / 100);
-  }
+  await checkFeature(
+    FEATURE_KEYS.SERVICE_FEE,
+    (serviceFee) => (totalPrice += totalPrice * (Number(serviceFee) / 100)),
+  );
 
   return totalPrice;
 }

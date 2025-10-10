@@ -5,27 +5,12 @@ import { useActionState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { handleUpdate } from '@/app/admin/settings/action';
+import { InputFromSchema } from '@/components/admin/config/InputFromSchema';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
+import { FEATURE_CONFIG, FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { trpc } from '@/server/trpc/client';
-
-const FEATURE_CONFIG = {
-  [FEATURE_KEYS.DATATABLE_EXPORT]: {
-    label: 'Exportar tablas a Excel',
-    valueType: '',
-  },
-  [FEATURE_KEYS.EMAIL_NOTIFICATION]: {
-    label: 'Recibir notificaciones de entradas emitidas',
-    valueType: '',
-  },
-  [FEATURE_KEYS.SERVICE_FEE]: {
-    label: 'Cargo por servicio %',
-    valueType: 'number',
-  },
-};
 
 export default function Page() {
   const [state, action, isPending] = useActionState(handleUpdate, {
@@ -37,7 +22,7 @@ export default function Page() {
   useEffect(() => {
     if (state.success) {
       toast.success('Se han actualizado las configuraciones');
-    } else if (state.errors) {
+    } else if (state.errors || state.globalError) {
       toast.error('Hubo un error al actualizar las configuraciones');
     }
   }, [state]);
@@ -60,17 +45,17 @@ export default function Page() {
               >
                 {config.label}
               </Label>
-              {config.valueType && (
-                <Input
-                  id={`${featureKey}-value`}
-                  name={`${featureKey}-value`}
-                  type={config.valueType}
-                  defaultValue={
-                    state.formData?.[index].value ?? feature?.value ?? ''
-                  }
-                  className='w-24'
-                />
-              )}
+
+              <InputFromSchema
+                id={`${featureKey}-value`}
+                name={`${featureKey}-value`}
+                field={config.validator}
+                defaultValue={
+                  state.formData?.[index].value ?? feature?.value ?? ''
+                }
+                className='w-24'
+              />
+
               <Switch
                 className='h-6 w-10 [&_[data-slot=switch-thumb]]:size-5'
                 id={`${featureKey}-enabled`}

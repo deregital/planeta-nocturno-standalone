@@ -1,5 +1,6 @@
 import React from 'react';
 
+import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -79,11 +80,11 @@ export function TicketGroupTable({
         </div>
       ) : (
         <>
-          {serviceFee?.enabled && (
+          <FeatureWrapper feature={FEATURE_KEYS.SERVICE_FEE}>
             <p className='w-full text-start text-lg mt-6'>
               Costo de servicio: {serviceFeeString}
             </p>
-          )}
+          </FeatureWrapper>
           <p className='w-full text-start text-lg mt-6'>
             Total: {totalPriceString}
           </p>

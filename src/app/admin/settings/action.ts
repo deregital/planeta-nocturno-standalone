@@ -1,10 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import z from 'zod';
 
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
-import { updateFeaturesSchema } from '@/server/schemas/feature';
+import {
+  FEATURE_CONFIG,
+  type FeatureKey,
+} from '@/server/constants/feature-keys';
 import { trpc } from '@/server/trpc/server';
 
 export type UpdateFeaturesActionState = {
@@ -19,44 +20,53 @@ export type UpdateFeaturesActionState = {
     enabled: string;
     value: string;
   }[];
+  globalError?: string;
 };
 
 export async function handleUpdate(
   prevState: UpdateFeaturesActionState,
   formData: FormData,
 ): Promise<UpdateFeaturesActionState> {
-  const rawData = Object.values(FEATURE_KEYS).map((featureKey) => {
-    const enabled = formData.get(`${featureKey}-enabled`) === 'on';
-    const valueInput = formData.get(`${featureKey}-value`);
-    const value = valueInput ? String(valueInput) : null;
+  try {
+    const rawData = Object.entries(FEATURE_CONFIG).map(
+      ([featureKey, featureConfig]) => {
+        const enabled = formData.get(`${featureKey}-enabled`) === 'on';
+        const valueInput = formData.get(`${featureKey}-value`);
 
-    return {
-      key: featureKey,
-      enabled,
-      value,
-    };
-  });
+        const validation = featureConfig.validator.safeParse(valueInput);
 
-  const validation = updateFeaturesSchema.safeParse(rawData);
+        if (!validation.success) {
+          throw new Error(validation.error.message);
+        }
 
-  if (!validation.success) {
-    const validateErrors = z.treeifyError(validation.error).items?.map((i) => ({
-      key: i.properties?.key?.errors[0] ?? '',
-      enabled: i.properties?.enabled?.errors[0] ?? '',
-      value: i.properties?.value?.errors[0] ?? '',
-    }));
+        return {
+          key: featureKey as FeatureKey,
+          enabled,
+          value: validation.data ? validation.data.toString() : null,
+        };
+      },
+    );
+
+    await trpc.feature.update(rawData);
+    revalidatePath('/admin/settings');
 
     return {
       formData: rawData,
-      errors: validateErrors,
+      success: true,
     };
+  } catch (error) {
+    if (error instanceof Error) {
+      return {
+        formData: prevState.formData,
+        success: false,
+        globalError: error.message,
+      };
+    } else {
+      return {
+        formData: prevState.formData,
+        success: false,
+        globalError: 'Hubo un error en un campo del formulario',
+      };
+    }
   }
-
-  await trpc.feature.update(rawData);
-  revalidatePath('/admin/settings');
-
-  return {
-    formData: rawData,
-    success: true,
-  };
 }

@@ -3,6 +3,7 @@ import { createHmac } from 'crypto';
 import { Payment } from 'mercadopago';
 import { NextResponse } from 'next/server';
 
+import { checkFeature } from '@/components/admin/config/checkFeature';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { mercadoPago } from '@/server/routers/mercado-pago';
 import { trpc } from '@/server/trpc/server';
@@ -71,22 +72,14 @@ export async function POST(req: Request) {
       });
     }
 
-    try {
-      const isEnabledNotification = await trpc.feature.isEnabledByKey(
-        FEATURE_KEYS.EMAIL_NOTIFICATION,
-      );
-
-      if (isEnabledNotification) {
-        for (const pdf of pdfs) {
-          await trpc.mail.sendNotification({
-            eventName: group.event.name,
-            ticketType: pdf.ticket.ticketType.name,
-          });
-        }
+    await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+      for (const pdf of pdfs) {
+        await trpc.mail.sendNotification({
+          eventName: group.event.name,
+          ticketType: pdf.ticket.ticketType.name,
+        });
       }
-    } catch (error) {
-      console.log('Error al enviar mail de notificación: ', error);
-    }
+    });
   }
 
   return new NextResponse(null, { status: 200 });

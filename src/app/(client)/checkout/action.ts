@@ -7,6 +7,7 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { checkFeature } from '@/components/admin/config/checkFeature';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import {
   createManyTicketSchema,
@@ -97,6 +98,19 @@ export const handlePurchase = async (
       }
     }
   }
+
+  await checkFeature(
+    FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
+    () => {
+      const entradaWithMail = entradas.find((e) => e.mail && e.mail !== '');
+      if (entradaWithMail) {
+        for (const entrada of entradas) {
+          entrada.mail = entradaWithMail.mail;
+        }
+      }
+    },
+    true,
+  );
 
   const validation = createManyTicketSchema.safeParse(entradas);
   const validationInvitedBy = invitedBySchema.safeParse(invitedBy);
@@ -199,22 +213,14 @@ export const handlePurchase = async (
       };
     }
 
-    try {
-      const isEnabledNotification = await trpc.feature.isEnabledByKey(
-        FEATURE_KEYS.EMAIL_NOTIFICATION,
-      );
-
-      if (isEnabledNotification) {
-        for (const pdf of pdfs) {
-          await trpc.mail.sendNotification({
-            eventName: group.event.name,
-            ticketType: pdf.ticket.ticketType.name,
-          });
-        }
+    await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+      for (const pdf of pdfs) {
+        await trpc.mail.sendNotification({
+          eventName: group.event.name,
+          ticketType: pdf.ticket.ticketType.name,
+        });
       }
-    } catch (error) {
-      console.log('Error al enviar mail de notificación: ', error);
-    }
+    });
 
     (await cookies()).delete('carrito');
 
