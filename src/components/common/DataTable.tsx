@@ -20,6 +20,7 @@ import {
 } from 'react';
 
 import { validatePassword } from '@/app/actions/DataTable';
+import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
 import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,7 +44,6 @@ import {
 import { cn } from '@/lib/utils';
 import { exportTableToXlsx } from '@/lib/utils-client';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
-import { trpc } from '@/server/trpc/client';
 
 interface DataTableProps<TData extends { id: string }, TValue> {
   fullWidth?: boolean;
@@ -125,10 +125,6 @@ export function DataTable<TData extends { id: string }, TValue>({
     },
   });
 
-  const { data: isEnabled } = trpc.feature.isEnabledByKey.useQuery(
-    FEATURE_KEYS.DATATABLE_EXPORT,
-  );
-
   const [state, action, isPending] = useActionState(validatePassword, {
     ok: false,
   });
@@ -183,45 +179,47 @@ export function DataTable<TData extends { id: string }, TValue>({
 
   return (
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
-      {!disableExport && isEnabled && (
-        <div className='flex justify-end p-2'>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant='outline' size='sm'>
-                <Download className='size-4 mr-2' /> Exportar a Excel
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <form action={action}>
-                <DialogHeader>
-                  <DialogTitle>Introducí tu contraseña</DialogTitle>
-                  <DialogDescription>
-                    Para exportar la tabla, introducí la contraseña de tu
-                    cuenta.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className='mt-2 mb-4'>
-                  <Input
-                    type='password'
-                    id='password'
-                    name='password'
-                    placeholder='******'
-                  />
-                  {state.error && (
-                    <p className='text-sm pl-1 font-bold text-red-500'>
-                      {state.error}
-                    </p>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button size='sm' type='submit' disabled={isPending}>
-                    Verificar y exportar
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+      {!disableExport && (
+        <FeatureWrapper feature={FEATURE_KEYS.DATATABLE_EXPORT}>
+          <div className='flex justify-end p-2'>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant='outline' size='sm'>
+                  <Download className='size-4 mr-2' /> Exportar a Excel
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <form action={action}>
+                  <DialogHeader>
+                    <DialogTitle>Introducí tu contraseña</DialogTitle>
+                    <DialogDescription>
+                      Para exportar la tabla, introducí la contraseña de tu
+                      cuenta.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className='mt-2 mb-4'>
+                    <Input
+                      type='password'
+                      id='password'
+                      name='password'
+                      placeholder='******'
+                    />
+                    {state.error && (
+                      <p className='text-sm pl-1 font-bold text-red-500'>
+                        {state.error}
+                      </p>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button size='sm' type='submit' disabled={isPending}>
+                      Verificar y exportar
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </FeatureWrapper>
       )}
       <Table className='bg-white' fullWidth={fullWidth}>
         <TableHeader>
