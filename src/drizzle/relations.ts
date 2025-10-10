@@ -1,124 +1,108 @@
-import { relations } from 'drizzle-orm/relations';
-import {
-  event,
-  ticketGroup,
-  ticketType,
-  user,
-  emittedTicket,
-  location,
-  eventCategory,
-  session,
-  eventXUser,
-  ticketTypePerGroup,
-  authenticator,
-  account,
-} from './schema';
+import { relations } from "drizzle-orm/relations";
+import { user, session, location, event, eventCategory, ticketGroup, emittedTicket, ticketType, eventXUser, ticketTypePerGroup, authenticator, account } from "./schema";
 
-export const ticketGroupRelations = relations(ticketGroup, ({ one, many }) => ({
-  event: one(event, {
-    fields: [ticketGroup.eventId],
-    references: [event.id],
-  }),
-  emittedTickets: many(emittedTicket),
-  ticketTypePerGroups: many(ticketTypePerGroup),
+export const sessionRelations = relations(session, ({one}) => ({
+	user: one(user, {
+		fields: [session.userId],
+		references: [user.id]
+	}),
 }));
 
-export const eventRelations = relations(event, ({ one, many }) => ({
-  ticketGroups: many(ticketGroup),
-  ticketTypes: many(ticketType),
-  location: one(location, {
-    fields: [event.locationId],
-    references: [location.id],
-  }),
-  eventCategory: one(eventCategory, {
-    fields: [event.categoryId],
-    references: [eventCategory.id],
-  }),
-  eventXUsers: many(eventXUser),
+export const userRelations = relations(user, ({many}) => ({
+	sessions: many(session),
+	emittedTickets: many(emittedTicket),
+	eventXUsers: many(eventXUser),
+	authenticators: many(authenticator),
+	accounts: many(account),
 }));
 
-export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
-  event: one(event, {
-    fields: [ticketType.eventId],
-    references: [event.id],
-  }),
-  emittedTickets: many(emittedTicket),
-  ticketTypePerGroups: many(ticketTypePerGroup),
+export const eventRelations = relations(event, ({one, many}) => ({
+	location: one(location, {
+		fields: [event.locationId],
+		references: [location.id]
+	}),
+	eventCategory: one(eventCategory, {
+		fields: [event.categoryId],
+		references: [eventCategory.id]
+	}),
+	ticketGroups: many(ticketGroup),
+	ticketTypes: many(ticketType),
+	eventXUsers: many(eventXUser),
 }));
 
-export const emittedTicketRelations = relations(emittedTicket, ({ one }) => ({
-  user: one(user, {
-    fields: [emittedTicket.scannedByUserId],
-    references: [user.id],
-  }),
-  ticketType: one(ticketType, {
-    fields: [emittedTicket.ticketTypeId],
-    references: [ticketType.id],
-  }),
-  ticketGroup: one(ticketGroup, {
-    fields: [emittedTicket.ticketGroupId],
-    references: [ticketGroup.id],
-  }),
+export const locationRelations = relations(location, ({many}) => ({
+	events: many(event),
 }));
 
-export const userRelations = relations(user, ({ many }) => ({
-  emittedTickets: many(emittedTicket),
-  sessions: many(session),
-  eventXUsers: many(eventXUser),
-  authenticators: many(authenticator),
-  accounts: many(account),
+export const eventCategoryRelations = relations(eventCategory, ({many}) => ({
+	events: many(event),
 }));
 
-export const locationRelations = relations(location, ({ many }) => ({
-  events: many(event),
+export const ticketGroupRelations = relations(ticketGroup, ({one, many}) => ({
+	event: one(event, {
+		fields: [ticketGroup.eventId],
+		references: [event.id]
+	}),
+	emittedTickets: many(emittedTicket),
+	ticketTypePerGroups: many(ticketTypePerGroup),
 }));
 
-export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
-  events: many(event),
+export const emittedTicketRelations = relations(emittedTicket, ({one}) => ({
+	user: one(user, {
+		fields: [emittedTicket.scannedByUserId],
+		references: [user.id]
+	}),
+	ticketType: one(ticketType, {
+		fields: [emittedTicket.ticketTypeId],
+		references: [ticketType.id]
+	}),
+	ticketGroup: one(ticketGroup, {
+		fields: [emittedTicket.ticketGroupId],
+		references: [ticketGroup.id]
+	}),
 }));
 
-export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
-    fields: [session.userId],
-    references: [user.id],
-  }),
+export const ticketTypeRelations = relations(ticketType, ({one, many}) => ({
+	emittedTickets: many(emittedTicket),
+	event: one(event, {
+		fields: [ticketType.eventId],
+		references: [event.id]
+	}),
+	ticketTypePerGroups: many(ticketTypePerGroup),
 }));
 
-export const eventXUserRelations = relations(eventXUser, ({ one }) => ({
-  event: one(event, {
-    fields: [eventXUser.a],
-    references: [event.id],
-  }),
-  user: one(user, {
-    fields: [eventXUser.b],
-    references: [user.id],
-  }),
+export const eventXUserRelations = relations(eventXUser, ({one}) => ({
+	event: one(event, {
+		fields: [eventXUser.a],
+		references: [event.id]
+	}),
+	user: one(user, {
+		fields: [eventXUser.b],
+		references: [user.id]
+	}),
 }));
 
-export const ticketTypePerGroupRelations = relations(
-  ticketTypePerGroup,
-  ({ one }) => ({
-    ticketType: one(ticketType, {
-      fields: [ticketTypePerGroup.ticketTypeId],
-      references: [ticketType.id],
-    }),
-    ticketGroup: one(ticketGroup, {
-      fields: [ticketTypePerGroup.ticketGroupId],
-      references: [ticketGroup.id],
-    }),
-  }),
-);
-
-export const authenticatorRelations = relations(authenticator, ({ one }) => ({
-  user: one(user, {
-    fields: [authenticator.userId],
-    references: [user.id],
-  }),
+export const ticketTypePerGroupRelations = relations(ticketTypePerGroup, ({one}) => ({
+	ticketType: one(ticketType, {
+		fields: [ticketTypePerGroup.ticketTypeId],
+		references: [ticketType.id]
+	}),
+	ticketGroup: one(ticketGroup, {
+		fields: [ticketTypePerGroup.ticketGroupId],
+		references: [ticketGroup.id]
+	}),
 }));
 
-export const accountRelations = relations(account, ({ one }) => ({
-  user: one(user, {
-    fields: [account.userId],
-    references: [user.id],
-  }),
+export const authenticatorRelations = relations(authenticator, ({one}) => ({
+	user: one(user, {
+		fields: [authenticator.userId],
+		references: [user.id]
+	}),
+}));
+
+export const accountRelations = relations(account, ({one}) => ({
+	user: one(user, {
+		fields: [account.userId],
+		references: [user.id]
+	}),
 }));

@@ -27,10 +27,14 @@ ALTER TABLE "user" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- CreateTable
 CREATE TABLE "feature" (
-    "key" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "key" TEXT NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT false,
     "value" TEXT,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "feature_pkey" PRIMARY KEY ("key")
+    CONSTRAINT "feature_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "feature_key_key" ON "feature"("key");
