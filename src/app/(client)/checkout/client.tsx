@@ -7,22 +7,15 @@ import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
 import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
+import FormInputGender from '@/components/checkout/FormInputGender';
+import FormInputInstagram from '@/components/checkout/FormInputInstagram';
+import FormInputMail from '@/components/checkout/FormInputMail';
 import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
 import GoBack from '@/components/common/GoBack';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -86,6 +79,7 @@ export default function CheckoutClient({
         {ticketGroup.ticketTypePerGroups.map((ticket, ticketTypeIndex) => {
           return Array.from({ length: ticket.amount }).map((_, indexAmount) => {
             const isFirstTicket = ticketTypeIndex === 0 && indexAmount === 0;
+
             return (
               <div
                 key={ticket.ticketType.id + '-' + indexAmount}
@@ -116,24 +110,9 @@ export default function CheckoutClient({
                   }
                 />
                 <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}>
-                  <InputWithLabel
-                    name={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                    id={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                    label='Mail'
-                    type='email'
-                    required
-                    defaultValue={
-                      state.formData?.[
-                        `mail_${ticket.ticketType.id}-${indexAmount}`
-                      ]
-                    }
-                    error={
-                      typeof state.errors === 'object' && state.errors !== null
-                        ? (state.errors as Record<string, string>)[
-                            `mail_${ticket.ticketType.id}-${indexAmount}`
-                          ]
-                        : undefined
-                    }
+                  <FormInputMail
+                    state={state}
+                    tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
                   />
                 </FeatureWrapper>
                 <FeatureWrapper
@@ -141,25 +120,9 @@ export default function CheckoutClient({
                   negate
                 >
                   {isFirstTicket && (
-                    <InputWithLabel
-                      name={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                      id={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                      label='Mail'
-                      type='email'
-                      required
-                      defaultValue={
-                        state.formData?.[
-                          `mail_${ticket.ticketType.id}-${indexAmount}`
-                        ]
-                      }
-                      error={
-                        typeof state.errors === 'object' &&
-                        state.errors !== null
-                          ? (state.errors as Record<string, string>)[
-                              `mail_${ticket.ticketType.id}-${indexAmount}`
-                            ]
-                          : undefined
-                      }
+                    <FormInputMail
+                      state={state}
+                      tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
                     />
                   )}
                 </FeatureWrapper>
@@ -247,67 +210,13 @@ export default function CheckoutClient({
                 />
                 <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}>
                   <>
-                    <div className='flex flex-col gap-1'>
-                      <Label
-                        className='pl-1 text-accent gap-0.5'
-                        htmlFor={`gender_${ticket.ticketType.id}-${indexAmount}`}
-                      >
-                        Género<span className='text-red-500'>*</span>
-                      </Label>
-                      <Select
-                        name={`gender_${ticket.ticketType.id}-${indexAmount}`}
-                        required
-                        defaultValue={
-                          state.formData?.[
-                            `gender_${ticket.ticketType.id}-${indexAmount}`
-                          ]
-                        }
-                      >
-                        <SelectTrigger className='w-full py-2 border-stroke'>
-                          <SelectValue placeholder='Selecciona tu género' />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectLabel>Género</SelectLabel>
-                            <SelectItem value='male'>Masculino</SelectItem>
-                            <SelectItem value='female'>Femenino</SelectItem>
-                            <SelectItem value='other'>Otro</SelectItem>
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                      {typeof state.errors === 'object' &&
-                        state.errors !== null &&
-                        (state.errors as Record<string, string>)[
-                          `gender_${ticket.ticketType.id}-${indexAmount}`
-                        ] && (
-                          <p className='pl-1 font-bold text-xs text-red-500'>
-                            {
-                              (state.errors as Record<string, string>)[
-                                `gender_${ticket.ticketType.id}-${indexAmount}`
-                              ]
-                            }
-                          </p>
-                        )}
-                    </div>
-                    <InputWithLabel
-                      name={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                      id={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                      label='Instagram'
-                      type='text'
-                      placeholder='@'
-                      defaultValue={
-                        state.formData?.[
-                          `instagram_${ticket.ticketType.id}-${indexAmount}`
-                        ]
-                      }
-                      error={
-                        typeof state.errors === 'object' &&
-                        state.errors !== null
-                          ? (state.errors as Record<string, string>)[
-                              `instagram_${ticket.ticketType.id}-${indexAmount}`
-                            ]
-                          : undefined
-                      }
+                    <FormInputGender
+                      state={state}
+                      tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                    />
+                    <FormInputInstagram
+                      state={state}
+                      tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
                     />
                   </>
                 </FeatureWrapper>
@@ -317,67 +226,13 @@ export default function CheckoutClient({
                 >
                   {isFirstTicket && (
                     <>
-                      <div className='flex flex-col gap-1'>
-                        <Label
-                          className='pl-1 text-accent gap-0.5'
-                          htmlFor={`gender_${ticket.ticketType.id}-${indexAmount}`}
-                        >
-                          Género<span className='text-red-500'>*</span>
-                        </Label>
-                        <Select
-                          name={`gender_${ticket.ticketType.id}-${indexAmount}`}
-                          required
-                          defaultValue={
-                            state.formData?.[
-                              `gender_${ticket.ticketType.id}-${indexAmount}`
-                            ]
-                          }
-                        >
-                          <SelectTrigger className='w-full py-2 border-stroke'>
-                            <SelectValue placeholder='Selecciona tu género' />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>Género</SelectLabel>
-                              <SelectItem value='male'>Masculino</SelectItem>
-                              <SelectItem value='female'>Femenino</SelectItem>
-                              <SelectItem value='other'>Otro</SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        {typeof state.errors === 'object' &&
-                          state.errors !== null &&
-                          (state.errors as Record<string, string>)[
-                            `gender_${ticket.ticketType.id}-${indexAmount}`
-                          ] && (
-                            <p className='pl-1 font-bold text-xs text-red-500'>
-                              {
-                                (state.errors as Record<string, string>)[
-                                  `gender_${ticket.ticketType.id}-${indexAmount}`
-                                ]
-                              }
-                            </p>
-                          )}
-                      </div>
-                      <InputWithLabel
-                        name={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                        id={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                        label='Instagram'
-                        type='text'
-                        placeholder='@'
-                        defaultValue={
-                          state.formData?.[
-                            `instagram_${ticket.ticketType.id}-${indexAmount}`
-                          ]
-                        }
-                        error={
-                          typeof state.errors === 'object' &&
-                          state.errors !== null
-                            ? (state.errors as Record<string, string>)[
-                                `instagram_${ticket.ticketType.id}-${indexAmount}`
-                              ]
-                            : undefined
-                        }
+                      <FormInputGender
+                        state={state}
+                        tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                      />
+                      <FormInputInstagram
+                        state={state}
+                        tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
                       />
                     </>
                   )}
