@@ -3,12 +3,15 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/drizzle';
 
 import { feature as featureSchema } from '@/drizzle/schema';
-import { type FeatureKey } from '@/server/constants/feature-keys';
-import { type FeatureSchema } from '@/server/schemas/feature';
+import {
+  FEATURE_CONFIG,
+  type FeatureKey,
+  type ValueType,
+} from '@/server/constants/feature-keys';
 
-export async function checkFeature<TReturn>(
-  featureKey: FeatureKey,
-  callback: (value: FeatureSchema['value']) => TReturn,
+export async function checkFeature<TReturn, Key extends FeatureKey>(
+  featureKey: Key,
+  callback: (value: ValueType<Key>) => TReturn,
   negate = false,
 ) {
   const feature = await db.query.feature.findFirst({
@@ -21,7 +24,11 @@ export async function checkFeature<TReturn>(
 
   const shouldExecute = negate ? !feature?.enabled : feature?.enabled;
 
-  if (shouldExecute) {
-    return callback(feature?.value ?? null);
+  const validation = FEATURE_CONFIG[featureKey].validator.safeParse(
+    feature?.value,
+  );
+
+  if (shouldExecute && validation.success) {
+    return callback(validation.data as ValueType<Key>);
   }
 }

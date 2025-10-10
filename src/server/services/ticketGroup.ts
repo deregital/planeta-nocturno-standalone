@@ -39,7 +39,7 @@ export async function calculateTotalPrice({
 
   await checkFeature(
     FEATURE_KEYS.SERVICE_FEE,
-    (serviceFee) => (totalPrice += totalPrice * (Number(serviceFee) / 100)),
+    (serviceFee) => (totalPrice += totalPrice * (serviceFee / 100)),
   );
 
   return totalPrice;
