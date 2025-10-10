@@ -99,6 +99,19 @@ export const handlePurchase = async (
     }
   }
 
+  await checkFeature(
+    FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
+    () => {
+      const entradaWithMail = entradas.find((e) => e.mail && e.mail !== '');
+      if (entradaWithMail) {
+        for (const entrada of entradas) {
+          entrada.mail = entradaWithMail.mail;
+        }
+      }
+    },
+    true,
+  );
+
   const validation = createManyTicketSchema.safeParse(entradas);
   const validationInvitedBy = invitedBySchema.safeParse(invitedBy);
 

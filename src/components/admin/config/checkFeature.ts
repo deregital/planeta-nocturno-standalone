@@ -9,6 +9,7 @@ import { type FeatureSchema } from '@/server/schemas/feature';
 export async function checkFeature<TReturn>(
   featureKey: FeatureKey,
   callback: (value: FeatureSchema['value']) => TReturn,
+  negate = false,
 ) {
   const feature = await db.query.feature.findFirst({
     where: eq(featureSchema.key, featureKey),
@@ -18,7 +19,9 @@ export async function checkFeature<TReturn>(
     },
   });
 
-  if (feature?.enabled) {
-    return callback(feature.value);
+  const shouldExecute = negate ? !feature?.enabled : feature?.enabled;
+
+  if (shouldExecute) {
+    return callback(feature?.value ?? null);
   }
 }

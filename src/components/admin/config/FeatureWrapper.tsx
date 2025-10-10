@@ -5,13 +5,17 @@ import { trpc } from '@/server/trpc/client';
 export default function FeatureWrapper({
   feature,
   children,
+  negate = false,
 }: {
   feature: FeatureKey;
   children: React.ReactNode;
+  negate?: boolean;
 }) {
   const { data: isEnabled } = trpc.feature.isEnabledByKey.useQuery(feature);
 
-  if (!isEnabled) {
+  const shouldRender = negate ? !isEnabled : isEnabled;
+
+  if (!shouldRender) {
     return null;
   }
 
