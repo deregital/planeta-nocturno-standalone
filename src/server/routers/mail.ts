@@ -7,7 +7,7 @@ import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { publicProcedure, router } from '@/server/trpc';
 
 // Función de retry para manejar rate limits
-async function retryWithBackoff<T>(
+export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
   delayMs: number = 1000,
@@ -78,7 +78,7 @@ export const mailRouter = router({
               eventName: input.eventName,
             }),
           3, // 3 intentos máximo
-          1000, // 1 segundo de delay
+          2000, // 1 segundo de delay
         );
 
         const { data, error } = result;
@@ -131,7 +131,7 @@ export const mailRouter = router({
               body: `Se ha vendido una entrada para ${eventName} de tipo ${ticketType}. Para más información, ingresá a la plataforma.`,
             }),
           3, // 3 intentos máximo
-          1000, // 1 segundo de delay
+          2000, // 1 segundo de delay
         );
 
         const { data, error } = result;
