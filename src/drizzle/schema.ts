@@ -244,9 +244,7 @@ export const user = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     code: text()
-      .default(
-        sql`upper(translate(substr(md5((random())::text), 1, 6), \'0123456789abcdef\'::text, \'ABCDEFGHIJKLMNOPQRSTUVWXYZ\'::text))`,
-      )
+      .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),
   },
   (table) => [
@@ -275,9 +273,7 @@ export const ticketXrrpp = pgTable(
     ticketGroupId: uuid().primaryKey().notNull(),
     rrppId: uuid().notNull(),
     code: text()
-      .default(
-        sql`upper(translate(substr(md5((random())::text), 1, 6), \'0123456789abcdef\'::text, \'ABCDEFGHIJKLMNOPQRSTUVWXYZ\'::text))`,
-      )
+      .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)

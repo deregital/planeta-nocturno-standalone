@@ -36,7 +36,7 @@ ALTER TABLE "ticketGroup" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP
 ALTER TABLE "ticketType" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "user" ADD COLUMN     "code" TEXT NOT NULL DEFAULT upper(translate(substr(md5(random()::text), 1, 6),'0123456789abcdef','ABCDEFGHIJKLMNOPQRSTUVWXYZ')),
+ALTER TABLE "user" ADD COLUMN     "code" TEXT NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 6)),
 ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- CreateTable
@@ -51,7 +51,7 @@ CREATE TABLE "tag" (
 CREATE TABLE "ticketXRRPP" (
     "ticketGroupId" UUID NOT NULL,
     "rrppId" UUID NOT NULL,
-    "code" TEXT NOT NULL DEFAULT upper(translate(substr(md5(random()::text), 1, 6),'0123456789abcdef','ABCDEFGHIJKLMNOPQRSTUVWXYZ')),
+    "code" TEXT NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 6)),
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ticketXRRPP_pkey" PRIMARY KEY ("ticketGroupId")
