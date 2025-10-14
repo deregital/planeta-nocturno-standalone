@@ -5,20 +5,20 @@ import {
   featureKeySchema,
   updateFeaturesSchema,
 } from '@/server/schemas/feature';
-import { adminProcedure, router } from '@/server/trpc';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 
 export const featureRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
     return await ctx.db.query.feature.findMany();
   }),
-  getByKey: adminProcedure
+  getByKey: publicProcedure
     .input(featureKeySchema)
     .query(async ({ ctx, input }) => {
       return await ctx.db.query.feature.findFirst({
         where: eq(featureSchema.key, input),
       });
     }),
-  isEnabledByKey: adminProcedure
+  isEnabledByKey: publicProcedure
     .input(featureKeySchema)
     .query(async ({ ctx, input }) => {
       const feature = await ctx.db.query.feature.findFirst({
