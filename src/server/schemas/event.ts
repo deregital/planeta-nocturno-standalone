@@ -5,7 +5,12 @@ export const eventSchema = z.object({
     error: 'El id debe ser UUID',
   }),
   slug: z.string(),
-  name: z.string().min(1, { error: 'El nombre es requerido' }),
+  name: z
+    .string()
+    .min(1, { error: 'El nombre es requerido' })
+    .refine((val) => !val.includes('/'), {
+      message: 'El nombre no puede contener "/"',
+    }),
   description: z.string().min(1, { error: 'La descripción es requerida' }),
   coverImageUrl: z.url({
     error: 'La imagen de portada es requerida',

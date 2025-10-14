@@ -32,15 +32,18 @@ type EventGeneralInformationProps =
   | {
       action: 'CREATE';
       next: () => void;
+      externalErrors?: { [key: string]: string };
     }
   | {
       action: 'EDIT' | 'PREVIEW';
       next?: never;
+      externalErrors?: { [key: string]: string };
     };
 
 export function EventGeneralInformation({
   action,
   next,
+  externalErrors,
 }: EventGeneralInformationProps) {
   const event = useCreateEventStore((state) => state.event);
   const setEvent = useCreateEventStore((state) => state.setEvent);
@@ -53,9 +56,11 @@ export function EventGeneralInformation({
   const [openLocationModal, setOpenLocationModal] = useState(false);
   const [openCategoryModal, setOpenCategoryModal] = useState(false);
 
-  const [error, setError] = useState<{
+  const [errorMessages, setError] = useState<{
     [key: string]: string;
   }>({});
+
+  const error = { ...errorMessages, ...(externalErrors ?? {}) };
 
   function handleChange<T extends keyof typeof event>(
     key: T,
@@ -442,8 +447,10 @@ export function EventGeneralInformation({
               listOf='usuario'
             />
           )}
-          {error.authorizedUsersId && (
-            <p className='text-red-500 text-sm'>{error.authorizedUsersId}</p>
+          {errorMessages.authorizedUsersId && (
+            <p className='text-red-500 text-sm'>
+              {errorMessages.authorizedUsersId}
+            </p>
           )}
         </div>
         <div className='flex gap-2'>
