@@ -21,7 +21,7 @@ model User {
   password String
   email    String @unique
   role     Role
-  code     String @unique @default(dbgenerated("upper(translate(substr(md5(random()::text), 1, 6),'0123456789abcdef','ABCDEFGHIJKLMNOPQRSTUVWXYZ'))"))
+  code     String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
   tags     Tag[]  @relation("USER_X_TAG")
 
   accounts      Account[]
@@ -259,7 +259,7 @@ model TicketXRRPP {
   rrppId String @db.Uuid
   rrpp   User   @relation("RRPP_X_TICKET", fields: [rrppId], references: [id])
 
-  code String @unique @default(dbgenerated("upper(translate(substr(md5(random()::text), 1, 6),'0123456789abcdef','ABCDEFGHIJKLMNOPQRSTUVWXYZ'))"))
+  code String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
