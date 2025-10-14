@@ -9,7 +9,7 @@ export function LastScanCard({
     <div className='w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
       {lastScan.success ? (
         <>
-          <div className='bg-accent border-b border-stroke'>
+          <div className='bg-green-500 border-b border-stroke'>
             <p className='text-on-accent text-lg font-bold p-2 truncate'>
               {lastScan.ticket?.fullName}
             </p>
