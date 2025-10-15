@@ -13,16 +13,22 @@ import {
 export default function FormInputGender({
   tag,
   state,
+  defaultValue,
 }: {
   tag: string;
   state: PurchaseActionState;
+  defaultValue?: string;
 }) {
   return (
     <div className='flex flex-col gap-1'>
       <Label className='pl-1 text-accent gap-0.5' htmlFor={tag}>
         Género<span className='text-red-500'>*</span>
       </Label>
-      <Select name={tag} required defaultValue={state.formData?.[tag]}>
+      <Select
+        name={tag}
+        required
+        defaultValue={state.formData?.[tag] ?? defaultValue}
+      >
         <SelectTrigger className='w-full py-2 border-stroke'>
           <SelectValue placeholder='Selecciona tu género' />
         </SelectTrigger>
