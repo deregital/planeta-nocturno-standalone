@@ -19,18 +19,34 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
+import { type EmittedTicketInput } from '@/server/schemas/emitted-tickets';
 import 'react-phone-number-input/style.css';
 
 export default function CheckoutClient({
   ticketGroup,
+  lastPurchase,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
+  lastPurchase?: EmittedTicketInput;
 }) {
   const [state, action, isPending] = useActionState(handlePurchase, {
     ticketsInput: [],
   });
 
-  const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>({});
+  const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>(
+    () => {
+      if (
+        lastPurchase?.phoneNumber &&
+        ticketGroup.ticketTypePerGroups.length > 0
+      ) {
+        const firstTicketType =
+          ticketGroup.ticketTypePerGroups[0].ticketType.id;
+        const firstTicketKey = `phoneNumber_${firstTicketType}-0`;
+        return { [firstTicketKey]: lastPurchase.phoneNumber };
+      }
+      return {};
+    },
+  );
 
   // Initialize phone numbers from state if available
   useEffect(() => {
@@ -99,7 +115,7 @@ export default function CheckoutClient({
                   defaultValue={
                     state.formData?.[
                       `fullName_${ticket.ticketType.id}-${indexAmount}`
-                    ]
+                    ] ?? (isFirstTicket ? lastPurchase?.fullName : undefined)
                   }
                   error={
                     typeof state.errors === 'object' && state.errors !== null
@@ -113,6 +129,9 @@ export default function CheckoutClient({
                   <FormInputMail
                     state={state}
                     tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
+                    defaultValue={
+                      isFirstTicket ? lastPurchase?.mail : undefined
+                    }
                   />
                 </FeatureWrapper>
                 <FeatureWrapper
@@ -123,6 +142,7 @@ export default function CheckoutClient({
                     <FormInputMail
                       state={state}
                       tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={lastPurchase?.mail}
                     />
                   )}
                 </FeatureWrapper>
@@ -135,7 +155,7 @@ export default function CheckoutClient({
                   defaultValue={
                     state.formData?.[
                       `dni_${ticket.ticketType.id}-${indexAmount}`
-                    ]
+                    ] ?? (isFirstTicket ? lastPurchase?.dni : undefined)
                   }
                   error={
                     typeof state.errors === 'object' && state.errors !== null
@@ -198,7 +218,12 @@ export default function CheckoutClient({
                   defaultValue={
                     state.formData?.[
                       `birthDate_${ticket.ticketType.id}-${indexAmount}`
-                    ]
+                    ] ??
+                    (isFirstTicket && lastPurchase?.birthDate
+                      ? typeof lastPurchase.birthDate === 'string'
+                        ? lastPurchase.birthDate
+                        : format(lastPurchase.birthDate, 'yyyy-MM-dd')
+                      : undefined)
                   }
                   error={
                     typeof state.errors === 'object' && state.errors !== null
@@ -213,10 +238,16 @@ export default function CheckoutClient({
                     <FormInputGender
                       state={state}
                       tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={
+                        isFirstTicket ? lastPurchase?.gender : undefined
+                      }
                     />
                     <FormInputInstagram
                       state={state}
                       tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={
+                        isFirstTicket ? lastPurchase?.instagram : undefined
+                      }
                     />
                   </>
                 </FeatureWrapper>
@@ -229,10 +260,12 @@ export default function CheckoutClient({
                       <FormInputGender
                         state={state}
                         tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                        defaultValue={lastPurchase?.gender}
                       />
                       <FormInputInstagram
                         state={state}
                         tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
+                        defaultValue={lastPurchase?.instagram}
                       />
                     </>
                   )}
