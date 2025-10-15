@@ -1,8 +1,14 @@
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
+import { db } from '@/drizzle';
+
+import {
+  emittedTicket,
+  ticketGroup,
+  ticketTypePerGroup,
+} from '@/drizzle/schema';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
 import { publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
@@ -267,6 +273,20 @@ export const ticketGroupRouter = router({
             with: {
               ticketType: {
                 columns: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          ticketTypePerGroups: {
+            columns: {
+              amount: true,
+            },
+            with: {
+              ticketType: {
+                columns: {
+                  id: true,
                   name: true,
                 },
               },
@@ -295,6 +315,24 @@ export const ticketGroupRouter = router({
         });
       }
 
+      const ticketTypeIds = group.emittedTickets.map((e) => e.ticketType.id);
+
+      const emittedTicketsCountByTicketType = await Promise.all(
+        ticketTypeIds.map(async (ticketTypeId: string) => {
+          const result = await db
+            .select({ count: count() })
+            .from(emittedTicket)
+            .where(and(eq(emittedTicket.ticketTypeId, ticketTypeId)));
+
+          return {
+            ticketTypeId,
+            count: result[0]?.count || 0,
+          };
+        }),
+      );
+
+      console.log(emittedTicketsCountByTicketType);
+
       // Verificar que este paid/free
       if (group?.status === 'BOOKED') {
         throw new TRPCError({
@@ -319,6 +357,10 @@ export const ticketGroupRouter = router({
           id: ticket.id,
           ticketType: ticket.ticketType.name,
           invitedBy: group.invitedBy,
+          ticketTypeAmountEmitted:
+            emittedTicketsCountByTicketType.find(
+              (t) => t.ticketTypeId === ticket.ticketType.id,
+            )?.count ?? 0,
         });
         return {
           ticket,

@@ -1,8 +1,10 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
+
+import { db } from '@/drizzle';
 
 import {
   emittedTicket,
@@ -181,6 +183,11 @@ export const emittedTicketsRouter = router({
         });
       }
 
+      const amountEmitted = await db
+        .select({ count: count() })
+        .from(emittedTicket)
+        .where(and(eq(emittedTicket.ticketTypeId, ticket.ticketType.id)));
+
       const pdf = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
         eventDate: ticket.ticketGroup.event.startingDate,
@@ -191,6 +198,7 @@ export const emittedTicketsRouter = router({
         fullName: ticket.fullName,
         id: ticket.id,
         invitedBy: ticket.ticketGroup.invitedBy,
+        ticketTypeAmountEmitted: amountEmitted[0]?.count ?? 0,
       });
 
       return pdf;
@@ -356,6 +364,10 @@ export const emittedTicketsRouter = router({
           message: 'Ticket no encontrado',
         });
       }
+      const amountEmitted = await db
+        .select({ count: count() })
+        .from(emittedTicket)
+        .where(and(eq(emittedTicket.ticketTypeId, ticket.ticketType.id)));
 
       const pdf = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
@@ -367,6 +379,7 @@ export const emittedTicketsRouter = router({
         fullName: ticket.fullName,
         id: ticket.id,
         invitedBy: ticket.ticketGroup.invitedBy,
+        ticketTypeAmountEmitted: amountEmitted[0]?.count ?? 0,
       });
 
       const { data, error } = await sendMail({
