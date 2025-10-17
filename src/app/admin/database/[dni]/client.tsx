@@ -1,7 +1,7 @@
 'use client';
 import { format } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
-import { Cake, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
+import { Cake, Contact, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
 
 import AttendedEventsTable from '@/components/admin/BuyerTable';
 import { FilledCard } from '@/components/common/FilledCard';
@@ -28,7 +28,10 @@ export default function Client({
     <div className='flex flex-col gap-4 p-4'>
       <GoBack route='/admin/database' className='size-fit my-2' />
       <div className='flex'>
-        <h1 className='text-4xl font-bold text-accent'>{buyer.fullName}</h1>
+        <h1 className='text-4xl font-bold text-accent'>
+          {buyer.fullName}{' '}
+          <span className='text-3xl text-gray-500'>ID: {buyer.buyerCode}</span>
+        </h1>
         <div className='flex justify-center items-center gap-4 ml-8 [&>div]:w-9 [&>div]:h-9 [&>div]:inline-flex [&>div]:items-center [&>div]:justify-center [&>div]:border [&>div]:rounded-sm [&>div]:transition'>
           {buyer.instagram && (
             <div className='bg-[#DA00A4] hover:bg-[#DA00A4]/75'>
@@ -74,6 +77,10 @@ export default function Client({
 
       <div className='flex gap-8 flex-col lg:flex-row'>
         <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
+          <div>
+            <Contact />
+            <p>ID: {buyer.buyerCode}</p>
+          </div>
           <div>
             <IdCard />
             <p>DNI/Pasaporte: {buyer.dni}</p>
