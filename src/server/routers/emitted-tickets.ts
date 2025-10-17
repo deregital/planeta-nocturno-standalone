@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -24,7 +24,7 @@ import {
   ticketingProcedure,
 } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
-import { decryptString } from '@/server/utils/utils';
+import { decryptString, generateSlug } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
   create: ticketingProcedure
@@ -51,6 +51,27 @@ export const emittedTicketsRouter = router({
             })
             .returning();
 
+          const lastEmitted = await tx.query.emittedTicket.findFirst({
+            where: eq(emittedTicket.ticketGroupId, ticketGroupCreated.id),
+            orderBy: desc(emittedTicket.createdAt),
+            with: {
+              ticketType: {
+                columns: {
+                  name: true,
+                },
+              },
+            },
+          });
+
+          let slug = '';
+          if (lastEmitted && lastEmitted.slug) {
+            const parts = lastEmitted.slug.split('-');
+            const count = parseInt(parts[parts.length - 1], 10);
+            slug = generateSlug(`${lastEmitted.ticketType.name} ${count}`);
+          } else {
+            slug = generateSlug(`${ticketType?.name} 0`);
+          }
+
           const [ticketCreated] = await tx
             .insert(emittedTicket)
             .values({
@@ -60,6 +81,7 @@ export const emittedTicketsRouter = router({
               scanned: true,
               scannedAt: new Date().toISOString(),
               scannedByUserId: ctx.session.user.id,
+              slug,
             })
             .returning();
 
@@ -75,10 +97,59 @@ export const emittedTicketsRouter = router({
   createMany: publicProcedure
     .input(createManyTicketSchema)
     .mutation(async ({ ctx, input }) => {
-      const values = input.map((ticket) => ({
-        ...ticket,
-        birthDate: ticket.birthDate.toISOString(),
-      }));
+      const uniqueTicketTypeIds = input.map((ticket) => ticket.ticketTypeId);
+
+      // Fetch ticket type names and count existing tickets for each type
+      const ticketTypeData = await Promise.all(
+        uniqueTicketTypeIds.map(async (ticketTypeId) => {
+          const [ticketType, existingCount] = await Promise.all([
+            ctx.db.query.ticketType.findFirst({
+              where: eq(ticketTypeTable.id, ticketTypeId),
+              columns: { name: true },
+            }),
+            ctx.db
+              .select({ count: count() })
+              .from(emittedTicket)
+              .where(eq(emittedTicket.ticketTypeId, ticketTypeId)),
+          ]);
+
+          return {
+            ticketTypeId,
+            name: ticketType?.name || '',
+            existingCount: existingCount[0]?.count || 0,
+          };
+        }),
+      );
+
+      const ticketTypes = new Map(
+        ticketTypeData.map((data) => [data.ticketTypeId, data]),
+      );
+
+      // <TicketTypeId, Count>
+      const newTicketCounts = new Map<string, number>();
+
+      const values = input.map((ticket) => {
+        const ticketTypeData = ticketTypes.get(ticket.ticketTypeId);
+        if (!ticketTypeData) {
+          throw new Error(
+            `TicketType con ID: ${ticket.ticketTypeId} no encontrado`,
+          );
+        }
+
+        const currentNewCount = newTicketCounts.get(ticket.ticketTypeId) || 0;
+        const nextNewCount = currentNewCount + 1;
+        newTicketCounts.set(ticket.ticketTypeId, nextNewCount);
+
+        const totalCount = ticketTypeData.existingCount + nextNewCount;
+        const slug = generateSlug(`${ticketTypeData.name} ${totalCount}`);
+
+        return {
+          ...ticket,
+          birthDate: ticket.birthDate.toISOString(),
+          slug,
+        };
+      });
+
       const res = await ctx.db.insert(emittedTicket).values(values).returning();
 
       if (!res) throw 'Error al crear ticket/s';
@@ -95,7 +166,8 @@ export const emittedTicketsRouter = router({
         birthDate: emittedTicket.birthDate,
         phoneNumber: emittedTicket.phoneNumber,
       })
-      .from(emittedTicket);
+      .from(emittedTicket)
+      .orderBy(desc(emittedTicket.createdAt));
 
     const dataWithAge = data.map((buyer) => ({
       ...buyer,
@@ -191,6 +263,7 @@ export const emittedTicketsRouter = router({
         fullName: ticket.fullName,
         id: ticket.id,
         invitedBy: ticket.ticketGroup.invitedBy,
+        slug: ticket.slug,
       });
 
       return pdf;
@@ -367,6 +440,7 @@ export const emittedTicketsRouter = router({
         fullName: ticket.fullName,
         id: ticket.id,
         invitedBy: ticket.ticketGroup.invitedBy,
+        slug: ticket.slug,
       });
 
       const { data, error } = await sendMail({
