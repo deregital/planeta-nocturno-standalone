@@ -79,7 +79,7 @@ export default function Client({
         <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
           <div>
             <Contact />
-            <p>Código: {buyer.buyerCode}</p>
+            <p>ID: {buyer.buyerCode}</p>
           </div>
           <div>
             <IdCard />

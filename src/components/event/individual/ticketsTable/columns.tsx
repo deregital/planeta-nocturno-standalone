@@ -42,7 +42,7 @@ export function generateTicketColumns(isAdmin: boolean) {
               width: `${column.getSize()}px`,
             }}
           >
-            Código
+            ID
           </div>
         );
       },
@@ -59,7 +59,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
       meta: {
         exportValue: (row) => row.original.buyerCode,
-        exportHeader: 'Código',
+        exportHeader: 'ID',
       },
     },
     {

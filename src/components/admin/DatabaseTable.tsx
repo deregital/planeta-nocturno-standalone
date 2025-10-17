@@ -32,13 +32,13 @@ type EmittedBuyerTableWithId = EmittedBuyerTable & {
 export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
   {
     accessorKey: 'buyerCode',
-    header: () => <p className='text-sm p-2'>Código</p>,
+    header: () => <p className='text-sm p-2'>ID</p>,
     cell: ({ row }) => {
       return <p className='text-sm p-2'>{row.original.buyerCode}</p>;
     },
     meta: {
       exportValue: (row) => row.original.buyerCode,
-      exportHeader: 'Código',
+      exportHeader: 'ID',
     },
   },
   {
