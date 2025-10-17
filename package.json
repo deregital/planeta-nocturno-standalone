@@ -10,6 +10,7 @@
     "lint": "eslint --fix",
     "seed": "tsx src/drizzle/seed.ts",
     "seed-feature-flag": "tsx src/drizzle/seed-feature-flag.ts",
+    "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",
     "prepare": "husky"
   },
   "dependencies": {

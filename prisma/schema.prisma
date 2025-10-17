@@ -205,6 +205,7 @@ model EmittedTicket {
   phoneNumber    String
   instagram      String?
   birthDate      String
+  slug           String
   paidOnLocation Boolean @default(false)
 
   scanned   Boolean   @default(false)
