@@ -240,7 +240,7 @@ export async function generateTicketTemplate(
           name: 'ticketType_title',
           type: 'text',
           content: 'Tipo de entrada:',
-          position: { x: 47, y: 287 },
+          position: { x: 47, y: 282 },
           width: 201.08,
           height: 10.05,
           rotate: 0,
@@ -262,7 +262,7 @@ export async function generateTicketTemplate(
           name: 'ticketType',
           type: 'text',
           content: 'ticketType',
-          position: { x: 47, y: 299.38 },
+          position: { x: 47, y: 294.38 },
           width: 225.69,
           height: 19.05,
           rotate: 0,
@@ -284,7 +284,7 @@ export async function generateTicketTemplate(
           name: 'invitedBy_title',
           type: 'text',
           content: 'Invitada por:',
-          position: { x: 47, y: 337 },
+          position: { x: 47, y: 332 },
           width: 201.08,
           height: 10.05,
           rotate: 0,
@@ -306,7 +306,7 @@ export async function generateTicketTemplate(
           name: 'invitedBy',
           type: 'text',
           content: 'invitedBy',
-          position: { x: 47, y: 349.38 },
+          position: { x: 47, y: 344.38 },
           width: 225.69,
           height: 19.05,
           rotate: 0,
@@ -512,7 +512,7 @@ interface GenerateTicketProps {
   createdAt: string;
   ticketType: string;
   invitedBy: string | null;
-  ticketTypeAmountEmitted: number;
+  slug: string;
 }
 
 export async function generatePdf(ticket: GenerateTicketProps) {
@@ -561,7 +561,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       name_first_word: firstWord,
       name_second_word: rest.join(' '),
       invitedBy: ticket.invitedBy || '-',
-      ticketId: `${ticket.ticketType.replace(/\s+/g, '-').toLowerCase()}-${ticket.ticketTypeAmountEmitted}`,
+      ticketId: ticket.slug,
     },
   ];
 

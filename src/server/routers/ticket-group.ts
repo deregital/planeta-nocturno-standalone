@@ -1,14 +1,8 @@
 import { TRPCError } from '@trpc/server';
-import { and, count, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { db } from '@/drizzle';
-
-import {
-  emittedTicket,
-  ticketGroup,
-  ticketTypePerGroup,
-} from '@/drizzle/schema';
+import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
 import { publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
@@ -269,6 +263,7 @@ export const ticketGroupRouter = router({
               mail: true,
               dni: true,
               createdAt: true,
+              slug: true,
             },
             with: {
               ticketType: {
@@ -315,24 +310,6 @@ export const ticketGroupRouter = router({
         });
       }
 
-      const ticketTypeIds = group.emittedTickets.map((e) => e.ticketType.id);
-
-      const emittedTicketsCountByTicketType = await Promise.all(
-        ticketTypeIds.map(async (ticketTypeId: string) => {
-          const result = await db
-            .select({ count: count() })
-            .from(emittedTicket)
-            .where(and(eq(emittedTicket.ticketTypeId, ticketTypeId)));
-
-          return {
-            ticketTypeId,
-            count: result[0]?.count || 0,
-          };
-        }),
-      );
-
-      console.log(emittedTicketsCountByTicketType);
-
       // Verificar que este paid/free
       if (group?.status === 'BOOKED') {
         throw new TRPCError({
@@ -357,10 +334,7 @@ export const ticketGroupRouter = router({
           id: ticket.id,
           ticketType: ticket.ticketType.name,
           invitedBy: group.invitedBy,
-          ticketTypeAmountEmitted:
-            emittedTicketsCountByTicketType.find(
-              (t) => t.ticketTypeId === ticket.ticketType.id,
-            )?.count ?? 0,
+          slug: ticket.slug,
         });
         return {
           ticket,
