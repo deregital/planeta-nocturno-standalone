@@ -228,7 +228,9 @@ export const emittedTicketsRouter = router({
           new Date(),
           new Date(buyer.birthDate),
         ).toString(),
-        buyerCode: buyerCode?.[buyer.dni] || '---',
+        buyerCode:
+          buyerCode?.find((code) => code.dni === buyer.dni)?.id.toString() ||
+          '---',
       };
 
       return { buyer: buyerWithAge, events };
@@ -410,7 +412,9 @@ export const emittedTicketsRouter = router({
 
       return tickets.map((ticket) => ({
         ...ticket,
-        buyerCode: buyerCodes?.[ticket.dni] || '---',
+        buyerCode:
+          buyerCodes?.find((code) => code.dni === ticket.dni)?.id.toString() ||
+          '---',
       }));
     }),
 
