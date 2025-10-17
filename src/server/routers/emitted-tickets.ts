@@ -24,7 +24,11 @@ import {
   ticketingProcedure,
 } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
-import { decryptString, generateSlug } from '@/server/utils/utils';
+import {
+  decryptString,
+  generateSlug,
+  getBuyersCodeByDni,
+} from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
   create: ticketingProcedure
@@ -167,11 +171,15 @@ export const emittedTicketsRouter = router({
         phoneNumber: emittedTicket.phoneNumber,
       })
       .from(emittedTicket)
-      .orderBy(desc(emittedTicket.createdAt));
+      .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
+
+    const dnis = data.map((item) => item.dni);
+    const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
 
     const dataWithAge = data.map((buyer) => ({
       ...buyer,
       age: differenceInYears(new Date(), buyer.birthDate).toString(),
+      buyerCode: buyerCodes?.[buyer.dni] || '---',
     }));
 
     return dataWithAge;
