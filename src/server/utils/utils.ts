@@ -7,9 +7,15 @@ import {
 import fs from 'fs';
 import path from 'path';
 
-import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import { compareAsc } from 'date-fns';
+import { asc } from 'drizzle-orm';
+import { PDFDocument } from 'pdf-lib';
 import { type Fontkit } from 'pdf-lib/cjs/types/fontkit';
+
+import { type db as database } from '@/drizzle';
+
+import { emittedTicket } from '@/drizzle/schema';
 
 export async function getDMSansFonts(): Promise<{
   fontBold: Buffer<ArrayBufferLike>;
@@ -94,4 +100,39 @@ export async function measureTextWidth(
   const font = await pdfDoc.embedFont(fontBytes);
 
   return font.widthOfTextAtSize(text, fontSize);
+}
+
+export async function getBuyersCodeByDni(
+  db: typeof database,
+  dnis: string[],
+): Promise<Record<string, string> | null> {
+  if (dnis.length === 0) return null;
+
+  // Obtener el primer ticket emitido para TODOS los DNIs únicos en la base de datos (no solo los que se están consultando)
+  const allFirstTicketsByDni = await db
+    .selectDistinctOn([emittedTicket.dni], {
+      dni: emittedTicket.dni,
+      createdAt: emittedTicket.createdAt,
+    })
+    .from(emittedTicket)
+    .orderBy(emittedTicket.dni, asc(emittedTicket.createdAt));
+
+  // Ordenar por fecha de creación para asignar códigos incrementales globales
+  const sortedAllTickets = allFirstTicketsByDni.sort((a, b) =>
+    compareAsc(new Date(a.createdAt), new Date(b.createdAt)),
+  );
+
+  // Crear mapa global de códigos para TODOS los DNIs únicos
+  const globalBuyerCodes: Record<string, string> = {};
+  sortedAllTickets.forEach((ticket, index) => {
+    globalBuyerCodes[ticket.dni] = (index + 1).toString();
+  });
+
+  // Retornar solo los códigos para los DNIs solicitados
+  const requestedBuyerCodes: Record<string, string> = {};
+  dnis.forEach((dni) => {
+    requestedBuyerCodes[dni] = globalBuyerCodes[dni] || '---';
+  });
+
+  return requestedBuyerCodes;
 }
