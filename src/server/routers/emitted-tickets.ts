@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -103,27 +103,20 @@ export const emittedTicketsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const uniqueTicketTypeIds = input.map((ticket) => ticket.ticketTypeId);
 
-      // Fetch ticket type names and count existing tickets for each type
-      const ticketTypeData = await Promise.all(
-        uniqueTicketTypeIds.map(async (ticketTypeId) => {
-          const [ticketType, existingCount] = await Promise.all([
-            ctx.db.query.ticketType.findFirst({
-              where: eq(ticketTypeTable.id, ticketTypeId),
-              columns: { name: true },
-            }),
-            ctx.db
-              .select({ count: count() })
-              .from(emittedTicket)
-              .where(eq(emittedTicket.ticketTypeId, ticketTypeId)),
-          ]);
-
-          return {
-            ticketTypeId,
-            name: ticketType?.name || '',
-            existingCount: existingCount[0]?.count || 0,
-          };
-        }),
-      );
+      // Fetch ticket type names and count existing tickets for each type in a single query
+      const ticketTypeData = await ctx.db
+        .select({
+          ticketTypeId: ticketTypeTable.id,
+          name: ticketTypeTable.name,
+          existingCount: count(emittedTicket.id),
+        })
+        .from(ticketTypeTable)
+        .leftJoin(
+          emittedTicket,
+          eq(ticketTypeTable.id, emittedTicket.ticketTypeId),
+        )
+        .where(inArray(ticketTypeTable.id, uniqueTicketTypeIds))
+        .groupBy(ticketTypeTable.id, ticketTypeTable.name);
 
       const ticketTypes = new Map(
         ticketTypeData.map((data) => [data.ticketTypeId, data]),
@@ -179,7 +172,9 @@ export const emittedTicketsRouter = router({
     const dataWithAge = data.map((buyer) => ({
       ...buyer,
       age: differenceInYears(new Date(), buyer.birthDate).toString(),
-      buyerCode: buyerCodes?.[buyer.dni] || '---',
+      buyerCode:
+        buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
+        '---',
     }));
 
     return dataWithAge;

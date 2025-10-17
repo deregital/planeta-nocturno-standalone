@@ -8,8 +8,7 @@ import fs from 'fs';
 import path from 'path';
 
 import fontkit from '@pdf-lib/fontkit';
-import { compareAsc } from 'date-fns';
-import { asc } from 'drizzle-orm';
+import { inArray, min, sql } from 'drizzle-orm';
 import { PDFDocument } from 'pdf-lib';
 import { type Fontkit } from 'pdf-lib/cjs/types/fontkit';
 
@@ -101,38 +100,34 @@ export async function measureTextWidth(
 
   return font.widthOfTextAtSize(text, fontSize);
 }
-
 export async function getBuyersCodeByDni(
   db: typeof database,
   dnis: string[],
-): Promise<Record<string, string> | null> {
+): Promise<{ dni: string; id: number }[] | null> {
   if (dnis.length === 0) return null;
 
-  // Obtener el primer ticket emitido para TODOS los DNIs únicos en la base de datos (no solo los que se están consultando)
-  const allFirstTicketsByDni = await db
-    .selectDistinctOn([emittedTicket.dni], {
+  const firstPurchaseDate = min(emittedTicket.createdAt).as('firstPurchase');
+
+  const allBuyersCte = db
+    .select({
       dni: emittedTicket.dni,
-      createdAt: emittedTicket.createdAt,
+      firstPurchase: firstPurchaseDate,
     })
     .from(emittedTicket)
-    .orderBy(emittedTicket.dni, asc(emittedTicket.createdAt));
+    .groupBy(emittedTicket.dni)
+    .as('all_buyers');
 
-  // Ordenar por fecha de creación para asignar códigos incrementales globales
-  const sortedAllTickets = allFirstTicketsByDni.sort((a, b) =>
-    compareAsc(new Date(a.createdAt), new Date(b.createdAt)),
-  );
+  // Agarramos los DNIs pasados y le asignamos un ID global
+  const filteredBuyers = await db
+    .with(allBuyersCte) // Indica a Drizzle que use la CTE
+    .select({
+      dni: allBuyersCte.dni,
+      id: sql<number>`ROW_NUMBER() OVER (ORDER BY ${allBuyersCte.firstPurchase} ASC)`.as(
+        'id',
+      ),
+    })
+    .from(allBuyersCte)
+    .where(inArray(allBuyersCte.dni, dnis)); // Filtro los DNIs pasados
 
-  // Crear mapa global de códigos para TODOS los DNIs únicos
-  const globalBuyerCodes: Record<string, string> = {};
-  sortedAllTickets.forEach((ticket, index) => {
-    globalBuyerCodes[ticket.dni] = (index + 1).toString();
-  });
-
-  // Retornar solo los códigos para los DNIs solicitados
-  const requestedBuyerCodes: Record<string, string> = {};
-  dnis.forEach((dni) => {
-    requestedBuyerCodes[dni] = globalBuyerCodes[dni] || '---';
-  });
-
-  return requestedBuyerCodes;
+  return filteredBuyers;
 }
