@@ -28,7 +28,10 @@ export default function Client({
     <div className='flex flex-col gap-4 p-4'>
       <GoBack route='/admin/database' className='size-fit my-2' />
       <div className='flex'>
-        <h1 className='text-4xl font-bold text-accent'>{buyer.fullName}</h1>
+        <h1 className='text-4xl font-bold text-accent'>
+          {buyer.fullName}{' '}
+          <span className='text-3xl text-gray-500'>ID: {buyer.buyerCode}</span>
+        </h1>
         <div className='flex justify-center items-center gap-4 ml-8 [&>div]:w-9 [&>div]:h-9 [&>div]:inline-flex [&>div]:items-center [&>div]:justify-center [&>div]:border [&>div]:rounded-sm [&>div]:transition'>
           {buyer.instagram && (
             <div className='bg-[#DA00A4] hover:bg-[#DA00A4]/75'>
