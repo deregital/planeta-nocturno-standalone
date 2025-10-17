@@ -1,7 +1,7 @@
 'use client';
 import { format } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
-import { Cake, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
+import { Cake, Contact, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
 
 import AttendedEventsTable from '@/components/admin/BuyerTable';
 import { FilledCard } from '@/components/common/FilledCard';
@@ -74,6 +74,10 @@ export default function Client({
 
       <div className='flex gap-8 flex-col lg:flex-row'>
         <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
+          <div>
+            <Contact />
+            <p>Código: {buyer.buyerCode}</p>
+          </div>
           <div>
             <IdCard />
             <p>DNI/Pasaporte: {buyer.dni}</p>
