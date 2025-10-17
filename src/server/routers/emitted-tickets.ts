@@ -225,12 +225,15 @@ export const emittedTicketsRouter = router({
         return null;
       }
 
+      const buyerCode = await getBuyersCodeByDni(ctx.db, [buyer.dni]);
+
       const buyerWithAge = {
         ...buyer,
         age: differenceInYears(
           new Date(),
           new Date(buyer.birthDate),
         ).toString(),
+        buyerCode: buyerCode?.[buyer.dni] || '---',
       };
 
       return { buyer: buyerWithAge, events };
@@ -405,7 +408,15 @@ export const emittedTicketsRouter = router({
         },
       });
 
-      return tickets;
+      const buyerCodes = await getBuyersCodeByDni(
+        ctx.db,
+        tickets.map((ticket) => ticket.dni),
+      );
+
+      return tickets.map((ticket) => ({
+        ...ticket,
+        buyerCode: buyerCodes?.[ticket.dni] || '---',
+      }));
     }),
 
   send: ticketingProcedure

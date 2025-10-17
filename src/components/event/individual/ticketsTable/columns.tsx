@@ -32,6 +32,37 @@ export function generateTicketColumns(isAdmin: boolean) {
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
     {
+      id: 'buyerCode',
+      accessorKey: 'buyerCode',
+      header: ({ column }) => {
+        return (
+          <div
+            className='mx-auto w-full'
+            style={{
+              width: `${column.getSize()}px`,
+            }}
+          >
+            Código
+          </div>
+        );
+      },
+      minSize: 50,
+      size: 50,
+      maxSize: 50,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return (
+          <div className='flex items-center justify-center gap-2 text-sm'>
+            <span>{row.original.buyerCode}</span>
+          </div>
+        );
+      },
+      meta: {
+        exportValue: (row) => row.original.buyerCode,
+        exportHeader: 'Código',
+      },
+    },
+    {
       id: 'ticketType',
       accessorFn: (row) => row.ticketType.name,
       header: ({ column }) => {
