@@ -8,7 +8,7 @@
 ALTER TABLE "account" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "emittedTicket" ADD COLUMN     "slug" TEXT NOT NULL,
+ALTER TABLE "emittedTicket" ADD COLUMN     "slug" TEXT NOT NULL DEFAULT '',
 ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
