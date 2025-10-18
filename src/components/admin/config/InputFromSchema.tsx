@@ -17,7 +17,14 @@ export function InputFromSchema({ field, ...props }: InputFromSchemaProps) {
   }
 
   if (field instanceof ZodNumber) {
-    return <Input type='number' {...props} />;
+    return (
+      <Input
+        type='number'
+        min={field.minValue ?? undefined}
+        max={field.maxValue ?? undefined}
+        {...props}
+      />
+    );
   }
 
   if (field instanceof ZodBoolean) {

@@ -18,14 +18,16 @@ export default function Page() {
   });
 
   const { data: features, isLoading } = trpc.feature.getAll.useQuery();
+  const utils = trpc.useUtils();
 
   useEffect(() => {
     if (state.success) {
       toast.success('Se han actualizado las configuraciones');
+      utils.feature.getAll.invalidate();
     } else if (state.errors || state.globalError) {
       toast.error('Hubo un error al actualizar las configuraciones');
     }
-  }, [state]);
+  }, [state, utils]);
 
   return isLoading ? (
     <Loader className='animate-spin' />
