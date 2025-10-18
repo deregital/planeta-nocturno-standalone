@@ -70,7 +70,8 @@ async function main() {
       .values({
         name: eventName,
         description: 'Un concierto inolvidable de rock nacional.',
-        coverImageUrl: 'https://example.com/rock.jpg',
+        coverImageUrl:
+          'https://i1.sndcdn.com/artworks-6ynRG9wIT0n9MmI6-LmuH4Q-t500x500.jpg',
         slug: 'noche-de-rock',
         startingDate: new Date('2024-08-01T20:00:00Z').toISOString(),
         endingDate: new Date('2024-08-02T02:00:00Z').toISOString(),

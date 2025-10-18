@@ -7,9 +7,14 @@ import {
 import fs from 'fs';
 import path from 'path';
 
-import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import { inArray, min, sql } from 'drizzle-orm';
+import { PDFDocument } from 'pdf-lib';
 import { type Fontkit } from 'pdf-lib/cjs/types/fontkit';
+
+import { type db as database } from '@/drizzle';
+
+import { emittedTicket } from '@/drizzle/schema';
 
 export async function getDMSansFonts(): Promise<{
   fontBold: Buffer<ArrayBufferLike>;
@@ -94,4 +99,35 @@ export async function measureTextWidth(
   const font = await pdfDoc.embedFont(fontBytes);
 
   return font.widthOfTextAtSize(text, fontSize);
+}
+export async function getBuyersCodeByDni(
+  db: typeof database,
+  dnis: string[],
+): Promise<{ dni: string; id: number }[] | null> {
+  if (dnis.length === 0) return null;
+
+  const firstPurchaseDate = min(emittedTicket.createdAt).as('firstPurchase');
+
+  const allBuyersCte = db
+    .select({
+      dni: emittedTicket.dni,
+      firstPurchase: firstPurchaseDate,
+    })
+    .from(emittedTicket)
+    .groupBy(emittedTicket.dni)
+    .as('all_buyers');
+
+  // Agarramos los DNIs pasados y le asignamos un ID global
+  const filteredBuyers = await db
+    .with(allBuyersCte) // Indica a Drizzle que use la CTE
+    .select({
+      dni: allBuyersCte.dni,
+      id: sql<number>`ROW_NUMBER() OVER (ORDER BY ${allBuyersCte.firstPurchase} ASC)`.as(
+        'id',
+      ),
+    })
+    .from(allBuyersCte)
+    .where(inArray(allBuyersCte.dni, dnis)); // Filtro los DNIs pasados
+
+  return filteredBuyers;
 }

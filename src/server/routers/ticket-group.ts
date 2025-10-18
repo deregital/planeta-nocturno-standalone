@@ -263,10 +263,25 @@ export const ticketGroupRouter = router({
               mail: true,
               dni: true,
               createdAt: true,
+              slug: true,
             },
             with: {
               ticketType: {
                 columns: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          ticketTypePerGroups: {
+            columns: {
+              amount: true,
+            },
+            with: {
+              ticketType: {
+                columns: {
+                  id: true,
                   name: true,
                 },
               },
@@ -319,6 +334,7 @@ export const ticketGroupRouter = router({
           id: ticket.id,
           ticketType: ticket.ticketType.name,
           invitedBy: group.invitedBy,
+          slug: ticket.slug,
         });
         return {
           ticket,
