@@ -2,11 +2,10 @@ import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import z from 'zod';
 
-import { user } from '@/drizzle/schema';
+import { ticketGroup as ticketGroupSchema, user } from '@/drizzle/schema';
 import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
-import { publicProcedure, router } from '@/server/trpc';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
-import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
+import { publicProcedure, router } from '@/server/trpc';
 
 // Función de retry para manejar rate limits
 export async function retryWithBackoff<T>(
@@ -127,12 +126,12 @@ export const mailRouter = router({
         },
       });
 
-      const admin = await ctx.db.query.user.findFirst({
+      const admins = await ctx.db.query.user.findMany({
         where: eq(user.role, 'ADMIN'),
       });
 
       // No deberia ser posible
-      if (!admin) {
+      if (!admins) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'No se encontró el administrador',
@@ -152,34 +151,28 @@ export const mailRouter = router({
       const bodyText = `Se han vendido entradas para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${totalPrice}. Para más información, ingresá a la plataforma.`;
 
       try {
-        const result = await retryWithBackoff(
-          async () =>
-            await sendMailWithoutAttachments({
-              to: admin.email,
-              subject: `Entrada vendida - ${eventName}`,
-              body: bodyText,
-            }),
-          3, // 3 intentos máximo
-          1000, // 1 segundo de delay
-        );
+        for (const admin of admins) {
+          const result = await retryWithBackoff(
+            async () =>
+              await sendMailWithoutAttachments({
+                to: admin.email,
+                subject: `Entrada vendida - ${eventName}`,
+                body: bodyText,
+              }),
+            3, // 3 intentos máximo
+            1000, // 1 segundo de delay
+          );
 
-        const { data, error } = result;
-
-        if (error) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Algo salió mal al enviar el mail',
-            cause: error,
-          });
+          if (result.error) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: `Algo salió mal al enviar el mail a ${admin.email} para la notificación de ${bodyText}`,
+              cause: result.error,
+            });
+          }
         }
-
-        return data;
       } catch (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Algo salió mal al enviar el mail',
-          cause: error,
-        });
+        console.error(error);
       }
     }),
 });
