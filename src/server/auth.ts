@@ -1,5 +1,4 @@
 import NextAuth, { CredentialsSignin } from 'next-auth';
-import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcrypt';
 
@@ -14,9 +13,6 @@ const credentialsSchema = userSchema.pick({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db),
-  secret: process.env.AUTH_SECRET,
-  trustHost: true,
   providers: [
     {
       type: 'credentials',
