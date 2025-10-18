@@ -1,14 +1,14 @@
 import {
   pgTable,
-  varchar,
-  timestamp,
-  text,
-  integer,
-  foreignKey,
-  uuid,
-  doublePrecision,
-  boolean,
   uniqueIndex,
+  uuid,
+  text,
+  timestamp,
+  foreignKey,
+  integer,
+  boolean,
+  doublePrecision,
+  varchar,
   index,
   primaryKey,
   pgEnum,
@@ -26,52 +26,6 @@ export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'PAID',
   'TABLE',
 ]);
-
-export const prismaMigrations = pgTable('_prisma_migrations', {
-  id: varchar({ length: 36 }).primaryKey().notNull(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
-  migrationName: varchar('migration_name', { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp('rolled_back_at', {
-    withTimezone: true,
-    mode: 'string',
-  }),
-  startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' })
-    .defaultNow()
-    .notNull(),
-  appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
-});
-
-export const ticketType = pgTable(
-  'ticketType',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-    description: text().notNull(),
-    price: doublePrecision(),
-    maxAvailable: integer().notNull(),
-    maxPerPurchase: integer().notNull(),
-    category: ticketTypeCategory().notNull(),
-    maxSellDate: timestamp({ withTimezone: true, mode: 'string' }),
-    visibleInWeb: boolean().default(true).notNull(),
-    scanLimit: timestamp({ withTimezone: true, mode: 'string' }),
-    eventId: uuid().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    lowStockThreshold: integer(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.eventId],
-      foreignColumns: [event.id],
-      name: 'ticketType_eventId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
 
 export const user = pgTable(
   'user',
@@ -204,6 +158,55 @@ export const ticketGroup = pgTable(
   ],
 );
 
+export const ticketType = pgTable(
+  'ticketType',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    description: text().notNull(),
+    price: doublePrecision(),
+    maxAvailable: integer().notNull(),
+    maxPerPurchase: integer().notNull(),
+    category: ticketTypeCategory().notNull(),
+    maxSellDate: timestamp({ withTimezone: true, mode: 'string' }),
+    visibleInWeb: boolean().default(true).notNull(),
+    scanLimit: timestamp({ withTimezone: true, mode: 'string' }),
+    eventId: uuid().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    lowStockThreshold: integer(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'ticketType_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+export const feature = pgTable(
+  'feature',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    key: text().notNull(),
+    enabled: boolean().default(false).notNull(),
+    value: text(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('feature_key_key').using(
+      'btree',
+      table.key.asc().nullsLast().op('text_ops'),
+    ),
+  ],
+);
+
 export const emittedTicket = pgTable(
   'emittedTicket',
   {
@@ -225,6 +228,7 @@ export const emittedTicket = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     eventId: uuid(),
+    slug: text().notNull(),
   },
   (table) => [
     foreignKey({
@@ -251,6 +255,22 @@ export const emittedTicket = pgTable(
   ],
 );
 
+export const prismaMigrations = pgTable('_prisma_migrations', {
+  id: varchar({ length: 36 }).primaryKey().notNull(),
+  checksum: varchar({ length: 64 }).notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
+  migrationName: varchar('migration_name', { length: 255 }).notNull(),
+  logs: text(),
+  rolledBackAt: timestamp('rolled_back_at', {
+    withTimezone: true,
+    mode: 'string',
+  }),
+  startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' })
+    .defaultNow()
+    .notNull(),
+  appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
+});
+
 export const eventXUser = pgTable(
   '_EVENT_X_USER',
   {
@@ -274,21 +294,6 @@ export const eventXUser = pgTable(
       .onUpdate('cascade')
       .onDelete('cascade'),
     primaryKey({ columns: [table.a, table.b], name: '_EVENT_X_USER_AB_pkey' }),
-  ],
-);
-
-export const verificationToken = pgTable(
-  'verificationToken',
-  {
-    identifier: text().notNull(),
-    token: text().notNull(),
-    expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-  },
-  (table) => [
-    primaryKey({
-      columns: [table.identifier, table.token],
-      name: 'verificationToken_pkey',
-    }),
   ],
 );
 
@@ -317,6 +322,21 @@ export const ticketTypePerGroup = pgTable(
     primaryKey({
       columns: [table.ticketTypeId, table.ticketGroupId],
       name: 'ticketTypePerGroup_pkey',
+    }),
+  ],
+);
+
+export const verificationToken = pgTable(
+  'verificationToken',
+  {
+    identifier: text().notNull(),
+    token: text().notNull(),
+    expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.identifier, table.token],
+      name: 'verificationToken_pkey',
     }),
   ],
 );

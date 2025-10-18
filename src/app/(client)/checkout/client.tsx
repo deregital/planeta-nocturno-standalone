@@ -6,36 +6,47 @@ import { useActionState, useEffect, useState } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
+import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
+import FormInputGender from '@/components/checkout/FormInputGender';
+import FormInputInstagram from '@/components/checkout/FormInputInstagram';
+import FormInputMail from '@/components/checkout/FormInputMail';
 import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
 import GoBack from '@/components/common/GoBack';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
+import { type EmittedTicketInput } from '@/server/schemas/emitted-tickets';
 import 'react-phone-number-input/style.css';
 
 export default function CheckoutClient({
   ticketGroup,
+  lastPurchase,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
+  lastPurchase?: EmittedTicketInput;
 }) {
   const [state, action, isPending] = useActionState(handlePurchase, {
     ticketsInput: [],
   });
 
-  const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>({});
+  const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>(
+    () => {
+      if (
+        lastPurchase?.phoneNumber &&
+        ticketGroup.ticketTypePerGroups.length > 0
+      ) {
+        const firstTicketType =
+          ticketGroup.ticketTypePerGroups[0].ticketType.id;
+        const firstTicketKey = `phoneNumber_${firstTicketType}-0`;
+        return { [firstTicketKey]: lastPurchase.phoneNumber };
+      }
+      return {};
+    },
+  );
 
   // Initialize phone numbers from state if available
   useEffect(() => {
@@ -82,212 +93,201 @@ export default function CheckoutClient({
         className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'
       >
         {ticketGroup.ticketTypePerGroups.map((ticket, ticketTypeIndex) => {
-          return Array.from({ length: ticket.amount }).map((_, indexAmount) => (
-            <div
-              key={ticket.ticketType.id + '-' + indexAmount}
-              className='flex flex-col gap-4'
-            >
-              {(ticketGroup.ticketTypePerGroups.length !== 1 ||
-                ticket.amount !== 1) && (
-                <p className='text-3xl font-extralight py-2'>
-                  Entrada {ticket.ticketType.name} {indexAmount + 1}
-                </p>
-              )}
-              <InputWithLabel
-                name={`fullName_${ticket.ticketType.id}-${indexAmount}`}
-                id={`fullName_${ticket.ticketType.id}-${indexAmount}`}
-                label='Nombre completo'
-                required
-                defaultValue={
-                  state.formData?.[
-                    `fullName_${ticket.ticketType.id}-${indexAmount}`
-                  ]
-                }
-                error={
-                  typeof state.errors === 'object' && state.errors !== null
-                    ? (state.errors as Record<string, string>)[
-                        `fullName_${ticket.ticketType.id}-${indexAmount}`
-                      ]
-                    : undefined
-                }
-              />
-              <InputWithLabel
-                name={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                id={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                label='Mail'
-                type='email'
-                required
-                defaultValue={
-                  state.formData?.[
-                    `mail_${ticket.ticketType.id}-${indexAmount}`
-                  ]
-                }
-                error={
-                  typeof state.errors === 'object' && state.errors !== null
-                    ? (state.errors as Record<string, string>)[
-                        `mail_${ticket.ticketType.id}-${indexAmount}`
-                      ]
-                    : undefined
-                }
-              />
-              <InputWithLabel
-                name={`dni_${ticket.ticketType.id}-${indexAmount}`}
-                id={`dni_${ticket.ticketType.id}-${indexAmount}`}
-                label='DNI/Pasaporte'
-                type='text'
-                required
-                defaultValue={
-                  state.formData?.[`dni_${ticket.ticketType.id}-${indexAmount}`]
-                }
-                error={
-                  typeof state.errors === 'object' && state.errors !== null
-                    ? (state.errors as Record<string, string>)[
-                        `dni_${ticket.ticketType.id}-${indexAmount}`
-                      ]
-                    : undefined
-                }
-              />
+          return Array.from({ length: ticket.amount }).map((_, indexAmount) => {
+            const isFirstTicket = ticketTypeIndex === 0 && indexAmount === 0;
 
-              <div className='flex flex-col gap-1'>
-                <PhoneInputWithLabel
-                  label='Número de teléfono'
-                  name={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
-                  id={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
-                  labels={esPhoneLocale}
-                  defaultCountry='AR'
-                  className='[&_[data-slot="input"]]:border-stroke'
-                  inputComponent={Input}
-                  value={
-                    phoneNumbers[
-                      `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
-                    ]
-                  }
-                  onChange={(v) => {
-                    if (v)
-                      handlePhoneNumberChange(
-                        `phoneNumber_${ticket.ticketType.id}-${indexAmount}`,
-                        v?.toString(),
-                      );
-                  }}
+            return (
+              <div
+                key={ticket.ticketType.id + '-' + indexAmount}
+                className='flex flex-col gap-4'
+              >
+                {(ticketGroup.ticketTypePerGroups.length !== 1 ||
+                  ticket.amount !== 1) && (
+                  <p className='text-3xl font-extralight py-2'>
+                    Entrada {ticket.ticketType.name} {indexAmount + 1}
+                  </p>
+                )}
+                <InputWithLabel
+                  name={`fullName_${ticket.ticketType.id}-${indexAmount}`}
+                  id={`fullName_${ticket.ticketType.id}-${indexAmount}`}
+                  label='Nombre completo'
                   required
+                  defaultValue={
+                    state.formData?.[
+                      `fullName_${ticket.ticketType.id}-${indexAmount}`
+                    ] ?? (isFirstTicket ? lastPurchase?.fullName : undefined)
+                  }
                   error={
                     typeof state.errors === 'object' && state.errors !== null
                       ? (state.errors as Record<string, string>)[
-                          `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
+                          `fullName_${ticket.ticketType.id}-${indexAmount}`
                         ]
                       : undefined
                   }
                 />
-              </div>
-              <input
-                hidden
-                name={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
-                value={
-                  phoneNumbers[
-                    `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
-                  ] ?? ''
-                }
-                onChange={() => {}}
-              />
-              <InputWithLabel
-                name={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
-                id={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
-                label='Fecha de nacimiento'
-                type='date'
-                required
-                max={format(new Date(), 'yyyy-MM-dd')}
-                suppressHydrationWarning
-                defaultValue={
-                  state.formData?.[
-                    `birthDate_${ticket.ticketType.id}-${indexAmount}`
-                  ]
-                }
-                error={
-                  typeof state.errors === 'object' && state.errors !== null
-                    ? (state.errors as Record<string, string>)[
-                        `birthDate_${ticket.ticketType.id}-${indexAmount}`
-                      ]
-                    : undefined
-                }
-              />
-              <div className='flex flex-col gap-1'>
-                <Label
-                  className='pl-1 text-accent gap-0.5'
-                  htmlFor={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}>
+                  <FormInputMail
+                    state={state}
+                    tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
+                    defaultValue={
+                      isFirstTicket ? lastPurchase?.mail : undefined
+                    }
+                  />
+                </FeatureWrapper>
+                <FeatureWrapper
+                  feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}
+                  negate
                 >
-                  Género<span className='text-red-500'>*</span>
-                </Label>
-                <Select
-                  name={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                  {isFirstTicket && (
+                    <FormInputMail
+                      state={state}
+                      tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={lastPurchase?.mail}
+                    />
+                  )}
+                </FeatureWrapper>
+                <InputWithLabel
+                  name={`dni_${ticket.ticketType.id}-${indexAmount}`}
+                  id={`dni_${ticket.ticketType.id}-${indexAmount}`}
+                  label='DNI/Pasaporte'
+                  type='text'
                   required
                   defaultValue={
                     state.formData?.[
-                      `gender_${ticket.ticketType.id}-${indexAmount}`
-                    ]
+                      `dni_${ticket.ticketType.id}-${indexAmount}`
+                    ] ?? (isFirstTicket ? lastPurchase?.dni : undefined)
                   }
-                >
-                  <SelectTrigger className='w-full py-2 border-stroke'>
-                    <SelectValue placeholder='Selecciona tu género' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Género</SelectLabel>
-                      <SelectItem value='male'>Masculino</SelectItem>
-                      <SelectItem value='female'>Femenino</SelectItem>
-                      <SelectItem value='other'>Otro</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                {typeof state.errors === 'object' &&
-                  state.errors !== null &&
-                  (state.errors as Record<string, string>)[
-                    `gender_${ticket.ticketType.id}-${indexAmount}`
-                  ] && (
-                    <p className='pl-1 font-bold text-xs text-red-500'>
-                      {
-                        (state.errors as Record<string, string>)[
-                          `gender_${ticket.ticketType.id}-${indexAmount}`
+                  error={
+                    typeof state.errors === 'object' && state.errors !== null
+                      ? (state.errors as Record<string, string>)[
+                          `dni_${ticket.ticketType.id}-${indexAmount}`
                         ]
-                      }
-                    </p>
-                  )}
-              </div>
-              <InputWithLabel
-                name={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                id={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                label='Instagram'
-                type='text'
-                placeholder='@'
-                defaultValue={
-                  state.formData?.[
-                    `instagram_${ticket.ticketType.id}-${indexAmount}`
-                  ]
-                }
-                error={
-                  typeof state.errors === 'object' && state.errors !== null
-                    ? (state.errors as Record<string, string>)[
-                        `instagram_${ticket.ticketType.id}-${indexAmount}`
+                      : undefined
+                  }
+                />
+
+                <div className='flex flex-col gap-1'>
+                  <PhoneInputWithLabel
+                    label='Número de teléfono'
+                    name={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
+                    id={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
+                    labels={esPhoneLocale}
+                    defaultCountry='AR'
+                    className='[&_[data-slot="input"]]:border-stroke'
+                    inputComponent={Input}
+                    value={
+                      phoneNumbers[
+                        `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
                       ]
-                    : undefined
-                }
-              />
-              <input
-                type='hidden'
-                name={`ticketTypeId_${ticket.ticketType.id}-${indexAmount}`}
-                value={ticket.ticketType.id}
-              />
-              <input
-                type='hidden'
-                name={`ticketGroupId_${ticket.ticketType.id}-${indexAmount}`}
-                value={ticket.ticketGroupId}
-              />
-              {(indexAmount < ticket.amount - 1 ||
-                ticketTypeIndex <
-                  ticketGroup.ticketTypePerGroups.length - 1) && (
-                <Separator className='my-6 bg-accent-dark/70' />
-              )}
-            </div>
-          ));
+                    }
+                    onChange={(v) => {
+                      if (v)
+                        handlePhoneNumberChange(
+                          `phoneNumber_${ticket.ticketType.id}-${indexAmount}`,
+                          v?.toString(),
+                        );
+                    }}
+                    required
+                    error={
+                      typeof state.errors === 'object' && state.errors !== null
+                        ? (state.errors as Record<string, string>)[
+                            `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
+                          ]
+                        : undefined
+                    }
+                  />
+                </div>
+                <input
+                  hidden
+                  name={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
+                  value={
+                    phoneNumbers[
+                      `phoneNumber_${ticket.ticketType.id}-${indexAmount}`
+                    ] ?? ''
+                  }
+                  onChange={() => {}}
+                />
+                <InputWithLabel
+                  name={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
+                  id={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
+                  label='Fecha de nacimiento'
+                  type='date'
+                  required
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  suppressHydrationWarning
+                  defaultValue={
+                    state.formData?.[
+                      `birthDate_${ticket.ticketType.id}-${indexAmount}`
+                    ] ??
+                    (isFirstTicket && lastPurchase?.birthDate
+                      ? typeof lastPurchase.birthDate === 'string'
+                        ? lastPurchase.birthDate
+                        : format(lastPurchase.birthDate, 'yyyy-MM-dd')
+                      : undefined)
+                  }
+                  error={
+                    typeof state.errors === 'object' && state.errors !== null
+                      ? (state.errors as Record<string, string>)[
+                          `birthDate_${ticket.ticketType.id}-${indexAmount}`
+                        ]
+                      : undefined
+                  }
+                />
+                <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}>
+                  <>
+                    <FormInputGender
+                      state={state}
+                      tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={
+                        isFirstTicket ? lastPurchase?.gender : undefined
+                      }
+                    />
+                    <FormInputInstagram
+                      state={state}
+                      tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={
+                        isFirstTicket ? lastPurchase?.instagram : undefined
+                      }
+                    />
+                  </>
+                </FeatureWrapper>
+                <FeatureWrapper
+                  feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}
+                  negate
+                >
+                  {isFirstTicket && (
+                    <>
+                      <FormInputGender
+                        state={state}
+                        tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                        defaultValue={lastPurchase?.gender}
+                      />
+                      <FormInputInstagram
+                        state={state}
+                        tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
+                        defaultValue={lastPurchase?.instagram}
+                      />
+                    </>
+                  )}
+                </FeatureWrapper>
+                <input
+                  type='hidden'
+                  name={`ticketTypeId_${ticket.ticketType.id}-${indexAmount}`}
+                  value={ticket.ticketType.id}
+                />
+                <input
+                  type='hidden'
+                  name={`ticketGroupId_${ticket.ticketType.id}-${indexAmount}`}
+                  value={ticket.ticketGroupId}
+                />
+                {(indexAmount < ticket.amount - 1 ||
+                  ticketTypeIndex <
+                    ticketGroup.ticketTypePerGroups.length - 1) && (
+                  <Separator className='my-6 bg-accent-dark/70' />
+                )}
+              </div>
+            );
+          });
         })}
         <Separator className='mt-12 mb-6 bg-accent-dark/70' />
         <InputWithLabel

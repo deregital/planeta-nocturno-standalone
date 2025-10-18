@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -24,7 +24,11 @@ import {
   ticketingProcedure,
 } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
-import { decryptString } from '@/server/utils/utils';
+import {
+  decryptString,
+  generateSlug,
+  getBuyersCodeByDni,
+} from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
   create: ticketingProcedure
@@ -51,6 +55,27 @@ export const emittedTicketsRouter = router({
             })
             .returning();
 
+          const lastEmitted = await tx.query.emittedTicket.findFirst({
+            where: eq(emittedTicket.ticketGroupId, ticketGroupCreated.id),
+            orderBy: desc(emittedTicket.createdAt),
+            with: {
+              ticketType: {
+                columns: {
+                  name: true,
+                },
+              },
+            },
+          });
+
+          let slug = '';
+          if (lastEmitted && lastEmitted.slug) {
+            const parts = lastEmitted.slug.split('-');
+            const count = parseInt(parts[parts.length - 1], 10);
+            slug = generateSlug(`${lastEmitted.ticketType.name} ${count}`);
+          } else {
+            slug = generateSlug(`${ticketType?.name} 0`);
+          }
+
           const [ticketCreated] = await tx
             .insert(emittedTicket)
             .values({
@@ -60,6 +85,7 @@ export const emittedTicketsRouter = router({
               scanned: true,
               scannedAt: new Date().toISOString(),
               scannedByUserId: ctx.session.user.id,
+              slug,
             })
             .returning();
 
@@ -75,10 +101,52 @@ export const emittedTicketsRouter = router({
   createMany: publicProcedure
     .input(createManyTicketSchema)
     .mutation(async ({ ctx, input }) => {
-      const values = input.map((ticket) => ({
-        ...ticket,
-        birthDate: ticket.birthDate.toISOString(),
-      }));
+      const uniqueTicketTypeIds = input.map((ticket) => ticket.ticketTypeId);
+
+      // Fetch ticket type names and count existing tickets for each type in a single query
+      const ticketTypeData = await ctx.db
+        .select({
+          ticketTypeId: ticketTypeTable.id,
+          name: ticketTypeTable.name,
+          existingCount: count(emittedTicket.id),
+        })
+        .from(ticketTypeTable)
+        .leftJoin(
+          emittedTicket,
+          eq(ticketTypeTable.id, emittedTicket.ticketTypeId),
+        )
+        .where(inArray(ticketTypeTable.id, uniqueTicketTypeIds))
+        .groupBy(ticketTypeTable.id, ticketTypeTable.name);
+
+      const ticketTypes = new Map(
+        ticketTypeData.map((data) => [data.ticketTypeId, data]),
+      );
+
+      // <TicketTypeId, Count>
+      const newTicketCounts = new Map<string, number>();
+
+      const values = input.map((ticket) => {
+        const ticketTypeData = ticketTypes.get(ticket.ticketTypeId);
+        if (!ticketTypeData) {
+          throw new Error(
+            `TicketType con ID: ${ticket.ticketTypeId} no encontrado`,
+          );
+        }
+
+        const currentNewCount = newTicketCounts.get(ticket.ticketTypeId) || 0;
+        const nextNewCount = currentNewCount + 1;
+        newTicketCounts.set(ticket.ticketTypeId, nextNewCount);
+
+        const totalCount = ticketTypeData.existingCount + nextNewCount;
+        const slug = generateSlug(`${ticketTypeData.name} ${totalCount}`);
+
+        return {
+          ...ticket,
+          birthDate: ticket.birthDate.toISOString(),
+          slug,
+        };
+      });
+
       const res = await ctx.db.insert(emittedTicket).values(values).returning();
 
       if (!res) throw 'Error al crear ticket/s';
@@ -95,11 +163,18 @@ export const emittedTicketsRouter = router({
         birthDate: emittedTicket.birthDate,
         phoneNumber: emittedTicket.phoneNumber,
       })
-      .from(emittedTicket);
+      .from(emittedTicket)
+      .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
+
+    const dnis = data.map((item) => item.dni);
+    const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
 
     const dataWithAge = data.map((buyer) => ({
       ...buyer,
       age: differenceInYears(new Date(), buyer.birthDate).toString(),
+      buyerCode:
+        buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
+        '---',
     }));
 
     return dataWithAge;
@@ -145,12 +220,17 @@ export const emittedTicketsRouter = router({
         return null;
       }
 
+      const buyerCode = await getBuyersCodeByDni(ctx.db, [buyer.dni]);
+
       const buyerWithAge = {
         ...buyer,
         age: differenceInYears(
           new Date(),
           new Date(buyer.birthDate),
         ).toString(),
+        buyerCode:
+          buyerCode?.find((code) => code.dni === buyer.dni)?.id.toString() ||
+          '---',
       };
 
       return { buyer: buyerWithAge, events };
@@ -191,6 +271,7 @@ export const emittedTicketsRouter = router({
         fullName: ticket.fullName,
         id: ticket.id,
         invitedBy: ticket.ticketGroup.invitedBy,
+        slug: ticket.slug,
       });
 
       return pdf;
@@ -324,7 +405,17 @@ export const emittedTicketsRouter = router({
         },
       });
 
-      return tickets;
+      const buyerCodes = await getBuyersCodeByDni(
+        ctx.db,
+        tickets.map((ticket) => ticket.dni),
+      );
+
+      return tickets.map((ticket) => ({
+        ...ticket,
+        buyerCode:
+          buyerCodes?.find((code) => code.dni === ticket.dni)?.id.toString() ||
+          '---',
+      }));
     }),
 
   send: ticketingProcedure
@@ -367,6 +458,7 @@ export const emittedTicketsRouter = router({
         fullName: ticket.fullName,
         id: ticket.id,
         invitedBy: ticket.ticketGroup.invitedBy,
+        slug: ticket.slug,
       });
 
       const { data, error } = await sendMail({

@@ -1,21 +1,34 @@
 import React from 'react';
 
+import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrency } from '@/lib/utils-client';
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/client';
 
 export function TicketGroupTable({
   ticketGroup,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
 }) {
-  const totalPrice = ticketGroup.ticketTypePerGroups
-    .reduce((acc, type) => acc + (type.ticketType.price || 0) * type.amount, 0)
-    .toLocaleString('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
-    .replace(/\s/g, '');
+  const { data: serviceFee, isLoading } = trpc.feature.getByKey.useQuery(
+    FEATURE_KEYS.SERVICE_FEE,
+  );
+
+  const subtotalPrice = ticketGroup.ticketTypePerGroups.reduce(
+    (acc, type) => acc + (type.ticketType.price || 0) * type.amount,
+    0,
+  );
+
+  const serviceFeePrice = serviceFee?.enabled
+    ? subtotalPrice * (Number(serviceFee?.value ?? 0) / 100)
+    : 0;
+
+  const subtotalPriceString = formatCurrency(subtotalPrice);
+  const serviceFeeString = formatCurrency(serviceFeePrice);
+  const totalPriceString = formatCurrency(subtotalPrice + serviceFeePrice);
 
   return (
     <div className='flex flex-col justify-center items-center border border-stroke p-4 rounded-xl w-full sm:w-xl md:w-2xl'>
@@ -47,7 +60,31 @@ export function TicketGroupTable({
           </React.Fragment>
         ))}
       </div>
-      <p className='w-full text-start text-lg mt-6'>Total: {totalPrice}</p>
+
+      {isLoading ? (
+        <div className='flex flex-col gap-4 items-center w-full mt-4'>
+          <Skeleton className='w-full h-9' />
+          <Skeleton className='w-full h-9' />
+        </div>
+      ) : (
+        <div className='w-full flex-col flex items-end mt-4 [&>div]:w-full [&>div]:md:w-3/5 [&>div]:min-w-44 [&>div]:flex [&>div]:justify-between'>
+          <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
+            <p>Subtotal:</p>
+            <p>{subtotalPriceString}</p>
+          </div>
+          <FeatureWrapper feature={FEATURE_KEYS.SERVICE_FEE}>
+            <div className='mb-3 [&>p]:text-end [&>p]:text-lg'>
+              <p>Costo de servicio:</p>
+              <p>{serviceFeeString}</p>
+            </div>
+          </FeatureWrapper>
+          <Separator className='flex bg-stroke data-[orientation=horizontal]:min-w-44 data-[orientation=horizontal]:w-full data-[orientation=horizontal]:md:w-3/5' />
+          <div className='mt-3 [&>p]:text-end [&>p]:text-lg'>
+            <p>Total:</p>
+            <p>{totalPriceString}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

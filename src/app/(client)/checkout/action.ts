@@ -7,14 +7,17 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { checkFeature } from '@/components/admin/config/checkFeature';
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import {
+  type CreateManyTicket,
   createManyTicketSchema,
   invitedBySchema,
 } from '@/server/schemas/emitted-tickets';
 import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
-  ticketsInput: z.infer<typeof createManyTicketSchema>[];
+  ticketsInput: CreateManyTicket[];
   errors?: string[] | Record<string, string>;
   formData?: Record<string, string>;
 };
@@ -97,6 +100,19 @@ export const handlePurchase = async (
     }
   }
 
+  await checkFeature(
+    FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
+    () => {
+      const entradaWithMail = entradas.find((e) => e.mail && e.mail !== '');
+      if (entradaWithMail) {
+        for (const entrada of entradas) {
+          entrada.mail = entradaWithMail.mail;
+        }
+      }
+    },
+    true,
+  );
+
   const validation = createManyTicketSchema.safeParse(entradas);
   const validationInvitedBy = invitedBySchema.safeParse(invitedBy);
 
@@ -167,6 +183,16 @@ export const handlePurchase = async (
     invitedBy,
   });
 
+  const firstTicket = {
+    fullName: entradas[0].fullName,
+    dni: entradas[0].dni,
+    mail: entradas[0].mail,
+    gender: entradas[0].gender,
+    phoneNumber: entradas[0].phoneNumber,
+    instagram: entradas[0].instagram,
+    birthDate: entradas[0].birthDate,
+  };
+
   if (totalPrice === 0) {
     await trpc.ticketGroup.updateStatus({
       id: ticketGroupId,
@@ -198,6 +224,14 @@ export const handlePurchase = async (
       };
     }
 
+    await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+      await trpc.mail.sendNotification({
+        eventName: group.event.name,
+        ticketGroupId,
+      });
+    });
+
+    (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
     (await cookies()).delete('carrito');
 
     redirect(`/tickets/${ticketGroupId}`);
@@ -212,6 +246,7 @@ export const handlePurchase = async (
       };
     }
 
+    (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
     (await cookies()).delete('carrito');
 
     redirect(url as Route);

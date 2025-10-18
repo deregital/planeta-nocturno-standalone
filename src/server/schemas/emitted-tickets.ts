@@ -74,7 +74,6 @@ export const invitedBySchema = z
   .nullable()
   .optional();
 
-export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;
 export const createTicketSchema = emittedTicketSchema
   .omit({ id: true })
   .extend({
@@ -82,3 +81,19 @@ export const createTicketSchema = emittedTicketSchema
     ticketTypeId: ticketTypeSchema.shape.id,
     invitedBy: invitedBySchema,
   });
+
+export const emittedTicketInputSchema = emittedTicketSchema
+  .omit({
+    id: true,
+    paidOnLocation: true,
+    gender: true,
+  })
+  .extend({
+    gender: z.string(),
+  });
+
+export type EmittedBuyerTable = z.infer<typeof emittedBuyerTableSchema>;
+
+export type CreateManyTicket = z.infer<typeof createManyTicketSchema>;
+
+export type EmittedTicketInput = z.infer<typeof emittedTicketInputSchema>;

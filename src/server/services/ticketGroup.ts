@@ -1,10 +1,10 @@
-// src/server/services/ticketGroup.ts
-
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/drizzle';
 
+import { checkFeature } from '@/components/admin/config/checkFeature';
 import { ticketGroup } from '@/drizzle/schema';
+import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 
 export async function calculateTotalPrice({
   ticketGroupId,
@@ -33,9 +33,14 @@ export async function calculateTotalPrice({
     throw new Error('ticketGroup no encontrado');
   }
 
-  const totalPrice = group.ticketTypePerGroups.reduce((total, ticketType) => {
+  let totalPrice = group.ticketTypePerGroups.reduce((total, ticketType) => {
     return total + ticketType.amount * (ticketType.ticketType.price ?? 0);
   }, 0);
+
+  await checkFeature(
+    FEATURE_KEYS.SERVICE_FEE,
+    (serviceFee) => (totalPrice += totalPrice * (serviceFee / 100)),
+  );
 
   return totalPrice;
 }

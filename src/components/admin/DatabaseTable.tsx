@@ -24,9 +24,23 @@ import { daysUntilBirthday } from '@/lib/utils';
 import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
 
 // Create a wrapper type that includes an id field for the DataTable
-type EmittedBuyerTableWithId = EmittedBuyerTable & { id: string };
+type EmittedBuyerTableWithId = EmittedBuyerTable & {
+  id: string;
+  buyerCode: string;
+};
 
 export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
+  {
+    accessorKey: 'buyerCode',
+    header: () => <p className='text-sm p-2'>ID</p>,
+    cell: ({ row }) => {
+      return <p className='text-sm p-2'>{row.original.buyerCode}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.buyerCode,
+      exportHeader: 'ID',
+    },
+  },
   {
     accessorKey: 'dni',
     header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
@@ -195,7 +209,7 @@ const months = [
 
 interface TicketsTableProps {
   columns: StrictColumnDef<EmittedBuyerTableWithId, unknown>[];
-  data: EmittedBuyerTable[];
+  data: (EmittedBuyerTable & { buyerCode: string })[];
 }
 
 export function DatabaseTable({ columns, data }: TicketsTableProps) {
@@ -207,6 +221,7 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
   const dataWithId: EmittedBuyerTableWithId[] = data.map((item) => ({
     ...item,
     id: item.dni,
+    buyerCode: item.buyerCode,
   }));
 
   // Filter by month of birth

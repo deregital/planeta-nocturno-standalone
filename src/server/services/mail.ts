@@ -29,3 +29,20 @@ export async function sendMail({
     ),
   });
 }
+
+export async function sendMailWithoutAttachments({
+  to,
+  subject,
+  body,
+}: {
+  to: string;
+  subject: string;
+  body: string;
+}) {
+  return await resend.emails.send({
+    from: `${process.env.NEXT_PUBLIC_INSTANCE_NAME} <ticket@${process.env.RESEND_DOMAIN}>`,
+    to: to,
+    subject: subject,
+    text: body,
+  });
+}

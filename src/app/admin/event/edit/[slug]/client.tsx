@@ -65,6 +65,9 @@ export default function Client({
           {} as { [key: string]: string },
         ),
       );
+      toast.error(
+        'Error al actualizar el evento. Asegúrese de que los campos no contengan errores.',
+      );
       return;
     }
 
@@ -90,7 +93,7 @@ export default function Client({
         <GoBack className='self-baseline' />
         <h1 className='text-4xl font-bold'>Editar Evento</h1>
       </div>
-      <EventGeneralInformation action='EDIT' />
+      <EventGeneralInformation action='EDIT' externalErrors={error} />
       <section className='my-6' id='ticket-types'>
         <h3 className='text-2xl text-accent font-bold'>Entradas</h3>
         <TicketTypeAction />

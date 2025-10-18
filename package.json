@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "migrate": "npx prisma migrate deploy && npx drizzle-kit introspect",
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --fix",
-    "seed": "tsx src/drizzle/seed.ts",
+    "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-feature-flag.ts && tsx src/drizzle/seed-ticket-slug.ts",
+    "seed-feature-flag": "tsx src/drizzle/seed-feature-flag.ts",
+    "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",
     "prepare": "husky"
   },
   "dependencies": {
