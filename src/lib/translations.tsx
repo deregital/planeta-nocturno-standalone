@@ -30,5 +30,5 @@ export const roleTranslation: Record<
 > = {
   ADMIN: 'Administrador',
   TICKETING: 'Boletería',
-  RRPP: 'Pública',
+  ORGANIZER: 'Organizador',
 };
