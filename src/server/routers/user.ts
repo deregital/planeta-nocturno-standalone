@@ -6,11 +6,23 @@ import { z } from 'zod';
 import { user as userTable } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import { getBuyersCodeByDni } from '@/server/utils/utils';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany();
-    return users;
+
+    const usersWithAutoId = await getBuyersCodeByDni(
+      ctx.db,
+      users.map((user) => user.id),
+    );
+
+    return users.map((user) => ({
+      ...user,
+      id:
+        usersWithAutoId?.find((code) => code.dni === user.id)?.id.toString() ||
+        '---',
+    }));
   }),
   getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany({
