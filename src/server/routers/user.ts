@@ -2,6 +2,9 @@ import { compare, hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
+
+import { type db } from '@/drizzle';
 
 import { user as userTable } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
@@ -62,25 +65,30 @@ export const userRouter = router({
       return await compare(input.password, user.password);
     }),
   create: adminProcedure.input(userSchema).mutation(async ({ ctx, input }) => {
+    await assertUniqueUser(ctx.db, input);
+
     const hashedPassword = await hash(input.password, 10);
+
     const user = await ctx.db.insert(userTable).values({
       ...input,
       fullName: input.fullName,
       name: input.username,
       password: hashedPassword,
     });
-    revalidatePath('/admin/users');
     return user;
   }),
   update: adminProcedure
     .input(userSchema.extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertUniqueUser(ctx.db, input, input.id);
+
       const hashedPassword = await hash(input.password, 10);
       const user = await ctx.db
         .update(userTable)
         .set({
           ...input,
           name: input.username,
+          birthDate: input.birthDate,
           password: hashedPassword,
         })
         .where(eq(userTable.id, input.id));
@@ -95,3 +103,37 @@ export const userRouter = router({
     return user;
   }),
 });
+
+async function assertUniqueUser(
+  database: typeof db,
+  input: z.infer<typeof userSchema>,
+  excludeUserId?: string,
+) {
+  const existingEmail = await database.query.user.findFirst({
+    where: eq(userTable.email, input.email),
+  });
+  if (existingEmail && existingEmail.id !== excludeUserId) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'El email ya está en uso',
+    });
+  }
+  const existingDni = await database.query.user.findFirst({
+    where: eq(userTable.dni, input.dni),
+  });
+  if (existingDni && existingDni.id !== excludeUserId) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'El DNI ya está en uso',
+    });
+  }
+  const existingUsername = await database.query.user.findFirst({
+    where: eq(userTable.name, input.username),
+  });
+  if (existingUsername && existingUsername.id !== excludeUserId) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'El nombre de usuario ya está en uso',
+    });
+  }
+}

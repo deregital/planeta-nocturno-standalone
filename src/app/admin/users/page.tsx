@@ -1,9 +1,6 @@
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
-
 import { trpc } from '@/server/trpc/server';
-import { Button } from '@/components/ui/button';
 import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
+import { CreateUserForm } from '@/components/admin/users/CreateUserForm';
 
 export default async function UsersPage() {
   const data = await trpc.user.getAll();
@@ -12,12 +9,7 @@ export default async function UsersPage() {
     <div className='flex flex-col gap-4 py-4'>
       <div className='flex justify-between items-center px-4'>
         <h1 className='text-2xl font-bold'>Usuarios</h1>
-        <Link href='/admin/users/create'>
-          <Button>
-            <Plus />
-            Nuevo usuario
-          </Button>
-        </Link>
+        <CreateUserForm />
       </div>
       <UsersTableWithFilters data={data} />
     </div>

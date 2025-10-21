@@ -11,19 +11,17 @@ export function EditUserForm({
 }: {
   user: Pick<User, 'id' | 'fullName' | 'name' | 'email' | 'role'>;
 }) {
-  const [state, handleSubmit, isPending] = useActionState(updateUser, {
+  const [state, formAction, isPending] = useActionState(updateUser, {
     data: {
-      ...user,
+      fullName: user.fullName,
       name: user.name,
+      email: user.email,
+      role: user.role,
       password: '',
-    },
-    errors: {
-      general: '',
-      fullName: '',
-      name: '',
-      email: '',
-      role: '',
-      password: '',
+      birthDate: '',
+      dni: '',
+      gender: 'male',
+      phoneNumber: '',
     },
   });
 
@@ -32,8 +30,8 @@ export function EditUserForm({
       type='EDIT'
       userId={user.id}
       errors={state.errors}
-      state={state.data}
-      handleSubmit={handleSubmit}
+      initialState={state.data}
+      formAction={formAction}
       isPending={isPending}
     />
   );

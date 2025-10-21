@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { role } from '@/drizzle/schema';
+import { genderSchema, phoneNumberSchema } from '@/server/schemas/utils';
 
 export const userSchema = z.object({
   username: z.string().min(1, {
@@ -18,4 +19,18 @@ export const userSchema = z.object({
   role: z.enum(role.enumValues, {
     error: 'El rol es requerido',
   }),
+  gender: genderSchema,
+  phoneNumber: phoneNumberSchema,
+  dni: z.string().min(1, {
+    error: 'El DNI/Pasaporte es requerido',
+  }),
+  birthDate: z.coerce
+    .date()
+    .min(new Date('1900-01-01').getTime(), {
+      error: 'La fecha de nacimiento es requerida',
+    })
+    .transform((date) => {
+      // Convert to UTC string
+      return date.toISOString();
+    }),
 });

@@ -121,11 +121,7 @@ export const userColumns: StrictColumnDef<
     },
     meta: {
       exportValue: (row) =>
-        formatInTimeZone(
-          row.original.birthDate,
-          'America/Argentina/Buenos_Aires',
-          'dd/MM/yyyy',
-        ),
+        formatInTimeZone(row.original.birthDate, 'UTC', 'dd/MM/yyyy'),
       exportHeader: 'Fecha de Nacimiento',
     },
     sortingFn: (rowA, rowB, columnId) => {
@@ -137,11 +133,7 @@ export const userColumns: StrictColumnDef<
       const birthDate = row.original.birthDate;
       return (
         <p className='text-sm p-2'>
-          {formatInTimeZone(
-            birthDate,
-            'America/Argentina/Buenos_Aires',
-            'dd/MM/yyyy',
-          )}
+          {formatInTimeZone(birthDate, 'UTC', 'dd/MM/yyyy')}
         </p>
       );
     },
