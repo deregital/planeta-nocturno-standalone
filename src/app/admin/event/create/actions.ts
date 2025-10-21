@@ -108,14 +108,14 @@ export async function validateTicketType(
     };
   }
 
-  // Validate maxSellDate is not after event start
+  // Validate maxSellDate is not after event end
   if (
     validation.data.maxSellDate &&
-    validation.data.maxSellDate > eventStartDate
+    validation.data.maxSellDate > eventEndDate
   ) {
     errors.maxSellDate = {
       errors: [
-        'La fecha de finalización de venta de entradas no puede ser mayor a la fecha de inicio del evento',
+        'La fecha de finalización de venta de entradas no puede ser mayor a la fecha de finalización del evento',
       ],
     };
   }

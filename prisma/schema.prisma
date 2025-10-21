@@ -223,6 +223,7 @@ model EmittedTicket {
   phoneNumber    String
   instagram      String?
   birthDate      String
+  slug           String
   paidOnLocation Boolean @default(false)
 
   scanned   Boolean   @default(false)
@@ -252,6 +253,17 @@ model EventCategory {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("eventCategory")
+}
+
+model Feature {
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key     String  @unique
+  enabled Boolean @default(false)
+  value   String?
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("feature")
 }
 
 model TicketXOrganizer {

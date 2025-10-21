@@ -36,3 +36,14 @@ export function exportSheetsToXlsx(
   }
   XLSX.writeFile(wb, `${fileName}.xlsx`, { bookType: 'xlsx' });
 }
+
+export function formatCurrency(price: number): string {
+  return price
+    .toLocaleString('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+    .replace(/\s/g, '');
+}

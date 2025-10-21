@@ -61,7 +61,7 @@ export default function TicketTypeModal({
         price: ticketType.price,
         maxPerPurchase: ticketType.maxPerPurchase || 6,
         maxAvailable: ticketType.maxAvailable || 0,
-        maxSellDate: ticketType.maxSellDate || event.startingDate,
+        maxSellDate: ticketType.maxSellDate || event.endingDate,
         scanLimit: ticketType.scanLimit || event.endingDate,
         category,
         id: ticketType.id,
@@ -75,7 +75,7 @@ export default function TicketTypeModal({
       price: category === 'FREE' ? 0 : null,
       maxPerPurchase: 6,
       maxAvailable: 0,
-      maxSellDate: event.startingDate,
+      maxSellDate: event.endingDate,
       scanLimit: event.endingDate,
       category,
       id: crypto.randomUUID(),
@@ -96,14 +96,13 @@ export default function TicketTypeModal({
     ticketType?.scanLimit !== event.endingDate,
   );
   const [hasMaxSellDate, setHasMaxSellDate] = useState(
-    ticketType?.maxSellDate !== event.startingDate,
+    ticketType?.maxSellDate !== event.endingDate,
   );
 
   const [hasLowStockThreshold, setHasLowStockThreshold] = useState(
     ticketType?.lowStockThreshold !== undefined &&
       ticketType?.lowStockThreshold !== null,
   );
-  console.log(hasLowStockThreshold);
 
   function handleInputChange<T extends keyof CreateTicketTypeSchema>(
     field: T,
@@ -130,7 +129,7 @@ export default function TicketTypeModal({
     if (!checked) {
       setEditingTicketType((prev) => ({
         ...prev,
-        maxSellDate: event.startingDate,
+        maxSellDate: event.endingDate,
       }));
     }
   }
@@ -183,7 +182,7 @@ export default function TicketTypeModal({
       // Reset to initial state when closing
       setEditingTicketType(getInitialState());
       setHasScanLimit(ticketType?.scanLimit !== event.endingDate);
-      setHasMaxSellDate(ticketType?.maxSellDate !== event.startingDate);
+      setHasMaxSellDate(ticketType?.maxSellDate !== event.endingDate);
     }
   };
 
@@ -381,7 +380,7 @@ export default function TicketTypeModal({
                       ? `${format(
                           editingTicketType.maxSellDate,
                           'dd/MM/yyyy HH:mm b',
-                        )} (Comienzo del evento)`
+                        )} (Fin del evento)`
                       : ''
                   }
                   className='w-full text-accent/50'
