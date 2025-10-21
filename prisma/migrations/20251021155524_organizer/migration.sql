@@ -8,7 +8,7 @@
 CREATE TYPE "InviteCondition" AS ENUM ('TRADITIONAL', 'INVITATION');
 
 -- AlterEnum
-ALTER TYPE "Role" ADD VALUE 'RRPP';
+ALTER TYPE "Role" ADD VALUE 'ORGANIZER';
 
 -- AlterTable
 ALTER TABLE "account" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
@@ -48,13 +48,23 @@ CREATE TABLE "tag" (
 );
 
 -- CreateTable
-CREATE TABLE "ticketXRRPP" (
+CREATE TABLE "ticketXOrganizer" (
     "ticketGroupId" UUID NOT NULL,
-    "rrppId" UUID NOT NULL,
+    "organizerId" UUID NOT NULL,
     "code" TEXT NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 6)),
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "ticketXRRPP_pkey" PRIMARY KEY ("ticketGroupId")
+    CONSTRAINT "ticketXOrganizer_pkey" PRIMARY KEY ("ticketGroupId")
+);
+
+-- CreateTable
+CREATE TABLE "eventXOrganizer" (
+    "eventId" UUID NOT NULL,
+    "organizerId" UUID NOT NULL,
+    "discountPercentage" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "eventXOrganizer_pkey" PRIMARY KEY ("eventId","organizerId")
 );
 
 -- CreateTable
@@ -65,22 +75,11 @@ CREATE TABLE "_USER_X_TAG" (
     CONSTRAINT "_USER_X_TAG_AB_pkey" PRIMARY KEY ("A","B")
 );
 
--- CreateTable
-CREATE TABLE "_EVENT_X_RRPP" (
-    "A" UUID NOT NULL,
-    "B" UUID NOT NULL,
-
-    CONSTRAINT "_EVENT_X_RRPP_AB_pkey" PRIMARY KEY ("A","B")
-);
-
 -- CreateIndex
-CREATE UNIQUE INDEX "ticketXRRPP_code_key" ON "ticketXRRPP"("code");
+CREATE UNIQUE INDEX "ticketXOrganizer_code_key" ON "ticketXOrganizer"("code");
 
 -- CreateIndex
 CREATE INDEX "_USER_X_TAG_B_index" ON "_USER_X_TAG"("B");
-
--- CreateIndex
-CREATE INDEX "_EVENT_X_RRPP_B_index" ON "_EVENT_X_RRPP"("B");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_code_key" ON "user"("code");
@@ -89,19 +88,19 @@ CREATE UNIQUE INDEX "user_code_key" ON "user"("code");
 CREATE INDEX "user_code_idx" ON "user"("code");
 
 -- AddForeignKey
-ALTER TABLE "ticketXRRPP" ADD CONSTRAINT "ticketXRRPP_ticketGroupId_fkey" FOREIGN KEY ("ticketGroupId") REFERENCES "ticketGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_ticketGroupId_fkey" FOREIGN KEY ("ticketGroupId") REFERENCES "ticketGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ticketXRRPP" ADD CONSTRAINT "ticketXRRPP_rrppId_fkey" FOREIGN KEY ("rrppId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_organizerId_fkey" FOREIGN KEY ("organizerId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "eventXOrganizer" ADD CONSTRAINT "eventXOrganizer_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "eventXOrganizer" ADD CONSTRAINT "eventXOrganizer_organizerId_fkey" FOREIGN KEY ("organizerId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_USER_X_TAG" ADD CONSTRAINT "_USER_X_TAG_A_fkey" FOREIGN KEY ("A") REFERENCES "tag"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_USER_X_TAG" ADD CONSTRAINT "_USER_X_TAG_B_fkey" FOREIGN KEY ("B") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_EVENT_X_RRPP" ADD CONSTRAINT "_EVENT_X_RRPP_A_fkey" FOREIGN KEY ("A") REFERENCES "event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_EVENT_X_RRPP" ADD CONSTRAINT "_EVENT_X_RRPP_B_fkey" FOREIGN KEY ("B") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

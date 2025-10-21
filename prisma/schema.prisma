@@ -29,10 +29,10 @@ model User {
   emailVerified DateTime? @db.Timestamptz
   image         String?
 
-  scannedTickets   EmittedTicket[] @relation("USER_X_EMITTED_TICKET")
-  authorizedEvents Event[]         @relation("EVENT_X_USER")
-  eventsRrpp       Event[]         @relation("EVENT_X_RRPP")
-  ticketXRRPP      TicketXRRPP[]   @relation("RRPP_X_TICKET")
+  scannedTickets   EmittedTicket[]    @relation("USER_X_EMITTED_TICKET")
+  authorizedEvents Event[]            @relation("EVENT_X_USER")
+  eventsOrganized  EventXOrganizer[]  @relation("ORGANIZER_X_EVENT")
+  ticketXOrganizer TicketXOrganizer[] @relation("ORGANIZER_X_TICKET")
 
   // Optional for WebAuthn support
   Authenticator Authenticator[]
@@ -130,8 +130,9 @@ model Event {
 
   authorizedUsers User[] @relation("EVENT_X_USER")
 
-  rrpps           User[]          @relation("EVENT_X_RRPP")
-  inviteCondition InviteCondition @default(TRADITIONAL)
+  // Los organizadores asociados al evento
+  organizers      EventXOrganizer[] @relation("EVENT_X_ORGANIZER")
+  inviteCondition InviteCondition   @default(TRADITIONAL)
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
@@ -193,7 +194,8 @@ model TicketGroup {
   tickets            EmittedTicket[]      @relation("TICKET_X_TICKET_GROUP")
   ticketTypePerGroup TicketTypePerGroup[] @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP")
 
-  ticketXRRPP TicketXRRPP? @relation("TICKET_X_RRPP")
+  // El organizador asociado al ticketGroup (solo en modo invitacion)
+  ticketXOrganizer TicketXOrganizer? @relation("TICKET_X_ORGANIZER")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
@@ -252,25 +254,40 @@ model EventCategory {
   @@map("eventCategory")
 }
 
-model TicketXRRPP {
+model TicketXOrganizer {
   ticketGroupId String      @db.Uuid
-  ticketGroup   TicketGroup @relation("TICKET_X_RRPP", fields: [ticketGroupId], references: [id], onDelete: Cascade)
+  ticketGroup   TicketGroup @relation("TICKET_X_ORGANIZER", fields: [ticketGroupId], references: [id], onDelete: Cascade)
 
-  rrppId String @db.Uuid
-  rrpp   User   @relation("RRPP_X_TICKET", fields: [rrppId], references: [id])
+  organizerId String @db.Uuid
+  organizer   User   @relation("ORGANIZER_X_TICKET", fields: [organizerId], references: [id])
 
   code String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@id([ticketGroupId])
-  @@map("ticketXRRPP")
+  @@map("ticketXOrganizer")
+}
+
+model EventXOrganizer {
+  eventId String @db.Uuid
+  event   Event  @relation("EVENT_X_ORGANIZER", fields: [eventId], references: [id])
+
+  organizerId String @db.Uuid
+  organizer   User   @relation("ORGANIZER_X_EVENT", fields: [organizerId], references: [id])
+
+  discountPercentage Int @default(0)
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@id([eventId, organizerId])
+  @@map("eventXOrganizer")
 }
 
 enum Role {
   ADMIN
   TICKETING
-  RRPP
+  ORGANIZER
 }
 
 enum TicketGroupStatus {
