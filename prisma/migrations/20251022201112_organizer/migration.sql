@@ -81,6 +81,18 @@ CREATE TABLE "eventXOrganizer" (
 );
 
 -- CreateTable
+CREATE TABLE "tempPassword" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "userId" UUID NOT NULL,
+    "password" TEXT NOT NULL,
+    "sent" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT "tempPassword_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "_USER_X_TAG" (
     "A" UUID NOT NULL,
     "B" UUID NOT NULL,
@@ -114,6 +126,9 @@ ALTER TABLE "eventXOrganizer" ADD CONSTRAINT "eventXOrganizer_eventId_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "eventXOrganizer" ADD CONSTRAINT "eventXOrganizer_organizerId_fkey" FOREIGN KEY ("organizerId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tempPassword" ADD CONSTRAINT "tempPassword_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_USER_X_TAG" ADD CONSTRAINT "_USER_X_TAG_A_fkey" FOREIGN KEY ("A") REFERENCES "tag"("id") ON DELETE CASCADE ON UPDATE CASCADE;

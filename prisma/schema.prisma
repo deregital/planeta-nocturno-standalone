@@ -15,18 +15,18 @@ datasource db {
 }
 
 model User {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String @unique
-  fullName  String
-  password  String
-  email     String @unique
-  birthDate String
-  dni       String @unique
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String @unique
+  fullName    String
+  password    String
+  email       String @unique
+  birthDate   String
+  dni         String @unique
   phoneNumber String
-  gender String
-  role      Role
-  code      String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
-  tags      Tag[]  @relation("USER_X_TAG")
+  gender      String
+  role        Role
+  code        String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+  tags        Tag[]  @relation("USER_X_TAG")
 
   accounts      Account[]
   sessions      Session[]
@@ -40,6 +40,9 @@ model User {
 
   // Optional for WebAuthn support
   Authenticator Authenticator[]
+
+  // Contraseñas temporales para usuarios importados
+  tempPasswords TempPassword[]
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
@@ -321,4 +324,17 @@ enum TicketTypeCategory {
 enum InviteCondition {
   TRADITIONAL
   INVITATION
+}
+
+model TempPassword {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  password  String
+  sent      Boolean  @default(false)
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  expiresAt DateTime @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tempPassword")
 }
