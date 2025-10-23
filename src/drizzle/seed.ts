@@ -144,6 +144,10 @@ async function main() {
     email: 'nico@example.com',
     fullName: 'Nico Example',
     role: 'ADMIN',
+    dni: '46501954',
+    birthDate: '2005-05-12',
+    gender: 'male',
+    phoneNumber: '+5491138639833',
     // createdAt, id y otros campos usan default
   });
   console.log('Usuario nico creado');

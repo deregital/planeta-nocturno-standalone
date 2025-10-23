@@ -4,15 +4,13 @@ import { redirect } from 'next/navigation';
 import z from 'zod';
 
 import { trpc } from '@/server/trpc/server';
-import { type User } from '@/server/types';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
-
-type UserData = Pick<User, 'fullName' | 'name' | 'email' | 'role' | 'password'>;
+import { type UserData } from '@/components/admin/users/UserForm';
 
 export type CreateUserActionState = {
   data?: UserData;
-  errors?: Record<keyof UserData | 'general', string>;
+  errors?: Partial<Record<keyof UserData | 'general', string>>;
 };
 
 export async function createUser(
@@ -20,50 +18,63 @@ export async function createUser(
   formData: FormData,
 ): Promise<CreateUserActionState> {
   const fullName = formData.get('fullName') as string;
-  const username = formData.get('username') as string;
+  const name = formData.get('username') as string;
   const email = formData.get('email') as string;
   const role = formData.get('role') as (typeof roleEnum.enumValues)[number];
   const password = formData.get('password') as string;
+  const birthDate = formData.get('birthDate') as string;
+  const dni = formData.get('dni') as string;
+  const gender = formData.get('gender') as string;
+  const phoneNumber = formData.get('phoneNumber') as string;
 
   const data = {
     fullName,
-    username,
+    name,
     email,
     role,
     password,
+    birthDate,
+    dni,
+    gender,
+    phoneNumber,
   };
 
   const validation = userSchema.safeParse(data);
 
   if (!validation.success) {
     const validateErrors = z.treeifyError(validation.error).properties;
-    return {
-      data: {
-        ...data,
-        name: username,
+    const errors = Object.entries(validateErrors ?? {}).reduce(
+      (acc, [key, value]) => {
+        acc[key as keyof UserData] = value.errors[0];
+        return acc;
       },
+      {} as Record<keyof UserData, string>,
+    );
+    return {
+      data,
       errors: {
         general: '',
-        fullName: validateErrors?.fullName?.errors?.[0] ?? '',
-        name: validateErrors?.username?.errors?.[0] ?? '',
-        email: validateErrors?.email?.errors?.[0] ?? '',
-        role: validateErrors?.role?.errors?.[0] ?? '',
-        password: validateErrors?.password?.errors?.[0] ?? '',
+        ...errors,
       },
     };
   }
 
-  await trpc.user.create(data).catch((error) => {
+  try {
+    await trpc.user.create({
+      ...validation.data,
+      birthDate: birthDate,
+    });
+  } catch (error) {
+    console.error('ENACTION ERROR', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error al crear usuario';
     return {
-      data: {
-        ...data,
-        name: username,
-      },
+      data,
       errors: {
-        general: error.message,
+        general: errorMessage,
       },
     };
-  });
+  }
 
   redirect('/admin/users');
 }

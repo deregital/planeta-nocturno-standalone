@@ -15,28 +15,47 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String    @unique
-  password      String
-  email         String    @unique
-  emailVerified DateTime? @db.Timestamptz
-  image         String?
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String @unique
+  fullName    String
+  password    String
+  email       String @unique
+  birthDate   String
+  dni         String @unique
+  phoneNumber String
+  gender      String
+  role        Role
+  code        String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+  tags        Tag[]  @relation("USER_X_TAG")
+
   accounts      Account[]
   sessions      Session[]
+  emailVerified DateTime? @db.Timestamptz
+  image         String?
 
-  fullName String
-  role     Role
-
-  scannedTickets EmittedTicket[] @relation("USER_X_EMITTED_TICKET")
-
-  authorizedEvents Event[] @relation("EVENT_X_USER")
+  scannedTickets   EmittedTicket[]    @relation("USER_X_EMITTED_TICKET")
+  authorizedEvents Event[]            @relation("EVENT_X_USER")
+  eventsOrganized  EventXOrganizer[]  @relation("ORGANIZER_X_EVENT")
+  ticketXOrganizer TicketXOrganizer[] @relation("ORGANIZER_X_TICKET")
 
   // Optional for WebAuthn support
   Authenticator Authenticator[]
 
+  // Contraseñas temporales para usuarios importados
+  tempPasswords TempPassword[]
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([code])
   @@map("user")
+}
+
+model Tag {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String
+  user User[] @relation("USER_X_TAG")
+
+  @@map("tag")
 }
 
 model Account {
@@ -118,6 +137,10 @@ model Event {
 
   authorizedUsers User[] @relation("EVENT_X_USER")
 
+  // Los organizadores asociados al evento
+  organizers      EventXOrganizer[] @relation("EVENT_X_ORGANIZER")
+  inviteCondition InviteCondition   @default(TRADITIONAL)
+
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
   ticketGroups TicketGroup[] @relation("EVENT_X_TICKET_GROUP")
@@ -175,9 +198,11 @@ model TicketGroup {
   event         Event             @relation("EVENT_X_TICKET_GROUP", fields: [eventId], references: [id], onDelete: Cascade)
   invitedBy     String?
 
-  tickets EmittedTicket[] @relation("TICKET_X_TICKET_GROUP")
-
+  tickets            EmittedTicket[]      @relation("TICKET_X_TICKET_GROUP")
   ticketTypePerGroup TicketTypePerGroup[] @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP")
+
+  // El organizador asociado al ticketGroup (solo en modo invitacion)
+  ticketXOrganizer TicketXOrganizer? @relation("TICKET_X_ORGANIZER")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
@@ -248,9 +273,40 @@ model Feature {
   @@map("feature")
 }
 
+model TicketXOrganizer {
+  ticketGroupId String      @db.Uuid
+  ticketGroup   TicketGroup @relation("TICKET_X_ORGANIZER", fields: [ticketGroupId], references: [id], onDelete: Cascade)
+
+  organizerId String @db.Uuid
+  organizer   User   @relation("ORGANIZER_X_TICKET", fields: [organizerId], references: [id])
+
+  code String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@id([ticketGroupId])
+  @@map("ticketXOrganizer")
+}
+
+model EventXOrganizer {
+  eventId String @db.Uuid
+  event   Event  @relation("EVENT_X_ORGANIZER", fields: [eventId], references: [id])
+
+  organizerId String @db.Uuid
+  organizer   User   @relation("ORGANIZER_X_EVENT", fields: [organizerId], references: [id])
+
+  discountPercentage Int @default(0)
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@id([eventId, organizerId])
+  @@map("eventXOrganizer")
+}
+
 enum Role {
   ADMIN
   TICKETING
+  ORGANIZER
 }
 
 enum TicketGroupStatus {
@@ -263,4 +319,22 @@ enum TicketTypeCategory {
   FREE
   PAID
   TABLE
+}
+
+enum InviteCondition {
+  TRADITIONAL
+  INVITATION
+}
+
+model TempPassword {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  password  String
+  sent      Boolean  @default(false)
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  expiresAt DateTime @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tempPassword")
 }

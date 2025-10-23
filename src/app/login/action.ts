@@ -5,17 +5,14 @@ import { z } from 'zod';
 
 import { signIn } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
+import { userSchema } from '@/server/schemas/user';
 
-const loginSchema = z.object({
-  username: z.string().min(1, 'El nombre de usuario es requerido'),
-  password: z.string().min(1, 'La contraseña es requerida'),
-});
-
+const loginSchema = userSchema.pick({ name: true, password: true });
 type LoginActionState = {
-  username?: string;
+  name?: string;
   password?: string;
   errors?: {
-    username?: string;
+    name?: string;
     password?: string;
     general?: string;
   };
@@ -26,7 +23,7 @@ export async function authenticate(
   formData: FormData,
 ): Promise<LoginActionState> {
   const rawData: z.infer<typeof loginSchema> = {
-    username: formData.get('username') as string,
+    name: formData.get('username') as string,
     password: formData.get('password') as string,
   };
   try {
@@ -36,8 +33,7 @@ export async function authenticate(
       return {
         ...rawData,
         errors: {
-          username: z.treeifyError(validatedData.error).properties?.username
-            ?.errors[0],
+          name: z.treeifyError(validatedData.error).properties?.name?.errors[0],
           password: z.treeifyError(validatedData.error).properties?.password
             ?.errors[0],
         },
@@ -45,7 +41,7 @@ export async function authenticate(
     }
 
     await signIn('credentials', {
-      username: validatedData.data.username,
+      name: validatedData.data.name,
       password: validatedData.data.password,
       redirect: false,
     });
@@ -59,7 +55,7 @@ export async function authenticate(
     };
   }
 
-  const user = await trpc.user.getByName(rawData.username);
+  const user = await trpc.user.getByName(rawData.name);
 
   if (user?.role === 'TICKETING') {
     redirect('/admin/event');
