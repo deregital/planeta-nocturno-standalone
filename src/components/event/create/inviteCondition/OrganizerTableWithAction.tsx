@@ -106,6 +106,7 @@ export function OrganizerTableWithAction({
       <DataTable
         disableExport
         fullWidth
+        noResultsPlaceholder='No seleccionaste ningún organizador'
         divClassName='mx-0! w-full! max-w-full!'
         columns={columns(
           numberTitle,

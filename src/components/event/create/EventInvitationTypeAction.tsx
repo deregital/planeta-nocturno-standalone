@@ -34,7 +34,7 @@ export function EventInvitationTypeAction({
         value={tab}
         className='w-[calc(100vw-40px)] md:w-[calc(100vw-40px-var(--sidebar-width))] mt-4 overflow-x-hidden'
       >
-        <TabsList className='flex-1 w-full md:max-w-[98%] max-w-[98%] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
+        <TabsList className='flex-1 w-full max-w-full mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
           <TabsTrigger className='flex-1' value={inviteCondition.enumValues[0]}>
             Tradicional
           </TabsTrigger>

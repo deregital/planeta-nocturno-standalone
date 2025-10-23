@@ -64,6 +64,7 @@ interface DataTableProps<
   exportFileName?: string;
   exportExcludeColumnIds?: string[]; // Ver type safety
   disableExport?: TDisableExport;
+  noResultsPlaceholder?: string;
 }
 
 export function DataTable<
@@ -82,6 +83,7 @@ export function DataTable<
   exportFileName = 'tabla',
   exportExcludeColumnIds = [],
   disableExport = false as TDisableExport,
+  noResultsPlaceholder = 'No se encontraron resultados',
 }: DataTableProps<TData, TValue, TDisableExport>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
@@ -299,7 +301,7 @@ export function DataTable<
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className='h-24 text-center'>
-                No se encontraron resultados.
+                {noResultsPlaceholder}
               </TableCell>
             </TableRow>
           )}
