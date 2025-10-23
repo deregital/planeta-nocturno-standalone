@@ -131,16 +131,6 @@ export function DataTable<TData extends { id: string }, TValue>({
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (state.ok) {
-      handleExportXlsx();
-      setIsDialogOpen(false);
-      startTransition(() => {
-        action(new FormData());
-      });
-    }
-  }, [state.ok, action]);
-
   const handleExportXlsx = useCallback(() => {
     const headerGroup = table.getHeaderGroups()[0];
     const headers = headerGroup.headers
@@ -177,6 +167,15 @@ export function DataTable<TData extends { id: string }, TValue>({
     exportTableToXlsx(headers, flatRows, exportFileName);
   }, [table, exportExcludeColumnIds, exportFileName]);
 
+  useEffect(() => {
+    if (state.ok) {
+      handleExportXlsx();
+      setIsDialogOpen(false);
+      startTransition(() => {
+        action(new FormData());
+      });
+    }
+  }, [state.ok, action, handleExportXlsx]);
   return (
     <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
       {!disableExport && (

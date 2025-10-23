@@ -8,7 +8,7 @@ import { user as userTable, type role as roleEnum } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 
 const credentialsSchema = userSchema.pick({
-  username: true,
+  name: true,
   password: true,
 });
 
@@ -27,9 +27,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       authorize: async (credentials) => {
-        const { username, password } = credentialsSchema.parse(credentials);
+        const { name, password } = credentialsSchema.parse(credentials);
         const user = await db.query.user.findFirst({
-          where: eq(userTable.name, username as string),
+          where: eq(userTable.name, name as string),
         });
         if (!user) throw new CustomError('Usuario no encontrado');
         if (!(await compare(password as string, user.password)))
