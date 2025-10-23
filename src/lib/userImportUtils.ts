@@ -5,7 +5,7 @@ import { userSchema } from '@/server/schemas/user';
 
 // Schema para validar usuarios del Excel (sin género, username, password, role)
 const excelUserSchema = userSchema
-  .omit({ gender: true, username: true, password: true, role: true })
+  .omit({ gender: true, name: true, password: true, role: true })
   .extend({
     // Mapear los campos del Excel a los campos del schema
     fullName: z.string().min(1, {

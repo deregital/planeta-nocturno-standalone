@@ -16,9 +16,13 @@ export function ImportUsersWrapper() {
 
   const handleImport = async (
     users: ImportUserData[],
+    batchName: string,
   ): Promise<ImportResult> => {
     try {
-      const result = await importUsersMutation.mutateAsync(users);
+      const result = await importUsersMutation.mutateAsync({
+        users,
+        batchName,
+      });
       return result;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {

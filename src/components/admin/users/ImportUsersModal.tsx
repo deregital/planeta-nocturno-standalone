@@ -27,7 +27,10 @@ import {
 } from '@/lib/userImportUtils';
 
 interface ImportUsersModalProps {
-  onImport: (users: ImportUserData[]) => Promise<ImportResult>;
+  onImport: (
+    users: ImportUserData[],
+    batchName: string,
+  ) => Promise<ImportResult>;
 }
 
 interface ImportResult {
@@ -40,6 +43,7 @@ interface ImportResult {
 export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [batchName, setBatchName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +58,9 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
         selectedFile.type === 'application/vnd.ms-excel'
       ) {
         setFile(selectedFile);
+        // Establecer el nombre del batch por defecto basado en el nombre del archivo
+        const fileName = selectedFile.name.replace(/\.[^/.]+$/, ''); // Remover extensión
+        setBatchName(fileName);
         setResult(null);
       } else {
         alert('Por favor selecciona un archivo Excel (.xlsx)');
@@ -62,7 +69,7 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
   };
 
   const handleImport = async () => {
-    if (!file) return;
+    if (!file || !batchName.trim()) return;
 
     setIsLoading(true);
     setResult(null);
@@ -91,12 +98,13 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
         return;
       }
 
-      // Procesar importación
-      const importResult = await onImport(parseResult.users);
+      // Procesar importación con el nombre del batch
+      const importResult = await onImport(parseResult.users, batchName.trim());
       setResult(importResult);
 
       if (importResult.success) {
         setFile(null);
+        setBatchName('');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -174,6 +182,22 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
             )}
           </div>
 
+          <div className='space-y-2'>
+            <Label htmlFor='batch-name'>Nombre del batch</Label>
+            <Input
+              disabled={!file}
+              id='batch-name'
+              type='text'
+              placeholder='Ingresa un nombre para este batch de usuarios'
+              value={batchName}
+              onChange={(e) => setBatchName(e.target.value)}
+            />
+            <p className='text-xs text-muted-foreground'>
+              Este nombre se aplicará como etiqueta a todos los usuarios
+              importados en este batch
+            </p>
+          </div>
+
           {/* Required columns info */}
           <Alert>
             <AlertCircle className='h-4 w-4' />
@@ -216,6 +240,13 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
                   >
                     {result.message}
                   </p>
+                  {result.errors && result.errors.length > 0 && (
+                    <p className='text-red-800'>
+                      {result.errors.map((error) => (
+                        <li key={error}>{error}</li>
+                      ))}
+                    </p>
+                  )}
                   {result.createdCount && (
                     <p className='text-green-800'>
                       Se crearon {result.createdCount} usuarios exitosamente.
@@ -235,7 +266,10 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
             >
               Cancelar
             </Button>
-            <Button onClick={handleImport} disabled={!file || isLoading}>
+            <Button
+              onClick={handleImport}
+              disabled={!file || !batchName.trim() || isLoading}
+            >
               {isLoading ? 'Procesando...' : 'Importar usuarios'}
             </Button>
           </div>

@@ -6,6 +6,7 @@ import { differenceInYears } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { formatInTimeZone } from 'date-fns-tz';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 import { type RouterOutputs } from '@/server/routers/app';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { daysUntilBirthday } from '@/lib/utils';
 import { genderTranslation, roleTranslation } from '@/lib/translations';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
+import { Badge } from '@/components/ui/badge';
 
 export const userColumns: StrictColumnDef<
   RouterOutputs['user']['getAll'][number]
@@ -217,9 +219,32 @@ export const userColumns: StrictColumnDef<
     },
   },
   {
+    accessorKey: 'tags',
+    header: () => <p className='text-sm p-2'>Batch</p>,
+    cell: ({ row }) => {
+      return (
+        <div className='flex flex-wrap gap-1'>
+          {row.original.userXTags.map(({ tag }) => (
+            <Badge variant='outline' key={tag.id}>
+              {tag.name}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
+    meta: {
+      exportValue: (row) =>
+        row.original.userXTags.map(({ tag }) => tag.name).join(', '),
+      exportHeader: 'Batch',
+    },
+  },
+  {
     id: 'actions',
     header: () => <p className='text-sm p-2'>Acciones</p>,
     cell: ({ row }) => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const session = useSession();
+      if (session.data?.user.id === row.original.id) return null;
       return (
         <div className='flex items-center gap-2'>
           <Button variant='ghost' size='icon' asChild>

@@ -9,15 +9,25 @@ import { type db } from '@/drizzle';
 import {
   tempPassword as tempPasswordTable,
   user as userTable,
+  tag as tagTable,
+  userXTag,
 } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { getBuyersCodeByDni } from '@/server/utils/utils';
-import { type User } from '@/server/types';
+import { type Tag, type User } from '@/server/types';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
-    const users = await ctx.db.query.user.findMany();
+    const users = await ctx.db.query.user.findMany({
+      with: {
+        userXTags: {
+          with: {
+            tag: true,
+          },
+        },
+      },
+    });
 
     const usersWithAutoId = await getBuyersCodeByDni(
       ctx.db,
@@ -106,16 +116,19 @@ export const userRouter = router({
   }),
   importUsers: adminProcedure
     .input(
-      z.array(
-        z.object({
-          nombre: z.string(),
-          apellido: z.string(),
-          email: z.email(),
-          dni: z.string(),
-          fechaNacimiento: z.string(),
-          telefono: z.string(),
-        }),
-      ),
+      z.object({
+        users: z.array(
+          z.object({
+            nombre: z.string(),
+            apellido: z.string(),
+            email: z.email(),
+            dni: z.string(),
+            fechaNacimiento: z.string(),
+            telefono: z.string(),
+          }),
+        ),
+        batchName: z.string().min(1, 'El nombre del batch es requerido'),
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const errors: string[] = [];
@@ -125,8 +138,8 @@ export const userRouter = router({
       const emails = new Set<string>();
       const dnis = new Set<string>();
 
-      for (let i = 0; i < input.length; i++) {
-        const user = input[i];
+      for (let i = 0; i < input.users.length; i++) {
+        const user = input.users[i];
         const rowNumber = i + 1;
 
         if (emails.has(user.email)) {
@@ -155,8 +168,8 @@ export const userRouter = router({
       }
 
       // Validar que los usuarios no existan en la base de datos
-      for (let i = 0; i < input.length; i++) {
-        const user = input[i];
+      for (let i = 0; i < input.users.length; i++) {
+        const user = input.users[i];
         const rowNumber = i + 1;
 
         const existingEmail = await ctx.db.query.user.findFirst({
@@ -198,6 +211,22 @@ export const userRouter = router({
         });
       }
 
+      // Crear o obtener el tag del batch
+      let batchTag: Tag;
+      const existingTag = await ctx.db.query.tag.findFirst({
+        where: eq(tagTable.name, input.batchName),
+      });
+
+      if (existingTag) {
+        batchTag = existingTag;
+      } else {
+        const newTag = await ctx.db
+          .insert(tagTable)
+          .values({ name: input.batchName })
+          .returning();
+        batchTag = newTag[0];
+      }
+
       // Función para generar contraseña aleatoria
       const generateRandomPassword = (): string => {
         const chars =
@@ -210,7 +239,7 @@ export const userRouter = router({
       };
 
       // Crear usuarios
-      for (const user of input) {
+      for (const user of input.users) {
         const fullName = `${user.nombre} ${user.apellido}`.trim();
         const username = user.email.split('@')[0]; // Usar parte del email como username
         const randomPassword = generateRandomPassword();
@@ -239,6 +268,12 @@ export const userRouter = router({
           userId: newUser[0].id,
           password: randomPassword,
           expiresAt: expiresAt.toISOString(),
+        });
+
+        // Asociar el tag del batch al usuario
+        await ctx.db.insert(userXTag).values({
+          a: batchTag.id, // tag id
+          b: newUser[0].id, // user id
         });
 
         createdUsers.push(newUser[0]);
