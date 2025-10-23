@@ -17,17 +17,22 @@ import {
 import { cn } from '@/lib/utils';
 import PreviewEvent from '@/components/event/create/PreviewEvent';
 import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
+import { EventInvitationTypeAction } from '@/components/event/create/EventInvitationTypeAction';
 
 export function Steps() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(2);
 
   const goBack = () => setCurrentStep((prev) => prev - 1);
   const goNext = () => setCurrentStep((prev) => prev + 1);
 
-  const steps = [
+  const steps: { title: string; component: React.ReactNode }[] = [
     {
       title: 'Información general',
       component: <EventGeneralInformation action='CREATE' next={goNext} />,
+    },
+    {
+      title: 'Tipo de evento',
+      component: <EventInvitationTypeAction next={goNext} back={goBack} />,
     },
     {
       title: 'Tipos de entradas',
@@ -58,7 +63,7 @@ export function Steps() {
               <StepperIndicator className='font-bold'>
                 {index + 1}
               </StepperIndicator>
-              <StepperTitle>{step.title}</StepperTitle>
+              <StepperTitle className='text-center'>{step.title}</StepperTitle>
             </StepperTrigger>
             {steps.length > index + 1 && (
               <StepperSeparator

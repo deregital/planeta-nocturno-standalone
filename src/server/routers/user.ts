@@ -315,6 +315,12 @@ export const userRouter = router({
 
       return { success: true };
     }),
+  getOrganizers: adminProcedure.query(async ({ ctx }) => {
+    const organizers = await ctx.db.query.user.findMany({
+      where: eq(userTable.role, 'ORGANIZER'),
+    });
+    return organizers;
+  }),
 });
 
 async function assertUniqueUser(
