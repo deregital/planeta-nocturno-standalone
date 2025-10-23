@@ -3,10 +3,11 @@
 import {
   AlertCircle,
   CheckCircle2,
-  FileSpreadsheet,
+  HardDriveDownload,
   Upload,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -24,8 +25,6 @@ import {
   processExcelFile,
   type ImportUserData,
 } from '@/lib/userImportUtils';
-import { trpc } from '@/server/trpc/client';
-import { useRouter } from 'next/navigation';
 
 interface ImportUsersModalProps {
   onImport: (users: ImportUserData[]) => Promise<ImportResult>;
@@ -103,11 +102,18 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
         }
         router.refresh();
       }
-    } catch (error: any) {
-      setResult({
-        success: false,
-        message: error instanceof Error ? error.message : 'Error desconocido',
-      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setResult({
+          success: false,
+          message: error instanceof Error ? error.message : 'Error desconocido',
+        });
+      } else {
+        setResult({
+          success: false,
+          message: 'Error desconocido',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +137,6 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
         </DialogHeader>
 
         <div className='space-y-6'>
-          {/* Template download */}
           <div className='space-y-2'>
             <Label>Plantilla de ejemplo</Label>
             <Button
@@ -139,24 +144,29 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
               onClick={downloadTemplate}
               className='w-full'
             >
-              <FileSpreadsheet className='w-4 h-4 mr-2' />
+              <HardDriveDownload className='w-4 h-4 mr-2' />
               Descargar plantilla (.xlsx)
             </Button>
-            <p className='text-sm text-muted-foreground'>
+            <p className='text-xs text-muted-foreground'>
               Descarga la plantilla para ver el formato correcto de las columnas
             </p>
           </div>
 
-          {/* File upload */}
           <div className='space-y-2'>
             <Label htmlFor='file-upload'>Seleccionar archivo Excel</Label>
-            <Input
-              id='file-upload'
-              type='file'
-              accept='.xlsx,.xls'
-              onChange={handleFileSelect}
-              ref={fileInputRef}
-            />
+            <div className='relative'>
+              <Input
+                id='file-upload'
+                type='file'
+                accept='.xlsx,.xls'
+                onChange={handleFileSelect}
+                ref={fileInputRef}
+              />
+              <Upload
+                className='absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer'
+                onClick={() => fileInputRef.current?.click()}
+              />
+            </div>
             {file && (
               <p className='text-sm text-green-600'>
                 Archivo seleccionado: {file.name}
