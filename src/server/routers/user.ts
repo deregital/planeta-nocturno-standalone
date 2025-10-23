@@ -120,7 +120,7 @@ export const userRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const errors: string[] = [];
-      const createdUsers: any[] = [];
+      const createdUsers: (typeof userTable.$inferSelect)[] = [];
 
       // Validar que no existan usuarios duplicados en el archivo
       const emails = new Set<string>();

@@ -1,8 +1,8 @@
 'use client';
 
-import { ImportUsersModal } from './ImportUsersModal';
 import { trpc } from '@/server/trpc/client';
 import { type ImportUserData } from '@/lib/userImportUtils';
+import { ImportUsersModal } from '@/components/admin/users/ImportUsersModal';
 
 interface ImportResult {
   success: boolean;
@@ -20,6 +20,7 @@ export function ImportUsersWrapper() {
     try {
       const result = await importUsersMutation.mutateAsync(users);
       return result;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       // Manejar errores de TRPC
       if (error?.data?.code === 'BAD_REQUEST') {
