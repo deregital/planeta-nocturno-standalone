@@ -18,7 +18,7 @@ export async function createUser(
   formData: FormData,
 ): Promise<CreateUserActionState> {
   const fullName = formData.get('fullName') as string;
-  const username = formData.get('username') as string;
+  const name = formData.get('username') as string;
   const email = formData.get('email') as string;
   const role = formData.get('role') as (typeof roleEnum.enumValues)[number];
   const password = formData.get('password') as string;
@@ -29,7 +29,7 @@ export async function createUser(
 
   const data = {
     fullName,
-    username,
+    name,
     email,
     role,
     password,
@@ -51,10 +51,7 @@ export async function createUser(
       {} as Record<keyof UserData, string>,
     );
     return {
-      data: {
-        ...data,
-        name: username,
-      },
+      data,
       errors: {
         general: '',
         ...errors,
@@ -72,10 +69,7 @@ export async function createUser(
     const errorMessage =
       error instanceof Error ? error.message : 'Error al crear usuario';
     return {
-      data: {
-        ...data,
-        name: username,
-      },
+      data,
       errors: {
         general: errorMessage,
       },

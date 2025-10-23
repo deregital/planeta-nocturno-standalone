@@ -44,6 +44,7 @@ export function UserForm({
   errors,
   formAction,
   isPending,
+  type,
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
@@ -136,7 +137,6 @@ export function UserForm({
           value={internalState?.phoneNumber}
           error={errors?.phoneNumber}
           onChange={(value) => {
-            console.log('value', value);
             handleChange('phoneNumber', value ?? '');
           }}
         />
@@ -175,7 +175,8 @@ export function UserForm({
         required
       />
       <InputWithLabel
-        required
+        required={type === 'CREATE'}
+        disabled={type === 'EDIT'}
         label='Contraseña'
         id='password'
         type='password'

@@ -27,7 +27,7 @@ export default function InputWithLabel({
       required={inputProps.required}
       error={error}
     >
-      {inputProps.type === 'password' ? (
+      {inputProps.type === 'password' && !inputProps.disabled ? (
         <div className='relative'>
           <Input
             id={id}

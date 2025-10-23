@@ -6,22 +6,18 @@ import { type User } from '@/server/types';
 import { updateUser } from '@/app/admin/users/[id]/edit/actions';
 import { UserForm } from '@/components/admin/users/UserForm';
 
-export function EditUserForm({
-  user,
-}: {
-  user: Pick<User, 'id' | 'fullName' | 'name' | 'email' | 'role'>;
-}) {
+export function EditUserForm({ user }: { user: User }) {
   const [state, formAction, isPending] = useActionState(updateUser, {
     data: {
       fullName: user.fullName,
       name: user.name,
       email: user.email,
       role: user.role,
-      password: '',
-      birthDate: '',
-      dni: '',
-      gender: 'male',
-      phoneNumber: '',
+      password: user.password,
+      birthDate: user.birthDate,
+      dni: user.dni,
+      gender: user.gender,
+      phoneNumber: user.phoneNumber,
     },
   });
 

@@ -4,7 +4,7 @@ import { role } from '@/drizzle/schema';
 import { genderSchema, phoneNumberSchema } from '@/server/schemas/utils';
 
 export const userSchema = z.object({
-  username: z.string().min(1, {
+  name: z.string().min(1, {
     error: 'El nombre de usuario es requerido',
   }),
   password: z.string().min(4, {

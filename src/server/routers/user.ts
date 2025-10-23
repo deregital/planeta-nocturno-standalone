@@ -13,6 +13,7 @@ import {
 import { userSchema } from '@/server/schemas/user';
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { getBuyersCodeByDni } from '@/server/utils/utils';
+import { type User } from '@/server/types';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
@@ -25,7 +26,7 @@ export const userRouter = router({
 
     return users.map((user) => ({
       ...user,
-      id:
+      autoId:
         usersWithAutoId?.find((code) => code.dni === user.id)?.id.toString() ||
         '---',
     }));
@@ -75,24 +76,22 @@ export const userRouter = router({
     const user = await ctx.db.insert(userTable).values({
       ...input,
       fullName: input.fullName,
-      name: input.username,
+      name: input.name,
       password: hashedPassword,
     });
     return user;
   }),
   update: adminProcedure
-    .input(userSchema.extend({ id: z.string() }))
+    .input(userSchema.omit({ password: true }).extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertUniqueUser(ctx.db, input, input.id);
 
-      const hashedPassword = await hash(input.password, 10);
       const user = await ctx.db
         .update(userTable)
         .set({
           ...input,
-          name: input.username,
+          name: input.name,
           birthDate: input.birthDate,
-          password: hashedPassword,
         })
         .where(eq(userTable.id, input.id));
 
@@ -290,7 +289,7 @@ export const userRouter = router({
 
 async function assertUniqueUser(
   database: typeof db,
-  input: z.infer<typeof userSchema>,
+  input: Pick<User, 'email' | 'dni' | 'name'>,
   excludeUserId?: string,
 ) {
   const existingEmail = await database.query.user.findFirst({
@@ -312,7 +311,7 @@ async function assertUniqueUser(
     });
   }
   const existingUsername = await database.query.user.findFirst({
-    where: eq(userTable.name, input.username),
+    where: eq(userTable.name, input.name),
   });
   if (existingUsername && existingUsername.id !== excludeUserId) {
     throw new TRPCError({

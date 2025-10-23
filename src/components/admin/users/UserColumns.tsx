@@ -1,23 +1,25 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowDown, ArrowUp, Cake } from 'lucide-react';
+import { ArrowUpDown, ArrowDown, ArrowUp, Cake, Edit } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { formatInTimeZone } from 'date-fns-tz';
+import Link from 'next/link';
 
 import { type RouterOutputs } from '@/server/routers/app';
 import { Button } from '@/components/ui/button';
 import { daysUntilBirthday } from '@/lib/utils';
 import { genderTranslation, roleTranslation } from '@/lib/translations';
 import { type role as roleEnum } from '@/drizzle/schema';
+import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
 
 export const userColumns: StrictColumnDef<
   RouterOutputs['user']['getAll'][number]
 >[] = [
   {
-    id: 'id',
-    accessorKey: 'id',
+    id: 'autoId',
+    accessorKey: 'autoId',
     header: ({ column }) => {
       return (
         <div
@@ -37,7 +39,7 @@ export const userColumns: StrictColumnDef<
     cell: ({ row }) => {
       return (
         <div className='text-sm'>
-          <span>{row.original.id}</span>
+          <span>{row.original.autoId}</span>
         </div>
       );
     },
@@ -212,6 +214,26 @@ export const userColumns: StrictColumnDef<
     meta: {
       exportValue: (row) => row.original.email,
       exportHeader: 'Mail',
+    },
+  },
+  {
+    id: 'actions',
+    header: () => <p className='text-sm p-2'>Acciones</p>,
+    cell: ({ row }) => {
+      return (
+        <div className='flex items-center gap-2'>
+          <Button variant='ghost' size='icon' asChild>
+            <Link href={`/admin/users/${row.original.id}/edit`}>
+              <Edit className='size-4' />
+            </Link>
+          </Button>
+          <DeleteUserModal user={row.original} />
+        </div>
+      );
+    },
+    meta: {
+      exportValue: () => '',
+      exportHeader: '',
     },
   },
 ];
