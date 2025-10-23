@@ -4,8 +4,7 @@ import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { Tabs, TabsTrigger, TabsList, TabsContent } from '@/components/ui/tabs';
 import { type InviteCondition } from '@/server/types';
 import { inviteCondition } from '@/drizzle/schema';
-import { EventInvitation } from '@/components/event/create/inviteCondition/EventInvitation';
-import { EventTraditional } from '@/components/event/create/inviteCondition/EventTraditional';
+import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
 import { Button } from '@/components/ui/button';
 
 export function EventInvitationTypeAction({
@@ -43,10 +42,10 @@ export function EventInvitationTypeAction({
           </TabsTrigger>
         </TabsList>
         <TabsContent value={inviteCondition.enumValues[0]}>
-          <EventTraditional />
+          <EventOrganizers type={tab} />
         </TabsContent>
         <TabsContent value={inviteCondition.enumValues[1]}>
-          <EventInvitation />
+          <EventOrganizers type={tab} />
         </TabsContent>
       </Tabs>
       <div className='flex flex-1 mt-4 w-full gap-4'>

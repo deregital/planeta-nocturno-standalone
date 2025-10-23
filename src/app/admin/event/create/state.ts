@@ -53,7 +53,7 @@ const initialState: EventState = {
     endingDate: new Date(),
     categoryId: '',
     isActive: false,
-    locationId: '',
+    locationId: '552b3428-9cea-46b1-b887-52f747fcb645',
     minAge: null,
     authorizedUsers: [],
     inviteContidtion: 'TRADITIONAL',

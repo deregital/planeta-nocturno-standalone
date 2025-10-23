@@ -1,5 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table';
 import { TrashIcon } from 'lucide-react';
+import { useMemo } from 'react';
 
 import { DataTable } from '@/components/common/DataTable';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ function columns(
   type: InviteCondition,
   updateOrganizerNumber: CreateEventStore['updateOrganizerNumber'],
   deleteOrganizer: CreateEventStore['deleteOrganizer'],
+  maxNumber: number,
 ): ColumnDef<OrganizerTableData>[] {
   return [
     {
@@ -60,13 +62,13 @@ function columns(
             <Input
               className='w-fit max-w-fit'
               type='number'
+              min={0}
+              max={maxNumber}
               value={row.original.number}
               onChange={(e) => {
-                updateOrganizerNumber(
-                  row.original.dni,
-                  Number(e.target.value),
-                  type,
-                );
+                const value = Number(e.target.value);
+                const clampedValue = Math.min(Math.max(value, 0), maxNumber);
+                updateOrganizerNumber(row.original.dni, clampedValue, type);
               }}
             />
             <Button
@@ -90,16 +92,31 @@ export function OrganizerTableWithAction({
   children,
   numberTitle,
   type,
+  maxNumber,
 }: {
   data: OrganizerTableData[];
   children: React.ReactNode;
   numberTitle: string;
   type: InviteCondition;
+  maxNumber: number;
 }) {
   const updateOrganizerNumber = useCreateEventStore(
     (state) => state.updateOrganizerNumber,
   );
   const deleteOrganizer = useCreateEventStore((state) => state.deleteOrganizer);
+
+  const memoizedColumns = useMemo(
+    () =>
+      columns(
+        numberTitle,
+        type,
+        updateOrganizerNumber,
+        deleteOrganizer,
+        maxNumber,
+      ),
+    [numberTitle, type, updateOrganizerNumber, deleteOrganizer, maxNumber],
+  );
+
   return (
     <div>
       <div className='flex w-full justify-end'>{children}</div>
@@ -108,12 +125,7 @@ export function OrganizerTableWithAction({
         fullWidth
         noResultsPlaceholder='No seleccionaste ningún organizador'
         divClassName='mx-0! w-full! max-w-full!'
-        columns={columns(
-          numberTitle,
-          type,
-          updateOrganizerNumber,
-          deleteOrganizer,
-        )}
+        columns={memoizedColumns}
         data={data}
       />
     </div>

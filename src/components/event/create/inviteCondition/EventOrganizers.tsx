@@ -5,17 +5,46 @@ import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
 import { trpc } from '@/server/trpc/client';
 import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 import { Slider } from '@/components/ui/slider';
+import { type InviteCondition } from '@/server/types';
+import {
+  calculateMaxTicketsPerOrganizer,
+  useOrganizerTickets,
+} from '@/hooks/useOrganizerTickets';
+import { cn } from '@/lib/utils';
 
-export function EventTraditional() {
-  const [defaultPercentage, setDefaultPercentage] = useState<number>(0);
+export function EventOrganizers({ type }: { type: InviteCondition }) {
+  const { maxNumber, maxCapacity } = useOrganizerTickets(type);
+  const [defaultNumber, setDefaultNumber] = useState<number>(0);
   const [selectedComboboxOption, setSelectedComboboxOption] =
     useState<string>('');
   const { data: organizersData } = trpc.user.getOrganizers.useQuery();
   const addOrganizer = useCreateEventStore((state) => state.addOrganizer);
   const organizers = useCreateEventStore((state) => state.organizers);
-  const updateOrganizerNumber = useCreateEventStore(
+  const updateAllOrganizerNumber = useCreateEventStore(
     (state) => state.updateAllOrganizerNumber,
   );
+  const updateOrganizerNumber = useCreateEventStore(
+    (state) => state.updateOrganizerNumber,
+  );
+
+  // Ensure default number doesn't exceed max
+  React.useEffect(() => {
+    if (defaultNumber > maxNumber) {
+      setDefaultNumber(maxNumber);
+    }
+  }, [maxNumber, defaultNumber]);
+
+  // For INVITATION mode, clamp existing organizers when max changes
+  React.useEffect(() => {
+    if (type === 'INVITATION') {
+      organizers.forEach((org) => {
+        const currentAmount = 'ticketAmount' in org ? org.ticketAmount : 0;
+        if (currentAmount > maxNumber) {
+          updateOrganizerNumber(org.dni, maxNumber, type);
+        }
+      });
+    }
+  }, [maxNumber, type, organizers, updateOrganizerNumber]);
 
   const selectedOrganizers = useMemo(() => {
     return organizersData
@@ -66,7 +95,19 @@ export function EventTraditional() {
         onSelectOption={(option) => {
           const dni = option.split(' - ').pop();
           if (!dni) return;
-          addOrganizer(dni!, defaultPercentage, 'TRADITIONAL');
+          if (type === 'TRADITIONAL') {
+            addOrganizer(dni, defaultNumber, type);
+          } else {
+            // For INVITATION mode, use the default number but clamp it to the maximum allowed
+            const maxAllowed = maxCapacity
+              ? calculateMaxTicketsPerOrganizer(
+                  maxCapacity,
+                  organizers.length + 1,
+                )
+              : maxNumber;
+            const clampedNumber = Math.min(defaultNumber, maxAllowed);
+            addOrganizer(dni, clampedNumber, type);
+          }
         }}
         showSelectedOptions={false}
         options={organizerOptions || []}
@@ -74,22 +115,35 @@ export function EventTraditional() {
         onSelectedOptionChange={setSelectedComboboxOption}
       />
       <OrganizerTableWithAction
-        type='TRADITIONAL'
+        type={type}
         data={selectedOrganizers || []}
-        numberTitle='Porcentaje de descuento'
+        numberTitle={
+          type === 'TRADITIONAL'
+            ? 'Porcentaje de descuento'
+            : 'Cantidad de tickets'
+        }
+        maxNumber={maxNumber}
       >
         <div className='w-full max-w-1/3'>
-          <p>Porcentaje por defecto</p>
+          <p>
+            {type === 'TRADITIONAL'
+              ? 'Porcentaje por defecto'
+              : 'Cantidad por defecto'}
+          </p>
           <div className='rounded-t-md bg-accent-ultra-light border-stroke border border-b-0 flex gap-2 px-4 py-2'>
-            <p className='tabular-nums'>{defaultPercentage ?? 0}%</p>
+            <p className={cn('tabular-nums', type === 'INVITATION' && 'pr-2')}>
+              {defaultNumber ?? 0}
+              {type === 'TRADITIONAL' && '%'}
+            </p>
             <Slider
-              defaultValue={[defaultPercentage ?? 0]}
-              max={100}
+              defaultValue={[defaultNumber ?? 0]}
+              max={maxNumber}
               min={0}
               step={1}
               onValueChange={(value) => {
-                setDefaultPercentage(value[0]);
-                updateOrganizerNumber(value[0], 'TRADITIONAL');
+                const clampedValue = Math.min(value[0], maxNumber);
+                setDefaultNumber(clampedValue);
+                updateAllOrganizerNumber(clampedValue, type);
               }}
               className='w-full'
             />
