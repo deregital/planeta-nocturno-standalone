@@ -292,7 +292,8 @@ model EventXOrganizer {
   organizerId String @db.Uuid
   organizer   User   @relation("ORGANIZER_X_EVENT", fields: [organizerId], references: [id])
 
-  discountPercentage Int @default(0)
+  discountPercentage Int?
+  ticketAmount Int?
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 

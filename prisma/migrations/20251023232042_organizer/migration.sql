@@ -74,7 +74,8 @@ CREATE TABLE "ticketXOrganizer" (
 CREATE TABLE "eventXOrganizer" (
     "eventId" UUID NOT NULL,
     "organizerId" UUID NOT NULL,
-    "discountPercentage" INTEGER NOT NULL DEFAULT 0,
+    "discountPercentage" INTEGER,
+    "ticketAmount" INTEGER,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "eventXOrganizer_pkey" PRIMARY KEY ("eventId","organizerId")
