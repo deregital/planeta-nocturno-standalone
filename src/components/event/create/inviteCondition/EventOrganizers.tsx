@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
 import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
@@ -27,24 +27,59 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
     (state) => state.updateOrganizerNumber,
   );
 
-  // Ensure default number doesn't exceed max
-  React.useEffect(() => {
-    if (defaultNumber > maxNumber) {
-      setDefaultNumber(maxNumber);
-    }
-  }, [maxNumber, defaultNumber]);
+  const prevMaxNumberRef = useRef(maxNumber);
+  const prevDefaultNumberRef = useRef(defaultNumber);
+  const prevOrganizersLengthRef = useRef(organizers.length);
 
-  // For INVITATION mode, clamp existing organizers when max changes
-  React.useEffect(() => {
-    if (type === 'INVITATION') {
+  // Cambios para el máximo de tickets por organizador
+  useEffect(() => {
+    const maxChanged = prevMaxNumberRef.current !== maxNumber;
+    const defaultChanged = prevDefaultNumberRef.current !== defaultNumber;
+    const organizersLengthChanged =
+      prevOrganizersLengthRef.current !== organizers.length;
+
+    // Si nada cambió, no hacer nada
+    if (!maxChanged && !defaultChanged && !organizersLengthChanged) {
+      return;
+    }
+
+    const clampedDefault = Math.min(defaultNumber, maxNumber);
+
+    // Actualizar el default si excede el máximo
+    if (defaultNumber !== clampedDefault) {
+      setDefaultNumber(clampedDefault);
+    }
+
+    // Para el modo INVITACIÓN, asegurar que todos los organizadores respeten los nuevos límites
+    if (type === 'INVITATION' && (maxChanged || organizersLengthChanged)) {
+      let needsUpdate = false;
+
+      // Verificar si algún organizador excede el nuevo máximo
       organizers.forEach((org) => {
         const currentAmount = 'ticketAmount' in org ? org.ticketAmount : 0;
         if (currentAmount > maxNumber) {
           updateOrganizerNumber(org.dni, maxNumber, type);
+          needsUpdate = true;
         }
       });
+
+      // Actualizar todos los organizadores al default clamped si es necesario
+      if (needsUpdate || defaultNumber !== clampedDefault) {
+        updateAllOrganizerNumber(clampedDefault, type);
+      }
     }
-  }, [maxNumber, type, organizers, updateOrganizerNumber]);
+
+    prevMaxNumberRef.current = maxNumber;
+    prevDefaultNumberRef.current = defaultNumber;
+    prevOrganizersLengthRef.current = organizers.length;
+  }, [
+    maxNumber,
+    type,
+    defaultNumber,
+    organizers,
+    updateOrganizerNumber,
+    updateAllOrganizerNumber,
+  ]);
 
   const selectedOrganizers = useMemo(() => {
     return organizersData
@@ -77,8 +112,49 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
       .map((organizer) => `${organizer.fullName} - ${organizer.dni}`);
   }, [organizersData, selectedOrganizers]);
 
-  // Clear combobox selection when organizers are deleted
-  React.useEffect(() => {
+  const groupedOptions = useMemo(() => {
+    if (!organizersData) return undefined;
+
+    const selectableOrganizers = organizersData.filter(
+      (organizer) =>
+        !selectedOrganizers?.some((org) => org.dni === organizer.dni),
+    );
+
+    // Agrupar organizadores por sus tags
+    const tagGroups = new Map<
+      string,
+      { name: string; organizers: typeof selectableOrganizers }
+    >();
+
+    selectableOrganizers.forEach((organizer) => {
+      organizer.userXTags?.forEach((userXTag) => {
+        const tag = userXTag.tag;
+        if (!tagGroups.has(tag.id)) {
+          tagGroups.set(tag.id, { name: tag.name, organizers: [] });
+        }
+        tagGroups.get(tag.id)!.organizers.push(organizer);
+      });
+    });
+
+    // Convertir a opciones agrupadas para el combobox
+    const tagOptions = Array.from(tagGroups.entries()).map(
+      ([tagId, tagData]) => ({
+        value: `tag:${tagId}`,
+        label: `🏷️ ${tagData.name} (${tagData.organizers.length} organizador${tagData.organizers.length > 1 ? 'es' : ''})`,
+        tagData,
+      }),
+    );
+
+    return [
+      {
+        group: 'Tags',
+        options: tagOptions,
+      },
+    ];
+  }, [organizersData, selectedOrganizers]);
+
+  // Limpiar la selección del combobox cuando se eliminan organizadores
+  useEffect(() => {
     if (selectedComboboxOption) {
       const dni = selectedComboboxOption.split(' - ').pop();
       const isStillSelected = organizers.some((org) => org.dni === dni);
@@ -93,24 +169,47 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
       <VirtualizedCombobox
         searchPlaceholder='Agregar organizador...'
         onSelectOption={(option) => {
-          const dni = option.split(' - ').pop();
-          if (!dni) return;
-          if (type === 'TRADITIONAL') {
-            addOrganizer(dni, defaultNumber, type);
+          if (option.startsWith('tag:')) {
+            const tagId = option.replace('tag:', '');
+            const tagOption = groupedOptions?.[0]?.options.find(
+              (opt) => opt.value === `tag:${tagId}`,
+            );
+            if (tagOption && 'tagData' in tagOption) {
+              tagOption.tagData.organizers.forEach((organizer) => {
+                if (type === 'TRADITIONAL') {
+                  addOrganizer(organizer.dni, defaultNumber, type);
+                } else {
+                  const maxAllowed = maxCapacity
+                    ? calculateMaxTicketsPerOrganizer(
+                        maxCapacity,
+                        organizers.length + 1,
+                      )
+                    : maxNumber;
+                  const clampedNumber = Math.min(defaultNumber, maxAllowed);
+                  addOrganizer(organizer.dni, clampedNumber, type);
+                }
+              });
+            }
           } else {
-            // For INVITATION mode, use the default number but clamp it to the maximum allowed
-            const maxAllowed = maxCapacity
-              ? calculateMaxTicketsPerOrganizer(
-                  maxCapacity,
-                  organizers.length + 1,
-                )
-              : maxNumber;
-            const clampedNumber = Math.min(defaultNumber, maxAllowed);
-            addOrganizer(dni, clampedNumber, type);
+            const dni = option.split(' - ').pop();
+            if (!dni) return;
+            if (type === 'TRADITIONAL') {
+              addOrganizer(dni, defaultNumber, type);
+            } else {
+              const maxAllowed = maxCapacity
+                ? calculateMaxTicketsPerOrganizer(
+                    maxCapacity,
+                    organizers.length + 1,
+                  )
+                : maxNumber;
+              const clampedNumber = Math.min(defaultNumber, maxAllowed);
+              addOrganizer(dni, clampedNumber, type);
+            }
           }
         }}
         showSelectedOptions={false}
         options={organizerOptions || []}
+        groupedOptions={groupedOptions}
         selectedOption={selectedComboboxOption}
         onSelectedOptionChange={setSelectedComboboxOption}
       />

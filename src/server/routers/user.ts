@@ -318,6 +318,13 @@ export const userRouter = router({
   getOrganizers: adminProcedure.query(async ({ ctx }) => {
     const organizers = await ctx.db.query.user.findMany({
       where: eq(userTable.role, 'ORGANIZER'),
+      with: {
+        userXTags: {
+          with: {
+            tag: true,
+          },
+        },
+      },
     });
     return organizers;
   }),
