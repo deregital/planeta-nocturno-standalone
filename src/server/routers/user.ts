@@ -6,6 +6,10 @@ import { z } from 'zod';
 import { user as userTable } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  generateWelcomeEmail,
+  sendMailWithoutAttachments,
+} from '@/server/services/mail';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
@@ -51,11 +55,19 @@ export const userRouter = router({
     }),
   create: adminProcedure.input(userSchema).mutation(async ({ ctx, input }) => {
     const hashedPassword = await hash(input.password, 10);
-    const user = await ctx.db.insert(userTable).values({
-      ...input,
-      fullName: input.fullName,
-      name: input.username,
-      password: hashedPassword,
+    const [user] = await ctx.db
+      .insert(userTable)
+      .values({
+        ...input,
+        fullName: input.fullName,
+        name: input.username,
+        password: hashedPassword,
+      })
+      .returning();
+    await sendMailWithoutAttachments({
+      to: user.email,
+      subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
+      html: generateWelcomeEmail(user.name, input.password),
     });
     revalidatePath('/admin/users');
     return user;
