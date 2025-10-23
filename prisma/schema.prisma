@@ -41,9 +41,6 @@ model User {
   // Optional for WebAuthn support
   Authenticator Authenticator[]
 
-  // Contraseñas temporales para usuarios importados
-  tempPasswords TempPassword[]
-
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@index([code])
@@ -324,17 +321,4 @@ enum TicketTypeCategory {
 enum InviteCondition {
   TRADITIONAL
   INVITATION
-}
-
-model TempPassword {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @db.Uuid
-  password  String
-  sent      Boolean  @default(false)
-  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
-  expiresAt DateTime @db.Timestamptz
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("tempPassword")
 }

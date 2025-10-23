@@ -8,8 +8,6 @@ export const phoneNumberSchema = z.string().refine(
       return true;
     }
 
-    console.log('valueSchema', value);
-
     if (value.startsWith('+5415')) {
       const newNumber = value.replace(/^\+5415/, '+5411');
       return isValidPhoneNumber(newNumber);

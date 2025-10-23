@@ -5,6 +5,8 @@ import {
   type CreateTicketTypeSchema,
   type TicketTypeSchema,
 } from '@/server/schemas/ticket-type';
+import { type OrganizerSchema } from '@/server/schemas/organizer';
+import { type InviteCondition } from '@/server/types';
 
 export type EventState = {
   event: CreateEventSchema;
@@ -12,6 +14,7 @@ export type EventState = {
     | (CreateTicketTypeSchema & { id: string | null })
     | TicketTypeSchema
   )[];
+  organizers: OrganizerSchema[];
 };
 type EventActions = {
   addTicketType: (ticketType: CreateTicketTypeSchema) => void;
@@ -19,6 +22,24 @@ type EventActions = {
   deleteTicketType: (id: string) => void;
   setTicketTypes: (ticketTypes: TicketTypeSchema[]) => void;
   setEvent: (event: Partial<CreateEventSchema>) => void;
+  resetOrganizers: () => void;
+  addOrganizer: (
+    organizerId: string,
+    number: number,
+    type: InviteCondition,
+  ) => void;
+  editOrganizer: (
+    organizerId: string,
+    number: number,
+    type: InviteCondition,
+  ) => void;
+  deleteOrganizer: (organizerId: string) => void;
+  updateAllOrganizerNumber: (number: number, type: InviteCondition) => void;
+  updateOrganizerNumber: (
+    organizerId: string,
+    number: number,
+    type: InviteCondition,
+  ) => void;
 };
 
 export type CreateEventStore = EventState & EventActions;
@@ -32,11 +53,13 @@ const initialState: EventState = {
     endingDate: new Date(),
     categoryId: '',
     isActive: false,
-    locationId: '',
+    locationId: '552b3428-9cea-46b1-b887-52f747fcb645',
     minAge: null,
     authorizedUsers: [],
+    inviteContidtion: 'TRADITIONAL',
   },
   ticketTypes: [],
+  organizers: [],
 };
 
 export const createEventStore = (initState: EventState = initialState) => {
@@ -48,6 +71,69 @@ export const createEventStore = (initState: EventState = initialState) => {
     setTicketTypes: (ticketTypes) => {
       set((state) => ({
         ticketTypes,
+      }));
+    },
+    resetOrganizers: () => {
+      set(() => ({
+        organizers: [],
+      }));
+    },
+    addOrganizer: (
+      organizerId: string,
+      number: number,
+      type: InviteCondition,
+    ) => {
+      set((state) => ({
+        organizers: [
+          ...state.organizers,
+          type === 'TRADITIONAL'
+            ? { dni: organizerId, discountPercentage: number }
+            : { dni: organizerId, ticketAmount: number },
+        ],
+      }));
+    },
+    editOrganizer: (
+      organizerId: string,
+      number: number,
+      type: InviteCondition,
+    ) => {
+      set((state) => ({
+        organizers: state.organizers.map((o) =>
+          o.dni === organizerId
+            ? type === 'TRADITIONAL'
+              ? { ...o, discountPercentage: number }
+              : { ...o, ticketAmount: number }
+            : o,
+        ),
+      }));
+    },
+    deleteOrganizer: (organizerId: string) => {
+      set((state) => ({
+        organizers: state.organizers.filter((o) => o.dni !== organizerId),
+      }));
+    },
+    updateAllOrganizerNumber: (number: number, type: InviteCondition) => {
+      set((state) => ({
+        organizers: state.organizers.map((o) =>
+          type === 'TRADITIONAL'
+            ? { ...o, discountPercentage: number }
+            : { ...o, ticketAmount: number },
+        ),
+      }));
+    },
+    updateOrganizerNumber: (
+      organizerId: string,
+      number: number,
+      type: InviteCondition,
+    ) => {
+      set((state) => ({
+        organizers: state.organizers.map((o) =>
+          o.dni === organizerId
+            ? type === 'TRADITIONAL'
+              ? { ...o, discountPercentage: number }
+              : { ...o, ticketAmount: number }
+            : o,
+        ),
       }));
     },
     addTicketType: (ticketType) => {
