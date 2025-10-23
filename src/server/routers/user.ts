@@ -20,6 +20,7 @@ import {
 } from '@/server/services/mail';
 import { getBuyersCodeByDni } from '@/server/utils/utils';
 import { type Tag, type User } from '@/server/types';
+import { generateRandomPassword } from '@/server/utils/users';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
@@ -238,56 +239,39 @@ export const userRouter = router({
         batchTag = newTag[0];
       }
 
-      // Función para generar contraseña aleatoria
-      const generateRandomPassword = (): string => {
-        const chars =
-          'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-        let password = '';
-        for (let i = 0; i < 12; i++) {
-          password += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return password;
-      };
-
-      // Crear usuarios
       for (const user of input.users) {
         const fullName = `${user.nombre} ${user.apellido}`.trim();
-        const username = user.email.split('@')[0]; // Usar parte del email como username
+        const username = user.email.split('@')[0];
         const randomPassword = generateRandomPassword();
         const hashedPassword = await hash(randomPassword, 10);
 
-        const newUser = await ctx.db
+        const [newUser] = await ctx.db
           .insert(userTable)
           .values({
             name: username,
             fullName: fullName,
             password: hashedPassword,
             email: user.email,
-            role: 'ORGANIZER', // Rol por defecto para usuarios importados
-            gender: 'other', // Valor por defecto
+            role: 'ORGANIZER',
+            gender: 'other',
             phoneNumber: user.telefono,
             dni: user.dni,
             birthDate: user.fechaNacimiento,
           })
           .returning();
 
-        // Guardar contraseña temporal para envío por email
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 30); // Expira en 30 días
-
-        await ctx.db.insert(tempPasswordTable).values({
-          userId: newUser[0].id,
-          password: randomPassword,
-          expiresAt: expiresAt.toISOString(),
+        await sendMailWithoutAttachments({
+          to: newUser.email,
+          subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
+          html: generateWelcomeEmail(newUser.name, randomPassword),
         });
 
-        // Asociar el tag del batch al usuario
         await ctx.db.insert(userXTag).values({
-          a: batchTag.id, // tag id
-          b: newUser[0].id, // user id
+          a: batchTag.id,
+          b: newUser.id,
         });
 
-        createdUsers.push(newUser[0]);
+        createdUsers.push(newUser);
       }
 
       revalidatePath('/admin/users');

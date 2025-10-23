@@ -4,12 +4,12 @@ import {
   ticketXorganizer,
   user,
   tempPassword,
-  location,
-  event,
-  eventCategory,
   session,
+  event,
   ticketType,
   emittedTicket,
+  location,
+  eventCategory,
   tag,
   userXTag,
   eventXUser,
@@ -62,7 +62,16 @@ export const tempPasswordRelations = relations(tempPassword, ({ one }) => ({
   }),
 }));
 
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
+  }),
+}));
+
 export const eventRelations = relations(event, ({ one, many }) => ({
+  ticketGroups: many(ticketGroup),
+  ticketTypes: many(ticketType),
   location: one(location, {
     fields: [event.locationId],
     references: [location.id],
@@ -71,25 +80,8 @@ export const eventRelations = relations(event, ({ one, many }) => ({
     fields: [event.categoryId],
     references: [eventCategory.id],
   }),
-  ticketGroups: many(ticketGroup),
-  ticketTypes: many(ticketType),
   eventXUsers: many(eventXUser),
   eventXorganizers: many(eventXorganizer),
-}));
-
-export const locationRelations = relations(location, ({ many }) => ({
-  events: many(event),
-}));
-
-export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
-  events: many(event),
-}));
-
-export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
-    fields: [session.userId],
-    references: [user.id],
-  }),
 }));
 
 export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
@@ -114,6 +106,14 @@ export const emittedTicketRelations = relations(emittedTicket, ({ one }) => ({
     fields: [emittedTicket.ticketGroupId],
     references: [ticketGroup.id],
   }),
+}));
+
+export const locationRelations = relations(location, ({ many }) => ({
+  events: many(event),
+}));
+
+export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
+  events: many(event),
 }));
 
 export const userXTagRelations = relations(userXTag, ({ one }) => ({
