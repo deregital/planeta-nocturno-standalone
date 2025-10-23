@@ -218,6 +218,21 @@ export const eventsRouter = router({
             },
           },
         },
+        eventXorganizers: {
+          columns: {
+            discountPercentage: true,
+            ticketAmount: true,
+          },
+          with: {
+            user: {
+              columns: {
+                dni: true,
+                fullName: true,
+                phoneNumber: true,
+              },
+            },
+          },
+        },
       },
     });
 

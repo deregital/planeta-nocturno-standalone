@@ -6,10 +6,27 @@ import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
+import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
   const event = useCreateEventStore((state) => state.event);
+  const organizers = useCreateEventStore((state) => state.organizers).map(
+    (organizer) => ({
+      id: organizer.dni,
+      fullName: organizer.fullName,
+      phoneNumber: organizer.phoneNumber,
+      number:
+        event.inviteContidtion === 'TRADITIONAL'
+          ? 'discountPercentage' in organizer
+            ? organizer.discountPercentage
+            : 0
+          : 'ticketAmount' in organizer
+            ? organizer.ticketAmount
+            : 0,
+      dni: organizer.dni,
+    }),
+  );
 
   const createEvent = trpc.events.create.useMutation();
 
@@ -39,6 +56,24 @@ export default function PreviewEvent({ back }: { back: () => void }) {
       </Button>
       <h2 className='text-2xl text-center'>Previsualización del evento</h2>
       <EventGeneralInformation action='PREVIEW' />
+      {organizers.length > 0 && (
+        <section>
+          <h3 className='text-2xl'>Organizadores</h3>
+          <OrganizerTableWithAction
+            data={organizers}
+            numberTitle={
+              event.inviteContidtion === 'TRADITIONAL'
+                ? 'Porcentaje de descuento'
+                : 'Cantidad de tickets'
+            }
+            type='TRADITIONAL'
+            disableActions
+            maxNumber={100}
+          >
+            <></>
+          </OrganizerTableWithAction>
+        </section>
+      )}
       <section>
         <h3 className='text-2xl'>Entradas</h3>
         <TicketTypeList

@@ -23,11 +23,12 @@ function columns(
   updateOrganizerNumber: CreateEventStore['updateOrganizerNumber'],
   deleteOrganizer: CreateEventStore['deleteOrganizer'],
   maxNumber: number,
+  disableActions: boolean,
 ): ColumnDef<OrganizerTableData>[] {
   return [
     {
-      header: 'ID',
-      accessorKey: 'id',
+      header: 'DNI',
+      accessorKey: 'dni',
       cell: ({ row }) => {
         return <div>{row.original.id}</div>;
       },
@@ -40,13 +41,6 @@ function columns(
       },
     },
     {
-      header: 'DNI',
-      accessorKey: 'dni',
-      cell: ({ row }) => {
-        return <div>{row.original.dni}</div>;
-      },
-    },
-    {
       header: 'Teléfono',
       accessorKey: 'phoneNumber',
       cell: ({ row }) => {
@@ -56,6 +50,7 @@ function columns(
     {
       header: numberTitle,
       accessorKey: 'number',
+      size: 200,
       cell: ({ row }) => {
         return (
           <div className='flex gap-2'>
@@ -64,22 +59,25 @@ function columns(
               type='number'
               min={0}
               max={maxNumber}
+              disabled={disableActions}
               value={row.original.number}
               onChange={(e) => {
                 const value = Number(e.target.value);
                 const clampedValue = Math.min(Math.max(value, 0), maxNumber);
-                updateOrganizerNumber(row.original.dni, clampedValue, type);
+                updateOrganizerNumber(row.original, clampedValue, type);
               }}
             />
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={() => {
-                deleteOrganizer(row.original.dni);
-              }}
-            >
-              <TrashIcon className='w-4 h-4' />
-            </Button>
+            {!disableActions && (
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => {
+                  deleteOrganizer(row.original);
+                }}
+              >
+                <TrashIcon className='w-4 h-4' />
+              </Button>
+            )}
           </div>
         );
       },
@@ -93,12 +91,14 @@ export function OrganizerTableWithAction({
   numberTitle,
   type,
   maxNumber,
+  disableActions = false,
 }: {
   data: OrganizerTableData[];
   children: React.ReactNode;
   numberTitle: string;
   type: InviteCondition;
   maxNumber: number;
+  disableActions?: boolean;
 }) {
   const updateOrganizerNumber = useCreateEventStore(
     (state) => state.updateOrganizerNumber,
@@ -113,8 +113,16 @@ export function OrganizerTableWithAction({
         updateOrganizerNumber,
         deleteOrganizer,
         maxNumber,
+        disableActions,
       ),
-    [numberTitle, type, updateOrganizerNumber, deleteOrganizer, maxNumber],
+    [
+      numberTitle,
+      type,
+      updateOrganizerNumber,
+      deleteOrganizer,
+      maxNumber,
+      disableActions,
+    ],
   );
 
   return (
@@ -122,7 +130,7 @@ export function OrganizerTableWithAction({
       <div className='flex w-full justify-end'>{children}</div>
       <DataTable
         disableExport
-        fullWidth
+        fullWidth={false}
         noResultsPlaceholder='No seleccionaste ningún organizador'
         divClassName='mx-0! w-full! max-w-full!'
         columns={memoizedColumns}

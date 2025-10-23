@@ -39,7 +39,7 @@ export default function TicketTypeAction({
         </Button>
       )}
       <h2 className='text-2xl text-center'>Agregar nueva entrada</h2>
-      <div className='flex items-center justify-center gap-4 my-8'>
+      <div className='flex items-center justify-center gap-4 my-8 flex-wrap'>
         {ticketTypeCategory.enumValues.map((category) => (
           <TicketTypeModal
             action='CREATE'

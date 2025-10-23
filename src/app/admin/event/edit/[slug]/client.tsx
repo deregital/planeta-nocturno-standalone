@@ -11,6 +11,7 @@ import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAct
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
+import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 
 export default function Client({
   event,
@@ -97,6 +98,32 @@ export default function Client({
       <section className='my-6' id='ticket-types'>
         <h3 className='text-2xl text-accent font-bold'>Entradas</h3>
         <TicketTypeAction />
+      </section>
+      <section>
+        <h3 className='text-2xl'>Organizadores</h3>
+        <OrganizerTableWithAction
+          data={
+            event?.eventXorganizers.map(
+              ({ user, discountPercentage, ticketAmount }) => ({
+                id: user.dni,
+                fullName: user.fullName,
+                phoneNumber: user.phoneNumber,
+                number: discountPercentage ?? ticketAmount ?? 0,
+                dni: user.dni,
+              }),
+            ) || []
+          }
+          numberTitle={
+            event?.inviteCondition === 'TRADITIONAL'
+              ? 'Porcentaje de descuento'
+              : 'Cantidad de tickets'
+          }
+          type='TRADITIONAL'
+          disableActions
+          maxNumber={100}
+        >
+          <></>
+        </OrganizerTableWithAction>
       </section>
       {error.general && (
         <p className='text-red-500 font-bold'>{error.general}</p>

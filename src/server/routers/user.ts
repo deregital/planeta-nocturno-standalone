@@ -6,12 +6,7 @@ import { z } from 'zod';
 
 import { type db } from '@/drizzle';
 
-import {
-  tempPassword as tempPasswordTable,
-  user as userTable,
-  tag as tagTable,
-  userXTag,
-} from '@/drizzle/schema';
+import { user as userTable, tag as tagTable, userXTag } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import {
@@ -281,39 +276,6 @@ export const userRouter = router({
         message: `Se importaron ${createdUsers.length} usuarios exitosamente`,
         createdCount: createdUsers.length,
       };
-    }),
-  getTempPasswords: adminProcedure.query(async ({ ctx }) => {
-    const tempPasswords = await ctx.db.query.tempPassword.findMany({
-      where: eq(tempPasswordTable.sent, false),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    return tempPasswords.map((temp) => ({
-      id: temp.id,
-      userId: temp.userId,
-      password: temp.password,
-      userEmail: temp.user.email,
-      userName: temp.user.fullName,
-      expiresAt: temp.expiresAt,
-    }));
-  }),
-  markPasswordAsSent: adminProcedure
-    .input(z.string())
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .update(tempPasswordTable)
-        .set({ sent: true })
-        .where(eq(tempPasswordTable.id, input));
-
-      return { success: true };
     }),
   getOrganizers: adminProcedure.query(async ({ ctx }) => {
     const organizers = await ctx.db.query.user.findMany({

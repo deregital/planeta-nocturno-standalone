@@ -468,6 +468,9 @@ export function EventGeneralInformation({
               disabled={action === 'PREVIEW'}
             />
           ))}
+          {event.authorizedUsers.length === 0 && (
+            <p className='text-sm'>No hay usuarios autorizados</p>
+          )}
         </div>
         <p className='text-sm'>
           Los usuarios autorizados podrán{' '}

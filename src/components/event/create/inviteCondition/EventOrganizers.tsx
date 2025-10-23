@@ -58,7 +58,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
       organizers.forEach((org) => {
         const currentAmount = 'ticketAmount' in org ? org.ticketAmount : 0;
         if (currentAmount > maxNumber) {
-          updateOrganizerNumber(org.dni, maxNumber, type);
+          updateOrganizerNumber(org, maxNumber, type);
           needsUpdate = true;
         }
       });
@@ -177,7 +177,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
             if (tagOption && 'tagData' in tagOption) {
               tagOption.tagData.organizers.forEach((organizer) => {
                 if (type === 'TRADITIONAL') {
-                  addOrganizer(organizer.dni, defaultNumber, type);
+                  addOrganizer(organizer, defaultNumber, type);
                 } else {
                   const maxAllowed = maxCapacity
                     ? calculateMaxTicketsPerOrganizer(
@@ -186,15 +186,17 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
                       )
                     : maxNumber;
                   const clampedNumber = Math.min(defaultNumber, maxAllowed);
-                  addOrganizer(organizer.dni, clampedNumber, type);
+                  addOrganizer(organizer, clampedNumber, type);
                 }
               });
             }
           } else {
             const dni = option.split(' - ').pop();
             if (!dni) return;
+            const organizer = organizersData?.find((org) => org.dni === dni);
+            if (!organizer) return;
             if (type === 'TRADITIONAL') {
-              addOrganizer(dni, defaultNumber, type);
+              addOrganizer(organizer, defaultNumber, type);
             } else {
               const maxAllowed = maxCapacity
                 ? calculateMaxTicketsPerOrganizer(
@@ -203,7 +205,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
                   )
                 : maxNumber;
               const clampedNumber = Math.min(defaultNumber, maxAllowed);
-              addOrganizer(dni, clampedNumber, type);
+              addOrganizer(organizer, clampedNumber, type);
             }
           }
         }}
