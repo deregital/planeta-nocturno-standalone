@@ -17,7 +17,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
       fullName: organizer.fullName,
       phoneNumber: organizer.phoneNumber,
       number:
-        event.inviteContidtion === 'TRADITIONAL'
+        event.inviteCondition === 'TRADITIONAL'
           ? 'discountPercentage' in organizer
             ? organizer.discountPercentage
             : 0
@@ -62,7 +62,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
           <OrganizerTableWithAction
             data={organizers}
             numberTitle={
-              event.inviteContidtion === 'TRADITIONAL'
+              event.inviteCondition === 'TRADITIONAL'
                 ? 'Porcentaje de descuento'
                 : 'Cantidad de tickets'
             }

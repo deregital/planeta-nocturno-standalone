@@ -20,11 +20,11 @@ export function EventInvitationTypeAction({
   const resetOrganizers = useCreateEventStore((state) => state.resetOrganizers);
   const setEvent = useCreateEventStore((state) => state.setEvent);
 
-  const [tab, setTab] = useState<InviteCondition>(event.inviteContidtion);
+  const [tab, setTab] = useState<InviteCondition>(event.inviteCondition);
 
   function handleChange(value: InviteCondition) {
     setTab(value);
-    setEvent({ inviteContidtion: value });
+    setEvent({ inviteCondition: value });
     resetOrganizers();
   }
 

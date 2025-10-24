@@ -59,7 +59,7 @@ const initialState: EventState = {
     locationId: '',
     minAge: null,
     authorizedUsers: [],
-    inviteContidtion: 'TRADITIONAL',
+    inviteCondition: 'TRADITIONAL',
   },
   ticketTypes: [],
   organizers: [],

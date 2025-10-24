@@ -45,7 +45,7 @@ export const eventSchema = z.object({
       name: z.string(),
     })
     .array(),
-  inviteContidtion: z.enum(inviteCondition.enumValues, {
+  inviteCondition: z.enum(inviteCondition.enumValues, {
     error: 'La condición de invitación es requerida',
   }),
 });
