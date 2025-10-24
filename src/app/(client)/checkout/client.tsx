@@ -173,7 +173,7 @@ export default function CheckoutClient({
                     id={`phoneNumber_${ticket.ticketType.id}-${indexAmount}`}
                     labels={esPhoneLocale}
                     defaultCountry='AR'
-                    className='[&_[data-slot="input"]]:border-stroke'
+                    className='**:data-[slot="input"]:border-stroke'
                     inputComponent={Input}
                     value={
                       phoneNumbers[

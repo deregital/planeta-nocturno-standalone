@@ -13,16 +13,29 @@ export function TraditionalTicketTypeAction({
   back,
   next,
 }: {
-  back: () => void;
-  next: () => void;
+  back?: () => void;
+  next?: () => void;
 }) {
   const event = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers);
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const addOrganizerTicketType = useCreateEventStore(
+    (state) => state.addOrganizerTicketType,
+  );
 
   const { data: location } = trpc.location.getById.useQuery(event.locationId, {
     enabled: !!event.locationId,
   });
+
+  function handleNext() {
+    if (ticketTypes.length === 0) {
+      toast.error('Debe agregar al menos una entrada');
+      return;
+    }
+
+    addOrganizerTicketType();
+    next?.();
+  }
 
   const maxAvailableLeft = useMemo(() => {
     if (!location) return 0;
@@ -58,17 +71,7 @@ export function TraditionalTicketTypeAction({
         maxAvailableLeft={maxAvailableLeft}
       />
       {next && (
-        <Button
-          onClick={() => {
-            if (ticketTypes.length === 0) {
-              toast.error('Debe agregar al menos una entrada');
-              return;
-            }
-            next();
-          }}
-          variant={'accent'}
-          className='w-full mt-8'
-        >
+        <Button onClick={handleNext} variant={'accent'} className='w-full mt-8'>
           Continuar
         </Button>
       )}

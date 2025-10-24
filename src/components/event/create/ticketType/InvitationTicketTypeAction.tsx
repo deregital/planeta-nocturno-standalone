@@ -9,13 +9,16 @@ export function InvitationTicketTypeAction({
   next,
   back,
 }: {
-  back: () => void;
-  next: () => void;
+  back?: () => void;
+  next?: () => void;
 }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
   const addTicketType = useCreateEventStore((state) => state.addTicketType);
   const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const organizers = useCreateEventStore((state) => state.organizers);
+  const addOrganizerTicketType = useCreateEventStore(
+    (state) => state.addOrganizerTicketType,
+  );
   const [ticketTypeInfo, setTicketTypeInfo] = useState<{
     name: string;
     description: string;
@@ -59,8 +62,9 @@ export function InvitationTicketTypeAction({
       maxPerPurchase: 1,
       maxSellDate: null,
     });
+    addOrganizerTicketType();
 
-    next();
+    next?.();
   }
 
   return (
@@ -90,9 +94,11 @@ export function InvitationTicketTypeAction({
             Volver
           </Button>
         )}
-        <Button className='flex-1' variant={'accent'} onClick={handleNext}>
-          Continuar
-        </Button>
+        {next && (
+          <Button className='flex-1' variant={'accent'} onClick={handleNext}>
+            Continuar
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,10 @@
 /*
   Warnings:
 
+  - You are about to drop the column `invitedBy` on the `ticketGroup` table. All the data in the column will be lost.
   - A unique constraint covering the columns `[dni]` on the table `user` will be added. If there are existing duplicate values, this will fail.
   - A unique constraint covering the columns `[code]` on the table `user` will be added. If there are existing duplicate values, this will fail.
+  - Made the column `eventId` on table `emittedTicket` required. This step will fail if there are existing NULL values in that column.
   - Added the required column `birthDate` to the `user` table without a default value. This is not possible if the table is not empty.
   - Added the required column `dni` to the `user` table without a default value. This is not possible if the table is not empty.
   - Added the required column `gender` to the `user` table without a default value. This is not possible if the table is not empty.
@@ -20,6 +22,7 @@ ALTER TABLE "account" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
 ALTER TABLE "emittedTicket" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP,
+ALTER COLUMN "eventId" SET NOT NULL,
 ALTER COLUMN "slug" DROP DEFAULT;
 
 -- AlterTable
@@ -39,7 +42,9 @@ ALTER TABLE "location" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE "session" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "ticketGroup" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "ticketGroup" DROP COLUMN "invitedBy",
+ADD COLUMN     "invitedById" UUID,
+ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
 ALTER TABLE "ticketType" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
@@ -62,12 +67,11 @@ CREATE TABLE "tag" (
 
 -- CreateTable
 CREATE TABLE "ticketXOrganizer" (
-    "ticketGroupId" UUID NOT NULL,
+    "ticketId" UUID,
     "organizerId" UUID NOT NULL,
+    "ticketGroupId" UUID,
     "code" TEXT NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 6)),
-    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "ticketXOrganizer_pkey" PRIMARY KEY ("ticketGroupId")
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -90,6 +94,9 @@ CREATE TABLE "_USER_X_TAG" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ticketXOrganizer_ticketId_key" ON "ticketXOrganizer"("ticketId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ticketXOrganizer_code_key" ON "ticketXOrganizer"("code");
 
 -- CreateIndex
@@ -105,10 +112,19 @@ CREATE UNIQUE INDEX "user_code_key" ON "user"("code");
 CREATE INDEX "user_code_idx" ON "user"("code");
 
 -- AddForeignKey
-ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_ticketGroupId_fkey" FOREIGN KEY ("ticketGroupId") REFERENCES "ticketGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ticketGroup" ADD CONSTRAINT "ticketGroup_invitedById_fkey" FOREIGN KEY ("invitedById") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "emittedTicket" ADD CONSTRAINT "emittedTicket_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "emittedTicket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_organizerId_fkey" FOREIGN KEY ("organizerId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_ticketGroupId_fkey" FOREIGN KEY ("ticketGroupId") REFERENCES "ticketGroup"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "eventXOrganizer" ADD CONSTRAINT "eventXOrganizer_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

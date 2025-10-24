@@ -13,17 +13,22 @@ export default function PreviewEvent({ back }: { back: () => void }) {
   const event = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers).map(
     (organizer) => ({
-      id: organizer.dni,
+      id: organizer.id,
       fullName: organizer.fullName,
       phoneNumber: organizer.phoneNumber,
+      ...(organizer.type === 'TRADITIONAL'
+        ? {
+            type: 'TRADITIONAL' as const,
+            discountPercentage: organizer.discountPercentage,
+          }
+        : {
+            type: 'INVITATION' as const,
+            ticketAmount: organizer.ticketAmount,
+          }),
       number:
-        event.inviteCondition === 'TRADITIONAL'
-          ? 'discountPercentage' in organizer
-            ? organizer.discountPercentage
-            : 0
-          : 'ticketAmount' in organizer
-            ? organizer.ticketAmount
-            : 0,
+        organizer.type === 'TRADITIONAL'
+          ? organizer.discountPercentage
+          : organizer.ticketAmount,
       dni: organizer.dni,
     }),
   );
@@ -37,6 +42,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
       await createEvent.mutateAsync({
         event: { ...event, isActive },
         ticketTypes,
+        organizersInput: organizers,
       });
       toast('¡Evento creado con éxito!');
       router.push('/admin/event');
@@ -93,17 +99,19 @@ export default function PreviewEvent({ back }: { back: () => void }) {
         >
           Crear sin publicar
         </Button>
-        <Button
-          variant={'accent'}
-          className=''
-          onClick={() =>
-            handleSubmit({
-              isActive: true,
-            })
-          }
-        >
-          Crear y publicar
-        </Button>
+        {event.inviteCondition === 'TRADITIONAL' && (
+          <Button
+            variant={'accent'}
+            className=''
+            onClick={() =>
+              handleSubmit({
+                isActive: true,
+              })
+            }
+          >
+            Crear y publicar
+          </Button>
+        )}
       </div>
     </div>
   );

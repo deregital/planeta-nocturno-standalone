@@ -11,11 +11,13 @@ export const organizerBaseSchema = z.object({
 
 export const organizerTraditionalSchema = z.object({
   ...organizerBaseSchema.shape,
+  type: z.literal('TRADITIONAL'),
   discountPercentage: z.number().min(0).max(100),
 });
 
 export const organizerInvitationSchema = z.object({
   ...organizerBaseSchema.shape,
+  type: z.literal('INVITATION'),
   ticketAmount: z.number().min(0),
 });
 
@@ -27,7 +29,7 @@ export type OrganizerInvitationSchema = z.infer<
 >;
 export type OrganizerBaseSchema = z.infer<typeof organizerBaseSchema>;
 
-export const organizerSchema = z.discriminatedUnion('type', [
+export const organizerSchema = z.union([
   organizerTraditionalSchema,
   organizerInvitationSchema,
 ]);

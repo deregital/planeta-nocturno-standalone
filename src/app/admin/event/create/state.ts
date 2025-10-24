@@ -43,6 +43,7 @@ type EventActions = {
     number: number,
     type: InviteCondition,
   ) => void;
+  addOrganizerTicketType: () => void;
 };
 
 export type CreateEventStore = EventState & EventActions;
@@ -86,8 +87,8 @@ export const createEventStore = (initState: EventState = initialState) => {
         organizers: [
           ...state.organizers,
           type === 'TRADITIONAL'
-            ? { ...organizer, discountPercentage: number }
-            : { ...organizer, ticketAmount: number },
+            ? { ...organizer, type: 'TRADITIONAL', discountPercentage: number }
+            : { ...organizer, type: 'INVITATION', ticketAmount: number },
         ],
       }));
     },
@@ -146,6 +147,26 @@ export const createEventStore = (initState: EventState = initialState) => {
     deleteTicketType: (id: string) => {
       set((state) => ({
         ticketTypes: state.ticketTypes.filter((t) => t.id !== id),
+      }));
+    },
+    addOrganizerTicketType: () => {
+      set((state) => ({
+        ticketTypes: [
+          ...state.ticketTypes,
+          {
+            id: crypto.randomUUID(),
+            name: 'Organizador',
+            description: 'Entrada para los organizadores',
+            price: 0,
+            maxAvailable: state.organizers.length,
+            maxPerPurchase: 1,
+            category: 'FREE',
+            lowStockThreshold: null,
+            maxSellDate: null,
+            scanLimit: null,
+            visibleInWeb: false,
+          },
+        ],
       }));
     },
   }));

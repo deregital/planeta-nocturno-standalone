@@ -6,8 +6,8 @@ export default function TicketTypeAction({
   back,
   next,
 }: {
-  back: () => void;
-  next: () => void;
+  back?: () => void;
+  next?: () => void;
 }) {
   const event = useCreateEventStore((state) => state.event);
   if (event.inviteCondition === 'TRADITIONAL') {

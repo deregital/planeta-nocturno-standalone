@@ -120,9 +120,6 @@ const normalizeDate = (dateValue: unknown): string => {
   return `${year}-${month}-${day}`;
 };
 
-/**
- * Parsea un archivo Excel y extrae los datos de usuarios
- */
 export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -142,7 +139,6 @@ export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
           return;
         }
 
-        // Convertir datos a formato esperado
         const users: ImportUserData[] = [];
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i] as unknown as string[];
@@ -187,9 +183,6 @@ export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
   });
 };
 
-/**
- * Transforma los datos del Excel al formato esperado por el schema de Zod
- */
 const transformExcelDataToSchema = (user: ImportUserData) => {
   return {
     fullName: `${user.nombre} ${user.apellido}`.trim(),
@@ -200,9 +193,6 @@ const transformExcelDataToSchema = (user: ImportUserData) => {
   };
 };
 
-/**
- * Valida los datos de usuarios importados usando Zod
- */
 export const validateUsers = (users: ImportUserData[]): ValidationError[] => {
   const errors: ValidationError[] = [];
 
@@ -210,15 +200,11 @@ export const validateUsers = (users: ImportUserData[]): ValidationError[] => {
     const rowNumber = index + 2; // +2 porque empezamos desde la fila 2 (después del header)
 
     try {
-      // Transformar datos del Excel al formato del schema
       const transformedData = transformExcelDataToSchema(user);
-      console.log('transformedData', transformedData);
 
-      // Validar usando Zod
       excelUserSchema.parse(transformedData);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        // Agregar cada error de validación de Zod
         error.issues.forEach((zodError: z.core.$ZodIssue) => {
           errors.push({
             rowNumber,
@@ -226,7 +212,6 @@ export const validateUsers = (users: ImportUserData[]): ValidationError[] => {
           });
         });
       } else {
-        // Error inesperado
         errors.push({
           rowNumber,
           message: 'Error de validación inesperado',

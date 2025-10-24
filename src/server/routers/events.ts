@@ -11,9 +11,11 @@ import z from 'zod';
 import {
   emittedTicket,
   event as eventSchema,
+  eventXorganizer,
   eventXUser,
   ticketGroup,
   ticketType,
+  ticketXorganizer,
   user,
 } from '@/drizzle/schema';
 import { genderTranslation } from '@/lib/translations';
@@ -39,6 +41,7 @@ import {
   presentismoPDFSchemaGroupedTicketType,
 } from '@/server/utils/presentismo-pdf';
 import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
+import { organizerSchema } from '@/server/schemas/organizer';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -258,11 +261,19 @@ export const eventsRouter = router({
       z.object({
         event: createEventSchema,
         ticketTypes: createTicketTypeSchema.array(),
+        organizersInput: organizerSchema.array(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes } = input;
+      const { event, ticketTypes, organizersInput } = input;
       const slug = generateSlug(event.name);
+
+      const organizers = await ctx.db.query.user.findMany({
+        where: inArray(
+          user.id,
+          organizersInput.map((org) => org.id),
+        ),
+      });
 
       const existingEvent = await ctx.db.query.event.findMany({
         where: like(eventSchema.slug, `${slug}%`),
@@ -286,6 +297,7 @@ export const eventsRouter = router({
         slug: sameSlug,
         locationId: event.locationId,
         categoryId: event.categoryId,
+        inviteCondition: event.inviteCondition,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -321,6 +333,88 @@ export const eventsRouter = router({
                   b: user.id,
                 })),
               );
+            }
+
+            // Agregar organizadores al evento
+            await tx.insert(eventXorganizer).values(
+              organizersInput.map((organizer) => ({
+                eventId: eventCreated.id,
+                organizerId: organizer.id,
+                discountPercentage:
+                  'discountPercentage' in organizer
+                    ? organizer.discountPercentage
+                    : null,
+                ticketAmount:
+                  'ticketAmount' in organizer ? organizer.ticketAmount : null,
+              })),
+            );
+
+            // Crear tickets para organizadores
+            if (organizersInput.length > 0) {
+              // Buscar o crear tipo de ticket "Organizador"
+              const organizerTicketType = ticketTypesCreated.find((tt) =>
+                tt.name.toLowerCase().includes('organizador'),
+              );
+
+              if (!organizerTicketType) {
+                throw new Error('Tipo de ticket "Organizador" no encontrado');
+              }
+
+              const [organizerTicketGroup] = await tx
+                .insert(ticketGroup)
+                .values({
+                  eventId: eventCreated.id,
+                  status: 'FREE',
+                  amountTickets: organizersInput.length,
+                })
+                .returning();
+
+              for (const organizer of organizersInput) {
+                const org = organizers.find((o) => o.id === organizer.id);
+                if (!org) {
+                  throw new Error('Organizador no encontrado');
+                }
+
+                // Crear ticket personal del organizador para entrar al evento
+                const [organizerPersonalTicket] = await tx
+                  .insert(emittedTicket)
+                  .values({
+                    fullName: org.fullName,
+                    dni: org.dni,
+                    mail: org.email,
+                    gender: org.gender,
+                    phoneNumber: org.phoneNumber,
+                    birthDate: org.birthDate,
+                    slug: generateSlug(
+                      `${eventCreated.name}-${organizer.id}-personal`,
+                    ),
+                    ticketTypeId: organizerTicketType.id,
+                    ticketGroupId: organizerTicketGroup.id,
+                    eventId: eventCreated.id,
+                  })
+                  .returning();
+
+                // Crear ticketXorganizer para el ticket personal
+                await tx.insert(ticketXorganizer).values({
+                  ticketId: organizerPersonalTicket.id,
+                  organizerId: organizer.id,
+                  ticketGroupId: organizerTicketGroup.id,
+                });
+
+                if (
+                  event.inviteCondition === 'INVITATION' &&
+                  'ticketAmount' in organizer
+                ) {
+                  // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles
+                  await tx.insert(ticketXorganizer).values(
+                    Array.from({ length: organizer.ticketAmount }).map(() => ({
+                      organizerId: organizer.id,
+                      ticketGroupId: organizerTicketGroup.id,
+                      // ticketId será null hasta que se use el código
+                    })),
+                  );
+                }
+              }
             }
 
             return { eventCreated, ticketTypesCreated };
@@ -476,6 +570,11 @@ export const eventsRouter = router({
                   ticketType: true,
                 },
               },
+              user: {
+                columns: {
+                  fullName: true,
+                },
+              },
             },
           },
         },
@@ -487,7 +586,7 @@ export const eventsRouter = router({
         .flatMap((group) =>
           group.emittedTickets.map((ticket) => ({
             ...ticket,
-            invitedBy: group.invitedBy,
+            invitedBy: group.user?.fullName ?? '-',
           })),
         )
         .sort((a, b) => a.fullName.localeCompare(b.fullName));
@@ -575,7 +674,15 @@ export const eventsRouter = router({
         where: eq(emittedTicket.eventId, input),
         with: {
           ticketType: true,
-          ticketGroup: true,
+          ticketGroup: {
+            with: {
+              user: {
+                columns: {
+                  fullName: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -620,7 +727,7 @@ export const eventsRouter = router({
             t.birthDate ? new Date(t.birthDate) : '',
             t.createdAt ? new Date(t.createdAt) : '',
             t.scanned ? 'Sí' : 'No',
-            t.ticketGroup.invitedBy ?? '',
+            t.ticketGroup.user?.fullName ?? '-',
           ]),
         ];
         const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -650,6 +757,11 @@ export const eventsRouter = router({
                   ticketType: true,
                 },
               },
+              user: {
+                columns: {
+                  fullName: true,
+                },
+              },
             },
           },
         },
@@ -664,7 +776,7 @@ export const eventsRouter = router({
             .flatMap((group) =>
               group.emittedTickets.map((ticket) => ({
                 ...ticket,
-                invitedBy: group.invitedBy,
+                invitedBy: group.user?.fullName ?? '-',
               })),
             )
             .filter((ticket) => ticket.ticketType.id === ticketType.id)
