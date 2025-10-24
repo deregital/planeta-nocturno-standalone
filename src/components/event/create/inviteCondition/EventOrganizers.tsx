@@ -83,13 +83,11 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
 
   const selectedOrganizers = useMemo(() => {
     return organizersData
-      ?.filter((organizer) =>
-        organizers.find((org) => org.dni === organizer.dni),
-      )
+      ?.filter((organizer) => organizers.find((org) => org.id === organizer.id))
       .map((organizer) => {
-        const org = organizers.find((org) => org.dni === organizer.dni);
+        const org = organizers.find((org) => org.id === organizer.id);
         return {
-          id: organizer.dni,
+          id: organizer.id,
           fullName: organizer.fullName,
           dni: organizer.dni,
           phoneNumber: organizer.phoneNumber,
@@ -107,7 +105,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
     return organizersData
       ?.filter(
         (organizer) =>
-          !selectedOrganizers?.some((org) => org.dni === organizer.dni),
+          !selectedOrganizers?.some((org) => org.id === organizer.id),
       )
       .map((organizer) => `${organizer.fullName} - ${organizer.dni}`);
   }, [organizersData, selectedOrganizers]);
@@ -117,7 +115,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
 
     const selectableOrganizers = organizersData.filter(
       (organizer) =>
-        !selectedOrganizers?.some((org) => org.dni === organizer.dni),
+        !selectedOrganizers?.some((org) => org.id === organizer.id),
     );
 
     // Agrupar organizadores por sus tags
@@ -157,12 +155,13 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
   useEffect(() => {
     if (selectedComboboxOption) {
       const dni = selectedComboboxOption.split(' - ').pop();
-      const isStillSelected = organizers.some((org) => org.dni === dni);
+      const id = organizersData?.find((org) => org.dni === dni)?.id;
+      const isStillSelected = organizers.some((org) => org.id === id);
       if (!isStillSelected) {
         setSelectedComboboxOption('');
       }
     }
-  }, [organizers, selectedComboboxOption]);
+  }, [organizers, organizersData, selectedComboboxOption]);
 
   return (
     <div>
@@ -193,7 +192,8 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
           } else {
             const dni = option.split(' - ').pop();
             if (!dni) return;
-            const organizer = organizersData?.find((org) => org.dni === dni);
+            const id = organizersData?.find((org) => org.dni === dni)?.id;
+            const organizer = organizersData?.find((org) => org.id === id);
             if (!organizer) return;
             if (type === 'TRADITIONAL') {
               addOrganizer(organizer, defaultNumber, type);

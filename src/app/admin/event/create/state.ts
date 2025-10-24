@@ -72,7 +72,7 @@ export const createEventStore = (initState: EventState = initialState) => {
       set((state) => ({ event: { ...state.event, ...event } }));
     },
     setTicketTypes: (ticketTypes) => {
-      set((state) => ({
+      set(() => ({
         ticketTypes,
       }));
     },
@@ -94,7 +94,7 @@ export const createEventStore = (initState: EventState = initialState) => {
     editOrganizer: (organizer, number, type) => {
       set((state) => ({
         organizers: state.organizers.map((o) =>
-          o.dni === organizer.dni
+          o.id === organizer.id
             ? type === 'TRADITIONAL'
               ? { ...o, discountPercentage: number }
               : { ...o, ticketAmount: number }
@@ -104,7 +104,7 @@ export const createEventStore = (initState: EventState = initialState) => {
     },
     deleteOrganizer: (organizer: OrganizerBaseSchema) => {
       set((state) => ({
-        organizers: state.organizers.filter((o) => o.dni !== organizer.dni),
+        organizers: state.organizers.filter((o) => o.id !== organizer.id),
       }));
     },
     updateAllOrganizerNumber: (number: number, type: InviteCondition) => {
@@ -119,7 +119,7 @@ export const createEventStore = (initState: EventState = initialState) => {
     updateOrganizerNumber: (organizer, number, type) => {
       set((state) => ({
         organizers: state.organizers.map((o) =>
-          o.dni === organizer.dni
+          o.id === organizer.id
             ? type === 'TRADITIONAL'
               ? { ...o, discountPercentage: number }
               : { ...o, ticketAmount: number }

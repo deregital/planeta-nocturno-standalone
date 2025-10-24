@@ -4,6 +4,7 @@ import { userSchema } from '@/server/schemas/user';
 
 export const organizerBaseSchema = z.object({
   dni: userSchema.shape.dni,
+  id: z.uuid(),
   fullName: userSchema.shape.fullName,
   phoneNumber: userSchema.shape.phoneNumber,
 });

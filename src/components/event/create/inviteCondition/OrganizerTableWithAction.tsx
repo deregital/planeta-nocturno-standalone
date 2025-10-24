@@ -30,7 +30,7 @@ function columns(
       header: 'DNI',
       accessorKey: 'dni',
       cell: ({ row }) => {
-        return <div>{row.original.id}</div>;
+        return <div>{row.original.dni}</div>;
       },
     },
     {
