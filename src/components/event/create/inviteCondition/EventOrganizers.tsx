@@ -224,6 +224,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
             : 'Cantidad de tickets'
         }
         maxNumber={maxNumber}
+        maxCapacity={maxCapacity}
       >
         <div className='w-full max-w-1/3'>
           <p>

@@ -24,6 +24,7 @@ function columns({
   deleteOrganizer,
   maxNumber,
   disableActions,
+  getMaxForRow,
 }: {
   type: InviteCondition;
   numberTitle: string;
@@ -31,6 +32,7 @@ function columns({
   deleteOrganizer: CreateEventStore['deleteOrganizer'];
   maxNumber: number;
   disableActions: boolean;
+  getMaxForRow: (rowId: string) => number;
 }): ColumnDef<OrganizerTableData>[] {
   return [
     {
@@ -59,18 +61,22 @@ function columns({
       accessorKey: 'number',
       size: 200,
       cell: ({ row }) => {
+        const maxForThisRow = getMaxForRow(row.original.id);
         return (
           <div className='flex flex-1 justify-between'>
             <Input
               className='w-fit max-w-fit'
               type='number'
               min={type === 'INVITATION' ? 1 : 0}
-              max={maxNumber}
+              max={maxForThisRow}
               disabled={disableActions}
               value={row.original.number}
               onChange={(e) => {
                 const value = Number(e.target.value);
-                const clampedValue = Math.min(Math.max(value, 0), maxNumber);
+                const clampedValue = Math.min(
+                  Math.max(value, 0),
+                  maxForThisRow,
+                );
                 updateOrganizerNumber(row.original, clampedValue, type);
               }}
             />
@@ -99,6 +105,7 @@ export function OrganizerTableWithAction({
   type,
   maxNumber,
   disableActions = false,
+  maxCapacity,
 }: {
   data: OrganizerTableData[];
   children: React.ReactNode;
@@ -106,11 +113,38 @@ export function OrganizerTableWithAction({
   type: InviteCondition;
   maxNumber: number;
   disableActions?: boolean;
+  maxCapacity?: number;
 }) {
   const updateOrganizerNumber = useCreateEventStore(
     (state) => state.updateOrganizerNumber,
   );
   const deleteOrganizer = useCreateEventStore((state) => state.deleteOrganizer);
+
+  // Función para calcular el máximo dinámico para cada fila
+  const getMaxForRow = useMemo(() => {
+    return (rowId: string) => {
+      // En modo TRADITIONAL, usar el máximo fijo
+      if (type === 'TRADITIONAL') {
+        return maxNumber;
+      }
+
+      // En modo INVITATION, calcular dinámicamente
+      if (!maxCapacity) {
+        return maxNumber;
+      }
+
+      const totalOrganizers = data.length;
+      const sumOfAllInputs = data.reduce((sum, row) => sum + row.number, 0);
+      const thisRowValue = data.find((row) => row.id === rowId)?.number || 0;
+
+      // Fórmula: capacidadLocacion - cantidadOrganizadores - sumaDeInputsDeLasOtrasFilas
+      // O sea: capacidadLocacion - cantidadOrganizadores - (sumaTotal - valorDeEstaFila)
+      const remainingCapacity =
+        maxCapacity - totalOrganizers - sumOfAllInputs + thisRowValue;
+
+      return Math.max(0, remainingCapacity);
+    };
+  }, [type, maxNumber, maxCapacity, data]);
 
   const memoizedColumns = useMemo(
     () =>
@@ -121,6 +155,7 @@ export function OrganizerTableWithAction({
         deleteOrganizer,
         maxNumber,
         disableActions,
+        getMaxForRow,
       }),
     [
       numberTitle,
@@ -129,6 +164,7 @@ export function OrganizerTableWithAction({
       deleteOrganizer,
       maxNumber,
       disableActions,
+      getMaxForRow,
     ],
   );
 
