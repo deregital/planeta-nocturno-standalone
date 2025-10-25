@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { compare, hash } from 'bcrypt';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -234,9 +234,44 @@ export const userRouter = router({
         batchTag = newTag[0];
       }
 
+      // Generar usernames únicos
+      const baseUsernames = input.users.map((user) => user.email.split('@')[0]);
+
+      // Obtener todos los usernames existentes que puedan colisionar con una sola query
+      const existingUsernames = await ctx.db.query.user.findMany({
+        where: inArray(userTable.name, baseUsernames),
+        columns: {
+          name: true,
+        },
+      });
+
+      const existingUsernamesSet = new Set(
+        existingUsernames.map((u) => u.name),
+      );
+
+      // Generar usernames únicos evitando colisiones con existentes y entre sí
+      const uniqueUsernames = new Map<string, string>();
+      const usedUsernames = new Set(existingUsernamesSet);
+
+      for (let i = 0; i < input.users.length; i++) {
+        const user = input.users[i];
+        const baseUsername = user.email.split('@')[0];
+        let finalUsername = baseUsername;
+        let counter = 2;
+
+        // Buscar un username único
+        while (usedUsernames.has(finalUsername)) {
+          finalUsername = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        usedUsernames.add(finalUsername);
+        uniqueUsernames.set(user.email, finalUsername);
+      }
+
       for (const user of input.users) {
         const fullName = `${user.nombre} ${user.apellido}`.trim();
-        const username = user.email.split('@')[0];
+        const username = uniqueUsernames.get(user.email)!;
         const randomPassword = generateRandomPassword();
         const hashedPassword = await hash(randomPassword, 10);
 
