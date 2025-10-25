@@ -328,9 +328,9 @@ export function VirtualizedCombobox({
           variant='outline'
           role='combobox'
           aria-expanded={open}
-          className='justify-between'
+          className='justify-between w-full'
           style={{
-            width: width,
+            maxWidth: width,
           }}
         >
           {showSelectedOptions && selectedOption
@@ -339,7 +339,7 @@ export function VirtualizedCombobox({
           <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className='p-0' style={{ width: width }}>
+      <PopoverContent className='p-0 w-(--radix-popover-trigger-width)'>
         <VirtualizedCommand
           height={height}
           notFoundPlaceholder={notFoundPlaceholder}

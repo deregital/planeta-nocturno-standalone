@@ -17,14 +17,21 @@ type OrganizerTableData = {
   number: number;
 };
 
-function columns(
-  numberTitle: string,
-  type: InviteCondition,
-  updateOrganizerNumber: CreateEventStore['updateOrganizerNumber'],
-  deleteOrganizer: CreateEventStore['deleteOrganizer'],
-  maxNumber: number,
-  disableActions: boolean,
-): ColumnDef<OrganizerTableData>[] {
+function columns({
+  numberTitle,
+  type,
+  updateOrganizerNumber,
+  deleteOrganizer,
+  maxNumber,
+  disableActions,
+}: {
+  type: InviteCondition;
+  numberTitle: string;
+  updateOrganizerNumber: CreateEventStore['updateOrganizerNumber'];
+  deleteOrganizer: CreateEventStore['deleteOrganizer'];
+  maxNumber: number;
+  disableActions: boolean;
+}): ColumnDef<OrganizerTableData>[] {
   return [
     {
       header: 'DNI',
@@ -53,11 +60,11 @@ function columns(
       size: 200,
       cell: ({ row }) => {
         return (
-          <div className='flex gap-2'>
+          <div className='flex flex-1 justify-between'>
             <Input
               className='w-fit max-w-fit'
               type='number'
-              min={0}
+              min={type === 'INVITATION' ? 1 : 0}
               max={maxNumber}
               disabled={disableActions}
               value={row.original.number}
@@ -75,7 +82,7 @@ function columns(
                   deleteOrganizer(row.original);
                 }}
               >
-                <TrashIcon className='w-4 h-4' />
+                <TrashIcon className='w-4 h-4 text-red-500' />
               </Button>
             )}
           </div>
@@ -107,14 +114,14 @@ export function OrganizerTableWithAction({
 
   const memoizedColumns = useMemo(
     () =>
-      columns(
+      columns({
         numberTitle,
         type,
         updateOrganizerNumber,
         deleteOrganizer,
         maxNumber,
         disableActions,
-      ),
+      }),
     [
       numberTitle,
       type,
