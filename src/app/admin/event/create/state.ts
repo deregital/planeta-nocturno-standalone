@@ -10,6 +10,7 @@ import {
   type OrganizerSchema,
 } from '@/server/schemas/organizer';
 import { type InviteCondition } from '@/server/types';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export type EventState = {
   event: CreateEventSchema;
@@ -155,7 +156,7 @@ export const createEventStore = (initState: EventState = initialState) => {
           ...state.ticketTypes,
           {
             id: crypto.randomUUID(),
-            name: 'Organizador',
+            name: ORGANIZER_TICKET_TYPE_NAME,
             description: 'Entrada para los organizadores',
             price: 0,
             maxAvailable: state.organizers.length,

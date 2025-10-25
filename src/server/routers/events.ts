@@ -42,6 +42,7 @@ import {
 } from '@/server/utils/presentismo-pdf';
 import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 import { organizerSchema } from '@/server/schemas/organizer';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -326,6 +327,7 @@ export const eventsRouter = router({
                 .returning();
             }
 
+            // Usuarios boleteria
             if (event.authorizedUsers.length !== 0) {
               await tx.insert(eventXUser).values(
                 event.authorizedUsers.map((user) => ({
@@ -341,23 +343,29 @@ export const eventsRouter = router({
                 eventId: eventCreated.id,
                 organizerId: organizer.id,
                 discountPercentage:
+                  event.inviteCondition === 'TRADITIONAL' &&
                   'discountPercentage' in organizer
                     ? organizer.discountPercentage
                     : null,
                 ticketAmount:
-                  'ticketAmount' in organizer ? organizer.ticketAmount : null,
+                  event.inviteCondition === 'INVITATION' &&
+                  'ticketAmount' in organizer
+                    ? organizer.ticketAmount
+                    : null,
               })),
             );
 
             // Crear tickets para organizadores
             if (organizersInput.length > 0) {
               // Buscar o crear tipo de ticket "Organizador"
-              const organizerTicketType = ticketTypesCreated.find((tt) =>
-                tt.name.toLowerCase().includes('organizador'),
+              const organizerTicketType = ticketTypesCreated.find(
+                (tt) => tt.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
               );
 
               if (!organizerTicketType) {
-                throw new Error('Tipo de ticket "Organizador" no encontrado');
+                throw new Error(
+                  `Tipo de ticket "${ORGANIZER_TICKET_TYPE_NAME}" no encontrado`,
+                );
               }
 
               const [organizerTicketGroup] = await tx
@@ -369,6 +377,7 @@ export const eventsRouter = router({
                 })
                 .returning();
 
+              let idx = 1;
               for (const organizer of organizersInput) {
                 const org = organizers.find((o) => o.id === organizer.id);
                 if (!org) {
@@ -376,7 +385,7 @@ export const eventsRouter = router({
                 }
 
                 // Crear ticket personal del organizador para entrar al evento
-                const [organizerPersonalTicket] = await tx
+                await tx
                   .insert(emittedTicket)
                   .values({
                     fullName: org.fullName,
@@ -385,31 +394,33 @@ export const eventsRouter = router({
                     gender: org.gender,
                     phoneNumber: org.phoneNumber,
                     birthDate: org.birthDate,
-                    slug: generateSlug(
-                      `${eventCreated.name}-${organizer.id}-personal`,
-                    ),
+                    slug: generateSlug(`${ORGANIZER_TICKET_TYPE_NAME} ${idx}`),
                     ticketTypeId: organizerTicketType.id,
                     ticketGroupId: organizerTicketGroup.id,
                     eventId: eventCreated.id,
                   })
                   .returning();
-
-                // Crear ticketXorganizer para el ticket personal
-                await tx.insert(ticketXorganizer).values({
-                  ticketId: organizerPersonalTicket.id,
-                  organizerId: organizer.id,
-                  ticketGroupId: organizerTicketGroup.id,
-                });
+                idx++;
 
                 if (
                   event.inviteCondition === 'INVITATION' &&
                   'ticketAmount' in organizer
                 ) {
+                  // Agrupo todos los tickets del organizador en un solo grupo
+                  const [thisOrganizerTicketGroup] = await tx
+                    .insert(ticketGroup)
+                    .values({
+                      eventId: eventCreated.id,
+                      status: 'FREE',
+                      amountTickets: organizer.ticketAmount,
+                    })
+                    .returning();
+
                   // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles
                   await tx.insert(ticketXorganizer).values(
                     Array.from({ length: organizer.ticketAmount }).map(() => ({
                       organizerId: organizer.id,
-                      ticketGroupId: organizerTicketGroup.id,
+                      ticketGroupId: thisOrganizerTicketGroup.id,
                       // ticketId será null hasta que se use el código
                     })),
                   );

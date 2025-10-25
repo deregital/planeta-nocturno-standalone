@@ -1,15 +1,15 @@
 import {
   pgTable,
-  varchar,
-  timestamp,
-  text,
-  integer,
+  index,
   uniqueIndex,
   foreignKey,
   uuid,
+  text,
+  timestamp,
+  varchar,
+  integer,
   doublePrecision,
   boolean,
-  index,
   primaryKey,
   pgEnum,
 } from 'drizzle-orm/pg-core';
@@ -30,6 +30,64 @@ export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'PAID',
   'TABLE',
 ]);
+
+export const ticketXorganizer = pgTable(
+  'ticketXOrganizer',
+  {
+    ticketId: uuid(),
+    organizerId: uuid().notNull(),
+    ticketGroupId: uuid(),
+    code: text()
+      .default(sql`upper(substr(md5((random())::text), 1, 6))`)
+      .notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index('ticketXOrganizer_code_idx').using(
+      'btree',
+      table.code.asc().nullsLast().op('text_ops'),
+    ),
+    uniqueIndex('ticketXOrganizer_code_key').using(
+      'btree',
+      table.code.asc().nullsLast().op('text_ops'),
+    ),
+    index('ticketXOrganizer_organizerId_idx').using(
+      'btree',
+      table.organizerId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('ticketXOrganizer_ticketId_idx').using(
+      'btree',
+      table.ticketId.asc().nullsLast().op('uuid_ops'),
+    ),
+    uniqueIndex('ticketXOrganizer_ticketId_key').using(
+      'btree',
+      table.ticketId.asc().nullsLast().op('uuid_ops'),
+    ),
+    foreignKey({
+      columns: [table.ticketId],
+      foreignColumns: [emittedTicket.id],
+      name: 'ticketXOrganizer_ticketId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.organizerId],
+      foreignColumns: [user.id],
+      name: 'ticketXOrganizer_organizerId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    foreignKey({
+      columns: [table.ticketGroupId],
+      foreignColumns: [ticketGroup.id],
+      name: 'ticketXOrganizer_ticketGroupId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+);
 
 export const prismaMigrations = pgTable('_prisma_migrations', {
   id: varchar({ length: 36 }).primaryKey().notNull(),
@@ -306,52 +364,6 @@ export const user = pgTable(
       'btree',
       table.name.asc().nullsLast().op('text_ops'),
     ),
-  ],
-);
-
-export const ticketXorganizer = pgTable(
-  'ticketXOrganizer',
-  {
-    ticketId: uuid(),
-    organizerId: uuid().notNull(),
-    ticketGroupId: uuid(),
-    code: text()
-      .default(sql`upper(substr(md5((random())::text), 1, 6))`)
-      .notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('ticketXOrganizer_code_key').using(
-      'btree',
-      table.code.asc().nullsLast().op('text_ops'),
-    ),
-    uniqueIndex('ticketXOrganizer_ticketId_key').using(
-      'btree',
-      table.ticketId.asc().nullsLast().op('uuid_ops'),
-    ),
-    foreignKey({
-      columns: [table.ticketId],
-      foreignColumns: [emittedTicket.id],
-      name: 'ticketXOrganizer_ticketId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.organizerId],
-      foreignColumns: [user.id],
-      name: 'ticketXOrganizer_organizerId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
-    foreignKey({
-      columns: [table.ticketGroupId],
-      foreignColumns: [ticketGroup.id],
-      name: 'ticketXOrganizer_ticketGroupId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
   ],
 );
 

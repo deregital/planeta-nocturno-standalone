@@ -290,6 +290,9 @@ model TicketXOrganizer {
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([ticketId])
+  @@index([organizerId])
+  @@index([code])
   @@map("ticketXOrganizer")
 }
 

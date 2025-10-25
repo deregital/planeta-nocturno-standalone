@@ -100,6 +100,15 @@ CREATE UNIQUE INDEX "ticketXOrganizer_ticketId_key" ON "ticketXOrganizer"("ticke
 CREATE UNIQUE INDEX "ticketXOrganizer_code_key" ON "ticketXOrganizer"("code");
 
 -- CreateIndex
+CREATE INDEX "ticketXOrganizer_ticketId_idx" ON "ticketXOrganizer"("ticketId");
+
+-- CreateIndex
+CREATE INDEX "ticketXOrganizer_organizerId_idx" ON "ticketXOrganizer"("organizerId");
+
+-- CreateIndex
+CREATE INDEX "ticketXOrganizer_code_idx" ON "ticketXOrganizer"("code");
+
+-- CreateIndex
 CREATE INDEX "_USER_X_TAG_B_index" ON "_USER_X_TAG"("B");
 
 -- CreateIndex
