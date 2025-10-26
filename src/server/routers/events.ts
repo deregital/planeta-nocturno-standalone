@@ -43,6 +43,8 @@ import {
 import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 import { organizerSchema } from '@/server/schemas/organizer';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
+import { generatePdf } from '@/server/utils/ticket-template';
+import { sendMail } from '@/server/services/mail';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -385,7 +387,7 @@ export const eventsRouter = router({
                 }
 
                 // Crear ticket personal del organizador para entrar al evento
-                await tx
+                const [organizerEmittedTicketId] = await tx
                   .insert(emittedTicket)
                   .values({
                     fullName: org.fullName,
@@ -399,8 +401,59 @@ export const eventsRouter = router({
                     ticketGroupId: organizerTicketGroup.id,
                     eventId: eventCreated.id,
                   })
-                  .returning();
+                  .returning({
+                    id: emittedTicket.id,
+                  });
                 idx++;
+
+                // Mandar mail al organizador con su ticket
+                const organizerEmittedTicket =
+                  await tx.query.emittedTicket.findFirst({
+                    where: eq(emittedTicket.id, organizerEmittedTicketId.id),
+                    with: {
+                      ticketType: true,
+                      event: {
+                        with: {
+                          location: true,
+                        },
+                      },
+                      ticketGroup: {
+                        with: {
+                          user: {
+                            columns: {
+                              fullName: true,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  });
+
+                if (!organizerEmittedTicket) {
+                  throw new Error('Ticket no encontrado');
+                }
+
+                const pdf = await generatePdf({
+                  id: organizerEmittedTicket.id,
+                  invitedBy:
+                    organizerEmittedTicket.ticketGroup.user?.fullName ?? '-',
+                  slug: organizerEmittedTicket.slug,
+                  eventName: organizerEmittedTicket.event.name,
+                  eventDate: organizerEmittedTicket.event.startingDate,
+                  eventLocation: organizerEmittedTicket.event.location.address,
+                  fullName: organizerEmittedTicket.fullName,
+                  dni: organizerEmittedTicket.dni,
+                  createdAt: organizerEmittedTicket.createdAt,
+                  ticketType: organizerEmittedTicket.ticketType.name,
+                });
+
+                await sendMail({
+                  to: org.email,
+                  subject: `Ticket de ${organizerEmittedTicket.event.name}`,
+                  body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Orgainzador para ${organizerEmittedTicket.event.name}`,
+                  attachments: [Buffer.from(await pdf.arrayBuffer())],
+                  eventName: organizerEmittedTicket.event.name,
+                });
 
                 if (
                   event.inviteCondition === 'INVITATION' &&
