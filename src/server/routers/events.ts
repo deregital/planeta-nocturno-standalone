@@ -479,7 +479,7 @@ export const eventsRouter = router({
 
       const pdfData: PDFDataOrderName = [
         {
-          qr: `${process.env.PLANETA_NOCTURNO_URL}/admin/event/${event.slug}`,
+          qr: `${process.env.INSTANCE_WEB_URL}/admin/event/${event.slug}`,
           ubicacion: event.location.address,
           nombre: event.name,
           fecha: formatInTimeZone(
@@ -659,7 +659,7 @@ export const eventsRouter = router({
 
       const pdfData: PDFDataGroupedTicketType = [
         {
-          qr: `${process.env.PLANETA_NOCTURNO_URL}/admin/event/${event.slug}`,
+          qr: `${process.env.INSTANCE_WEB_URL}/admin/event/${event.slug}`,
           ubicacion: event.location.address,
           nombre: event.name,
           fecha: formatInTimeZone(
