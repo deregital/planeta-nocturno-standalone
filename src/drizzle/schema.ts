@@ -8,8 +8,8 @@ import {
   timestamp,
   varchar,
   integer,
-  doublePrecision,
   boolean,
+  doublePrecision,
   primaryKey,
   pgEnum,
 } from 'drizzle-orm/pg-core';
@@ -89,6 +89,11 @@ export const ticketXorganizer = pgTable(
   ],
 );
 
+export const tag = pgTable('tag', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+});
+
 export const prismaMigrations = pgTable('_prisma_migrations', {
   id: varchar({ length: 36 }).primaryKey().notNull(),
   checksum: varchar({ length: 64 }).notNull(),
@@ -104,6 +109,61 @@ export const prismaMigrations = pgTable('_prisma_migrations', {
     .notNull(),
   appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
 });
+
+export const emittedTicket = pgTable(
+  'emittedTicket',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    fullName: text().notNull(),
+    dni: text().notNull(),
+    mail: text().notNull(),
+    gender: text().notNull(),
+    phoneNumber: text().notNull(),
+    instagram: text(),
+    birthDate: text().notNull(),
+    paidOnLocation: boolean().default(false).notNull(),
+    scanned: boolean().default(false).notNull(),
+    scannedAt: timestamp({ withTimezone: true, mode: 'string' }),
+    scannedByUserId: uuid(),
+    ticketTypeId: uuid().notNull(),
+    ticketGroupId: uuid().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    eventId: uuid().notNull(),
+    slug: text().notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.scannedByUserId],
+      foreignColumns: [user.id],
+      name: 'emittedTicket_scannedByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+    foreignKey({
+      columns: [table.ticketTypeId],
+      foreignColumns: [ticketType.id],
+      name: 'emittedTicket_ticketTypeId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    foreignKey({
+      columns: [table.ticketGroupId],
+      foreignColumns: [ticketGroup.id],
+      name: 'emittedTicket_ticketGroupId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'emittedTicket_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+  ],
+);
 
 export const session = pgTable(
   'session',
@@ -198,61 +258,6 @@ export const feature = pgTable(
   ],
 );
 
-export const emittedTicket = pgTable(
-  'emittedTicket',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    fullName: text().notNull(),
-    dni: text().notNull(),
-    mail: text().notNull(),
-    gender: text().notNull(),
-    phoneNumber: text().notNull(),
-    instagram: text(),
-    birthDate: text().notNull(),
-    paidOnLocation: boolean().default(false).notNull(),
-    scanned: boolean().default(false).notNull(),
-    scannedAt: timestamp({ withTimezone: true, mode: 'string' }),
-    scannedByUserId: uuid(),
-    ticketTypeId: uuid().notNull(),
-    ticketGroupId: uuid().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    eventId: uuid().notNull(),
-    slug: text().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.scannedByUserId],
-      foreignColumns: [user.id],
-      name: 'emittedTicket_scannedByUserId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
-    foreignKey({
-      columns: [table.ticketTypeId],
-      foreignColumns: [ticketType.id],
-      name: 'emittedTicket_ticketTypeId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
-    foreignKey({
-      columns: [table.ticketGroupId],
-      foreignColumns: [ticketGroup.id],
-      name: 'emittedTicket_ticketGroupId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.eventId],
-      foreignColumns: [event.id],
-      name: 'emittedTicket_eventId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
-  ],
-);
-
 export const event = pgTable(
   'event',
   {
@@ -302,6 +307,7 @@ export const ticketGroup = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     invitedById: uuid(),
+    isOrganizerGroup: boolean().default(false).notNull(),
   },
   (table) => [
     foreignKey({
@@ -367,10 +373,31 @@ export const user = pgTable(
   ],
 );
 
-export const tag = pgTable('tag', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-});
+export const userXTag = pgTable(
+  '_USER_X_TAG',
+  {
+    a: uuid('A').notNull(),
+    b: uuid('B').notNull(),
+  },
+  (table) => [
+    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.a],
+      foreignColumns: [tag.id],
+      name: '_USER_X_TAG_A_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.b],
+      foreignColumns: [user.id],
+      name: '_USER_X_TAG_B_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    primaryKey({ columns: [table.a, table.b], name: '_USER_X_TAG_AB_pkey' }),
+  ],
+);
 
 export const eventXUser = pgTable(
   '_EVENT_X_USER',
@@ -395,32 +422,6 @@ export const eventXUser = pgTable(
       .onUpdate('cascade')
       .onDelete('cascade'),
     primaryKey({ columns: [table.a, table.b], name: '_EVENT_X_USER_AB_pkey' }),
-  ],
-);
-
-export const userXTag = pgTable(
-  '_USER_X_TAG',
-  {
-    a: uuid('A').notNull(),
-    b: uuid('B').notNull(),
-  },
-  (table) => [
-    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
-    foreignKey({
-      columns: [table.a],
-      foreignColumns: [tag.id],
-      name: '_USER_X_TAG_A_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.b],
-      foreignColumns: [user.id],
-      name: '_USER_X_TAG_B_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    primaryKey({ columns: [table.a, table.b], name: '_USER_X_TAG_AB_pkey' }),
   ],
 );
 

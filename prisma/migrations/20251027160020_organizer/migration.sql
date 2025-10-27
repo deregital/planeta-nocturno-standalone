@@ -44,6 +44,7 @@ ALTER TABLE "session" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 -- AlterTable
 ALTER TABLE "ticketGroup" DROP COLUMN "invitedBy",
 ADD COLUMN     "invitedById" UUID,
+ADD COLUMN     "isOrganizerGroup" BOOLEAN NOT NULL DEFAULT false,
 ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
