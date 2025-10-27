@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
+import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
 
 export default function Client({
   event,
@@ -24,8 +25,10 @@ export default function Client({
 
   const ticketTypesState = useCreateEventStore((state) => state.ticketTypes);
   const eventState = useCreateEventStore((state) => state.event);
+  const organizers = useCreateEventStore((state) => state.organizers);
   const setEvent = useCreateEventStore((state) => state.setEvent);
   const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
+  const setOrganizers = useCreateEventStore((state) => state.setOrganizers);
 
   const [error, setError] = useState<{
     [key: string]: string;
@@ -42,6 +45,17 @@ export default function Client({
           name: e.user.name,
         })),
       });
+      setOrganizers(
+        event.eventXorganizers.map((e) => ({
+          type: event.inviteCondition,
+          dni: e.user.dni,
+          id: e.user.id,
+          fullName: e.user.fullName,
+          phoneNumber: e.user.phoneNumber,
+          discountPercentage: e.discountPercentage ?? 0,
+          ticketAmount: e.ticketAmount ?? 0,
+        })),
+      );
       setTicketTypes(
         event.ticketTypes.map((t) => ({
           ...t,
@@ -50,7 +64,7 @@ export default function Client({
         })),
       );
     }
-  }, [event, setEvent, setTicketTypes]);
+  }, [event, setEvent, setOrganizers, setTicketTypes]);
 
   async function handleSubmit() {
     const validatedEvent = await validateGeneralInformation(eventState);
@@ -82,6 +96,7 @@ export default function Client({
     updateEvent.mutate({
       event: { ...eventState, id: event.id, slug: event.slug },
       ticketTypes: ticketTypesState,
+      organizersInput: organizers,
     });
 
     toast('¡Evento editado con éxito!');
@@ -101,29 +116,34 @@ export default function Client({
       </section>
       <section>
         <h3 className='text-2xl'>Organizadores</h3>
-        <OrganizerTableWithAction
-          data={
-            event?.eventXorganizers.map(
-              ({ user, discountPercentage, ticketAmount }) => ({
-                id: user.dni,
-                fullName: user.fullName,
-                phoneNumber: user.phoneNumber,
-                number: discountPercentage ?? ticketAmount ?? 0,
-                dni: user.dni,
-              }),
-            ) || []
-          }
-          numberTitle={
-            event?.inviteCondition === 'TRADITIONAL'
-              ? 'Porcentaje de descuento'
-              : 'Cantidad de tickets'
-          }
-          type='TRADITIONAL'
-          disableActions
-          maxNumber={100}
-        >
-          <></>
-        </OrganizerTableWithAction>
+        {event?.inviteCondition === 'TRADITIONAL' ? (
+          <EventOrganizers type='TRADITIONAL' />
+        ) : (
+          <>
+            <p className='text-xs text-accent mb-2'>
+              En modo invitación no se pueden modificar los organizadores
+              después de crear el evento.
+            </p>
+            <OrganizerTableWithAction
+              data={organizers.map((org) => ({
+                id: org.id,
+                dni: org.dni,
+                fullName: org.fullName,
+                phoneNumber: org.phoneNumber,
+                number:
+                  org.type === 'TRADITIONAL'
+                    ? org.discountPercentage
+                    : org.ticketAmount,
+              }))}
+              numberTitle='Cantidad de tickets'
+              disableActions={true}
+              type='INVITATION'
+              maxNumber={100}
+            >
+              <></>
+            </OrganizerTableWithAction>
+          </>
+        )}
       </section>
       {error.general && (
         <p className='text-red-500 font-bold'>{error.general}</p>

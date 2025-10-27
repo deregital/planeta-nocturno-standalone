@@ -37,6 +37,7 @@ type EventActions = {
     number: number,
     type: InviteCondition,
   ) => void;
+  setOrganizers: (organizers: OrganizerSchema[]) => void;
   deleteOrganizer: (organizer: OrganizerBaseSchema) => void;
   updateAllOrganizerNumber: (number: number, type: InviteCondition) => void;
   updateOrganizerNumber: (
@@ -76,6 +77,11 @@ export const createEventStore = (initState: EventState = initialState) => {
     setTicketTypes: (ticketTypes) => {
       set(() => ({
         ticketTypes,
+      }));
+    },
+    setOrganizers: (organizers) => {
+      set(() => ({
+        organizers,
       }));
     },
     resetOrganizers: () => {

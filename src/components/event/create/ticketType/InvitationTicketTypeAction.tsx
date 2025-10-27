@@ -22,10 +22,12 @@ export function InvitationTicketTypeAction({
   const [ticketTypeInfo, setTicketTypeInfo] = useState<{
     name: string;
     description: string;
-  }>({
-    name: '',
-    description: '',
-  });
+  }>(
+    ticketTypes[0] ?? {
+      name: '',
+      description: '',
+    },
+  );
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setTicketTypeInfo({

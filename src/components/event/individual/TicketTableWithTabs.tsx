@@ -1,6 +1,5 @@
 'use client';
 
-import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
@@ -45,10 +44,7 @@ export function TicketTableWithTabs({
     );
   }, [tickets, ticketTypes]);
 
-  const [tab, setTab] = useQueryState<string>(
-    'tab',
-    parseAsString.withDefault(ticketTypes[0].name),
-  );
+  const [tab, setTab] = useState(ticketTypes[0].name);
 
   const handleSearchResult = (
     highlightedId: string | null,

@@ -15,6 +15,7 @@ import {
   eventXUser,
   ticketGroup,
   ticketType,
+  location as locationSchema,
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
@@ -233,6 +234,7 @@ export const eventsRouter = router({
             user: {
               columns: {
                 dni: true,
+                id: true,
                 fullName: true,
                 phoneNumber: true,
               },
@@ -376,6 +378,7 @@ export const eventsRouter = router({
                   eventId: eventCreated.id,
                   status: 'FREE',
                   amountTickets: organizersInput.length,
+                  isOrganizerGroup: true,
                 })
                 .returning();
 
@@ -496,10 +499,11 @@ export const eventsRouter = router({
       z.object({
         event: eventSchemaZod,
         ticketTypes: ticketTypeSchema.array(),
+        organizersInput: organizerSchema.array(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes } = input;
+      const { event, ticketTypes, organizersInput } = input;
       const slug = generateSlug(event.name);
 
       const existingEvent = await ctx.db.query.event.findMany({
@@ -550,6 +554,175 @@ export const eventsRouter = router({
               await tx
                 .delete(ticketType)
                 .where(inArray(ticketType.id, deletedTicketTypesIds));
+            }
+
+            // Obtener el grupo organizador actual para decrementar correctamente
+            let currentOrganizerGroup = await tx.query.ticketGroup.findFirst({
+              where: and(
+                eq(ticketGroup.eventId, eventUpdated.id),
+                eq(ticketGroup.isOrganizerGroup, true),
+              ),
+            });
+
+            // Eliminar organizadores que no están en la lista de organizadores input
+            const organizersDB = await tx.query.eventXorganizer.findMany({
+              where: eq(eventXorganizer.eventId, eventUpdated.id),
+            });
+            const deletedOrganizersIds = organizersDB
+              .filter(
+                (org) => !organizersInput.some((o) => o.id === org.organizerId),
+              )
+              .map((org) => org.organizerId);
+            if (deletedOrganizersIds.length > 0) {
+              const deletedOrganizersDnis = (
+                await tx.query.user.findMany({
+                  where: inArray(user.id, deletedOrganizersIds),
+                  columns: {
+                    dni: true,
+                  },
+                })
+              ).map((o) => o.dni);
+              await tx
+                .delete(eventXorganizer)
+                .where(
+                  inArray(eventXorganizer.organizerId, deletedOrganizersIds),
+                );
+
+              if (currentOrganizerGroup) {
+                await tx
+                  .update(ticketGroup)
+                  .set({
+                    amountTickets: Math.max(
+                      0,
+                      currentOrganizerGroup.amountTickets -
+                        deletedOrganizersIds.length,
+                    ),
+                  })
+                  .where(
+                    and(
+                      eq(ticketGroup.eventId, eventUpdated.id),
+                      eq(ticketGroup.isOrganizerGroup, true),
+                    ),
+                  );
+              }
+
+              await tx
+                .delete(emittedTicket)
+                .where(
+                  and(
+                    eq(emittedTicket.eventId, eventUpdated.id),
+                    inArray(emittedTicket.dni, deletedOrganizersDnis),
+                  ),
+                );
+            }
+
+            const addedOrganizersIds = organizersInput
+              .filter(
+                (o) => !organizersDB.some((org) => org.organizerId === o.id),
+              )
+              .map((o) => o.id);
+
+            if (addedOrganizersIds.length > 0 && !currentOrganizerGroup) {
+              const [newOrganizerGroup] = await tx
+                .insert(ticketGroup)
+                .values({
+                  eventId: eventUpdated.id,
+                  status: 'FREE',
+                  amountTickets: addedOrganizersIds.length,
+                  isOrganizerGroup: true,
+                })
+                .returning();
+              currentOrganizerGroup = newOrganizerGroup;
+            }
+
+            if (
+              addedOrganizersIds.length > 0 &&
+              event.inviteCondition === 'TRADITIONAL'
+            ) {
+              await tx.insert(eventXorganizer).values(
+                addedOrganizersIds.map((id) => ({
+                  eventId: eventUpdated.id,
+                  organizerId: id,
+                  discountPercentage: (
+                    organizersInput.find(
+                      (o) => 'discountPercentage' in o && o.id === id,
+                    ) as { discountPercentage: number }
+                  ).discountPercentage,
+                })),
+              );
+
+              const [updatedTicketGroup] = await tx
+                .update(ticketGroup)
+                .set({
+                  amountTickets:
+                    (currentOrganizerGroup?.amountTickets ?? 0) +
+                    addedOrganizersIds.length,
+                })
+                .where(eq(ticketGroup.id, currentOrganizerGroup!.id))
+                .returning();
+              const addedOrganizers = await tx.query.user.findMany({
+                where: inArray(user.id, addedOrganizersIds),
+              });
+              const organizerTicketType = ticketTypesDB.find(
+                (tt) => tt.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
+              );
+              if (!organizerTicketType) {
+                throw new Error(
+                  `Tipo de ticket "${ORGANIZER_TICKET_TYPE_NAME}" no encontrado`,
+                );
+              }
+              const emittedTickets = await tx
+                .insert(emittedTicket)
+                .values(
+                  addedOrganizers.map((org, idx) => ({
+                    ticketGroupId: updatedTicketGroup.id,
+                    fullName: org.fullName,
+                    dni: org.dni,
+                    mail: org.email,
+                    gender: org.gender,
+                    phoneNumber: org.phoneNumber,
+                    birthDate: org.birthDate,
+                    slug: generateSlug(
+                      `${ORGANIZER_TICKET_TYPE_NAME} ${organizersDB.length + idx}`,
+                    ),
+                    ticketTypeId: organizerTicketType.id,
+                    eventId: eventUpdated.id,
+                  })),
+                )
+                .returning();
+              const eventLocation = await tx.query.location.findFirst({
+                where: eq(locationSchema.id, eventUpdated.locationId),
+                columns: {
+                  address: true,
+                },
+              });
+              for (const org of addedOrganizers) {
+                const emittedTicket = emittedTickets.find(
+                  (et) => et.dni === org.dni,
+                );
+                if (!emittedTicket) {
+                  throw new Error('Ticket no encontrado');
+                }
+                const pdf = await generatePdf({
+                  id: emittedTicket.id,
+                  invitedBy: '-',
+                  slug: emittedTicket.slug,
+                  eventName: eventUpdated.name,
+                  eventDate: eventUpdated.startingDate,
+                  fullName: org.fullName,
+                  dni: org.dni,
+                  createdAt: emittedTicket.createdAt,
+                  ticketType: organizerTicketType.name,
+                  eventLocation: eventLocation?.address ?? '-',
+                });
+                await sendMail({
+                  to: org.email,
+                  subject: `Ticket de ${eventUpdated.name}`,
+                  body: `Hola ${org.fullName}, te enviamos tu ticket de Orgainzador para ${eventUpdated.name}`,
+                  attachments: [Buffer.from(await pdf.arrayBuffer())],
+                  eventName: eventUpdated.name,
+                });
+              }
             }
 
             const ticketTypesUpdated = await Promise.all(
