@@ -1,6 +1,11 @@
-import { and, desc, eq, not } from 'drizzle-orm';
+import { and, desc, eq, isNull, not } from 'drizzle-orm';
 
-import { emittedTicket, eventXorganizer, ticketGroup } from '@/drizzle/schema';
+import {
+  emittedTicket,
+  eventXorganizer,
+  ticketGroup,
+  ticketXorganizer,
+} from '@/drizzle/schema';
 import { organizerProcedure, router } from '@/server/trpc';
 import { eventSchema } from '@/server/schemas/event';
 
@@ -36,5 +41,22 @@ export const organizerRouter = router({
         .where(eq(ticketGroup.eventId, input))
         .orderBy(desc(emittedTicket.createdAt));
       return tickets.map((ticket) => ticket.emittedTicket);
+    }),
+  getMyCodesNotUsed: organizerProcedure
+    .input(eventSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const codes = await ctx.db.query.ticketXorganizer.findMany({
+        where: and(
+          eq(ticketXorganizer.organizerId, ctx.session.user.id),
+          isNull(ticketXorganizer.ticketId),
+          eq(ticketXorganizer.eventId, input),
+        ),
+        orderBy: desc(ticketXorganizer.code),
+      });
+      return codes.map((code) => ({
+        id: code.code,
+        code: code.code,
+        createdAt: code.createdAt,
+      }));
     }),
 });

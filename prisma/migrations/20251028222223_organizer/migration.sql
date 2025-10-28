@@ -71,6 +71,7 @@ CREATE TABLE "ticketXOrganizer" (
     "ticketId" UUID,
     "organizerId" UUID NOT NULL,
     "ticketGroupId" UUID,
+    "eventId" UUID NOT NULL,
     "code" TEXT NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 6)),
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -135,6 +136,9 @@ ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_organizerId_fkey
 
 -- AddForeignKey
 ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_ticketGroupId_fkey" FOREIGN KEY ("ticketGroupId") REFERENCES "ticketGroup"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "eventXOrganizer" ADD CONSTRAINT "eventXOrganizer_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

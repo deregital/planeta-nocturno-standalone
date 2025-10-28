@@ -6,6 +6,7 @@ import { trpc } from '@/server/trpc/server';
 import { auth } from '@/server/auth';
 import GoBack from '@/components/common/GoBack';
 import { TraditionalTicketTableWrapper } from '@/components/organization/event/TraditionalTicketTableWrapper';
+import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
 
 export default async function EventPage({
   params,
@@ -32,20 +33,32 @@ export default async function EventPage({
     <div className='w-full py-4'>
       <GoBack route='/organization' />
       <EventBasicInformation event={event} />
-      {event.inviteCondition === 'TRADITIONAL' ? (
-        <>
-          <h1 className='text-3xl font-bold px-4 text-accent mb-6'>
-            Lista de ventas
-          </h1>
+      <h2 className='text-3xl font-bold px-4 text-accent mb-4'>
+        Lista de ventas
+      </h2>
 
+      <Suspense
+        fallback={<div className='text-center p-8'>Cargando ventas...</div>}
+      >
+        <TraditionalTicketTableWrapper eventId={event.id} />
+      </Suspense>
+
+      {event.inviteCondition === 'INVITATION' && (
+        <>
+          <h2 className='text-3xl font-bold px-4 text-accent mb-4 mt-8'>
+            Códigos de invitación
+          </h2>
           <Suspense
-            fallback={<div className='text-center p-8'>Cargando ventas...</div>}
+            fallback={
+              <div className='text-center p-8'>Cargando códigos...</div>
+            }
           >
-            <TraditionalTicketTableWrapper eventId={event.id} />
+            <InvitationTicketTableWrapper
+              eventId={event.id}
+              eventSlug={event.slug}
+            />
           </Suspense>
         </>
-      ) : (
-        <></>
       )}
     </div>
   );
