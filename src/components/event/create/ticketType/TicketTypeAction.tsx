@@ -1,13 +1,6 @@
-import { useMemo } from 'react';
-import { toast } from 'sonner';
-
 import { useCreateEventStore } from '@/app/admin/event/create/provider';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { ticketTypeCategory } from '@/drizzle/schema';
-import { trpc } from '@/server/trpc/client';
-import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
-import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
+import { TraditionalTicketTypeAction } from '@/components/event/create/ticketType/TraditionalTicketTypeAction';
+import { InvitationTicketTypeAction } from '@/components/event/create/ticketType/InvitationTicketTypeAction';
 
 export default function TicketTypeAction({
   back,
@@ -16,60 +9,10 @@ export default function TicketTypeAction({
   back?: () => void;
   next?: () => void;
 }) {
-  const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
   const event = useCreateEventStore((state) => state.event);
-
-  const { data: location } = trpc.location.getById.useQuery(event.locationId, {
-    enabled: !!event.locationId,
-  });
-
-  const maxAvailableLeft = useMemo(() => {
-    if (!location) return 0;
-    return (
-      location.capacity -
-      ticketTypes.reduce((acc, t) => acc + t.maxAvailable, 0)
-    );
-  }, [location, ticketTypes]);
-
-  return (
-    <div className='w-full text-accent'>
-      {back && (
-        <Button className='self-baseline' onClick={back} variant={'outline'}>
-          Volver
-        </Button>
-      )}
-      <h2 className='text-2xl text-center'>Agregar nueva entrada</h2>
-      <div className='flex items-center justify-center gap-4 my-8'>
-        {ticketTypeCategory.enumValues.map((category) => (
-          <TicketTypeModal
-            action='CREATE'
-            maxAvailableLeft={maxAvailableLeft}
-            key={category}
-            category={category}
-          />
-        ))}
-      </div>
-      <Separator className='my-6 bg-stroke' />
-      <TicketTypeList
-        action='EDIT'
-        ticketTypes={ticketTypes}
-        maxAvailableLeft={maxAvailableLeft}
-      />
-      {next && (
-        <Button
-          onClick={() => {
-            if (ticketTypes.length === 0) {
-              toast.error('Debe agregar al menos una entrada');
-              return;
-            }
-            next();
-          }}
-          variant={'accent'}
-          className='w-full mt-8'
-        >
-          Continuar
-        </Button>
-      )}
-    </div>
-  );
+  if (event.inviteCondition === 'TRADITIONAL') {
+    return <TraditionalTicketTypeAction back={back} next={next} />;
+  } else {
+    return <InvitationTicketTypeAction back={back} next={next} />;
+  }
 }

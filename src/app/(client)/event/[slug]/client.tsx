@@ -1,5 +1,6 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
+import { isAfter } from 'date-fns';
 
 import ErrorCard from '@/components/common/ErrorCard';
 import GoBack from '@/components/common/GoBack';
@@ -17,7 +18,7 @@ export default function Client({
 
   const publica = searchParams.get('publica');
 
-  if (event.endingDate < new Date().toISOString()) {
+  if (!isAfter(new Date(event.endingDate), new Date())) {
     return (
       <ErrorCard
         title='Evento finalizado'
@@ -47,7 +48,7 @@ export default function Client({
                   (ticketType) =>
                     ticketType.visibleInWeb &&
                     ticketType.maxSellDate &&
-                    ticketType.maxSellDate > new Date().toISOString(),
+                    isAfter(new Date(ticketType.maxSellDate), new Date()),
                 )}
                 invitedBy={publica}
               />

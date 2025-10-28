@@ -80,6 +80,11 @@ export const ticketGroupRouter = router({
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input),
         with: {
+          user: {
+            columns: {
+              fullName: true,
+            },
+          },
           ticketTypePerGroups: {
             with: {
               ticketType: {
@@ -125,7 +130,7 @@ export const ticketGroupRouter = router({
         throw new Error('ticketGroup no encontrado');
       }
 
-      return group;
+      return { ...group, invitedBy: group.user?.fullName ?? '-' };
     }),
 
   getTicketsByEvent: publicProcedure
@@ -193,7 +198,7 @@ export const ticketGroupRouter = router({
     .mutation(async ({ ctx, input }) => {
       const group = await ctx.db
         .update(ticketGroup)
-        .set({ invitedBy: input.invitedBy })
+        .set({ invitedById: input.invitedBy })
         .where(eq(ticketGroup.id, input.id))
         .returning();
 
@@ -253,9 +258,14 @@ export const ticketGroupRouter = router({
         where: eq(ticketGroup.id, input),
         columns: {
           status: true,
-          invitedBy: true,
+          invitedById: true,
         },
         with: {
+          user: {
+            columns: {
+              fullName: true,
+            },
+          },
           emittedTickets: {
             columns: {
               id: true,
@@ -333,7 +343,7 @@ export const ticketGroupRouter = router({
           fullName: ticket.fullName,
           id: ticket.id,
           ticketType: ticket.ticketType.name,
-          invitedBy: group.invitedBy,
+          invitedBy: group.user?.fullName ?? '-',
           slug: ticket.slug,
         });
         return {

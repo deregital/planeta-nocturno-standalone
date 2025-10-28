@@ -1,17 +1,12 @@
 import { TRPCError } from '@trpc/server';
 import { compare, hash } from 'bcrypt';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { type db } from '@/drizzle';
 
-import {
-  tempPassword as tempPasswordTable,
-  user as userTable,
-  tag as tagTable,
-  userXTag,
-} from '@/drizzle/schema';
+import { user as userTable, tag as tagTable, userXTag } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import {
@@ -239,9 +234,44 @@ export const userRouter = router({
         batchTag = newTag[0];
       }
 
+      // Generar usernames únicos
+      const baseUsernames = input.users.map((user) => user.email.split('@')[0]);
+
+      // Obtener todos los usernames existentes que puedan colisionar con una sola query
+      const existingUsernames = await ctx.db.query.user.findMany({
+        where: inArray(userTable.name, baseUsernames),
+        columns: {
+          name: true,
+        },
+      });
+
+      const existingUsernamesSet = new Set(
+        existingUsernames.map((u) => u.name),
+      );
+
+      // Generar usernames únicos evitando colisiones con existentes y entre sí
+      const uniqueUsernames = new Map<string, string>();
+      const usedUsernames = new Set(existingUsernamesSet);
+
+      for (let i = 0; i < input.users.length; i++) {
+        const user = input.users[i];
+        const baseUsername = user.email.split('@')[0];
+        let finalUsername = baseUsername;
+        let counter = 2;
+
+        // Buscar un username único
+        while (usedUsernames.has(finalUsername)) {
+          finalUsername = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        usedUsernames.add(finalUsername);
+        uniqueUsernames.set(user.email, finalUsername);
+      }
+
       for (const user of input.users) {
         const fullName = `${user.nombre} ${user.apellido}`.trim();
-        const username = user.email.split('@')[0];
+        const username = uniqueUsernames.get(user.email)!;
         const randomPassword = generateRandomPassword();
         const hashedPassword = await hash(randomPassword, 10);
 
@@ -281,39 +311,6 @@ export const userRouter = router({
         message: `Se importaron ${createdUsers.length} usuarios exitosamente`,
         createdCount: createdUsers.length,
       };
-    }),
-  getTempPasswords: adminProcedure.query(async ({ ctx }) => {
-    const tempPasswords = await ctx.db.query.tempPassword.findMany({
-      where: eq(tempPasswordTable.sent, false),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    return tempPasswords.map((temp) => ({
-      id: temp.id,
-      userId: temp.userId,
-      password: temp.password,
-      userEmail: temp.user.email,
-      userName: temp.user.fullName,
-      expiresAt: temp.expiresAt,
-    }));
-  }),
-  markPasswordAsSent: adminProcedure
-    .input(z.string())
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .update(tempPasswordTable)
-        .set({ sent: true })
-        .where(eq(tempPasswordTable.id, input));
-
-      return { success: true };
     }),
   getOrganizers: adminProcedure.query(async ({ ctx }) => {
     const organizers = await ctx.db.query.user.findMany({

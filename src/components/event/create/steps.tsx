@@ -20,7 +20,7 @@ import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAct
 import { EventInvitationTypeAction } from '@/components/event/create/EventInvitationTypeAction';
 
 export function Steps() {
-  const [currentStep, setCurrentStep] = useState(2);
+  const [currentStep, setCurrentStep] = useState(1);
 
   const goBack = () => setCurrentStep((prev) => prev - 1);
   const goNext = () => setCurrentStep((prev) => prev + 1);

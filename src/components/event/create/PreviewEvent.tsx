@@ -6,10 +6,32 @@ import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
+import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
   const event = useCreateEventStore((state) => state.event);
+  const organizers = useCreateEventStore((state) => state.organizers).map(
+    (organizer) => ({
+      id: organizer.id,
+      fullName: organizer.fullName,
+      phoneNumber: organizer.phoneNumber,
+      ...(organizer.type === 'TRADITIONAL'
+        ? {
+            type: 'TRADITIONAL' as const,
+            discountPercentage: organizer.discountPercentage,
+          }
+        : {
+            type: 'INVITATION' as const,
+            ticketAmount: organizer.ticketAmount,
+          }),
+      number:
+        organizer.type === 'TRADITIONAL'
+          ? organizer.discountPercentage
+          : organizer.ticketAmount,
+      dni: organizer.dni,
+    }),
+  );
 
   const createEvent = trpc.events.create.useMutation();
 
@@ -20,6 +42,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
       await createEvent.mutateAsync({
         event: { ...event, isActive },
         ticketTypes,
+        organizersInput: organizers,
       });
       toast('¡Evento creado con éxito!');
       router.push('/admin/event');
@@ -39,6 +62,24 @@ export default function PreviewEvent({ back }: { back: () => void }) {
       </Button>
       <h2 className='text-2xl text-center'>Previsualización del evento</h2>
       <EventGeneralInformation action='PREVIEW' />
+      {organizers.length > 0 && (
+        <section>
+          <h3 className='text-2xl'>Organizadores</h3>
+          <OrganizerTableWithAction
+            data={organizers}
+            numberTitle={
+              event.inviteCondition === 'TRADITIONAL'
+                ? 'Porcentaje de descuento'
+                : 'Cantidad de tickets'
+            }
+            type='TRADITIONAL'
+            disableActions
+            maxNumber={100}
+          >
+            <></>
+          </OrganizerTableWithAction>
+        </section>
+      )}
       <section>
         <h3 className='text-2xl'>Entradas</h3>
         <TicketTypeList
@@ -58,17 +99,19 @@ export default function PreviewEvent({ back }: { back: () => void }) {
         >
           Crear sin publicar
         </Button>
-        <Button
-          variant={'accent'}
-          className=''
-          onClick={() =>
-            handleSubmit({
-              isActive: true,
-            })
-          }
-        >
-          Crear y publicar
-        </Button>
+        {event.inviteCondition === 'TRADITIONAL' && (
+          <Button
+            variant={'accent'}
+            className=''
+            onClick={() =>
+              handleSubmit({
+                isActive: true,
+              })
+            }
+          >
+            Crear y publicar
+          </Button>
+        )}
       </div>
     </div>
   );

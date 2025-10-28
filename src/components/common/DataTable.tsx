@@ -250,7 +250,7 @@ export function DataTable<
                     key={header.id}
                     className='text-accent font-bold'
                     style={{
-                      width: header.getSize(),
+                      width: `${header.getSize()}px`,
                     }}
                   >
                     {header.isPlaceholder

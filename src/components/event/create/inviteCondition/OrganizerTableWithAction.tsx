@@ -17,19 +17,29 @@ type OrganizerTableData = {
   number: number;
 };
 
-function columns(
-  numberTitle: string,
-  type: InviteCondition,
-  updateOrganizerNumber: CreateEventStore['updateOrganizerNumber'],
-  deleteOrganizer: CreateEventStore['deleteOrganizer'],
-  maxNumber: number,
-): ColumnDef<OrganizerTableData>[] {
+function columns({
+  numberTitle,
+  type,
+  updateOrganizerNumber,
+  deleteOrganizer,
+  maxNumber,
+  disableActions,
+  getMaxForRow,
+}: {
+  type: InviteCondition;
+  numberTitle: string;
+  updateOrganizerNumber: CreateEventStore['updateOrganizerNumber'];
+  deleteOrganizer: CreateEventStore['deleteOrganizer'];
+  maxNumber: number;
+  disableActions: boolean;
+  getMaxForRow: (rowId: string) => number;
+}): ColumnDef<OrganizerTableData>[] {
   return [
     {
-      header: 'ID',
-      accessorKey: 'id',
+      header: 'DNI',
+      accessorKey: 'dni',
       cell: ({ row }) => {
-        return <div>{row.original.id}</div>;
+        return <div>{row.original.dni}</div>;
       },
     },
     {
@@ -37,13 +47,6 @@ function columns(
       accessorKey: 'fullName',
       cell: ({ row }) => {
         return <div>{row.original.fullName}</div>;
-      },
-    },
-    {
-      header: 'DNI',
-      accessorKey: 'dni',
-      cell: ({ row }) => {
-        return <div>{row.original.dni}</div>;
       },
     },
     {
@@ -56,30 +59,38 @@ function columns(
     {
       header: numberTitle,
       accessorKey: 'number',
+      size: 200,
       cell: ({ row }) => {
+        const maxForThisRow = getMaxForRow(row.original.id);
         return (
-          <div className='flex gap-2'>
+          <div className='flex flex-1 justify-between'>
             <Input
               className='w-fit max-w-fit'
               type='number'
-              min={0}
-              max={maxNumber}
+              min={type === 'INVITATION' ? 1 : 0}
+              max={maxForThisRow}
+              disabled={disableActions}
               value={row.original.number}
               onChange={(e) => {
                 const value = Number(e.target.value);
-                const clampedValue = Math.min(Math.max(value, 0), maxNumber);
-                updateOrganizerNumber(row.original.dni, clampedValue, type);
+                const clampedValue = Math.min(
+                  Math.max(value, 0),
+                  maxForThisRow,
+                );
+                updateOrganizerNumber(row.original, clampedValue, type);
               }}
             />
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={() => {
-                deleteOrganizer(row.original.dni);
-              }}
-            >
-              <TrashIcon className='w-4 h-4' />
-            </Button>
+            {!disableActions && (
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => {
+                  deleteOrganizer(row.original);
+                }}
+              >
+                <TrashIcon className='w-4 h-4 text-red-500' />
+              </Button>
+            )}
           </div>
         );
       },
@@ -93,28 +104,68 @@ export function OrganizerTableWithAction({
   numberTitle,
   type,
   maxNumber,
+  disableActions = false,
+  maxCapacity,
 }: {
   data: OrganizerTableData[];
   children: React.ReactNode;
   numberTitle: string;
   type: InviteCondition;
   maxNumber: number;
+  disableActions?: boolean;
+  maxCapacity?: number;
 }) {
   const updateOrganizerNumber = useCreateEventStore(
     (state) => state.updateOrganizerNumber,
   );
   const deleteOrganizer = useCreateEventStore((state) => state.deleteOrganizer);
 
+  // Función para calcular el máximo dinámico para cada fila
+  const getMaxForRow = useMemo(() => {
+    return (rowId: string) => {
+      // En modo TRADITIONAL, usar el máximo fijo
+      if (type === 'TRADITIONAL') {
+        return maxNumber;
+      }
+
+      // En modo INVITATION, calcular dinámicamente
+      if (!maxCapacity) {
+        return maxNumber;
+      }
+
+      const totalOrganizers = data.length;
+      const sumOfAllInputs = data.reduce((sum, row) => sum + row.number, 0);
+      const thisRowValue = data.find((row) => row.id === rowId)?.number || 0;
+
+      // Fórmula: capacidadLocacion - cantidadOrganizadores - sumaDeInputsDeLasOtrasFilas
+      // O sea: capacidadLocacion - cantidadOrganizadores - (sumaTotal - valorDeEstaFila)
+      const remainingCapacity =
+        maxCapacity - totalOrganizers - sumOfAllInputs + thisRowValue;
+
+      return Math.max(0, remainingCapacity);
+    };
+  }, [type, maxNumber, maxCapacity, data]);
+
   const memoizedColumns = useMemo(
     () =>
-      columns(
+      columns({
         numberTitle,
         type,
         updateOrganizerNumber,
         deleteOrganizer,
         maxNumber,
-      ),
-    [numberTitle, type, updateOrganizerNumber, deleteOrganizer, maxNumber],
+        disableActions,
+        getMaxForRow,
+      }),
+    [
+      numberTitle,
+      type,
+      updateOrganizerNumber,
+      deleteOrganizer,
+      maxNumber,
+      disableActions,
+      getMaxForRow,
+    ],
   );
 
   return (
@@ -122,7 +173,7 @@ export function OrganizerTableWithAction({
       <div className='flex w-full justify-end'>{children}</div>
       <DataTable
         disableExport
-        fullWidth
+        fullWidth={false}
         noResultsPlaceholder='No seleccionaste ningún organizador'
         divClassName='mx-0! w-full! max-w-full!'
         columns={memoizedColumns}

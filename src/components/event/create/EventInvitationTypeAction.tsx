@@ -18,14 +18,16 @@ export function EventInvitationTypeAction({
   const event = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers);
   const resetOrganizers = useCreateEventStore((state) => state.resetOrganizers);
+  const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const setEvent = useCreateEventStore((state) => state.setEvent);
 
-  const [tab, setTab] = useState<InviteCondition>(event.inviteContidtion);
+  const [tab, setTab] = useState<InviteCondition>(event.inviteCondition);
 
   function handleChange(value: InviteCondition) {
     setTab(value);
-    setEvent({ inviteContidtion: value });
+    setEvent({ inviteCondition: value });
     resetOrganizers();
+    setTicketTypes([]);
   }
 
   function handleNext() {

@@ -1,13 +1,12 @@
 import { relations } from 'drizzle-orm/relations';
 import {
-  ticketGroup,
+  emittedTicket,
   ticketXorganizer,
   user,
-  tempPassword,
-  session,
-  event,
+  ticketGroup,
   ticketType,
-  emittedTicket,
+  event,
+  session,
   location,
   eventCategory,
   tag,
@@ -22,32 +21,49 @@ import {
 export const ticketXorganizerRelations = relations(
   ticketXorganizer,
   ({ one }) => ({
-    ticketGroup: one(ticketGroup, {
-      fields: [ticketXorganizer.ticketGroupId],
-      references: [ticketGroup.id],
+    emittedTicket: one(emittedTicket, {
+      fields: [ticketXorganizer.ticketId],
+      references: [emittedTicket.id],
     }),
     user: one(user, {
       fields: [ticketXorganizer.organizerId],
       references: [user.id],
     }),
+    ticketGroup: one(ticketGroup, {
+      fields: [ticketXorganizer.ticketGroupId],
+      references: [ticketGroup.id],
+    }),
   }),
 );
 
-export const ticketGroupRelations = relations(ticketGroup, ({ one, many }) => ({
-  ticketXorganizers: many(ticketXorganizer),
-  event: one(event, {
-    fields: [ticketGroup.eventId],
-    references: [event.id],
+export const emittedTicketRelations = relations(
+  emittedTicket,
+  ({ one, many }) => ({
+    ticketXorganizers: many(ticketXorganizer),
+    user: one(user, {
+      fields: [emittedTicket.scannedByUserId],
+      references: [user.id],
+    }),
+    ticketType: one(ticketType, {
+      fields: [emittedTicket.ticketTypeId],
+      references: [ticketType.id],
+    }),
+    ticketGroup: one(ticketGroup, {
+      fields: [emittedTicket.ticketGroupId],
+      references: [ticketGroup.id],
+    }),
+    event: one(event, {
+      fields: [emittedTicket.eventId],
+      references: [event.id],
+    }),
   }),
-  emittedTickets: many(emittedTicket),
-  ticketTypePerGroups: many(ticketTypePerGroup),
-}));
+);
 
 export const userRelations = relations(user, ({ many }) => ({
   ticketXorganizers: many(ticketXorganizer),
-  tempPasswords: many(tempPassword),
-  sessions: many(session),
   emittedTickets: many(emittedTicket),
+  sessions: many(session),
+  ticketGroups: many(ticketGroup),
   userXTags: many(userXTag),
   eventXUsers: many(eventXUser),
   eventXorganizers: many(eventXorganizer),
@@ -55,22 +71,31 @@ export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
 }));
 
-export const tempPasswordRelations = relations(tempPassword, ({ one }) => ({
+export const ticketGroupRelations = relations(ticketGroup, ({ one, many }) => ({
+  ticketXorganizers: many(ticketXorganizer),
+  emittedTickets: many(emittedTicket),
+  event: one(event, {
+    fields: [ticketGroup.eventId],
+    references: [event.id],
+  }),
   user: one(user, {
-    fields: [tempPassword.userId],
+    fields: [ticketGroup.invitedById],
     references: [user.id],
   }),
+  ticketTypePerGroups: many(ticketTypePerGroup),
 }));
 
-export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
-    fields: [session.userId],
-    references: [user.id],
+export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
+  emittedTickets: many(emittedTicket),
+  event: one(event, {
+    fields: [ticketType.eventId],
+    references: [event.id],
   }),
+  ticketTypePerGroups: many(ticketTypePerGroup),
 }));
 
 export const eventRelations = relations(event, ({ one, many }) => ({
-  ticketGroups: many(ticketGroup),
+  emittedTickets: many(emittedTicket),
   ticketTypes: many(ticketType),
   location: one(location, {
     fields: [event.locationId],
@@ -80,31 +105,15 @@ export const eventRelations = relations(event, ({ one, many }) => ({
     fields: [event.categoryId],
     references: [eventCategory.id],
   }),
+  ticketGroups: many(ticketGroup),
   eventXUsers: many(eventXUser),
   eventXorganizers: many(eventXorganizer),
 }));
 
-export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
-  event: one(event, {
-    fields: [ticketType.eventId],
-    references: [event.id],
-  }),
-  emittedTickets: many(emittedTicket),
-  ticketTypePerGroups: many(ticketTypePerGroup),
-}));
-
-export const emittedTicketRelations = relations(emittedTicket, ({ one }) => ({
+export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {
-    fields: [emittedTicket.scannedByUserId],
+    fields: [session.userId],
     references: [user.id],
-  }),
-  ticketType: one(ticketType, {
-    fields: [emittedTicket.ticketTypeId],
-    references: [ticketType.id],
-  }),
-  ticketGroup: one(ticketGroup, {
-    fields: [emittedTicket.ticketGroupId],
-    references: [ticketGroup.id],
   }),
 }));
 

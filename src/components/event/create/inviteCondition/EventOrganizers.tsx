@@ -58,7 +58,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
       organizers.forEach((org) => {
         const currentAmount = 'ticketAmount' in org ? org.ticketAmount : 0;
         if (currentAmount > maxNumber) {
-          updateOrganizerNumber(org.dni, maxNumber, type);
+          updateOrganizerNumber(org, maxNumber, type);
           needsUpdate = true;
         }
       });
@@ -83,13 +83,11 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
 
   const selectedOrganizers = useMemo(() => {
     return organizersData
-      ?.filter((organizer) =>
-        organizers.find((org) => org.dni === organizer.dni),
-      )
+      ?.filter((organizer) => organizers.find((org) => org.id === organizer.id))
       .map((organizer) => {
-        const org = organizers.find((org) => org.dni === organizer.dni);
+        const org = organizers.find((org) => org.id === organizer.id);
         return {
-          id: organizer.dni,
+          id: organizer.id,
           fullName: organizer.fullName,
           dni: organizer.dni,
           phoneNumber: organizer.phoneNumber,
@@ -107,7 +105,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
     return organizersData
       ?.filter(
         (organizer) =>
-          !selectedOrganizers?.some((org) => org.dni === organizer.dni),
+          !selectedOrganizers?.some((org) => org.id === organizer.id),
       )
       .map((organizer) => `${organizer.fullName} - ${organizer.dni}`);
   }, [organizersData, selectedOrganizers]);
@@ -117,7 +115,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
 
     const selectableOrganizers = organizersData.filter(
       (organizer) =>
-        !selectedOrganizers?.some((org) => org.dni === organizer.dni),
+        !selectedOrganizers?.some((org) => org.id === organizer.id),
     );
 
     // Agrupar organizadores por sus tags
@@ -157,62 +155,74 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
   useEffect(() => {
     if (selectedComboboxOption) {
       const dni = selectedComboboxOption.split(' - ').pop();
-      const isStillSelected = organizers.some((org) => org.dni === dni);
+      const id = organizersData?.find((org) => org.dni === dni)?.id;
+      const isStillSelected = organizers.some((org) => org.id === id);
       if (!isStillSelected) {
         setSelectedComboboxOption('');
       }
     }
-  }, [organizers, selectedComboboxOption]);
+  }, [organizers, organizersData, selectedComboboxOption]);
 
   return (
     <div>
-      <VirtualizedCombobox
-        searchPlaceholder='Agregar organizador...'
-        onSelectOption={(option) => {
-          if (option.startsWith('tag:')) {
-            const tagId = option.replace('tag:', '');
-            const tagOption = groupedOptions?.[0]?.options.find(
-              (opt) => opt.value === `tag:${tagId}`,
-            );
-            if (tagOption && 'tagData' in tagOption) {
-              tagOption.tagData.organizers.forEach((organizer) => {
-                if (type === 'TRADITIONAL') {
-                  addOrganizer(organizer.dni, defaultNumber, type);
-                } else {
-                  const maxAllowed = maxCapacity
-                    ? calculateMaxTicketsPerOrganizer(
-                        maxCapacity,
-                        organizers.length + 1,
-                      )
-                    : maxNumber;
-                  const clampedNumber = Math.min(defaultNumber, maxAllowed);
-                  addOrganizer(organizer.dni, clampedNumber, type);
-                }
-              });
-            }
-          } else {
-            const dni = option.split(' - ').pop();
-            if (!dni) return;
-            if (type === 'TRADITIONAL') {
-              addOrganizer(dni, defaultNumber, type);
+      <div>
+        <VirtualizedCombobox
+          searchPlaceholder='Agregar organizador...'
+          onSelectOption={(option) => {
+            if (option.startsWith('tag:')) {
+              const tagId = option.replace('tag:', '');
+              const tagOption = groupedOptions?.[0]?.options.find(
+                (opt) => opt.value === `tag:${tagId}`,
+              );
+              if (tagOption && 'tagData' in tagOption) {
+                tagOption.tagData.organizers.forEach((organizer) => {
+                  if (type === 'TRADITIONAL') {
+                    addOrganizer(organizer, defaultNumber, type);
+                  } else {
+                    const maxAllowed = maxCapacity
+                      ? calculateMaxTicketsPerOrganizer(
+                          maxCapacity,
+                          organizers.length + 1,
+                        )
+                      : maxNumber;
+                    const clampedNumber = Math.min(defaultNumber, maxAllowed);
+                    addOrganizer(organizer, clampedNumber, type);
+                  }
+                });
+              }
             } else {
-              const maxAllowed = maxCapacity
-                ? calculateMaxTicketsPerOrganizer(
-                    maxCapacity,
-                    organizers.length + 1,
-                  )
-                : maxNumber;
-              const clampedNumber = Math.min(defaultNumber, maxAllowed);
-              addOrganizer(dni, clampedNumber, type);
+              const dni = option.split(' - ').pop();
+              if (!dni) return;
+              const id = organizersData?.find((org) => org.dni === dni)?.id;
+              const organizer = organizersData?.find((org) => org.id === id);
+              if (!organizer) return;
+              if (type === 'TRADITIONAL') {
+                addOrganizer(organizer, defaultNumber, type);
+              } else {
+                const maxAllowed = maxCapacity
+                  ? calculateMaxTicketsPerOrganizer(
+                      maxCapacity,
+                      organizers.length + 1,
+                    )
+                  : maxNumber;
+                const clampedNumber = Math.min(defaultNumber, maxAllowed);
+                addOrganizer(organizer, clampedNumber, type);
+              }
             }
-          }
-        }}
-        showSelectedOptions={false}
-        options={organizerOptions || []}
-        groupedOptions={groupedOptions}
-        selectedOption={selectedComboboxOption}
-        onSelectedOptionChange={setSelectedComboboxOption}
-      />
+          }}
+          showSelectedOptions={false}
+          options={organizerOptions || []}
+          groupedOptions={groupedOptions}
+          selectedOption={selectedComboboxOption}
+          onSelectedOptionChange={setSelectedComboboxOption}
+        />
+        {type === 'INVITATION' && (
+          <p className='text-xs text-accent'>
+            Una vez creado el evento, no podrás modificar los organizadores.
+          </p>
+        )}
+      </div>
+
       <OrganizerTableWithAction
         type={type}
         data={selectedOrganizers || []}
@@ -222,6 +232,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
             : 'Cantidad de tickets'
         }
         maxNumber={maxNumber}
+        maxCapacity={maxCapacity}
       >
         <div className='w-full max-w-1/3'>
           <p>
