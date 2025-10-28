@@ -3,8 +3,8 @@ import { Suspense } from 'react';
 import { Loader } from 'lucide-react';
 
 import { trpc } from '@/server/trpc/server';
-import { CreateEventStoreProvider } from '@/app/admin/event/create/provider';
-import Client from '@/app/admin/event/edit/[slug]/client';
+import { CreateEventStoreProvider } from '@/app/(backoffice)/admin/event/create/provider';
+import Client from '@/app/(backoffice)/admin/event/edit/[slug]/client';
 
 export const dynamic = 'force-dynamic';
 

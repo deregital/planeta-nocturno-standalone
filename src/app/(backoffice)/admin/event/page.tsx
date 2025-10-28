@@ -1,10 +1,10 @@
 import { SessionProvider } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 
-import Client from '@/app/admin/event/client';
 import { auth } from '@/server/auth';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/server';
+import Client from '@/app/(backoffice)/admin/event/client';
 
 export default async function Page() {
   const session = await auth();

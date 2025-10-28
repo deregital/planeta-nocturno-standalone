@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 
 export function calculateMaxTicketsPerOrganizer(
   capacity: number,

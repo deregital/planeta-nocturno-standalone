@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { trpc } from '@/server/trpc/server';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
-import { type CreateUserActionState } from '@/app/admin/users/create/actions';
+import { type CreateUserActionState } from '@/app/(backoffice)/admin/users/create/actions';
 
 export type EditUserActionState = CreateUserActionState;
 

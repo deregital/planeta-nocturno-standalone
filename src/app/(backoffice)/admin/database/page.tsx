@@ -1,4 +1,4 @@
-import Client from '@/app/admin/database/client';
+import Client from '@/app/(backoffice)/admin/database/client';
 import { trpc } from '@/server/trpc/server';
 
 export default async function Page() {

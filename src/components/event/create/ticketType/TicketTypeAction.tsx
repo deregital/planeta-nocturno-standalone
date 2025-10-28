@@ -1,4 +1,4 @@
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { TraditionalTicketTypeAction } from '@/components/event/create/ticketType/TraditionalTicketTypeAction';
 import { InvitationTicketTypeAction } from '@/components/event/create/ticketType/InvitationTicketTypeAction';
 

@@ -5,8 +5,8 @@ import { useMemo } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { Input } from '@/components/ui/input';
 import { type InviteCondition } from '@/server/types';
-import { type CreateEventStore } from '@/app/admin/event/create/state';
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { type CreateEventStore } from '@/app/(backoffice)/admin/event/create/state';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
 
 type OrganizerTableData = {

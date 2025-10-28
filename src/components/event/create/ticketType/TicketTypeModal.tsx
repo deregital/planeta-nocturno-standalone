@@ -2,9 +2,9 @@ import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { validateTicketType } from '@/app/admin/event/create/actions';
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
-import { type EventState } from '@/app/admin/event/create/state';
+import { validateTicketType } from '@/app/(backoffice)/admin/event/create/actions';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
+import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
 import { FormRow } from '@/components/common/FormRow';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';

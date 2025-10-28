@@ -83,51 +83,39 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 
 const levelsOfAccess: (typeof roleEnum.enumValues)[number][] = [
   'ADMIN',
+  'ORGANIZER',
   'TICKETING',
 ];
 
-export const adminProcedure = t.procedure.use(({ ctx, next }) => {
-  const session = ctx.session;
+function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
+  return t.procedure.use(({ ctx, next }) => {
+    const session = ctx.session;
 
-  if (!session || !session.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
+    if (!session || !session.user) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
 
-  const adminIndex = levelsOfAccess.indexOf('ADMIN');
-  const index = levelsOfAccess.indexOf(session.user.role);
+    const adminIndex = levelsOfAccess.indexOf(level);
+    const index = levelsOfAccess.indexOf(session.user.role);
 
-  if (index > adminIndex) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
+    if (index > adminIndex) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
 
-  return next({
-    ctx: {
-      session: { ...session, user: session.user },
-      db: db,
-    },
+    return next({
+      ctx: {
+        session: { ...session, user: session.user },
+        db: db,
+      },
+    });
   });
-});
+}
 
-export const ticketingProcedure = t.procedure.use(({ ctx, next }) => {
-  const session = ctx.session;
+export const adminProcedure = genericProcedure('ADMIN');
 
-  if (!session || !session.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
+export const ticketingProcedure = genericProcedure('TICKETING');
 
-  const ticketingIndex = levelsOfAccess.indexOf('TICKETING');
-  const index = levelsOfAccess.indexOf(session.user.role);
-  if (index > ticketingIndex) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
-
-  return next({
-    ctx: {
-      session: { ...session, user: session.user },
-      db: db,
-    },
-  });
-});
+export const organizerProcedure = genericProcedure('ORGANIZER');
 
 export const router = t.router;
 export const publicProcedure = t.procedure.use(({ next }) => {

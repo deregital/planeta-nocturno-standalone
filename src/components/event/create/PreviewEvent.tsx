@@ -1,7 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';

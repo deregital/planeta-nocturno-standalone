@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { trpc } from '@/server/trpc/client';
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';

@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 
 import { UserForm } from '@/components/admin/users/UserForm';
-import { createUser } from '@/app/admin/users/create/actions';
+import { createUser } from '@/app/(backoffice)/admin/users/create/actions';
 import {
   Dialog,
   DialogContent,

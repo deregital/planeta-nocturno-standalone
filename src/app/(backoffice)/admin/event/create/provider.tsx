@@ -6,7 +6,7 @@ import { useStore } from 'zustand';
 import {
   createEventStore,
   type CreateEventStore,
-} from '@/app/admin/event/create/state';
+} from '@/app/(backoffice)/admin/event/create/state';
 
 export type CreateEventStoreApi = ReturnType<typeof createEventStore>;
 

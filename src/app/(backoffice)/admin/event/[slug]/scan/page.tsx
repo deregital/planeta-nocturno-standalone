@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { trpc } from '@/server/trpc/server';
-import ScanClient from '@/app/admin/event/[slug]/scan/client';
+import ScanClient from '@/app/(backoffice)/admin/event/[slug]/scan/client';
 
 export default async function ScanTicketPage({
   params,

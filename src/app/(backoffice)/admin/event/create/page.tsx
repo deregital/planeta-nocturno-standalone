@@ -1,4 +1,4 @@
-import { CreateEventStoreProvider } from '@/app/admin/event/create/provider';
+import { CreateEventStoreProvider } from '@/app/(backoffice)/admin/event/create/provider';
 import GoBack from '@/components/common/GoBack';
 import { Steps } from '@/components/event/create/steps';
 

@@ -4,7 +4,7 @@ import { Loader } from 'lucide-react';
 import { useActionState, useEffect } from 'react';
 import { toast } from 'sonner';
 
-import { handleUpdate } from '@/app/admin/settings/action';
+import { handleUpdate } from '@/app/(backoffice)/admin/settings/action';
 import { InputFromSchema } from '@/components/admin/config/InputFromSchema';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -59,7 +59,7 @@ export default function Page() {
                   className='w-24'
                 />
                 <Switch
-                  className='h-6 w-10 [&_[data-slot=switch-thumb]]:size-5'
+                  className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
                   id={`${featureKey}-enabled`}
                   name={`${featureKey}-enabled`}
                   defaultChecked={feature?.enabled ?? false}

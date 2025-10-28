@@ -59,6 +59,8 @@ export async function authenticate(
 
   if (user?.role === 'TICKETING') {
     redirect('/admin/event');
+  } else if (user?.role === 'ORGANIZER') {
+    redirect('/organization');
   } else {
     redirect('/admin');
   }
