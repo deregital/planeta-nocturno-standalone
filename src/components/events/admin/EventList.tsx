@@ -19,21 +19,21 @@ export default function EventList(props: {
 export default function EventList(props: {
   events: EventListType;
   showActions: false;
-  href: (id: string) => string;
+  href: (slug: string) => string;
 }): React.ReactElement;
 
 // Implementación
 export default function EventList(props: {
   events: EventListType;
   showActions?: boolean;
-  href?: (id: string) => string;
+  href?: (slug: string) => string;
 }) {
   const { events, href, showActions = true } = props;
   return (
     <div className='flex flex-col gap-4'>
       {events.map((event, index) =>
         href ? (
-          <Link href={href(event.id) as Route} key={index}>
+          <Link href={href(event.slug) as Route} key={index}>
             <EventCardHorizontal
               key={index}
               event={event}

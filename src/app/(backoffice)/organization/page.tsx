@@ -25,7 +25,7 @@ export default async function OrganizationPage() {
         <EventList
           events={upcomingEvents.map((event) => event.event)}
           showActions={false}
-          href={(id) => `/organization/event/${id}`}
+          href={(slug) => `/organization/event/${slug}`}
         />
       ) : (
         <p className='text-lg font-medium text-accent'>
@@ -48,7 +48,7 @@ export default async function OrganizationPage() {
                   <EventList
                     events={pastEvents.map((event) => event.event)}
                     showActions={false}
-                    href={(id) => `/organization/event/${id}`}
+                    href={(slug) => `/organization/event/${slug}`}
                   />
                 </div>
               </AccordionContent>

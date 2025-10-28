@@ -1,7 +1,5 @@
-import { formatInTimeZone } from 'date-fns-tz';
-import { CalendarIcon, ClockIcon, Loader2, MapPin } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { SessionProvider } from 'next-auth/react';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
@@ -14,6 +12,7 @@ import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWi
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { trpc } from '@/server/trpc/server';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
+import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
 
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
@@ -27,46 +26,8 @@ async function EventDetails({ slug }: { slug: string }) {
       <div className='flex w-full px-4'>
         <GoBack route='/admin/event' />
       </div>
-      <Image
-        width={1000}
-        height={1000}
-        quality={100}
-        src={event.coverImageUrl}
-        className='max-h-96 h-36 aspect-auto rounded-md w-fit max-w-full'
-        alt='Event cover'
-      />
-      <div className='col-span-3 p-2'>
-        <h3 className='text-center text-2xl font-bold text-accent'>
-          {event?.name}
-        </h3>
-      </div>
-      <div className='flex flex-wrap items-center justify-center gap-x-3 pb-3 text-accent'>
-        <h3 className='flex items-center gap-x-1 p-2 text-center align-middle text-sm sm:text-base'>
-          <CalendarIcon className='inline h-5 w-5' />
-          {formatInTimeZone(
-            event!.startingDate,
-            'America/Argentina/Buenos_Aires',
-            'dd/MM/yyyy',
-          )}
-        </h3>
-        <h3 className='flex items-center gap-x-1 p-2 text-center align-middle text-sm sm:text-base'>
-          <ClockIcon className='inline h-5 w-5' />
-          {formatInTimeZone(
-            event!.startingDate,
-            'America/Argentina/Buenos_Aires',
-            'HH:mm',
-          )}{' '}
-          -{' '}
-          {formatInTimeZone(
-            event!.endingDate,
-            'America/Argentina/Buenos_Aires',
-            'HH:mm',
-          )}
-        </h3>
-        <h3 className='flex items-center p-2 text-center text-sm sm:text-base'>
-          <MapPin className='inline h-5 w-5' />
-          {event?.location.address}
-        </h3>
+      <div className='flex flex-col items-center mt-4'>
+        <EventBasicInformation event={event} />
         <QuantityTicketsEmitted event={event} />
       </div>
       <SessionProvider>
