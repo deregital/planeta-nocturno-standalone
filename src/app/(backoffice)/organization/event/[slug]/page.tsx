@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
+import { headers } from 'next/headers';
 
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
 import { trpc } from '@/server/trpc/server';
@@ -7,6 +8,8 @@ import { auth } from '@/server/auth';
 import GoBack from '@/components/common/GoBack';
 import { TraditionalTicketTableWrapper } from '@/components/organization/event/TraditionalTicketTableWrapper';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
+import { CopyUrl } from '@/components/organization/event/CopyUrl';
+import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 export default async function EventPage({
   params,
@@ -16,6 +19,7 @@ export default async function EventPage({
   const { slug } = await params;
   const session = await auth();
   const event = await trpc.events.getBySlug(slug);
+  const myCode = await trpc.organizer.getMyCode();
 
   if (!event) {
     notFound();
@@ -29,11 +33,25 @@ export default async function EventPage({
     redirect('/organization');
   }
 
+  const headersList = await headers();
+  const host = headersList.get('x-forwarded-host');
+  const proto = headersList.get('x-forwarded-proto');
+
+  // Construct the origin
+  const origin = proto && host ? `${proto}://${host}` : '';
+
   return (
     <div className='w-full py-4'>
       <GoBack route='/organization' />
       <EventBasicInformation event={event} />
-      <h2 className='text-3xl font-bold px-4 text-accent mb-4'>
+      {event.inviteCondition === 'TRADITIONAL' && (
+        <div className='w-full text-center'>
+          <CopyUrl
+            url={`${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}`}
+          />
+        </div>
+      )}
+      <h2 className='text-3xl font-bold px-4 text-accent my-4'>
         Lista de ventas
       </h2>
 

@@ -8,6 +8,7 @@ import HeaderTickets from '@/components/event/buyPage/HeaderTickets';
 import InformationEvent from '@/components/event/buyPage/InformationEvent';
 import TicketPurchase from '@/components/event/buyPage/TicketPurchase';
 import { type RouterOutputs } from '@/server/routers/app';
+import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 export default function Client({
   event,
@@ -16,7 +17,7 @@ export default function Client({
 }) {
   const searchParams = useSearchParams();
 
-  const publica = searchParams.get('publica');
+  const organizerCode = searchParams.get(ORGANIZER_CODE_QUERY_PARAM);
 
   if (!isAfter(new Date(event.endingDate), new Date())) {
     return (
@@ -50,7 +51,7 @@ export default function Client({
                     ticketType.maxSellDate &&
                     isAfter(new Date(ticketType.maxSellDate), new Date()),
                 )}
-                invitedBy={publica}
+                invitedBy={organizerCode}
               />
             </div>
             <div className='px-4 md:col-span-4 flex flex-col justify-start items-center overflow-hidden'>

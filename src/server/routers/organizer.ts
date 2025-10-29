@@ -5,6 +5,7 @@ import {
   eventXorganizer,
   ticketGroup,
   ticketXorganizer,
+  user,
 } from '@/drizzle/schema';
 import { organizerProcedure, router } from '@/server/trpc';
 import { eventSchema } from '@/server/schemas/event';
@@ -59,4 +60,13 @@ export const organizerRouter = router({
         createdAt: code.createdAt,
       }));
     }),
+  getMyCode: organizerProcedure.query(async ({ ctx }) => {
+    const code = await ctx.db.query.user.findFirst({
+      where: eq(user.id, ctx.session.user.id),
+      columns: {
+        code: true,
+      },
+    });
+    return code?.code;
+  }),
 });
