@@ -106,6 +106,7 @@ export const ticketGroupRouter = router({
               startingDate: true,
               endingDate: true,
               coverImageUrl: true,
+              inviteCondition: true,
             },
             with: {
               location: {
@@ -198,7 +199,7 @@ export const ticketGroupRouter = router({
     .mutation(async ({ ctx, input }) => {
       const group = await ctx.db
         .update(ticketGroup)
-        .set({ invitedById: input.invitedBy })
+        .set({ invitedById: input.invitedBy || null })
         .where(eq(ticketGroup.id, input.id))
         .returning();
 

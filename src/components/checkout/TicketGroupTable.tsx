@@ -10,8 +10,10 @@ import { trpc } from '@/server/trpc/client';
 
 export function TicketGroupTable({
   ticketGroup,
+  discountPercentage,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
+  discountPercentage?: number | null;
 }) {
   const { data: serviceFee, isLoading } = trpc.feature.getByKey.useQuery(
     FEATURE_KEYS.SERVICE_FEE,
@@ -22,13 +24,24 @@ export function TicketGroupTable({
     0,
   );
 
+  const hasDiscount =
+    discountPercentage !== null &&
+    discountPercentage !== undefined &&
+    discountPercentage > 0;
+  const subtotalWithDiscount = hasDiscount
+    ? subtotalPrice * (1 - discountPercentage / 100)
+    : subtotalPrice;
+
   const serviceFeePrice = serviceFee?.enabled
-    ? subtotalPrice * (Number(serviceFee?.value ?? 0) / 100)
+    ? subtotalWithDiscount * (Number(serviceFee?.value ?? 0) / 100)
     : 0;
 
   const subtotalPriceString = formatCurrency(subtotalPrice);
+  const subtotalWithDiscountString = formatCurrency(subtotalWithDiscount);
   const serviceFeeString = formatCurrency(serviceFeePrice);
-  const totalPriceString = formatCurrency(subtotalPrice + serviceFeePrice);
+  const totalPriceString = formatCurrency(
+    subtotalWithDiscount + serviceFeePrice,
+  );
 
   return (
     <div className='flex flex-col justify-center items-center border border-stroke p-4 rounded-xl w-full sm:w-xl md:w-2xl'>
@@ -70,8 +83,22 @@ export function TicketGroupTable({
         <div className='w-full flex-col flex items-end mt-4 [&>div]:w-full [&>div]:md:w-3/5 [&>div]:min-w-44 [&>div]:flex [&>div]:justify-between'>
           <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
             <p>Subtotal:</p>
-            <p>{subtotalPriceString}</p>
+            {hasDiscount ? (
+              <p className='line-through text-gray-500'>
+                {subtotalPriceString}
+              </p>
+            ) : (
+              <p>{subtotalPriceString}</p>
+            )}
           </div>
+          {hasDiscount && (
+            <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
+              <p>Subtotal con descuento:</p>
+              <p className='text-green-600 font-semibold'>
+                {subtotalWithDiscountString}
+              </p>
+            </div>
+          )}
           <FeatureWrapper feature={FEATURE_KEYS.SERVICE_FEE}>
             <div className='mb-3 [&>p]:text-end [&>p]:text-lg'>
               <p>Costo de servicio:</p>

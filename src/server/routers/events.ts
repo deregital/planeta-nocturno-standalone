@@ -261,6 +261,54 @@ export const eventsRouter = router({
 
     return event;
   }),
+  validateOrganizerCode: publicProcedure
+    .input(
+      z.object({
+        eventId: z.uuid(),
+        code: z
+          .string()
+          .regex(
+            /^[0-9A-Fa-f]{6}$/,
+            'El código debe ser de 6 dígitos hexadecimales',
+          ),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Buscar directamente eventXOrganizer usando el código del usuario y el eventId con join
+      const result = await ctx.db
+        .select({
+          organizerId: eventXorganizer.organizerId,
+          discountPercentage: eventXorganizer.discountPercentage,
+          fullName: user.fullName,
+        })
+        .from(eventXorganizer)
+        .innerJoin(user, eq(eventXorganizer.organizerId, user.id))
+        .where(
+          and(
+            eq(eventXorganizer.eventId, input.eventId),
+            eq(user.code, input.code.toUpperCase()),
+          ),
+        )
+        .limit(1);
+
+      if (!result.length) {
+        return {
+          valid: false,
+          organizerName: null,
+          organizerId: null,
+          discountPercentage: null,
+        };
+      }
+
+      const eventOrganizer = result[0];
+
+      return {
+        valid: true,
+        organizerName: eventOrganizer.fullName,
+        organizerId: eventOrganizer.organizerId,
+        discountPercentage: eventOrganizer.discountPercentage,
+      };
+    }),
   create: adminProcedure
     .input(
       z.object({
