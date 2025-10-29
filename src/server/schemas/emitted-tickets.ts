@@ -53,10 +53,14 @@ export const emittedBuyerTableSchema = emittedTicketSchema
   });
 
 export const invitedBySchema = z
+  .uuid({ message: 'El organizador debe ser válido' })
+  .nullable()
+  .optional();
+
+// Schema para el código del organizador (6 dígitos hexadecimales)
+export const organizerCodeSchema = z
   .string()
-  .max(40, {
-    error: 'El nombre no es demasiado largo',
-  })
+  .regex(/^[0-9A-Fa-f]{6}$/, 'El código debe ser de 6 dígitos hexadecimales')
   .nullable()
   .optional();
 

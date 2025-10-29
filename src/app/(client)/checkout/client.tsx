@@ -10,7 +10,6 @@ import {
   useRef,
 } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
-import { useSearchParams } from 'next/navigation';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
 import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
@@ -29,7 +28,6 @@ import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
 import { type EmittedTicketInput } from '@/server/schemas/emitted-tickets';
 import { trpc } from '@/server/trpc/client';
-import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
 import 'react-phone-number-input/style.css';
 
 export default function CheckoutClient({
@@ -43,16 +41,19 @@ export default function CheckoutClient({
     ticketsInput: [],
   });
 
-  const searchParams = useSearchParams();
-  const organizerCodeFromUrl = searchParams.get(ORGANIZER_CODE_QUERY_PARAM);
+  // Leer el código del organizador del ticketGroup si existe
+  const organizerCodeFromTicketGroup = ticketGroup.organizerCode;
+  const organizerIdFromTicketGroup = ticketGroup.organizerId;
 
   const [organizerCode, setOrganizerCode] = useState<string>(
-    organizerCodeFromUrl?.toUpperCase().slice(0, 6) || '',
+    organizerCodeFromTicketGroup?.toUpperCase().slice(0, 6) || '',
   );
   const [debouncedOrganizerCode, setDebouncedOrganizerCode] = useState<string>(
-    organizerCodeFromUrl?.toUpperCase().slice(0, 6) || '',
+    organizerCodeFromTicketGroup?.toUpperCase().slice(0, 6) || '',
   );
-  const [organizerId, setOrganizerId] = useState<string | null>(null);
+  const [organizerId, setOrganizerId] = useState<string | null>(
+    organizerIdFromTicketGroup,
+  );
   const [organizerCodeError, setOrganizerCodeError] = useState<
     string | undefined
   >();
@@ -118,13 +119,17 @@ export default function CheckoutClient({
     }
   }, [validateOrganizerCode.isLoading, debouncedOrganizerCode.length]);
 
-  // Initialize debounced code from URL if present
+  // Initialize debounced code from ticketGroup if present
   useEffect(() => {
-    if (organizerCodeFromUrl && organizerCodeFromUrl.length === 6) {
-      const upperCode = organizerCodeFromUrl.toUpperCase().slice(0, 6);
+    if (
+      organizerCodeFromTicketGroup &&
+      organizerCodeFromTicketGroup.length === 6
+    ) {
+      const upperCode = organizerCodeFromTicketGroup.toUpperCase().slice(0, 6);
       setDebouncedOrganizerCode(upperCode);
+      setOrganizerCode(upperCode);
     }
-  }, [organizerCodeFromUrl]);
+  }, [organizerCodeFromTicketGroup]);
 
   const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>(
     () => {

@@ -42,7 +42,7 @@ export const ticketGroupRouter = router({
             (sum, ticket) => sum + ticket.amount,
             0,
           ),
-          invitedBy: input.invitedBy,
+          invitedById: input.invitedBy || null,
         };
 
         const result = await tx
@@ -79,10 +79,21 @@ export const ticketGroupRouter = router({
     .query(async ({ ctx, input }) => {
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input),
+        columns: {
+          id: true,
+          status: true,
+          amountTickets: true,
+          eventId: true,
+          createdAt: true,
+          invitedById: true,
+          isOrganizerGroup: true,
+        },
         with: {
           user: {
             columns: {
+              id: true,
               fullName: true,
+              code: true,
             },
           },
           ticketTypePerGroups: {
@@ -131,7 +142,12 @@ export const ticketGroupRouter = router({
         throw new Error('ticketGroup no encontrado');
       }
 
-      return { ...group, invitedBy: group.user?.fullName ?? '-' };
+      return {
+        ...group,
+        invitedBy: group.user?.fullName ?? '-',
+        organizerCode: group.user?.code ?? null,
+        organizerId: group.invitedById ?? null,
+      };
     }),
 
   getTicketsByEvent: publicProcedure

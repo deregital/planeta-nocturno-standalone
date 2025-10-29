@@ -16,11 +16,28 @@ export const handlePurchase = async (
     invitedBy: string | null;
   },
 ) => {
+  // Validar el código del organizador si existe
+  let organizerId: string | null = null;
+  if (invitedBy && invitedBy.trim() !== '') {
+    const code = invitedBy.toUpperCase().trim();
+    if (code.length === 6) {
+      const validation = await trpc.events.validateOrganizerCode({
+        eventId,
+        code,
+      });
+
+      if (validation.valid && validation.organizerId) {
+        organizerId = validation.organizerId;
+      }
+      // Si no es válido, organizerId queda como null
+    }
+  }
+
   await trpc.ticketGroup
     .create({
       eventId,
       ticketsPerType,
-      invitedBy,
+      invitedBy: organizerId,
     })
     .then(async (ticketGroupId) => {
       if (!ticketGroupId) {
