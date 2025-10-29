@@ -144,6 +144,8 @@ model Event {
 
   emittedTickets EmittedTicket[] @relation("EVENT_X_EMITTED_TICKET")
 
+  ticketXOrganizers TicketXOrganizer[] @relation("EVENT_X_TICKET_X_ORGANIZER")
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("event")
@@ -286,6 +288,9 @@ model TicketXOrganizer {
 
   ticketGroupId String?      @db.Uuid
   ticketGroup   TicketGroup? @relation("TICKET_GROUP_X_ORGANIZER", fields: [ticketGroupId], references: [id])
+
+  eventId String @db.Uuid
+  event   Event  @relation("EVENT_X_TICKET_X_ORGANIZER", fields: [eventId], references: [id])
 
   code String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
 

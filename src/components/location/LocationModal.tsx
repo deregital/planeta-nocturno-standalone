@@ -9,7 +9,7 @@ import {
   handleCreate,
   handleUpdate,
   type UpdateLocationActionState,
-} from '@/app/admin/locations/action';
+} from '@/app/(backoffice)/admin/locations/action';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import {

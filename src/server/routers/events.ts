@@ -475,6 +475,7 @@ export const eventsRouter = router({
                   // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles
                   await tx.insert(ticketXorganizer).values(
                     Array.from({ length: organizer.ticketAmount }).map(() => ({
+                      eventId: eventCreated.id,
                       organizerId: organizer.id,
                       ticketGroupId: thisOrganizerTicketGroup.id,
                       // ticketId será null hasta que se use el código

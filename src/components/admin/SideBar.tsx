@@ -22,6 +22,12 @@ export const navRoutes: {
   roles: (typeof roleEnum.enumValues)[number][];
 }[] = [
   {
+    href: '/organization',
+    icon: <Calendar />,
+    title: 'Organización',
+    roles: ['ORGANIZER'],
+  },
+  {
     href: '/admin',
     icon: <Home />,
     title: 'Dashboard',
