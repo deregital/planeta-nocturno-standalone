@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { type Route } from 'next';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +17,7 @@ export default function ServerErrorCard({
 }: {
   title?: string;
   description?: string;
-  route?: string;
+  route?: Route<string>;
 }) {
   return (
     <div className='flex justify-center items-center h-main-screen'>

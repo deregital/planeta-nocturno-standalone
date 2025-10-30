@@ -32,8 +32,9 @@ export function TicketGroupTable({
     ? subtotalPrice * (1 - discountPercentage / 100)
     : subtotalPrice;
 
+  // Calculate service fee over the subtotal (pre-discount)
   const serviceFeePrice = serviceFee?.enabled
-    ? subtotalWithDiscount * (Number(serviceFee?.value ?? 0) / 100)
+    ? subtotalPrice * (Number(serviceFee?.value ?? 0) / 100)
     : 0;
 
   const subtotalPriceString = formatCurrency(subtotalPrice);
@@ -91,6 +92,7 @@ export function TicketGroupTable({
               <p>{subtotalPriceString}</p>
             )}
           </div>
+
           {hasDiscount && (
             <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
               <p>Subtotal con descuento:</p>
