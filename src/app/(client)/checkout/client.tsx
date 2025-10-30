@@ -395,11 +395,13 @@ export default function CheckoutClient({
           });
         })}
         <Separator className='mt-12 mb-6 bg-accent-dark/70' />
-        {ticketGroup.event.inviteCondition === 'TRADITIONAL' ? (
+        {ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
+        (ticketGroup.event.inviteCondition === 'INVITATION' &&
+          organizerCodeFromTicketGroup) ? (
           <OrganizerCodeOTP
             value={organizerCode}
             onChange={handleOrganizerCodeChange}
-            disabled={false}
+            disabled={ticketGroup.event.inviteCondition === 'INVITATION'}
             isValidating={isValidatingCode || validateOrganizerCode.isLoading}
             organizerName={
               validateOrganizerCode.data?.valid

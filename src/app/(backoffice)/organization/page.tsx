@@ -1,5 +1,3 @@
-import { ChevronDown } from 'lucide-react';
-
 import {
   Accordion,
   AccordionItem,
@@ -37,13 +35,18 @@ export default async function OrganizationPage() {
           <Separator className='border rounded-full border-accent-light' />
           <Accordion type='single' collapsible className='w-full'>
             <AccordionItem value='item-1' className='border-none'>
-              <AccordionTrigger className='cursor-pointer hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-between'>
+              <AccordionTrigger
+                chevronClassName='text-accent size-6'
+                className='bg-transparent cursor-pointer hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-start'
+              >
                 <p className='text-2xl font-bold text-accent group-hover:text-accent/80 transition-colors duration-200'>
                   Eventos Pasados
                 </p>
-                <ChevronDown className='h-6 w-6 text-accent transition-transform duration-200 group-data-[state=open]:rotate-180' />
               </AccordionTrigger>
-              <AccordionContent className='overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'>
+              <AccordionContent
+                contentClassName='w-full'
+                className='overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'
+              >
                 <div className='pt-4 pb-2'>
                   <EventList
                     events={pastEvents.map((event) => event.event)}
@@ -59,3 +62,21 @@ export default async function OrganizationPage() {
     </div>
   );
 }
+
+/*
+      <Accordion type='single' collapsible className='w-full'>
+        <AccordionItem value='item-1' className='border-none'>
+          <AccordionTrigger className='cursor-pointer hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-between'>
+            <p className='text-2xl font-bold text-accent group-hover:text-accent/80 transition-colors duration-200'>
+              Eventos Pasados
+            </p>
+            <ChevronDown className='h-6 w-6 text-accent transition-transform duration-200 group-data-[state=open]:rotate-180' />
+          </AccordionTrigger>
+          <AccordionContent className='overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'>
+            <div className='pt-4 pb-2'>
+              <EventList events={events.pastEvents} />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+*/

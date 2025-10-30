@@ -1,8 +1,12 @@
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
+import {
+  ticketGroup,
+  ticketTypePerGroup,
+  ticketXorganizer,
+} from '@/drizzle/schema';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
 import { publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
@@ -220,6 +224,50 @@ export const ticketGroupRouter = router({
         .returning();
 
       return group[0];
+    }),
+  updateTicketXOrganizerTicketGroupId: publicProcedure
+    .input(
+      z.object({
+        code: z.string(),
+        eventId: z.string().uuid(),
+        ticketGroupId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .update(ticketXorganizer)
+        .set({ ticketGroupId: input.ticketGroupId })
+        .where(
+          and(
+            eq(ticketXorganizer.code, input.code.toUpperCase()),
+            eq(ticketXorganizer.eventId, input.eventId),
+          ),
+        )
+        .returning();
+
+      return result[0];
+    }),
+  updateTicketXOrganizerTicketId: publicProcedure
+    .input(
+      z.object({
+        ticketGroupId: z.string().uuid(),
+        organizerId: z.string().uuid(),
+        ticketId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .update(ticketXorganizer)
+        .set({ ticketId: input.ticketId })
+        .where(
+          and(
+            eq(ticketXorganizer.ticketGroupId, input.ticketGroupId),
+            eq(ticketXorganizer.organizerId, input.organizerId),
+          ),
+        )
+        .returning();
+
+      return result[0];
     }),
   delete: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const result = await ctx.db

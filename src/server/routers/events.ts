@@ -309,6 +309,50 @@ export const eventsRouter = router({
         discountPercentage: eventOrganizer.discountPercentage,
       };
     }),
+  validateInvitationCode: publicProcedure
+    .input(
+      z.object({
+        eventId: z.uuid(),
+        code: z
+          .string()
+          .regex(
+            /^[0-9A-Fa-f]{6}$/,
+            'El código debe ser de 6 dígitos hexadecimales',
+          ),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Buscar ticketXorganizer usando el código y el eventId
+      const result = await ctx.db.query.ticketXorganizer.findFirst({
+        where: and(
+          eq(ticketXorganizer.eventId, input.eventId),
+          eq(ticketXorganizer.code, input.code.toUpperCase()),
+        ),
+      });
+
+      if (!result) {
+        return {
+          valid: false,
+          organizerId: null,
+          alreadyUsed: false,
+        };
+      }
+
+      // Si el código ya tiene un ticketId asociado, significa que ya fue usado
+      if (result.ticketId) {
+        return {
+          valid: false,
+          organizerId: null,
+          alreadyUsed: true,
+        };
+      }
+
+      return {
+        valid: true,
+        organizerId: result.organizerId,
+        alreadyUsed: false,
+      };
+    }),
   create: adminProcedure
     .input(
       z.object({
