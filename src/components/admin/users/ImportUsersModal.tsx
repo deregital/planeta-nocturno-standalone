@@ -131,8 +131,21 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
     generateTemplate();
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      // Limpiar estados cuando se cierra el modal
+      setFile(null);
+      setBatchName('');
+      setResult(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant='outline' className='w-fit'>
           <Upload className='w-4 h-4 mr-2' />
@@ -233,18 +246,26 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
               )}
               <AlertDescription>
                 <div className='space-y-2'>
-                  <p
-                    className={
-                      result.success ? 'text-green-800' : 'text-red-800'
-                    }
-                  >
-                    {result.message}
-                  </p>
-                  {result.errors && result.errors.length > 0 && (
-                    <p className='text-red-800'>
-                      {result.errors.map((error) => (
-                        <li key={error}>{error}</li>
-                      ))}
+                  {result.errors && result.errors.length > 0 ? (
+                    <>
+                      <p className='text-red-800 font-semibold'>
+                        {result.message}
+                      </p>
+                      <ul className='list-disc list-inside space-y-1'>
+                        {result.errors.map((error, index) => (
+                          <li key={index} className='text-red-800 text-sm'>
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p
+                      className={
+                        result.success ? 'text-green-800' : 'text-red-800'
+                      }
+                    >
+                      {result.message}
                     </p>
                   )}
                   {result.createdCount && (
