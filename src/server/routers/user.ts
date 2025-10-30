@@ -211,9 +211,7 @@ export const userRouter = router({
       if (errors.length > 0) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message:
-            'Se encontraron usuarios que ya existen en el sistema: \n' +
-            errors.join('\n\t\t'),
+          message: 'Se encontraron usuarios que ya existen en el sistema',
           cause: { errors },
         });
       }

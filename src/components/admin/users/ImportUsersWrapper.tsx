@@ -28,14 +28,16 @@ export function ImportUsersWrapper() {
     } catch (error: any) {
       // Manejar errores de TRPC
       if (error?.data?.code === 'BAD_REQUEST') {
-        const errorMessages = error.cause?.errors || [];
+        // Los errores están directamente en error.data.errors gracias al errorFormatter
+        const errorMessages = (error.data?.errors as string[]) || [];
+
         return {
           success: false,
           message:
             errorMessages.length > 0
-              ? 'Se encontraron errores de validación'
-              : error.message,
-          errors: errorMessages.length > 0 ? errorMessages : [error.message],
+              ? error.message || 'Se encontraron errores de validación'
+              : error.message || 'Error al importar usuarios',
+          errors: errorMessages.length > 0 ? errorMessages : undefined,
         };
       }
 
