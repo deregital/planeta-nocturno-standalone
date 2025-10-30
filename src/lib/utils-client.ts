@@ -43,7 +43,7 @@ export function formatCurrency(price: number): string {
       style: 'currency',
       currency: 'ARS',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
     })
     .replace(/\s/g, '');
 }
