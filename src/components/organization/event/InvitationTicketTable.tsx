@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/common/DataTable';
 import { type RouterOutputs } from '@/server/routers/app';
 import { Button } from '@/components/ui/button';
+import { INVITE_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 function columns({
   eventSlug,
@@ -47,7 +48,7 @@ function columns({
       header: 'Compartir',
       cell: ({ row }) => {
         const basePath = window.location.origin;
-        const url = `${basePath}/event/${eventSlug}?code=${row.original.code}`;
+        const url = `${basePath}/event/${eventSlug}?${INVITE_CODE_QUERY_PARAM}=${row.original.code}`;
 
         function copyToClipboard() {
           navigator.clipboard.writeText(url);

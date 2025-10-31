@@ -2,7 +2,13 @@
 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useActionState, useEffect, useState } from 'react';
+import {
+  useActionState,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
@@ -10,6 +16,7 @@ import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
 import FormInputGender from '@/components/checkout/FormInputGender';
 import FormInputInstagram from '@/components/checkout/FormInputInstagram';
 import FormInputMail from '@/components/checkout/FormInputMail';
+import OrganizerCodeOTP from '@/components/checkout/OrganizerCodeOTP';
 import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
 import GoBack from '@/components/common/GoBack';
 import InputWithLabel from '@/components/common/InputWithLabel';
@@ -20,6 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
 import { type EmittedTicketInput } from '@/server/schemas/emitted-tickets';
+import { trpc } from '@/server/trpc/client';
 import 'react-phone-number-input/style.css';
 
 export default function CheckoutClient({
@@ -32,6 +40,96 @@ export default function CheckoutClient({
   const [state, action, isPending] = useActionState(handlePurchase, {
     ticketsInput: [],
   });
+
+  // Leer el código del organizador del ticketGroup si existe
+  const organizerCodeFromTicketGroup = ticketGroup.organizerCode;
+  const organizerIdFromTicketGroup = ticketGroup.organizerId;
+
+  const [organizerCode, setOrganizerCode] = useState<string>(
+    organizerCodeFromTicketGroup?.toUpperCase().slice(0, 6) || '',
+  );
+  const [debouncedOrganizerCode, setDebouncedOrganizerCode] = useState<string>(
+    organizerCodeFromTicketGroup?.toUpperCase().slice(0, 6) || '',
+  );
+  const [organizerId, setOrganizerId] = useState<string | null>(
+    organizerIdFromTicketGroup,
+  );
+  const [organizerCodeError, setOrganizerCodeError] = useState<
+    string | undefined
+  >();
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+
+  const validateOrganizerCode = trpc.events.validateOrganizerCode.useQuery(
+    {
+      eventId: ticketGroup.eventId,
+      code: debouncedOrganizerCode,
+    },
+    {
+      enabled: debouncedOrganizerCode.length === 6,
+      retry: false,
+    },
+  );
+
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleOrganizerCodeChange = useCallback((code: string) => {
+    const upperCode = code.toUpperCase();
+    setOrganizerCode(upperCode);
+    setOrganizerCodeError(undefined);
+    setOrganizerId(null);
+    setIsValidatingCode(upperCode.length === 6);
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    if (upperCode.length === 6) {
+      debounceTimeoutRef.current = setTimeout(() => {
+        setDebouncedOrganizerCode(upperCode);
+      }, 500);
+    } else {
+      setDebouncedOrganizerCode('');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (validateOrganizerCode.data) {
+      setIsValidatingCode(false);
+      if (validateOrganizerCode.data.valid) {
+        setOrganizerId(validateOrganizerCode.data.organizerId);
+        setOrganizerCodeError(undefined);
+      } else {
+        setOrganizerId(null);
+        if (debouncedOrganizerCode.length === 6) {
+          setOrganizerCodeError(
+            'El código de organizador no es válido o no está asignado a este evento',
+          );
+        }
+      }
+    }
+  }, [validateOrganizerCode.data, debouncedOrganizerCode.length]);
+
+  // Actualizar el estado de validación cuando comienza el query
+  useEffect(() => {
+    if (
+      validateOrganizerCode.isLoading &&
+      debouncedOrganizerCode.length === 6
+    ) {
+      setIsValidatingCode(true);
+    }
+  }, [validateOrganizerCode.isLoading, debouncedOrganizerCode.length]);
+
+  // Initialize debounced code from ticketGroup if present
+  useEffect(() => {
+    if (
+      organizerCodeFromTicketGroup &&
+      organizerCodeFromTicketGroup.length === 6
+    ) {
+      const upperCode = organizerCodeFromTicketGroup.toUpperCase().slice(0, 6);
+      setDebouncedOrganizerCode(upperCode);
+      setOrganizerCode(upperCode);
+    }
+  }, [organizerCodeFromTicketGroup]);
 
   const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>(
     () => {
@@ -86,7 +184,14 @@ export default function CheckoutClient({
         </p>
       </div>
 
-      <TicketGroupTable ticketGroup={ticketGroup} />
+      <TicketGroupTable
+        ticketGroup={ticketGroup}
+        discountPercentage={
+          validateOrganizerCode.data?.valid
+            ? validateOrganizerCode.data.discountPercentage
+            : null
+        }
+      />
 
       <form
         action={action}
@@ -290,21 +395,52 @@ export default function CheckoutClient({
           });
         })}
         <Separator className='mt-12 mb-6 bg-accent-dark/70' />
-        <InputWithLabel
-          name={'invitedBy'}
-          id={'invitedBy'}
-          label='Invita... (ingresar el nombre del pública)'
-          type='text'
-          placeholder='ej. Pablo Perez'
-          defaultValue={ticketGroup.invitedBy ?? ''}
-          error={
-            typeof state.errors === 'object' && state.errors !== null
-              ? (state.errors as Record<string, string>)['invitedBy']
-              : undefined
-          }
-          className='[&>input]:border-dashed'
-        />
-
+        {ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
+        (ticketGroup.event.inviteCondition === 'INVITATION' &&
+          organizerCodeFromTicketGroup) ? (
+          <OrganizerCodeOTP
+            value={organizerCode}
+            onChange={handleOrganizerCodeChange}
+            disabled={ticketGroup.event.inviteCondition === 'INVITATION'}
+            isValidating={isValidatingCode || validateOrganizerCode.isLoading}
+            organizerName={
+              validateOrganizerCode.data?.valid
+                ? validateOrganizerCode.data.organizerName
+                : null
+            }
+            discountPercentage={
+              validateOrganizerCode.data?.valid
+                ? validateOrganizerCode.data.discountPercentage
+                : null
+            }
+            error={
+              organizerCodeError ||
+              (typeof state.errors === 'object' && state.errors !== null
+                ? (state.errors as Record<string, string>)['invitedBy']
+                : undefined)
+            }
+            label='Ingrese el código de organizador'
+            id='organizerCode'
+            required={false}
+          />
+        ) : (
+          <InputWithLabel
+            name={'invitedBy'}
+            id={'invitedBy'}
+            label='Invita... (ingresar el nombre del pública)'
+            type='text'
+            placeholder='ej. Pablo Perez'
+            defaultValue={ticketGroup.invitedBy ?? ''}
+            error={
+              typeof state.errors === 'object' && state.errors !== null
+                ? (state.errors as Record<string, string>)['invitedBy']
+                : undefined
+            }
+            className='[&>input]:border-dashed'
+            disabled={true}
+          />
+        )}
+        <input hidden name='invitedBy' value={organizerId || ''} readOnly />
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />
         <Button

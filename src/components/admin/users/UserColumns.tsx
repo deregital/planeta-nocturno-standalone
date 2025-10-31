@@ -220,7 +220,35 @@ export const userColumns: StrictColumnDef<
   },
   {
     accessorKey: 'tags',
-    header: () => <p className='text-sm p-2'>Batch</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold p-2'
+        >
+          <span className='text-sm'>Batch</span>
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
+    sortingFn: (rowA, rowB) => {
+      const batchesA = rowA.original.userXTags
+        .map(({ tag }) => tag.name)
+        .sort()
+        .join(', ');
+      const batchesB = rowB.original.userXTags
+        .map(({ tag }) => tag.name)
+        .sort()
+        .join(', ');
+      if (!batchesA && !batchesB) return 0;
+      if (!batchesA) return 1;
+      if (!batchesB) return -1;
+      return batchesA.localeCompare(batchesB);
+    },
     cell: ({ row }) => {
       return (
         <div className='flex flex-wrap gap-1'>

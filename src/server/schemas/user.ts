@@ -25,9 +25,16 @@ export const userSchema = z.object({
     error: 'El DNI/Pasaporte es requerido',
   }),
   birthDate: z.coerce
-    .date()
+    .date({
+      error: (issue) => {
+        if (issue.code === 'invalid_type' || issue.code === 'invalid_date') {
+          return 'La fecha de nacimiento no es válida. Use formato YYYY-MM-DD (ejemplo: 1990-12-31)';
+        }
+        return 'La fecha de nacimiento debe ser una fecha válida en formato YYYY-MM-DD';
+      },
+    })
     .min(new Date('1900-01-01').getTime(), {
-      error: 'La fecha de nacimiento es requerida',
+      error: 'La fecha de nacimiento debe ser posterior al 01/01/1900',
     })
     .transform((date) => {
       // Convert to UTC string

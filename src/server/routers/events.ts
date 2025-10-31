@@ -261,6 +261,98 @@ export const eventsRouter = router({
 
     return event;
   }),
+  validateOrganizerCode: publicProcedure
+    .input(
+      z.object({
+        eventId: z.uuid(),
+        code: z
+          .string()
+          .regex(
+            /^[0-9A-Fa-f]{6}$/,
+            'El código debe ser de 6 dígitos hexadecimales',
+          ),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Buscar directamente eventXOrganizer usando el código del usuario y el eventId con join
+      const result = await ctx.db
+        .select({
+          organizerId: eventXorganizer.organizerId,
+          discountPercentage: eventXorganizer.discountPercentage,
+          fullName: user.fullName,
+        })
+        .from(eventXorganizer)
+        .innerJoin(user, eq(eventXorganizer.organizerId, user.id))
+        .where(
+          and(
+            eq(eventXorganizer.eventId, input.eventId),
+            eq(user.code, input.code.toUpperCase()),
+          ),
+        )
+        .limit(1);
+
+      if (!result.length) {
+        return {
+          valid: false,
+          organizerName: null,
+          organizerId: null,
+          discountPercentage: null,
+        };
+      }
+
+      const eventOrganizer = result[0];
+
+      return {
+        valid: true,
+        organizerName: eventOrganizer.fullName,
+        organizerId: eventOrganizer.organizerId,
+        discountPercentage: eventOrganizer.discountPercentage,
+      };
+    }),
+  validateInvitationCode: publicProcedure
+    .input(
+      z.object({
+        eventId: z.uuid(),
+        code: z
+          .string()
+          .regex(
+            /^[0-9A-Fa-f]{6}$/,
+            'El código debe ser de 6 dígitos hexadecimales',
+          ),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Buscar ticketXorganizer usando el código y el eventId
+      const result = await ctx.db.query.ticketXorganizer.findFirst({
+        where: and(
+          eq(ticketXorganizer.eventId, input.eventId),
+          eq(ticketXorganizer.code, input.code.toUpperCase()),
+        ),
+      });
+
+      if (!result) {
+        return {
+          valid: false,
+          organizerId: null,
+          alreadyUsed: false,
+        };
+      }
+
+      // Si el código ya tiene un ticketId asociado, significa que ya fue usado
+      if (result.ticketId) {
+        return {
+          valid: false,
+          organizerId: null,
+          alreadyUsed: true,
+        };
+      }
+
+      return {
+        valid: true,
+        organizerId: result.organizerId,
+        alreadyUsed: false,
+      };
+    }),
   create: adminProcedure
     .input(
       z.object({
@@ -453,7 +545,7 @@ export const eventsRouter = router({
                 await sendMail({
                   to: org.email,
                   subject: `Ticket de ${organizerEmittedTicket.event.name}`,
-                  body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Orgainzador para ${organizerEmittedTicket.event.name}`,
+                  body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Organizador para ${organizerEmittedTicket.event.name}`,
                   attachments: [Buffer.from(await pdf.arrayBuffer())],
                   eventName: organizerEmittedTicket.event.name,
                 });
@@ -719,7 +811,7 @@ export const eventsRouter = router({
                 await sendMail({
                   to: org.email,
                   subject: `Ticket de ${eventUpdated.name}`,
-                  body: `Hola ${org.fullName}, te enviamos tu ticket de Orgainzador para ${eventUpdated.name}`,
+                  body: `Hola ${org.fullName}, te enviamos tu ticket de Organizador para ${eventUpdated.name}`,
                   attachments: [Buffer.from(await pdf.arrayBuffer())],
                   eventName: eventUpdated.name,
                 });

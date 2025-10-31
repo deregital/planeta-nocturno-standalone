@@ -95,7 +95,9 @@ export default function EventCategoryModal({
             placeholder='Mi categoría'
           />
           <p className='text-red-500 text-sm font-bold'>
-            {createMutation.error?.data?.zodError?.errors?.join(', ')}
+            {(
+              createMutation.error?.data?.zodError as { _errors?: string[] }
+            )?._errors?.join(', ') || createMutation.error?.message}
           </p>
         </div>
         <DialogFooter>

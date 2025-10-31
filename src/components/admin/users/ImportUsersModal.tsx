@@ -6,13 +6,14 @@ import {
   HardDriveDownload,
   Upload,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -25,6 +26,7 @@ import {
   processExcelFile,
   type ImportUserData,
 } from '@/lib/userImportUtils';
+import { cn } from '@/lib/utils';
 
 interface ImportUsersModalProps {
   onImport: (
@@ -47,6 +49,7 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,20 +134,82 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
     generateTemplate();
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      // Limpiar estados cuando se cierra el modal
+      setFile(null);
+      setBatchName('');
+      setResult(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Agrupar errores por fila
+  const groupedErrors = useMemo(() => {
+    if (!result?.errors || result.errors.length === 0) return null;
+
+    const grouped: Record<number, string[]> = {};
+
+    result.errors.forEach((error) => {
+      // Extraer el número de fila del formato "Fila X: mensaje"
+      const match = error.match(/^Fila (\d+):\s*(.+)$/);
+      if (match) {
+        const rowNumber = parseInt(match[1], 10);
+        const errorMessage = match[2];
+
+        if (!grouped[rowNumber]) {
+          grouped[rowNumber] = [];
+        }
+        grouped[rowNumber].push(errorMessage);
+      } else {
+        // Si no tiene formato de fila, agregarlo a la fila 0
+        if (!grouped[0]) {
+          grouped[0] = [];
+        }
+        grouped[0].push(error);
+      }
+    });
+
+    // Ordenar las filas numéricamente
+    return Object.keys(grouped)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((rowNumber) => ({
+        rowNumber,
+        errors: grouped[rowNumber],
+      }));
+  }, [result?.errors]);
+
+  // Scroll al final cuando termine de procesar
+  useEffect(() => {
+    if (result && !isLoading && contentRef.current) {
+      // Usar setTimeout para asegurar que el DOM se haya actualizado
+      setTimeout(() => {
+        contentRef.current?.scrollTo({
+          top: contentRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      }, 100);
+    }
+  }, [result, isLoading]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant='outline' className='w-fit'>
           <Upload className='w-4 h-4 mr-2' />
           Importar usuarios
         </Button>
       </DialogTrigger>
-      <DialogContent className='max-w-2xl'>
+      <DialogContent className='max-w-2xl max-h-[85vh] flex flex-col'>
         <DialogHeader>
           <DialogTitle>Importar usuarios desde Excel</DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-6'>
+        <div ref={contentRef} className='space-y-6 overflow-y-auto flex-1 pr-1'>
           <div className='space-y-2'>
             <Label>Plantilla de ejemplo</Label>
             <Button
@@ -220,31 +285,67 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
           {/* Result display */}
           {result && (
             <Alert
-              className={
+              className={cn(
+                'block',
                 result.success
                   ? 'border-green-200 bg-green-50'
-                  : 'border-red-200 bg-red-50'
-              }
-            >
-              {result.success ? (
-                <CheckCircle2 className='h-4 w-4 text-green-600' />
-              ) : (
-                <AlertCircle className='h-4 w-4 text-red-600' />
+                  : 'border-red-200 bg-red-50',
               )}
+            >
               <AlertDescription>
                 <div className='space-y-2'>
-                  <p
-                    className={
-                      result.success ? 'text-green-800' : 'text-red-800'
-                    }
-                  >
-                    {result.message}
-                  </p>
-                  {result.errors && result.errors.length > 0 && (
-                    <p className='text-red-800'>
-                      {result.errors.map((error) => (
-                        <li key={error}>{error}</li>
-                      ))}
+                  {groupedErrors && groupedErrors.length > 0 ? (
+                    <>
+                      <p className='text-red-800 font-semibold items-center flex'>
+                        <span className='inline-block mr-2'>
+                          {result.success ? (
+                            <CheckCircle2 className='h-4 w-4 text-green-600' />
+                          ) : (
+                            <AlertCircle className='h-4 w-4 text-red-600' />
+                          )}
+                        </span>
+                        {result.message}
+                      </p>
+                      <div className='space-y-3'>
+                        {groupedErrors.map(({ rowNumber, errors }) => (
+                          <div key={rowNumber}>
+                            <p className='text-red-800 font-medium'>
+                              Fila {rowNumber}:
+                            </p>
+                            <ul className='list-disc list-inside ml-4 space-y-1'>
+                              {errors.map((error, index) => (
+                                <li
+                                  key={index}
+                                  className='text-red-800 text-sm'
+                                >
+                                  {error}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : result.errors && result.errors.length > 0 ? (
+                    <>
+                      <p className='text-red-800 font-semibold'>
+                        {result.message}
+                      </p>
+                      <ul className='list-disc list-inside space-y-1'>
+                        {result.errors.map((error, index) => (
+                          <li key={index} className='text-red-800 text-sm'>
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p
+                      className={
+                        result.success ? 'text-green-800' : 'text-red-800'
+                      }
+                    >
+                      {result.message}
                     </p>
                   )}
                   {result.createdCount && (
@@ -256,9 +357,9 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
               </AlertDescription>
             </Alert>
           )}
-
-          {/* Actions */}
-          <div className='flex justify-end space-x-2'>
+        </div>
+        <div className='flex justify-end space-x-2 pt-4 shrink-0'>
+          <DialogClose asChild>
             <Button
               variant='outline'
               onClick={() => setIsOpen(false)}
@@ -266,13 +367,13 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
             >
               Cancelar
             </Button>
-            <Button
-              onClick={handleImport}
-              disabled={!file || !batchName.trim() || isLoading}
-            >
-              {isLoading ? 'Procesando...' : 'Importar usuarios'}
-            </Button>
-          </div>
+          </DialogClose>
+          <Button
+            onClick={handleImport}
+            disabled={!file || !batchName.trim() || isLoading}
+          >
+            {isLoading ? 'Procesando...' : 'Importar usuarios'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

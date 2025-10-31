@@ -10,6 +10,7 @@ import {
   location,
   ticketGroup,
   ticketType as ticketTypeTable,
+  ticketXorganizer,
 } from '@/drizzle/schema';
 import {
   createManyTicketSchema,
@@ -151,6 +152,44 @@ export const emittedTicketsRouter = router({
       const res = await ctx.db.insert(emittedTicket).values(values).returning();
 
       if (!res) throw 'Error al crear ticket/s';
+
+      // Si hay tickets creados, verificar si hay un ticketXorganizer asociado al ticketGroup
+      // y actualizar su ticketId con el primer ticket creado (modo INVITATION)
+      if (res.length > 0 && input.length > 0) {
+        const firstTicketGroupId = input[0].ticketGroupId;
+
+        // Buscar el ticketGroup para obtener el organizerId
+        const group = await ctx.db.query.ticketGroup.findFirst({
+          where: eq(ticketGroup.id, firstTicketGroupId),
+          columns: {
+            invitedById: true,
+          },
+        });
+
+        // Si el ticketGroup tiene un organizerId asociado, buscar el ticketXorganizer
+        if (group?.invitedById) {
+          const ticketXOrg = await ctx.db.query.ticketXorganizer.findFirst({
+            where: and(
+              eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
+              eq(ticketXorganizer.organizerId, group.invitedById),
+            ),
+          });
+
+          // Si existe y no tiene ticketId asignado, actualizarlo con el primer ticket
+          if (ticketXOrg && !ticketXOrg.ticketId) {
+            await ctx.db
+              .update(ticketXorganizer)
+              .set({ ticketId: res[0].id })
+              .where(
+                and(
+                  eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
+                  eq(ticketXorganizer.organizerId, group.invitedById),
+                ),
+              );
+          }
+        }
+      }
+
       return res;
     }),
   getAllUniqueBuyer: adminProcedure.query(async ({ ctx }) => {
