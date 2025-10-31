@@ -21,6 +21,7 @@ export const metadata: Metadata = {
       {
         url: process.env.NEXT_PUBLIC_FAVICON_URL!,
       },
+      '/favicon.ico',
     ],
   },
 };
