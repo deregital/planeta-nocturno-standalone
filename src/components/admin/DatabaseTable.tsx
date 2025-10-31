@@ -32,7 +32,21 @@ type EmittedBuyerTableWithId = EmittedBuyerTable & {
 export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
   {
     accessorKey: 'buyerCode',
-    header: () => <p className='text-sm p-2'>ID</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          ID
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       return <p className='text-sm p-2'>{row.original.buyerCode}</p>;
     },
@@ -323,6 +337,10 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
         columns={columns}
         data={filteredData}
         onClickRow={handleRowClick}
+        initialSortingColumn={{
+          id: 'buyerCode',
+          desc: false,
+        }}
         exportFileName={'Base de Datos'}
       />
     </div>

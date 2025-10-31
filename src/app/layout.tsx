@@ -7,7 +7,6 @@ import { Analytics } from '@vercel/analytics/next';
 
 import { Toaster } from '@/components/ui/sonner';
 import { TRPCReactProvider } from '@/server/trpc/client';
-import { generateSlug } from '@/server/utils/utils';
 
 const dmSans = DM_Sans({
   variable: '--font-dm-sans',
@@ -20,9 +19,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: `${process.env.NEXT_PUBLIC_S3_BUCKET_URL!}/favicons/${generateSlug(process.env.NEXT_PUBLIC_INSTANCE_NAME!)}.png`,
-        sizes: '32x32',
-        type: 'image/png',
+        url: process.env.NEXT_PUBLIC_FAVICON_URL || '/favicon.ico',
       },
     ],
   },
