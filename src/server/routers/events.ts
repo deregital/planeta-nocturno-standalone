@@ -545,7 +545,7 @@ export const eventsRouter = router({
                 await sendMail({
                   to: org.email,
                   subject: `Ticket de ${organizerEmittedTicket.event.name}`,
-                  body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Orgainzador para ${organizerEmittedTicket.event.name}`,
+                  body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Organizador para ${organizerEmittedTicket.event.name}`,
                   attachments: [Buffer.from(await pdf.arrayBuffer())],
                   eventName: organizerEmittedTicket.event.name,
                 });
@@ -811,7 +811,7 @@ export const eventsRouter = router({
                 await sendMail({
                   to: org.email,
                   subject: `Ticket de ${eventUpdated.name}`,
-                  body: `Hola ${org.fullName}, te enviamos tu ticket de Orgainzador para ${eventUpdated.name}`,
+                  body: `Hola ${org.fullName}, te enviamos tu ticket de Organizador para ${eventUpdated.name}`,
                   attachments: [Buffer.from(await pdf.arrayBuffer())],
                   eventName: eventUpdated.name,
                 });
