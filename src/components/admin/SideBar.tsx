@@ -22,6 +22,12 @@ export const navRoutes: {
   roles: (typeof roleEnum.enumValues)[number][];
 }[] = [
   {
+    href: '/organization',
+    icon: <Calendar />,
+    title: 'Organización',
+    roles: ['ORGANIZER'],
+  },
+  {
     href: '/admin',
     icon: <Home />,
     title: 'Dashboard',
@@ -72,7 +78,7 @@ export default function SideBar({
 }) {
   const pathname = usePathname();
   return (
-    <aside className='hidden w-[var(--sidebar-width)] md:flex flex-col py-3 min-h-full'>
+    <aside className='hidden w-(--sidebar-width) md:flex flex-col py-3 min-h-full'>
       {navRoutes.map((route, index) => (
         <SideBarTile
           key={index}

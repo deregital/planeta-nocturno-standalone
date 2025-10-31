@@ -1,5 +1,5 @@
 import { ticketTypesTranslation } from '@/lib/translations';
-import { type EventState } from '@/app/admin/event/create/state';
+import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
 import DeleteTicketTypeModal from '@/components/event/create/ticketType/DeleteTicketTypeModal';
 import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
 import { cn } from '@/lib/utils';

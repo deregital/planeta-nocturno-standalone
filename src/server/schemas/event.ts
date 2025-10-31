@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { inviteCondition } from '@/drizzle/schema';
+
 export const eventSchema = z.object({
   id: z.uuid({
     error: 'El id debe ser UUID',
@@ -43,6 +45,9 @@ export const eventSchema = z.object({
       name: z.string(),
     })
     .array(),
+  inviteCondition: z.enum(inviteCondition.enumValues, {
+    error: 'La condición de invitación es requerida',
+  }),
 });
 
 export const createEventSchema = eventSchema.omit({

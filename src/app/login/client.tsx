@@ -23,12 +23,12 @@ function LoginPage() {
               name='username'
               id='username'
               autoComplete='username'
-              defaultValue={state.username}
+              defaultValue={state.name}
               placeholder='Nombre de usuario'
             />
-            {state.errors?.username && (
+            {state.errors?.name && (
               <p className='mt-2 text-sm font-bold text-red-500'>
-                {state.errors.username}
+                {state.errors.name}
               </p>
             )}
           </div>

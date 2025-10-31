@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { downloadTicket } from '@/app/admin/event/[slug]/actions';
+import { downloadTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

@@ -28,8 +28,11 @@ function AccordionItem({
 function AccordionTrigger({
   className,
   children,
+  chevronClassName,
   ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
+}: React.ComponentProps<typeof AccordionPrimitive.Trigger> & {
+  chevronClassName?: string;
+}) {
   return (
     <AccordionPrimitive.Header className='flex'>
       <AccordionPrimitive.Trigger
@@ -41,7 +44,12 @@ function AccordionTrigger({
         {...props}
       >
         {children}
-        <ChevronDownIcon className='text-on-accent self-center pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200' />
+        <ChevronDownIcon
+          className={cn(
+            'text-on-accent self-center pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200',
+            chevronClassName,
+          )}
+        />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   );
@@ -50,13 +58,19 @@ function AccordionTrigger({
 function AccordionContent({
   className,
   children,
+  contentClassName,
   ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Content>) {
+}: React.ComponentProps<typeof AccordionPrimitive.Content> & {
+  contentClassName?: string;
+}) {
   return (
     <AccordionPrimitive.Content
       data-slot='accordion-content'
       {...props}
-      className='data-[state=closed]:animate-accordion-up mt-3 data-[state=open]:animate-accordion-down overflow-hidden text-sm border-stroke border rounded-md w-[95%] ml-auto'
+      className={cn(
+        'data-[state=closed]:animate-accordion-up mt-3 data-[state=open]:animate-accordion-down overflow-hidden text-sm border-stroke border rounded-md w-[95%] ml-auto',
+        contentClassName,
+      )}
     >
       <div className={cn('p-4 bg-accent-ultra-light', className)}>
         {children}

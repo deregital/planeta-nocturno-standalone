@@ -3,7 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { revalidateLocations } from '@/app/admin/locations/action';
+import { revalidateLocations } from '@/app/(backoffice)/admin/locations/action';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

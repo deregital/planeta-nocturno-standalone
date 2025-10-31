@@ -3,27 +3,21 @@
 import { useActionState } from 'react';
 
 import { type User } from '@/server/types';
-import { updateUser } from '@/app/admin/users/[id]/edit/actions';
 import { UserForm } from '@/components/admin/users/UserForm';
+import { updateUser } from '@/app/(backoffice)/admin/users/[id]/edit/actions';
 
-export function EditUserForm({
-  user,
-}: {
-  user: Pick<User, 'id' | 'fullName' | 'name' | 'email' | 'role'>;
-}) {
-  const [state, handleSubmit, isPending] = useActionState(updateUser, {
+export function EditUserForm({ user }: { user: User }) {
+  const [state, formAction, isPending] = useActionState(updateUser, {
     data: {
-      ...user,
+      fullName: user.fullName,
       name: user.name,
-      password: '',
-    },
-    errors: {
-      general: '',
-      fullName: '',
-      name: '',
-      email: '',
-      role: '',
-      password: '',
+      email: user.email,
+      role: user.role,
+      password: user.password,
+      birthDate: user.birthDate,
+      dni: user.dni,
+      gender: user.gender,
+      phoneNumber: user.phoneNumber,
     },
   });
 
@@ -32,8 +26,8 @@ export function EditUserForm({
       type='EDIT'
       userId={user.id}
       errors={state.errors}
-      state={state.data}
-      handleSubmit={handleSubmit}
+      initialState={state.data}
+      formAction={formAction}
       isPending={isPending}
     />
   );

@@ -114,7 +114,9 @@ export const handlePurchase = async (
   );
 
   const validation = createManyTicketSchema.safeParse(entradas);
-  const validationInvitedBy = invitedBySchema.safeParse(invitedBy);
+  const invitedByValue =
+    invitedBy && invitedBy.trim() !== '' ? invitedBy : null;
+  const validationInvitedBy = invitedBySchema.safeParse(invitedByValue);
 
   const errorsArray: Record<string, string> = {};
   // Validar la edad minima del evento
@@ -178,10 +180,13 @@ export const handlePurchase = async (
 
   await trpc.emittedTickets.createMany(entradas);
 
-  await trpc.ticketGroup.updateInvitedBy({
-    id: ticketGroupId,
-    invitedBy,
-  });
+  // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
+  if (invitedBy && invitedBy.trim() !== '') {
+    await trpc.ticketGroup.updateInvitedBy({
+      id: ticketGroupId,
+      invitedBy,
+    });
+  }
 
   const firstTicket = {
     fullName: entradas[0].fullName,

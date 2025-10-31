@@ -34,15 +34,34 @@ export async function sendMailWithoutAttachments({
   to,
   subject,
   body,
-}: {
-  to: string;
-  subject: string;
-  body: string;
-}) {
+  html,
+}:
+  | {
+      to: string;
+      subject: string;
+      body: string;
+      html?: string;
+    }
+  | {
+      to: string;
+      subject: string;
+      html: string;
+      body?: string;
+    }) {
   return await resend.emails.send({
     from: `${process.env.NEXT_PUBLIC_INSTANCE_NAME} <ticket@${process.env.RESEND_DOMAIN}>`,
     to: to,
     subject: subject,
-    text: body,
+    text: body ?? '',
+    html: html ?? '',
   });
+}
+
+export function generateWelcomeEmail(name: string, password: string) {
+  return `
+    <h1>Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!</h1>
+    <p>Tu nombre de usuario es <b>${name}</b> y tu contraseña es <b>${password}</b></p>
+    <p>Para acceder a la plataforma, ingresá a <a href="${process.env.INSTANCE_WEB_URL}/admin">${process.env.INSTANCE_WEB_URL}/admin</a>.</p>
+    <p>Gracias por unirte a nuestra plataforma.</p>
+  `;
 }

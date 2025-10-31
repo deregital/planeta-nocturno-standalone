@@ -8,7 +8,7 @@ import esPhoneLocale from 'react-phone-number-input/locale/es';
 import { toast } from 'sonner';
 import z from 'zod';
 
-import { emitTicket } from '@/app/admin/event/[slug]/actions';
+import { emitTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
 import { FormRow } from '@/components/common/FormRow';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';

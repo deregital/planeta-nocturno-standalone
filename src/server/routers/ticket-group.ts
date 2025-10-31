@@ -1,8 +1,12 @@
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { ticketGroup, ticketTypePerGroup } from '@/drizzle/schema';
+import {
+  ticketGroup,
+  ticketTypePerGroup,
+  ticketXorganizer,
+} from '@/drizzle/schema';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
 import { publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
@@ -42,7 +46,7 @@ export const ticketGroupRouter = router({
             (sum, ticket) => sum + ticket.amount,
             0,
           ),
-          invitedBy: input.invitedBy,
+          invitedById: input.invitedBy || null,
         };
 
         const result = await tx
@@ -79,7 +83,23 @@ export const ticketGroupRouter = router({
     .query(async ({ ctx, input }) => {
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input),
+        columns: {
+          id: true,
+          status: true,
+          amountTickets: true,
+          eventId: true,
+          createdAt: true,
+          invitedById: true,
+          isOrganizerGroup: true,
+        },
         with: {
+          user: {
+            columns: {
+              id: true,
+              fullName: true,
+              code: true,
+            },
+          },
           ticketTypePerGroups: {
             with: {
               ticketType: {
@@ -101,6 +121,7 @@ export const ticketGroupRouter = router({
               startingDate: true,
               endingDate: true,
               coverImageUrl: true,
+              inviteCondition: true,
             },
             with: {
               location: {
@@ -125,7 +146,12 @@ export const ticketGroupRouter = router({
         throw new Error('ticketGroup no encontrado');
       }
 
-      return group;
+      return {
+        ...group,
+        invitedBy: group.user?.fullName ?? '-',
+        organizerCode: group.user?.code ?? null,
+        organizerId: group.invitedById ?? null,
+      };
     }),
 
   getTicketsByEvent: publicProcedure
@@ -193,11 +219,55 @@ export const ticketGroupRouter = router({
     .mutation(async ({ ctx, input }) => {
       const group = await ctx.db
         .update(ticketGroup)
-        .set({ invitedBy: input.invitedBy })
+        .set({ invitedById: input.invitedBy || null })
         .where(eq(ticketGroup.id, input.id))
         .returning();
 
       return group[0];
+    }),
+  updateTicketXOrganizerTicketGroupId: publicProcedure
+    .input(
+      z.object({
+        code: z.string(),
+        eventId: z.string().uuid(),
+        ticketGroupId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .update(ticketXorganizer)
+        .set({ ticketGroupId: input.ticketGroupId })
+        .where(
+          and(
+            eq(ticketXorganizer.code, input.code.toUpperCase()),
+            eq(ticketXorganizer.eventId, input.eventId),
+          ),
+        )
+        .returning();
+
+      return result[0];
+    }),
+  updateTicketXOrganizerTicketId: publicProcedure
+    .input(
+      z.object({
+        ticketGroupId: z.string().uuid(),
+        organizerId: z.string().uuid(),
+        ticketId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .update(ticketXorganizer)
+        .set({ ticketId: input.ticketId })
+        .where(
+          and(
+            eq(ticketXorganizer.ticketGroupId, input.ticketGroupId),
+            eq(ticketXorganizer.organizerId, input.organizerId),
+          ),
+        )
+        .returning();
+
+      return result[0];
     }),
   delete: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const result = await ctx.db
@@ -253,9 +323,14 @@ export const ticketGroupRouter = router({
         where: eq(ticketGroup.id, input),
         columns: {
           status: true,
-          invitedBy: true,
+          invitedById: true,
         },
         with: {
+          user: {
+            columns: {
+              fullName: true,
+            },
+          },
           emittedTickets: {
             columns: {
               id: true,
@@ -333,7 +408,7 @@ export const ticketGroupRouter = router({
           fullName: ticket.fullName,
           id: ticket.id,
           ticketType: ticket.ticketType.name,
-          invitedBy: group.invitedBy,
+          invitedBy: group.user?.fullName ?? '-',
           slug: ticket.slug,
         });
         return {

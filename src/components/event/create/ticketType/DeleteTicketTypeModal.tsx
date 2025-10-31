@@ -2,7 +2,7 @@
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
