@@ -51,11 +51,11 @@ ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE "ticketType" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "user" ADD COLUMN     "birthDate" TEXT NOT NULL,
+ALTER TABLE "user" ADD COLUMN     "birthDate" TEXT NOT NULL DEFAULT '',
 ADD COLUMN     "code" TEXT NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 6)),
-ADD COLUMN     "dni" TEXT NOT NULL,
-ADD COLUMN     "gender" TEXT NOT NULL,
-ADD COLUMN     "phoneNumber" TEXT NOT NULL,
+ADD COLUMN     "dni" TEXT NOT NULL DEFAULT upper(substr(md5(random()::text), 1, 6)),
+ADD COLUMN     "gender" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "phoneNumber" TEXT NOT NULL DEFAULT '',
 ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- CreateTable
