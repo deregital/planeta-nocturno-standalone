@@ -323,6 +323,10 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
         columns={columns}
         data={filteredData}
         onClickRow={handleRowClick}
+        initialSortingColumn={{
+          id: 'buyerCode',
+          desc: false,
+        }}
         exportFileName={'Base de Datos'}
       />
     </div>
