@@ -427,7 +427,7 @@ export default function CheckoutClient({
           <InputWithLabel
             name={'invitedBy'}
             id={'invitedBy'}
-            label='Invita... (ingresar el nombre del pública)'
+            label='Invita...'
             type='text'
             placeholder='ej. Pablo Perez'
             defaultValue={ticketGroup.invitedBy ?? ''}

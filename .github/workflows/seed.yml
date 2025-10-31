@@ -1,0 +1,89 @@
+name: Seed User
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Username for the new admin user'
+        required: true
+        type: string
+      password:
+        description: 'Password for the new admin user'
+        required: true
+        type: string
+      email:
+        description: 'Email for the new admin user'
+        required: true
+        type: string
+      fullName:
+        description: 'Full name for the new admin user'
+        required: true
+        type: string
+      environment:
+        description: 'Target environment (dev or prod)'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      database:
+        description: 'Database instance name (e.g., INSTANCE1, INSTANCE2)'
+        required: true
+        type: string
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Seed Script
+        env:
+          SEED_USER_NAME: ${{ inputs.name }}
+          SEED_USER_PASSWORD: ${{ inputs.password }}
+          SEED_USER_EMAIL: ${{ inputs.email }}
+          SEED_USER_FULLNAME: ${{ inputs.fullName }}
+        run: |
+          # Construir el nombre del secret basado en el ambiente y la instancia
+          if [ "${{ inputs.environment }}" = "dev" ]; then
+            SECRET_NAME="DEV_DATABASE_URL_${{ inputs.database }}"
+          else
+            SECRET_NAME="PROD_DATABASE_URL_${{ inputs.database }}"
+          fi
+          
+          echo "🔧 Using database: $SECRET_NAME"
+          
+          # Obtener la URL de la base de datos del secret correspondiente
+          SECRETS='${{ toJSON(secrets) }}'
+          DATABASE_URL=$(echo "$SECRETS" | jq -r ".[\"$SECRET_NAME\"]")
+          
+          if [ -z "$DATABASE_URL" ] || [ "$DATABASE_URL" = "null" ]; then
+            echo "❌ Error: Secret $SECRET_NAME not found"
+            exit 1
+          fi
+          
+          echo "✅ Database URL found"
+          echo "👤 Creating user: $SEED_USER_NAME ($SEED_USER_EMAIL)"
+          
+          # Ejecutar el seed de usuario
+          DATABASE_URL="$DATABASE_URL" npx tsx src/drizzle/seed.ts
+          
+          echo "✅ User seed completed!"
+          echo "🚩 Running feature flags seed..."
+          
+          # Ejecutar el seed de feature flags
+          DATABASE_URL="$DATABASE_URL" npx tsx src/drizzle/seed-feature-flag.ts
+          
+          echo "✅ All seeds completed successfully!"
+
