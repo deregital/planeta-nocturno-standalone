@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
-import { DM_Sans } from 'next/font/google';
 import '@/app/globals.css';
 import { Analytics } from '@vercel/analytics/next';
+import { DM_Sans } from 'next/font/google';
 
 import { Toaster } from '@/components/ui/sonner';
 import { TRPCReactProvider } from '@/server/trpc/client';
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: process.env.NEXT_PUBLIC_FAVICON_URL || '/favicon.ico',
+        url: process.env.NEXT_PUBLIC_FAVICON_URL ?? '/icon.ico',
       },
     ],
   },
