@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: process.env.NEXT_PUBLIC_FAVICON_URL || '/favicon.ico',
+        url: process.env.NEXT_PUBLIC_FAVICON_URL ?? '/icon.ico',
       },
     ],
   },
