@@ -1,6 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table';
 import { TrashIcon } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 
 import { DataTable } from '@/components/common/DataTable';
 import { Input } from '@/components/ui/input';
@@ -120,9 +120,15 @@ export function OrganizerTableWithAction({
   );
   const deleteOrganizer = useCreateEventStore((state) => state.deleteOrganizer);
 
+  // Keep a ref to the latest data to avoid recreating the function
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   // Función para calcular el máximo dinámico para cada fila
-  const getMaxForRow = useMemo(() => {
-    return (rowId: string) => {
+  const getMaxForRow = useCallback(
+    (rowId: string) => {
       // En modo TRADITIONAL, usar el máximo fijo
       if (type === 'TRADITIONAL') {
         return maxNumber;
@@ -133,9 +139,14 @@ export function OrganizerTableWithAction({
         return maxNumber;
       }
 
-      const totalOrganizers = data.length;
-      const sumOfAllInputs = data.reduce((sum, row) => sum + row.number, 0);
-      const thisRowValue = data.find((row) => row.id === rowId)?.number || 0;
+      const currentData = dataRef.current;
+      const totalOrganizers = currentData.length;
+      const sumOfAllInputs = currentData.reduce(
+        (sum, row) => sum + row.number,
+        0,
+      );
+      const thisRowValue =
+        currentData.find((row) => row.id === rowId)?.number || 0;
 
       // Fórmula: capacidadLocacion - cantidadOrganizadores - sumaDeInputsDeLasOtrasFilas
       // O sea: capacidadLocacion - cantidadOrganizadores - (sumaTotal - valorDeEstaFila)
@@ -143,8 +154,9 @@ export function OrganizerTableWithAction({
         maxCapacity - totalOrganizers - sumOfAllInputs + thisRowValue;
 
       return Math.max(0, remainingCapacity);
-    };
-  }, [type, maxNumber, maxCapacity, data]);
+    },
+    [type, maxNumber, maxCapacity],
+  );
 
   const memoizedColumns = useMemo(
     () =>

@@ -1,14 +1,14 @@
 import {
   pgTable,
-  uuid,
-  text,
   varchar,
   timestamp,
+  text,
   integer,
-  uniqueIndex,
+  uuid,
   foreignKey,
   doublePrecision,
   boolean,
+  uniqueIndex,
   index,
   primaryKey,
   pgEnum,
@@ -31,11 +31,6 @@ export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'TABLE',
 ]);
 
-export const tag = pgTable('tag', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-});
-
 export const prismaMigrations = pgTable('_prisma_migrations', {
   id: varchar({ length: 36 }).primaryKey().notNull(),
   checksum: varchar({ length: 64 }).notNull(),
@@ -51,31 +46,6 @@ export const prismaMigrations = pgTable('_prisma_migrations', {
     .notNull(),
   appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
 });
-
-export const session = pgTable(
-  'session',
-  {
-    sessionToken: text().notNull(),
-    userId: uuid().notNull(),
-    expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('session_sessionToken_key').using(
-      'btree',
-      table.sessionToken.asc().nullsLast().op('text_ops'),
-    ),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [user.id],
-      name: 'session_userId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
 
 export const location = pgTable('location', {
   id: uuid().defaultRandom().primaryKey().notNull(),
@@ -269,6 +239,32 @@ export const ticketGroup = pgTable(
   ],
 );
 
+export const session = pgTable(
+  'session',
+  {
+    sessionToken: text().notNull(),
+    userId: uuid().notNull(),
+    expires: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    id: uuid().defaultRandom().primaryKey().notNull(),
+  },
+  (table) => [
+    uniqueIndex('session_sessionToken_key').using(
+      'btree',
+      table.sessionToken.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'session_userId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
 export const user = pgTable(
   'user',
   {
@@ -315,31 +311,10 @@ export const user = pgTable(
   ],
 );
 
-export const userXTag = pgTable(
-  '_USER_X_TAG',
-  {
-    a: uuid('A').notNull(),
-    b: uuid('B').notNull(),
-  },
-  (table) => [
-    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
-    foreignKey({
-      columns: [table.a],
-      foreignColumns: [tag.id],
-      name: '_USER_X_TAG_A_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.b],
-      foreignColumns: [user.id],
-      name: '_USER_X_TAG_B_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    primaryKey({ columns: [table.a, table.b], name: '_USER_X_TAG_AB_pkey' }),
-  ],
-);
+export const tag = pgTable('tag', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+});
 
 export const eventXUser = pgTable(
   '_EVENT_X_USER',
@@ -364,6 +339,32 @@ export const eventXUser = pgTable(
       .onUpdate('cascade')
       .onDelete('cascade'),
     primaryKey({ columns: [table.a, table.b], name: '_EVENT_X_USER_AB_pkey' }),
+  ],
+);
+
+export const userXTag = pgTable(
+  '_USER_X_TAG',
+  {
+    a: uuid('A').notNull(),
+    b: uuid('B').notNull(),
+  },
+  (table) => [
+    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.a],
+      foreignColumns: [tag.id],
+      name: '_USER_X_TAG_A_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.b],
+      foreignColumns: [user.id],
+      name: '_USER_X_TAG_B_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    primaryKey({ columns: [table.a, table.b], name: '_USER_X_TAG_AB_pkey' }),
   ],
 );
 
@@ -470,10 +471,6 @@ export const ticketXorganizer = pgTable(
     index('ticketXOrganizer_organizerId_idx').using(
       'btree',
       table.organizerId.asc().nullsLast().op('uuid_ops'),
-    ),
-    index('ticketXOrganizer_ticketId_idx').using(
-      'btree',
-      table.ticketId.asc().nullsLast().op('uuid_ops'),
     ),
     uniqueIndex('ticketXOrganizer_ticketId_key').using(
       'btree',
