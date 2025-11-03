@@ -1,0 +1,47 @@
+-- DropIndex
+DROP INDEX "public"."ticketXOrganizer_ticketId_idx";
+
+-- AlterTable
+ALTER TABLE "account" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "emittedTicket" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "event" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "eventCategory" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "eventXOrganizer" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "feature" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "location" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "session" ADD COLUMN     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP,
+ADD CONSTRAINT "session_pkey" PRIMARY KEY ("id");
+
+-- AlterTable
+ALTER TABLE "ticketGroup" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "ticketType" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "ticketXOrganizer" ALTER COLUMN "code" SET DEFAULT upper(substr(md5(random()::text), 1, 6)),
+ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP,
+ADD CONSTRAINT "ticketXOrganizer_pkey" PRIMARY KEY ("eventId", "code");
+
+-- AlterTable
+ALTER TABLE "user" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP,
+ALTER COLUMN "birthDate" DROP DEFAULT,
+ALTER COLUMN "code" SET DEFAULT upper(substr(md5(random()::text), 1, 6)),
+ALTER COLUMN "dni" DROP DEFAULT,
+ALTER COLUMN "gender" DROP DEFAULT,
+ALTER COLUMN "phoneNumber" DROP DEFAULT;
