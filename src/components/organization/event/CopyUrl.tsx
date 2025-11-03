@@ -12,7 +12,7 @@ export function CopyUrl({ url }: { url: string }) {
   return (
     <Button variant='accent' className='w-fit' onClick={copyToClipboard}>
       <ClipboardIcon className='w-4 h-4' />
-      Copiar mi código de invitación
+      Copiar mi código de descuento
     </Button>
   );
 }

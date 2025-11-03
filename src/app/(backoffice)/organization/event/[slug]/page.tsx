@@ -42,7 +42,7 @@ export default async function EventPage({
 
   return (
     <div className='w-full py-4'>
-      <GoBack route='/organization' />
+      <GoBack route='/organization' className='ml-4' />
       <EventBasicInformation event={event} />
       {event.inviteCondition === 'TRADITIONAL' && (
         <div className='w-full text-center'>

@@ -209,10 +209,22 @@ export const userColumns: StrictColumnDef<
     id: 'email',
     accessorKey: 'email',
     header: () => <p className='text-sm p-2'>Mail</p>,
-    cell: ({ row }) => {
+    cell: ({ row, column }) => {
       const mail = row.original.email;
-      return <p className='text-sm p-2'>{mail}</p>;
+      return (
+        <p
+          className='text-sm p-2 truncate'
+          title={mail}
+          style={{ width: `${column.getSize()}px`, whiteSpace: 'nowrap' }}
+        >
+          {mail}
+        </p>
+      );
     },
+    minSize: 100,
+    maxSize: 200,
+    size: 200,
+    enableResizing: false,
     meta: {
       exportValue: (row) => row.original.email,
       exportHeader: 'Mail',
