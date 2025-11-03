@@ -77,6 +77,7 @@ model Account {
 }
 
 model Session {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   sessionToken String   @unique
   userId       String   @db.Uuid
   expires      DateTime @db.Timestamptz
@@ -280,7 +281,7 @@ model Feature {
 }
 
 model TicketXOrganizer {
-  ticketId String?        @unique @db.Uuid
+  ticketId String?        @db.Uuid
   ticket   EmittedTicket? @relation("TICKET_X_ORGANIZER", fields: [ticketId], references: [id], onDelete: Cascade)
 
   organizerId String @db.Uuid
@@ -297,7 +298,7 @@ model TicketXOrganizer {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@id([eventId, code])
-  @@index([ticketId])
+  @@unique([ticketId])
   @@index([organizerId])
   @@index([code])
   @@map("ticketXOrganizer")

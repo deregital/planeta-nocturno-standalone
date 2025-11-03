@@ -1,12 +1,12 @@
 import {
   pgTable,
+  uuid,
+  text,
   varchar,
   timestamp,
-  text,
   integer,
   uniqueIndex,
   foreignKey,
-  uuid,
   doublePrecision,
   boolean,
   index,
@@ -30,6 +30,11 @@ export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'PAID',
   'TABLE',
 ]);
+
+export const tag = pgTable('tag', {
+  id: uuid().defaultRandom().primaryKey().notNull(),
+  name: text().notNull(),
+});
 
 export const prismaMigrations = pgTable('_prisma_migrations', {
   id: varchar({ length: 36 }).primaryKey().notNull(),
@@ -310,76 +315,31 @@ export const user = pgTable(
   ],
 );
 
-export const ticketXorganizer = pgTable(
-  'ticketXOrganizer',
+export const userXTag = pgTable(
+  '_USER_X_TAG',
   {
-    ticketId: uuid(),
-    organizerId: uuid().notNull(),
-    ticketGroupId: uuid(),
-    eventId: uuid().notNull(),
-    code: text()
-      .default(sql`upper(substr(md5((random())::text), 1, 6))`)
-      .notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    a: uuid('A').notNull(),
+    b: uuid('B').notNull(),
   },
   (table) => [
-    index('ticketXOrganizer_code_idx').using(
-      'btree',
-      table.code.asc().nullsLast().op('text_ops'),
-    ),
-    uniqueIndex('ticketXOrganizer_code_key').using(
-      'btree',
-      table.code.asc().nullsLast().op('text_ops'),
-    ),
-    index('ticketXOrganizer_organizerId_idx').using(
-      'btree',
-      table.organizerId.asc().nullsLast().op('uuid_ops'),
-    ),
-    index('ticketXOrganizer_ticketId_idx').using(
-      'btree',
-      table.ticketId.asc().nullsLast().op('uuid_ops'),
-    ),
-    uniqueIndex('ticketXOrganizer_ticketId_key').using(
-      'btree',
-      table.ticketId.asc().nullsLast().op('uuid_ops'),
-    ),
+    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
     foreignKey({
-      columns: [table.ticketId],
-      foreignColumns: [emittedTicket.id],
-      name: 'ticketXOrganizer_ticketId_fkey',
+      columns: [table.a],
+      foreignColumns: [tag.id],
+      name: '_USER_X_TAG_A_fkey',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
     foreignKey({
-      columns: [table.organizerId],
+      columns: [table.b],
       foreignColumns: [user.id],
-      name: 'ticketXOrganizer_organizerId_fkey',
+      name: '_USER_X_TAG_B_fkey',
     })
       .onUpdate('cascade')
-      .onDelete('restrict'),
-    foreignKey({
-      columns: [table.ticketGroupId],
-      foreignColumns: [ticketGroup.id],
-      name: 'ticketXOrganizer_ticketGroupId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
-    foreignKey({
-      columns: [table.eventId],
-      foreignColumns: [event.id],
-      name: 'ticketXOrganizer_eventId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
+      .onDelete('cascade'),
+    primaryKey({ columns: [table.a, table.b], name: '_USER_X_TAG_AB_pkey' }),
   ],
 );
-
-export const tag = pgTable('tag', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-});
 
 export const eventXUser = pgTable(
   '_EVENT_X_USER',
@@ -404,32 +364,6 @@ export const eventXUser = pgTable(
       .onUpdate('cascade')
       .onDelete('cascade'),
     primaryKey({ columns: [table.a, table.b], name: '_EVENT_X_USER_AB_pkey' }),
-  ],
-);
-
-export const userXTag = pgTable(
-  '_USER_X_TAG',
-  {
-    a: uuid('A').notNull(),
-    b: uuid('B').notNull(),
-  },
-  (table) => [
-    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
-    foreignKey({
-      columns: [table.a],
-      foreignColumns: [tag.id],
-      name: '_USER_X_TAG_A_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.b],
-      foreignColumns: [user.id],
-      name: '_USER_X_TAG_B_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    primaryKey({ columns: [table.a, table.b], name: '_USER_X_TAG_AB_pkey' }),
   ],
 );
 
@@ -506,6 +440,76 @@ export const eventXorganizer = pgTable(
     primaryKey({
       columns: [table.eventId, table.organizerId],
       name: 'eventXOrganizer_pkey',
+    }),
+  ],
+);
+
+export const ticketXorganizer = pgTable(
+  'ticketXOrganizer',
+  {
+    ticketId: uuid(),
+    organizerId: uuid().notNull(),
+    ticketGroupId: uuid(),
+    eventId: uuid().notNull(),
+    code: text()
+      .default(sql`upper(substr(md5((random())::text), 1, 6))`)
+      .notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index('ticketXOrganizer_code_idx').using(
+      'btree',
+      table.code.asc().nullsLast().op('text_ops'),
+    ),
+    uniqueIndex('ticketXOrganizer_code_key').using(
+      'btree',
+      table.code.asc().nullsLast().op('text_ops'),
+    ),
+    index('ticketXOrganizer_organizerId_idx').using(
+      'btree',
+      table.organizerId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('ticketXOrganizer_ticketId_idx').using(
+      'btree',
+      table.ticketId.asc().nullsLast().op('uuid_ops'),
+    ),
+    uniqueIndex('ticketXOrganizer_ticketId_key').using(
+      'btree',
+      table.ticketId.asc().nullsLast().op('uuid_ops'),
+    ),
+    foreignKey({
+      columns: [table.ticketId],
+      foreignColumns: [emittedTicket.id],
+      name: 'ticketXOrganizer_ticketId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.organizerId],
+      foreignColumns: [user.id],
+      name: 'ticketXOrganizer_organizerId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    foreignKey({
+      columns: [table.ticketGroupId],
+      foreignColumns: [ticketGroup.id],
+      name: 'ticketXOrganizer_ticketGroupId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'ticketXOrganizer_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    primaryKey({
+      columns: [table.eventId, table.code],
+      name: 'ticketXOrganizer_pkey',
     }),
   ],
 );

@@ -1,3 +1,6 @@
+-- DropIndex
+DROP INDEX "public"."ticketXOrganizer_ticketId_idx";
+
 -- AlterTable
 ALTER TABLE "account" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
@@ -20,7 +23,9 @@ ALTER TABLE "feature" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE "location" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "session" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "session" ADD COLUMN     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP,
+ADD CONSTRAINT "session_pkey" PRIMARY KEY ("id");
 
 -- AlterTable
 ALTER TABLE "ticketGroup" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
