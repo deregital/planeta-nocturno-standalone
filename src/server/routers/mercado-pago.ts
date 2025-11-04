@@ -1,9 +1,9 @@
 import z from 'zod';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { publicProcedure, router } from '@/server/trpc';
-import { ticketGroup } from '@/drizzle/schema';
+import { eventXorganizer, ticketGroup } from '@/drizzle/schema';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
 
 export const createPreferenceSchema = z.object({
@@ -21,6 +21,10 @@ export const mercadoPagoRouter = router({
       // validar el ticketgroupId
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input.ticketGroupId),
+        columns: {
+          id: true,
+          invitedById: true,
+        },
         with: {
           ticketTypePerGroups: {
             with: {
@@ -67,9 +71,28 @@ export const mercadoPagoRouter = router({
         throw new Error('ticketGroup no encontrado');
       }
 
+      // Get discount percentage from organizer if exists
+      let discountPercentage: number | null = null;
+      if (group.invitedById) {
+        const eventOrganizer = await ctx.db.query.eventXorganizer.findFirst({
+          where: and(
+            eq(eventXorganizer.eventId, group.event.id),
+            eq(eventXorganizer.organizerId, group.invitedById),
+          ),
+          columns: {
+            discountPercentage: true,
+          },
+        });
+
+        if (eventOrganizer?.discountPercentage) {
+          discountPercentage = eventOrganizer.discountPercentage;
+        }
+      }
+
       // calcular el precio total
       const totalPrice = await calculateTotalPrice({
         ticketGroupId: input.ticketGroupId,
+        discountPercentage,
       });
 
       const preference = await new Preference(mercadoPago).create({

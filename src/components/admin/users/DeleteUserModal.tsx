@@ -3,6 +3,7 @@
 import { Trash } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 import {
   Dialog,
@@ -18,12 +19,14 @@ import { trpc } from '@/server/trpc/client';
 
 export function DeleteUserModal({ user }: { user: User }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   const deleteUser = trpc.user.delete.useMutation({
     onSuccess: () => {
       toast.success(
         'Usuario eliminado correctamente, refresque la página para ver los cambios',
       );
+      router.refresh();
       setOpen(false);
     },
     onError: () => {
@@ -34,8 +37,8 @@ export function DeleteUserModal({ user }: { user: User }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size='icon' className='rounded-full' variant={'destructive'}>
-          <Trash />
+        <Button size='icon' className='rounded-md' variant={'ghost'}>
+          <Trash className='text-red-500 size-4' />
         </Button>
       </DialogTrigger>
       <DialogContent>

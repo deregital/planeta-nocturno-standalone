@@ -5,8 +5,8 @@ import { toDate } from 'date-fns-tz';
 import Image from 'next/image';
 import { useState } from 'react';
 
-import { validateGeneralInformation } from '@/app/admin/event/create/actions';
-import { useCreateEventStore } from '@/app/admin/event/create/provider';
+import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
 import EventCategoryModal from '@/components/category/EventCategoryModal';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
@@ -130,7 +130,7 @@ export function EventGeneralInformation({
         className={cn(
           'flex flex-col gap-2 w-full',
           action === 'PREVIEW' &&
-            'md:!flex-row [&>input]:flex-1 items-center md:items-start',
+            'md:flex-row! [&>input]:flex-1 items-center md:items-start',
         )}
       >
         <div className='flex-1 flex flex-col gap-2 w-full'>
@@ -177,7 +177,7 @@ export function EventGeneralInformation({
       </section>
       <section>
         <h3 className='text-accent-dark text-lg font-semibold'>Fecha y hora</h3>
-        <div className='flex flex-col gap-2 md:!flex-row'>
+        <div className='flex flex-col gap-2 md:flex-row!'>
           <InputDateWithLabel
             label='Fecha del evento'
             id='eventDate'
@@ -280,7 +280,7 @@ export function EventGeneralInformation({
           <b>{format(event.endingDate, 'HH:mm a')}</b>
         </span>
       </section>
-      <section className='flex !flex-row gap-2'>
+      <section className='flex flex-row! gap-2'>
         <InputWithLabel
           label='Edad mínima?'
           id='minAgeEnabled'
@@ -468,6 +468,9 @@ export function EventGeneralInformation({
               disabled={action === 'PREVIEW'}
             />
           ))}
+          {event.authorizedUsers.length === 0 && (
+            <p className='text-sm'>No hay usuarios autorizados</p>
+          )}
         </div>
         <p className='text-sm'>
           Los usuarios autorizados podrán{' '}

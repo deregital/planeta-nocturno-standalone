@@ -1,8 +1,9 @@
 import { ticketTypesTranslation } from '@/lib/translations';
-import { type EventState } from '@/app/admin/event/create/state';
+import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
 import DeleteTicketTypeModal from '@/components/event/create/ticketType/DeleteTicketTypeModal';
 import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
 import { cn } from '@/lib/utils';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export default function TicketTypeList({
   ticketTypes,
@@ -30,6 +31,8 @@ export default function TicketTypeList({
       )}
       {ticketTypes.map((type, index) => {
         const { text } = ticketTypesTranslation[type.category];
+        const isOrganizerTicketType =
+          type.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim();
 
         return (
           <li
@@ -45,14 +48,18 @@ export default function TicketTypeList({
             </p>
             {action === 'EDIT' ? (
               <div className='justify-self-end'>
-                <TicketTypeModal
-                  action='EDIT'
-                  maxAvailableLeft={maxAvailableLeft}
-                  key={type.id}
-                  category={type.category}
-                  ticketType={type}
-                />
-                <DeleteTicketTypeModal id={type.id!} />
+                {!isOrganizerTicketType && (
+                  <>
+                    <TicketTypeModal
+                      action='EDIT'
+                      maxAvailableLeft={maxAvailableLeft}
+                      key={type.id}
+                      category={type.category}
+                      ticketType={type}
+                    />
+                    <DeleteTicketTypeModal id={type.id!} />
+                  </>
+                )}
               </div>
             ) : (
               <>

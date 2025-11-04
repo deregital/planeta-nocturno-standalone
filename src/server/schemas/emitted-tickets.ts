@@ -1,8 +1,8 @@
-import { isValidPhoneNumber } from 'libphonenumber-js';
 import z from 'zod';
 
 import { eventSchema } from '@/server/schemas/event';
 import { ticketTypeSchema } from '@/server/schemas/ticket-type';
+import { genderSchema, phoneNumberSchema } from '@/server/schemas/utils';
 
 export const emittedTicketSchema = z.object({
   id: z.string(),
@@ -15,22 +15,8 @@ export const emittedTicketSchema = z.object({
   mail: z.email({
     error: 'El email no es válido',
   }),
-  gender: z.enum(['male', 'female', 'other'], {
-    error: 'Seleccione un género válido',
-  }),
-  phoneNumber: z.string().refine(
-    (value) => {
-      if (value.startsWith('+5415')) {
-        const newNumber = value.replace(/^\+5415/, '+5411');
-        return isValidPhoneNumber(newNumber);
-      }
-
-      return isValidPhoneNumber(value);
-    },
-    {
-      message: 'El teléfono no es válido',
-    },
-  ),
+  gender: genderSchema,
+  phoneNumber: phoneNumberSchema,
   instagram: z.string().optional(),
   birthDate: z.coerce.date().max(new Date(), {
     error: 'La fecha de nacimiento debe ser previa a hoy',
@@ -67,10 +53,14 @@ export const emittedBuyerTableSchema = emittedTicketSchema
   });
 
 export const invitedBySchema = z
+  .uuid({ message: 'El organizador debe ser válido' })
+  .nullable()
+  .optional();
+
+// Schema para el código del organizador (6 dígitos hexadecimales)
+export const organizerCodeSchema = z
   .string()
-  .max(40, {
-    error: 'El nombre no es demasiado largo',
-  })
+  .regex(/^[0-9A-Fa-f]{6}$/, 'El código debe ser de 6 dígitos hexadecimales')
   .nullable()
   .optional();
 

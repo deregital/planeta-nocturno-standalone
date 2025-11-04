@@ -11,6 +11,7 @@ import { statisticsRouter } from '@/server/routers/statistics';
 import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { userRouter } from '@/server/routers/user';
 import { router } from '@/server/trpc';
+import { organizerRouter } from '@/server/routers/organizer';
 
 export const appRouter = router({
   events: eventsRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   statistics: statisticsRouter,
   user: userRouter,
   feature: featureRouter,
+  organizer: organizerRouter,
 });
 
 export type AppRouter = typeof appRouter;

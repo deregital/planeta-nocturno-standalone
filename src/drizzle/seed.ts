@@ -24,7 +24,7 @@ export const db = drizzle(process.env.DATABASE_URL!, {
 async function main() {
   // Leer parámetros de variables de entorno
   const userName = process.env.SEED_USER_NAME || 'nico';
-  const userPassword = process.env.SEED_USER_PASSWORD || 'defaultPassword123';
+  const userPassword = process.env.SEED_USER_PASSWORD || '123456';
   const userEmail = process.env.SEED_USER_EMAIL || 'nico@example.com';
   const userFullName = process.env.SEED_USER_FULLNAME || 'Nico Example';
 
@@ -37,6 +37,10 @@ async function main() {
     email: userEmail,
     fullName: userFullName,
     role: 'ADMIN',
+    dni: '46501954',
+    birthDate: '2005-05-12',
+    gender: 'male',
+    phoneNumber: '+5491138639833',
     // createdAt, id y otros campos usan default
   });
 

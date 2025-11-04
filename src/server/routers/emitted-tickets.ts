@@ -10,6 +10,7 @@ import {
   location,
   ticketGroup,
   ticketType as ticketTypeTable,
+  ticketXorganizer,
 } from '@/drizzle/schema';
 import {
   createManyTicketSchema,
@@ -51,7 +52,7 @@ export const emittedTicketsRouter = router({
                     ? 'PAID'
                     : 'BOOKED',
               amountTickets: 1,
-              invitedBy: input.invitedBy,
+              invitedById: input.invitedBy,
             })
             .returning();
 
@@ -144,12 +145,51 @@ export const emittedTicketsRouter = router({
           ...ticket,
           birthDate: ticket.birthDate.toISOString(),
           slug,
+          eventId: ticket.eventId ?? '',
         };
       });
 
       const res = await ctx.db.insert(emittedTicket).values(values).returning();
 
       if (!res) throw 'Error al crear ticket/s';
+
+      // Si hay tickets creados, verificar si hay un ticketXorganizer asociado al ticketGroup
+      // y actualizar su ticketId con el primer ticket creado (modo INVITATION)
+      if (res.length > 0 && input.length > 0) {
+        const firstTicketGroupId = input[0].ticketGroupId;
+
+        // Buscar el ticketGroup para obtener el organizerId
+        const group = await ctx.db.query.ticketGroup.findFirst({
+          where: eq(ticketGroup.id, firstTicketGroupId),
+          columns: {
+            invitedById: true,
+          },
+        });
+
+        // Si el ticketGroup tiene un organizerId asociado, buscar el ticketXorganizer
+        if (group?.invitedById) {
+          const ticketXOrg = await ctx.db.query.ticketXorganizer.findFirst({
+            where: and(
+              eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
+              eq(ticketXorganizer.organizerId, group.invitedById),
+            ),
+          });
+
+          // Si existe y no tiene ticketId asignado, actualizarlo con el primer ticket
+          if (ticketXOrg && !ticketXOrg.ticketId) {
+            await ctx.db
+              .update(ticketXorganizer)
+              .set({ ticketId: res[0].id })
+              .where(
+                and(
+                  eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
+                  eq(ticketXorganizer.organizerId, group.invitedById),
+                ),
+              );
+          }
+        }
+      }
+
       return res;
     }),
   getAllUniqueBuyer: adminProcedure.query(async ({ ctx }) => {
@@ -243,6 +283,11 @@ export const emittedTicketsRouter = router({
         with: {
           ticketGroup: {
             with: {
+              user: {
+                columns: {
+                  fullName: true,
+                },
+              },
               event: {
                 with: {
                   location: true,
@@ -270,7 +315,7 @@ export const emittedTicketsRouter = router({
         dni: ticket.dni,
         fullName: ticket.fullName,
         id: ticket.id,
-        invitedBy: ticket.ticketGroup.invitedBy,
+        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
         slug: ticket.slug,
       });
 
@@ -297,7 +342,7 @@ export const emittedTicketsRouter = router({
         };
       }
 
-      const ticket = await ctx.db.query.emittedTicket.findFirst({
+      const ticketReturned = await ctx.db.query.emittedTicket.findFirst({
         where: and(
           eq(emittedTicket.id, decryptedTicketId),
           eq(emittedTicket.eventId, input.eventId),
@@ -307,12 +352,17 @@ export const emittedTicketsRouter = router({
           ticketGroup: {
             with: {
               event: true,
+              user: {
+                columns: {
+                  fullName: true,
+                },
+              },
             },
           },
         },
       });
 
-      if (!ticket) {
+      if (!ticketReturned) {
         return {
           success: false,
           ticket: null,
@@ -321,6 +371,13 @@ export const emittedTicketsRouter = router({
         };
       }
       let extraInfo: string = '';
+      const ticket = {
+        ...ticketReturned,
+        ticketGroup: {
+          ...ticketReturned.ticketGroup,
+          invitedBy: ticketReturned.ticketGroup.user?.fullName || '-',
+        },
+      };
 
       if (ticket.scanned) {
         return {
@@ -333,7 +390,7 @@ export const emittedTicketsRouter = router({
                   new Date(ticket.scannedAt),
                   'America/Argentina/Buenos_Aires',
                   'HH:mm',
-                )} ${ticket.ticketGroup.invitedBy ? `- Invitado por ${ticket.ticketGroup.invitedBy}` : ''}`
+                )} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`
               : ''
           }`,
         };
@@ -362,7 +419,7 @@ export const emittedTicketsRouter = router({
         success: true,
         ticket,
         text: `Escaneado con éxito: ${ticket.fullName}`,
-        extraInfo: `${extraInfo} ${ticket.ticketGroup.invitedBy ? `- Invitado por ${ticket.ticketGroup.invitedBy}` : ''}`,
+        extraInfo: `${extraInfo} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`,
       };
     }),
 
@@ -401,7 +458,15 @@ export const emittedTicketsRouter = router({
         where: eq(emittedTicket.eventId, input.eventId),
         with: {
           ticketType: true,
-          ticketGroup: true,
+          ticketGroup: {
+            with: {
+              user: {
+                columns: {
+                  fullName: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -415,6 +480,10 @@ export const emittedTicketsRouter = router({
         buyerCode:
           buyerCodes?.find((code) => code.dni === ticket.dni)?.id.toString() ||
           '---',
+        ticketGroup: {
+          ...ticket.ticketGroup,
+          invitedBy: ticket.ticketGroup.user?.fullName || '-',
+        },
       }));
     }),
 
@@ -433,6 +502,11 @@ export const emittedTicketsRouter = router({
               event: {
                 with: {
                   location: true,
+                },
+              },
+              user: {
+                columns: {
+                  fullName: true,
                 },
               },
             },
@@ -457,7 +531,7 @@ export const emittedTicketsRouter = router({
         dni: ticket.dni,
         fullName: ticket.fullName,
         id: ticket.id,
-        invitedBy: ticket.ticketGroup.invitedBy,
+        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
         slug: ticket.slug,
       });
 

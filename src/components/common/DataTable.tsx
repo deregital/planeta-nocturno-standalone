@@ -1,5 +1,6 @@
 'use client';
 import {
+  type ColumnDef,
   type PaginationState,
   type SortingState,
   type StrictColumnDef,
@@ -45,9 +46,16 @@ import { cn } from '@/lib/utils';
 import { exportTableToXlsx } from '@/lib/utils-client';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 
-interface DataTableProps<TData extends { id: string }, TValue> {
+interface DataTableProps<
+  TData extends { id: string },
+  TValue,
+  TDisableExport extends boolean,
+> {
   fullWidth?: boolean;
-  columns: StrictColumnDef<TData, TValue>[];
+  divClassName?: string;
+  columns: TDisableExport extends true
+    ? ColumnDef<TData, TValue>[]
+    : StrictColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
   onClickRow?: (id: string) => void;
@@ -55,11 +63,17 @@ interface DataTableProps<TData extends { id: string }, TValue> {
   highlightedRowId?: string | null;
   exportFileName?: string;
   exportExcludeColumnIds?: string[]; // Ver type safety
-  disableExport?: boolean;
+  disableExport?: TDisableExport;
+  noResultsPlaceholder?: string;
 }
 
-export function DataTable<TData extends { id: string }, TValue>({
+export function DataTable<
+  TData extends { id: string },
+  TValue,
+  TDisableExport extends boolean,
+>({
   fullWidth = true,
+  divClassName,
   columns,
   data,
   isLoading,
@@ -68,8 +82,9 @@ export function DataTable<TData extends { id: string }, TValue>({
   highlightedRowId,
   exportFileName = 'tabla',
   exportExcludeColumnIds = [],
-  disableExport = false,
-}: DataTableProps<TData, TValue>) {
+  disableExport = false as TDisableExport,
+  noResultsPlaceholder = 'No se encontraron resultados',
+}: DataTableProps<TData, TValue, TDisableExport>) {
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
       ? [
@@ -131,16 +146,6 @@ export function DataTable<TData extends { id: string }, TValue>({
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (state.ok) {
-      handleExportXlsx();
-      setIsDialogOpen(false);
-      startTransition(() => {
-        action(new FormData());
-      });
-    }
-  }, [state.ok, action]);
-
   const handleExportXlsx = useCallback(() => {
     const headerGroup = table.getHeaderGroups()[0];
     const headers = headerGroup.headers
@@ -177,8 +182,22 @@ export function DataTable<TData extends { id: string }, TValue>({
     exportTableToXlsx(headers, flatRows, exportFileName);
   }, [table, exportExcludeColumnIds, exportFileName]);
 
+  useEffect(() => {
+    if (state.ok) {
+      handleExportXlsx();
+      setIsDialogOpen(false);
+      startTransition(() => {
+        action(new FormData());
+      });
+    }
+  }, [state.ok, action, handleExportXlsx]);
   return (
-    <div className='rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto'>
+    <div
+      className={cn(
+        'rounded-md border-stroke/70 border overflow-x-clip w-full max-w-[98%] mx-auto',
+        divClassName,
+      )}
+    >
       {!disableExport && (
         <FeatureWrapper feature={FEATURE_KEYS.DATATABLE_EXPORT}>
           <div className='flex justify-end p-2'>
@@ -231,7 +250,7 @@ export function DataTable<TData extends { id: string }, TValue>({
                     key={header.id}
                     className='text-accent font-bold'
                     style={{
-                      width: header.getSize(),
+                      width: `${header.getSize()}px`,
                     }}
                   >
                     {header.isPlaceholder
@@ -282,7 +301,7 @@ export function DataTable<TData extends { id: string }, TValue>({
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className='h-24 text-center'>
-                No se encontraron resultados.
+                {noResultsPlaceholder}
               </TableCell>
             </TableRow>
           )}
