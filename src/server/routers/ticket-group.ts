@@ -122,6 +122,7 @@ export const ticketGroupRouter = router({
               endingDate: true,
               coverImageUrl: true,
               inviteCondition: true,
+              extraTicketData: true,
             },
             with: {
               location: {
@@ -153,7 +154,14 @@ export const ticketGroupRouter = router({
         organizerId: group.invitedById ?? null,
       };
     }),
-
+  getTicketTypePerGroupById: publicProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const groups = await ctx.db.query.ticketTypePerGroup.findMany({
+        where: eq(ticketTypePerGroup.ticketGroupId, input),
+      });
+      return groups;
+    }),
   getTicketsByEvent: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {

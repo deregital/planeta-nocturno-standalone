@@ -416,6 +416,25 @@ export function EventGeneralInformation({
       </section>
       <section>
         <h3 className='text-accent-dark text-lg font-semibold'>
+          Datos extra por entrada
+        </h3>
+        <InputWithLabel
+          label='Al marcar esta opción se pedirán datos en todas las entradas'
+          id='extraTicketData'
+          disabled={action === 'PREVIEW'}
+          type='checkbox'
+          className='[&>input]:w-6 items-center'
+          placeholder='Datos extra de ticket'
+          name='extraTicketData'
+          checked={event.extraTicketData}
+          onChange={(e) => {
+            if (action === 'PREVIEW') return;
+            handleChange('extraTicketData', e.target.checked);
+          }}
+        />
+      </section>
+      <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
           Usuarios autorizados
         </h3>
         <div>
