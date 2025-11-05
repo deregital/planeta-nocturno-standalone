@@ -245,14 +245,28 @@ export const handlePurchase = async (
 
     // Enviar emails de forma secuencial para evitar rate limits
     try {
-      for (const pdf of pdfs) {
+      // Enviar un solo mail con todas las entradas si extraTicketData = false o si la feature EXTRA_DATA_CHECKOUT está desactivada
+      if (
+        !group.event.extraTicketData ||
+        (await checkFeature(FEATURE_KEYS.EXTRA_DATA_CHECKOUT, () => true, true))
+      ) {
         await trpc.mail.send({
           eventName: group.event.name,
-          receiver: pdf.ticket.mail,
-          subject: `Llegaron tus tickets para ${group.event.name}!`,
+          receiver: entradas[0].mail,
+          subject: `¡Llegaron tus tickets para ${group.event.name}!`,
           body: `Te esperamos.`,
-          attatchments: [pdf.pdf.blob],
+          attatchments: pdfs.map((pdf) => pdf.pdf.blob),
         });
+      } else {
+        for (const pdf of pdfs) {
+          await trpc.mail.send({
+            eventName: group.event.name,
+            receiver: pdf.ticket.mail,
+            subject: `¡Llegaron tus tickets para ${group.event.name}!`,
+            body: `Te esperamos.`,
+            attatchments: [pdf.pdf.blob],
+          });
+        }
       }
     } catch (error) {
       console.error(error);

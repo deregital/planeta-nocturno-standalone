@@ -282,7 +282,7 @@ export function EventGeneralInformation({
       </section>
       <section className='flex flex-row! gap-2'>
         <InputWithLabel
-          label='Edad mínima?'
+          label='¿Edad mínima?'
           id='minAgeEnabled'
           disabled={action === 'PREVIEW'}
           type='checkbox'
