@@ -33,12 +33,19 @@ export const handlePurchase = async (
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
   const invitedBy = formData.get('invitedBy')?.toString() || '';
 
-  if (!eventId || !ticketGroupId) {
+  if (!eventId) {
     return {
       ticketsInput: prevState.ticketsInput,
       errors: [
         'El evento no está asignado, vuelva a hacer el proceso desde la home',
       ],
+    };
+  }
+
+  if (!ticketGroupId) {
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: ['Ha ocurrido un error, vuelva a hacer el proceso desde la home'],
     };
   }
 
@@ -48,7 +55,6 @@ export const handlePurchase = async (
     formDataRecord[key] = value.toString();
   }
 
-  // REFORMULAR
   for (const [key, value] of formData.entries()) {
     const [campo, id] = key.split('_');
     if (!campo || !id) continue;
@@ -71,7 +77,7 @@ export const handlePurchase = async (
         ticketTypeId: campo === 'ticketTypeId' ? valueString : '',
         ticketGroupId: campo === 'ticketGroupId' ? valueString : '',
         paidOnLocation: false,
-        eventId: eventId?.toString() ?? null,
+        eventId: eventId.toString(),
       });
     } else {
       if (
@@ -96,6 +102,34 @@ export const handlePurchase = async (
           continue;
         }
         entradas[index][campo] = valueString;
+      }
+    }
+  }
+
+  const entradaForAll = entradas.find((e) => e.id === 'all-tickets');
+
+  if (entradaForAll) {
+    const ticketTypes =
+      await trpc.ticketGroup.getTicketTypePerGroupById(ticketGroupId);
+
+    entradas.pop();
+
+    for (const ticketType of ticketTypes) {
+      for (let i = 0; i < ticketType.amount; i++) {
+        entradas.push({
+          id: entradaForAll.id,
+          fullName: entradaForAll.fullName,
+          dni: entradaForAll.dni,
+          mail: entradaForAll.mail,
+          birthDate: entradaForAll.birthDate,
+          gender: entradaForAll.gender,
+          phoneNumber: entradaForAll.phoneNumber,
+          instagram: entradaForAll.instagram,
+          ticketTypeId: ticketType.ticketTypeId,
+          ticketGroupId: ticketGroupId,
+          paidOnLocation: false,
+          eventId: eventId.toString(),
+        });
       }
     }
   }
