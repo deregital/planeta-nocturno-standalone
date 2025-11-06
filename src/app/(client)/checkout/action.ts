@@ -114,11 +114,16 @@ export const handlePurchase = async (
 
     entradas.pop();
 
+    let totalTickets = 0;
     for (const ticketType of ticketTypes) {
       for (let i = 0; i < ticketType.amount; i++) {
+        totalTickets++;
         entradas.push({
           id: entradaForAll.id,
-          fullName: entradaForAll.fullName,
+          fullName:
+            totalTickets === 1
+              ? entradaForAll.fullName
+              : `${entradaForAll.fullName} #${totalTickets}`,
           dni: entradaForAll.dni,
           mail: entradaForAll.mail,
           birthDate: entradaForAll.birthDate,
