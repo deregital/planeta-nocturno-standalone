@@ -1,7 +1,7 @@
-import { ticketTypesTranslation } from '@/lib/translations';
 import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
 import DeleteTicketTypeModal from '@/components/event/create/ticketType/DeleteTicketTypeModal';
 import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
+import { ticketTypesTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
@@ -38,7 +38,7 @@ export default function TicketTypeList({
           <li
             key={index}
             className={cn(
-              `border border-stroke rounded-md grid gap-2 items-center px-5`,
+              `border border-stroke rounded-md grid gap-2 items-center px-5 min-h-10`,
               action === 'EDIT' ? 'grid-cols-3' : 'grid-cols-5 py-2',
             )}
           >

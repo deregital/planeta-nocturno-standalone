@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 
-import { trpc } from '@/server/trpc/client';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
+import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
+import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
-import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
 import { ticketTypeCategory } from '@/drizzle/schema';
+import { trpc } from '@/server/trpc/client';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export function TraditionalTicketTypeAction({
   back,
@@ -33,7 +34,13 @@ export function TraditionalTicketTypeAction({
       return;
     }
 
-    addOrganizerTicketType();
+    if (
+      organizers.length > 0 &&
+      !ticketTypes.some((t) => t.name === ORGANIZER_TICKET_TYPE_NAME)
+    ) {
+      addOrganizerTicketType();
+    }
+
     next?.();
   }
 
