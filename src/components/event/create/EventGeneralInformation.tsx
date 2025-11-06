@@ -325,7 +325,7 @@ export function EventGeneralInformation({
             id='extraTicketData'
             disabled={action === 'PREVIEW'}
             type='checkbox'
-            className='[&>input]:w-6 items-center flex-4'
+            className='[&>input]:w-6 items-center flex-3'
             placeholder='Datos extra de ticket'
             name='extraTicketData'
             checked={event.extraTicketData}
