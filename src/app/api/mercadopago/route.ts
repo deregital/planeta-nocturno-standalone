@@ -62,14 +62,27 @@ export async function POST(req: Request) {
     );
 
     // enviar mail con los pdf de forma secuencial para evitar rate limits
-    for (const pdf of pdfs) {
+    if (
+      !group.event.extraTicketData ||
+      (await checkFeature(FEATURE_KEYS.EXTRA_DATA_CHECKOUT, () => true, true))
+    ) {
       await trpc.mail.send({
         eventName: group.event.name,
-        receiver: pdf.ticket.mail,
-        subject: `Llegaron tus tickets para ${group.event.name}!`,
+        receiver: pdfs[0].ticket.mail,
+        subject: `¡Llegaron tus tickets para ${group.event.name}!`,
         body: `Te esperamos.`,
-        attatchments: [pdf.pdf.blob],
+        attatchments: pdfs.map((pdf) => pdf.pdf.blob),
       });
+    } else {
+      for (const pdf of pdfs) {
+        await trpc.mail.send({
+          eventName: group.event.name,
+          receiver: pdf.ticket.mail,
+          subject: `¡Llegaron tus tickets para ${group.event.name}!`,
+          body: `Te esperamos.`,
+          attatchments: [pdf.pdf.blob],
+        });
+      }
     }
 
     await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {

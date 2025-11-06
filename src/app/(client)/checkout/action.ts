@@ -33,12 +33,19 @@ export const handlePurchase = async (
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
   const invitedBy = formData.get('invitedBy')?.toString() || '';
 
-  if (!eventId || !ticketGroupId) {
+  if (!eventId) {
     return {
       ticketsInput: prevState.ticketsInput,
       errors: [
         'El evento no está asignado, vuelva a hacer el proceso desde la home',
       ],
+    };
+  }
+
+  if (!ticketGroupId) {
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: ['Ha ocurrido un error, vuelva a hacer el proceso desde la home'],
     };
   }
 
@@ -48,7 +55,6 @@ export const handlePurchase = async (
     formDataRecord[key] = value.toString();
   }
 
-  // REFORMULAR
   for (const [key, value] of formData.entries()) {
     const [campo, id] = key.split('_');
     if (!campo || !id) continue;
@@ -71,7 +77,7 @@ export const handlePurchase = async (
         ticketTypeId: campo === 'ticketTypeId' ? valueString : '',
         ticketGroupId: campo === 'ticketGroupId' ? valueString : '',
         paidOnLocation: false,
-        eventId: eventId?.toString() ?? null,
+        eventId: eventId.toString(),
       });
     } else {
       if (
@@ -96,6 +102,39 @@ export const handlePurchase = async (
           continue;
         }
         entradas[index][campo] = valueString;
+      }
+    }
+  }
+
+  const entradaForAll = entradas.find((e) => e.id === 'all-tickets');
+
+  if (entradaForAll) {
+    const ticketTypes =
+      await trpc.ticketGroup.getTicketTypePerGroupById(ticketGroupId);
+
+    entradas.pop();
+
+    let totalTickets = 0;
+    for (const ticketType of ticketTypes) {
+      for (let i = 0; i < ticketType.amount; i++) {
+        totalTickets++;
+        entradas.push({
+          id: entradaForAll.id,
+          fullName:
+            totalTickets === 1
+              ? entradaForAll.fullName
+              : `${entradaForAll.fullName} #${totalTickets}`,
+          dni: entradaForAll.dni,
+          mail: entradaForAll.mail,
+          birthDate: entradaForAll.birthDate,
+          gender: entradaForAll.gender,
+          phoneNumber: entradaForAll.phoneNumber,
+          instagram: entradaForAll.instagram,
+          ticketTypeId: ticketType.ticketTypeId,
+          ticketGroupId: ticketGroupId,
+          paidOnLocation: false,
+          eventId: eventId.toString(),
+        });
       }
     }
   }
@@ -211,14 +250,28 @@ export const handlePurchase = async (
 
     // Enviar emails de forma secuencial para evitar rate limits
     try {
-      for (const pdf of pdfs) {
+      // Enviar un solo mail con todas las entradas si extraTicketData = false o si la feature EXTRA_DATA_CHECKOUT está desactivada
+      if (
+        !group.event.extraTicketData ||
+        (await checkFeature(FEATURE_KEYS.EXTRA_DATA_CHECKOUT, () => true, true))
+      ) {
         await trpc.mail.send({
           eventName: group.event.name,
-          receiver: pdf.ticket.mail,
-          subject: `Llegaron tus tickets para ${group.event.name}!`,
+          receiver: entradas[0].mail,
+          subject: `¡Llegaron tus tickets para ${group.event.name}!`,
           body: `Te esperamos.`,
-          attatchments: [pdf.pdf.blob],
+          attatchments: pdfs.map((pdf) => pdf.pdf.blob),
         });
+      } else {
+        for (const pdf of pdfs) {
+          await trpc.mail.send({
+            eventName: group.event.name,
+            receiver: pdf.ticket.mail,
+            subject: `¡Llegaron tus tickets para ${group.event.name}!`,
+            body: `Te esperamos.`,
+            attatchments: [pdf.pdf.blob],
+          });
+        }
       }
     } catch (error) {
       console.error(error);
