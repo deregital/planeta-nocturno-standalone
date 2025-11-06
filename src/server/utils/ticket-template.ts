@@ -101,7 +101,7 @@ export async function generateTicketTemplate(
           rotate: 0,
           alignment: 'left',
           verticalAlignment: 'top',
-          fontSize: 32,
+          fontSize: 28,
           lineHeight: 1,
           characterSpacing: 0,
           fontColor: accentText,

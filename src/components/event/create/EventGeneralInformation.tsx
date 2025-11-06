@@ -280,38 +280,61 @@ export function EventGeneralInformation({
           <b>{format(event.endingDate, 'HH:mm a')}</b>
         </span>
       </section>
-      <section className='flex flex-row! gap-2'>
-        <InputWithLabel
-          label='Edad mínima?'
-          id='minAgeEnabled'
-          disabled={action === 'PREVIEW'}
-          type='checkbox'
-          className='[&>input]:w-6 items-center'
-          placeholder='Edad mínima'
-          name='minAgeEnabled'
-          checked={event.minAge !== null}
-          onChange={(e) => {
-            if (action === 'PREVIEW') return;
-            handleChange('minAge', e.target.checked ? 0 : null);
-          }}
-        />
-        {event.minAge !== null && (
+      <section className='flex gap-2'>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Edad mínima y datos múltiples por entrada
+        </h3>
+        <div className='flex flex-row! gap-2'>
+          <div className='flex flex-row flex-1 gap-2'>
+            <InputWithLabel
+              label='¿Edad mínima?'
+              id='minAgeEnabled'
+              disabled={action === 'PREVIEW'}
+              type='checkbox'
+              className='[&>input]:w-6 items-center'
+              placeholder='Edad mínima'
+              name='minAgeEnabled'
+              checked={event.minAge !== null}
+              onChange={(e) => {
+                if (action === 'PREVIEW') return;
+                handleChange('minAge', e.target.checked ? 0 : null);
+              }}
+            />
+            {event.minAge !== null && (
+              <InputWithLabel
+                label='Edad mínima'
+                id='minAge'
+                type='number'
+                className='flex-1'
+                placeholder='Edad mínima'
+                name='minAge'
+                onChange={(e) => {
+                  handleChange('minAge', parseInt(e.target.value));
+                }}
+                error={error.minAge}
+                defaultValue={
+                  isNaN(event.minAge ?? 0) ? undefined : event.minAge!
+                }
+                readOnly={action === 'PREVIEW'}
+                disabled={action === 'PREVIEW'}
+              />
+            )}
+          </div>
           <InputWithLabel
-            label='Edad mínima'
-            id='minAge'
-            type='number'
-            className='flex-1'
-            placeholder='Edad mínima'
-            name='minAge'
-            onChange={(e) => {
-              handleChange('minAge', parseInt(e.target.value));
-            }}
-            error={error.minAge}
-            defaultValue={isNaN(event.minAge ?? 0) ? undefined : event.minAge!}
-            readOnly={action === 'PREVIEW'}
+            label='Pedir datos personales en todas las entradas'
+            id='extraTicketData'
             disabled={action === 'PREVIEW'}
+            type='checkbox'
+            className='[&>input]:w-6 items-center flex-3'
+            placeholder='Datos extra de ticket'
+            name='extraTicketData'
+            checked={event.extraTicketData}
+            onChange={(e) => {
+              if (action === 'PREVIEW') return;
+              handleChange('extraTicketData', e.target.checked);
+            }}
           />
-        )}
+        </div>
       </section>
       <section>
         <h3 className='text-accent-dark text-lg font-semibold'>

@@ -13,9 +13,9 @@ import {
   event as eventSchema,
   eventXorganizer,
   eventXUser,
+  location as locationSchema,
   ticketGroup,
   ticketType,
-  location as locationSchema,
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
@@ -24,10 +24,12 @@ import {
   createEventSchema,
   eventSchema as eventSchemaZod,
 } from '@/server/schemas/event';
+import { organizerSchema } from '@/server/schemas/organizer';
 import {
   createTicketTypeSchema,
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
+import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
   publicProcedure,
@@ -35,17 +37,15 @@ import {
   ticketingProcedure,
 } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import {
   type PDFDataGroupedTicketType,
   type PDFDataOrderName,
   presentismoPDFSchema,
   presentismoPDFSchemaGroupedTicketType,
 } from '@/server/utils/presentismo-pdf';
-import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
-import { organizerSchema } from '@/server/schemas/organizer';
-import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { generatePdf } from '@/server/utils/ticket-template';
-import { sendMail } from '@/server/services/mail';
+import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -395,6 +395,7 @@ export const eventsRouter = router({
         locationId: event.locationId,
         categoryId: event.categoryId,
         inviteCondition: event.inviteCondition,
+        extraTicketData: event.extraTicketData,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -622,6 +623,7 @@ export const eventsRouter = router({
         slug: sameSlug,
         locationId: event.locationId,
         categoryId: event.categoryId,
+        extraTicketData: event.extraTicketData,
       };
 
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(
