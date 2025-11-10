@@ -11,6 +11,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Download, Loader } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import {
   startTransition,
   useActionState,
@@ -85,6 +86,9 @@ export function DataTable<
   disableExport = false as TDisableExport,
   noResultsPlaceholder = 'No se encontraron resultados',
 }: DataTableProps<TData, TValue, TDisableExport>) {
+  const { data: session } = useSession();
+  const isTicketing = session?.user.role === 'TICKETING';
+
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
       ? [
@@ -191,6 +195,7 @@ export function DataTable<
       });
     }
   }, [state.ok, action, handleExportXlsx]);
+
   return (
     <div
       className={cn(
@@ -198,7 +203,7 @@ export function DataTable<
         divClassName,
       )}
     >
-      {!disableExport && (
+      {!disableExport && !isTicketing && (
         <FeatureWrapper feature={FEATURE_KEYS.DATATABLE_EXPORT}>
           <div className='flex justify-end p-2'>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

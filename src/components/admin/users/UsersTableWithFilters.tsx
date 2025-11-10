@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
-import { SessionProvider } from 'next-auth/react';
 
 import { userColumns } from '@/components/admin/users/UserColumns';
 import { DataTable } from '@/components/common/DataTable';
@@ -138,14 +137,12 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
           </div>
         </div>
       </div>
-      <SessionProvider>
-        <DataTable
-          fullWidth={true}
-          columns={userColumns}
-          data={filteredData}
-          exportFileName={`Usuarios`}
-        />
-      </SessionProvider>
+      <DataTable
+        fullWidth={true}
+        columns={userColumns}
+        data={filteredData}
+        exportFileName={`Usuarios`}
+      />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { Loader2 } from 'lucide-react';
-import { SessionProvider } from 'next-auth/react';
 import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
@@ -30,31 +29,29 @@ async function EventDetails({ slug }: { slug: string }) {
         <EventBasicInformation event={event} />
         <QuantityTicketsEmitted event={event} />
       </div>
-      <SessionProvider>
-        <div className='flex justify-between w-full px-4 mt-2'>
-          <div className='flex-1 flex justify-center items-center'>
-            <div className='md:flex md:gap-x-2 md:items-center grid grid-cols-2 gap-2 md:grid-cols-none'>
-              <div className='md:order-1 order-3'>
-                <DeleteEventModal event={event} />
-              </div>
-              <div className='md:order-2 order-1'>
-                <ScanTicket eventId={event.id} eventSlug={event.slug} />
-              </div>
-              {event.inviteCondition === 'TRADITIONAL' && (
-                <div className='md:order-3 order-2'>
-                  <EmitTicketModal event={event} />
-                </div>
-              )}
-              {event.inviteCondition === 'TRADITIONAL' && (
-                <div className='md:order-4 order-4'>
-                  <ToggleActivateButton event={event} />
-                </div>
-              )}
+      <div className='flex justify-between w-full px-4 mt-2'>
+        <div className='flex-1 flex justify-center items-center'>
+          <div className='md:flex md:gap-x-2 md:items-center grid grid-cols-2 gap-2 md:grid-cols-none'>
+            <div className='md:order-1 order-3'>
+              <DeleteEventModal event={event} />
             </div>
+            <div className='md:order-2 order-1'>
+              <ScanTicket eventId={event.id} eventSlug={event.slug} />
+            </div>
+            {event.inviteCondition === 'TRADITIONAL' && (
+              <div className='md:order-3 order-2'>
+                <EmitTicketModal event={event} />
+              </div>
+            )}
+            {event.inviteCondition === 'TRADITIONAL' && (
+              <div className='md:order-4 order-4'>
+                <ToggleActivateButton event={event} />
+              </div>
+            )}
           </div>
         </div>
-        <TicketTableWithTabs ticketTypes={event.ticketTypes} />
-      </SessionProvider>
+      </div>
+      <TicketTableWithTabs ticketTypes={event.ticketTypes} />
     </div>
   );
 }

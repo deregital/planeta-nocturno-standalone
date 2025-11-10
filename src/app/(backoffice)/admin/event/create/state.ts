@@ -2,13 +2,13 @@ import { createStore } from 'zustand/vanilla';
 
 import { type CreateEventSchema } from '@/server/schemas/event';
 import {
-  type CreateTicketTypeSchema,
-  type TicketTypeSchema,
-} from '@/server/schemas/ticket-type';
-import {
   type OrganizerBaseSchema,
   type OrganizerSchema,
 } from '@/server/schemas/organizer';
+import {
+  type CreateTicketTypeSchema,
+  type TicketTypeSchema,
+} from '@/server/schemas/ticket-type';
 import { type InviteCondition } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
@@ -63,6 +63,7 @@ const initialState: EventState = {
     minAge: null,
     authorizedUsers: [],
     inviteCondition: 'TRADITIONAL',
+    extraTicketData: false,
   },
   ticketTypes: [],
   organizers: [],

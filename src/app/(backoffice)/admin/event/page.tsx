@@ -1,4 +1,3 @@
-import { SessionProvider } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/server/auth';
@@ -26,9 +25,7 @@ export default async function Page() {
 
   return (
     <div>
-      <SessionProvider>
-        <Client events={events} />
-      </SessionProvider>
+      <Client events={events} />
     </div>
   );
 }

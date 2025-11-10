@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { SessionProvider } from 'next-auth/react';
 
 import { auth } from '@/server/auth';
 
@@ -18,5 +17,5 @@ export default async function OrganizationLayout({
     redirect('/admin');
   }
 
-  return <SessionProvider>{children}</SessionProvider>;
+  return children;
 }
