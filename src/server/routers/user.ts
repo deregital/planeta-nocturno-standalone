@@ -1,21 +1,21 @@
 import { TRPCError } from '@trpc/server';
 import { compare, hash } from 'bcrypt';
-import { eq, or, inArray } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { type db } from '@/drizzle';
 
-import { user as userTable, tag as tagTable, userXTag } from '@/drizzle/schema';
+import { tag as tagTable, user as userTable, userXTag } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import {
   generateWelcomeEmail,
   sendMailWithoutAttachments,
 } from '@/server/services/mail';
-import { getBuyersCodeByDni } from '@/server/utils/utils';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { type Tag, type User } from '@/server/types';
 import { generateRandomPassword } from '@/server/utils/users';
+import { getBuyersCodeByDni } from '@/server/utils/utils';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
@@ -134,7 +134,7 @@ export const userRouter = router({
             telefono: z.string(),
           }),
         ),
-        batchName: z.string().min(1, 'El nombre del batch es requerido'),
+        batchName: z.string().min(1, 'El nombre del grupo es requerido'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
