@@ -1,16 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
-import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
-import { trpc } from '@/server/trpc/client';
 import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 import { Slider } from '@/components/ui/slider';
-import { type InviteCondition } from '@/server/types';
+import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
 import {
   calculateMaxTicketsPerOrganizer,
   useOrganizerTickets,
 } from '@/hooks/useOrganizerTickets';
 import { cn } from '@/lib/utils';
+import { trpc } from '@/server/trpc/client';
+import { type InviteCondition } from '@/server/types';
 
 export function EventOrganizers({ type }: { type: InviteCondition }) {
   const { maxNumber, maxCapacity } = useOrganizerTickets(type);
@@ -237,8 +237,8 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
         <div className='w-full max-w-1/3'>
           <p>
             {type === 'TRADITIONAL'
-              ? 'Porcentaje por defecto'
-              : 'Cantidad por defecto'}
+              ? 'Porcentaje de descuento por defecto'
+              : 'Cantidad de tickets por defecto'}
           </p>
           <div className='rounded-t-md bg-accent-ultra-light border-stroke border border-b-0 flex gap-2 px-4 py-2'>
             <p className={cn('tabular-nums', type === 'INVITATION' && 'pr-2')}>
