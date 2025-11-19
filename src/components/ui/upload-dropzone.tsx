@@ -52,7 +52,7 @@ export function UploadDropzone({
   return (
     <div
       className={cn(
-        'border-stroke relative rounded-lg border border-dashed transition-colors bg-[url("/upload-dropzone-bg.webp")] z-5 bg-cover bg-center',
+        'border-stroke relative rounded-lg border border-dashed transition-colors z-5 bg-cover bg-center',
         {
           'border-accent/80': isDragActive,
         },
