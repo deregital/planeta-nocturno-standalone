@@ -438,9 +438,7 @@ export function EventGeneralInformation({
         />
       </section>
       <section>
-        <h3 className='text-accent-dark text-lg font-semibold'>
-          Usuarios autorizados
-        </h3>
+        <h3 className='text-accent-dark text-lg font-semibold'>Acceso</h3>
         <div>
           {action !== 'PREVIEW' && (
             <SelectableComboBox
@@ -492,11 +490,11 @@ export function EventGeneralInformation({
             />
           ))}
           {event.authorizedUsers.length === 0 && (
-            <p className='text-sm'>No hay usuarios autorizados</p>
+            <p className='text-sm'>No hay usuarios Acceso</p>
           )}
         </div>
         <p className='text-sm'>
-          Los usuarios autorizados podrán{' '}
+          Los usuarios &quot;Acceso&quot; podrán{' '}
           <span className='font-bold'>ver el evento</span> hasta la fecha de
           finalización, <span className='font-bold'>emitir tickets</span> y{' '}
           <span className='font-bold'>escanear entradas</span>.
