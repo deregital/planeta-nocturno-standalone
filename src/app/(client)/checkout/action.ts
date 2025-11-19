@@ -212,101 +212,114 @@ export const handlePurchase = async (
       formData: formDataRecord,
     };
   }
+  try {
+    const totalPrice = await trpc.ticketGroup.getTotalPriceById(
+      ticketGroupId?.toString() ?? '',
+    );
 
-  const totalPrice = await trpc.ticketGroup.getTotalPriceById(
-    ticketGroupId?.toString() ?? '',
-  );
+    await trpc.emittedTickets.createMany(entradas);
 
-  await trpc.emittedTickets.createMany(entradas);
+    // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
+    if (invitedBy && invitedBy.trim() !== '') {
+      await trpc.ticketGroup.updateInvitedBy({
+        id: ticketGroupId,
+        invitedBy,
+      });
+    }
 
-  // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
-  if (invitedBy && invitedBy.trim() !== '') {
-    await trpc.ticketGroup.updateInvitedBy({
-      id: ticketGroupId,
-      invitedBy,
-    });
-  }
+    const firstTicket = {
+      fullName: entradas[0].fullName,
+      dni: entradas[0].dni,
+      mail: entradas[0].mail,
+      gender: entradas[0].gender,
+      phoneNumber: entradas[0].phoneNumber,
+      instagram: entradas[0].instagram,
+      birthDate: entradas[0].birthDate,
+    };
 
-  const firstTicket = {
-    fullName: entradas[0].fullName,
-    dni: entradas[0].dni,
-    mail: entradas[0].mail,
-    gender: entradas[0].gender,
-    phoneNumber: entradas[0].phoneNumber,
-    instagram: entradas[0].instagram,
-    birthDate: entradas[0].birthDate,
-  };
+    if (totalPrice === 0) {
+      await trpc.ticketGroup.updateStatus({
+        id: ticketGroupId,
+        status: 'FREE',
+      });
 
-  if (totalPrice === 0) {
-    await trpc.ticketGroup.updateStatus({
-      id: ticketGroupId,
-      status: 'FREE',
-    });
+      const group = await trpc.ticketGroup.getById(ticketGroupId);
 
-    const group = await trpc.ticketGroup.getById(ticketGroupId);
+      const pdfs =
+        await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
 
-    const pdfs =
-      await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
-
-    // Enviar emails de forma secuencial para evitar rate limits
-    try {
-      // Enviar un solo mail con todas las entradas si extraTicketData = false o si la feature EXTRA_DATA_CHECKOUT está desactivada
-      if (
-        !group.event.extraTicketData ||
-        (await checkFeature(FEATURE_KEYS.EXTRA_DATA_CHECKOUT, () => true, true))
-      ) {
-        await trpc.mail.send({
-          eventName: group.event.name,
-          receiver: entradas[0].mail,
-          subject: `¡Llegaron tus tickets para ${group.event.name}!`,
-          body: `Te esperamos.`,
-          attatchments: pdfs.map((pdf) => pdf.pdf.blob),
-        });
-      } else {
-        for (const pdf of pdfs) {
+      // Enviar emails de forma secuencial para evitar rate limits
+      try {
+        // Enviar un solo mail con todas las entradas si extraTicketData = false o si la feature EXTRA_DATA_CHECKOUT está desactivada
+        if (
+          !group.event.extraTicketData ||
+          (await checkFeature(
+            FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
+            () => true,
+            true,
+          ))
+        ) {
           await trpc.mail.send({
             eventName: group.event.name,
-            receiver: pdf.ticket.mail,
+            receiver: entradas[0].mail,
             subject: `¡Llegaron tus tickets para ${group.event.name}!`,
             body: `Te esperamos.`,
-            attatchments: [pdf.pdf.blob],
+            attatchments: pdfs.map((pdf) => pdf.pdf.blob),
           });
+        } else {
+          for (const pdf of pdfs) {
+            await trpc.mail.send({
+              eventName: group.event.name,
+              receiver: pdf.ticket.mail,
+              subject: `¡Llegaron tus tickets para ${group.event.name}!`,
+              body: `Te esperamos.`,
+              attatchments: [pdf.pdf.blob],
+            });
+          }
         }
+      } catch (error) {
+        console.error(error);
+        return {
+          ticketsInput: prevState.ticketsInput,
+          errors: ['Error al enviar los emails, vuelva a intentarlo'],
+          formData: formDataRecord,
+        };
       }
-    } catch (error) {
-      console.error(error);
-      return {
-        ticketsInput: prevState.ticketsInput,
-        errors: ['Error al enviar los emails, vuelva a intentarlo'],
-        formData: formDataRecord,
-      };
-    }
 
-    await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
-      await trpc.mail.sendNotification({
-        eventName: group.event.name,
-        ticketGroupId,
+      await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+        await trpc.mail.sendNotification({
+          eventName: group.event.name,
+          ticketGroupId,
+        });
       });
-    });
 
-    (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
-    (await cookies()).delete('carrito');
+      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
+      (await cookies()).delete('carrito');
 
-    redirect(`/tickets/${ticketGroupId}`);
-  } else {
-    const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
+      redirect(`/tickets/${ticketGroupId}`);
+    } else {
+      const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
 
-    if (!url) {
-      return {
-        ticketsInput: prevState.ticketsInput,
-        errors: ['Error al crear la preferencia de pago, vuelva a intentarlo'],
-        formData: formDataRecord,
-      };
+      if (!url) {
+        return {
+          ticketsInput: prevState.ticketsInput,
+          errors: [
+            'Error al crear la preferencia de pago, vuelva a intentarlo',
+          ],
+          formData: formDataRecord,
+        };
+      }
+
+      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
+      (await cookies()).delete('carrito');
+
+      redirect(url as Route);
     }
-
-    (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
-    (await cookies()).delete('carrito');
-
-    redirect(url as Route);
+  } catch (error) {
+    console.error(error);
+    console.log('ENTRADAS', entradas);
+    throw new Error('Error al procesar la compra, vuelva a intentarlo', {
+      cause: error,
+    });
   }
 };
