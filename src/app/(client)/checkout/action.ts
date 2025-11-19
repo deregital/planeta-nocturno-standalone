@@ -33,6 +33,8 @@ export const handlePurchase = async (
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
   const invitedBy = formData.get('invitedBy')?.toString() || '';
 
+  let url: Route | undefined = undefined;
+
   if (!eventId) {
     return {
       ticketsInput: prevState.ticketsInput,
@@ -296,11 +298,13 @@ export const handlePurchase = async (
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
       (await cookies()).delete('carrito');
 
-      redirect(`/tickets/${ticketGroupId}`);
+      url = `/tickets/${ticketGroupId}` as Route;
     } else {
-      const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
+      const mercadoPagoUrl = await trpc.mercadoPago.createPreference({
+        ticketGroupId,
+      });
 
-      if (!url) {
+      if (!mercadoPagoUrl) {
         return {
           ticketsInput: prevState.ticketsInput,
           errors: [
@@ -313,13 +317,21 @@ export const handlePurchase = async (
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
       (await cookies()).delete('carrito');
 
-      redirect(url as Route);
+      url = mercadoPagoUrl as Route;
     }
   } catch (error) {
-    console.error(error);
-    console.log('ENTRADAS', entradas);
     throw new Error('Error al procesar la compra, vuelva a intentarlo', {
       cause: error,
     });
+  } finally {
+    if (url) {
+      redirect(url);
+    }
+
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: ['Error al finalizar la compra, vuelva a intentarlo'],
+      formData: formDataRecord,
+    };
   }
 };
