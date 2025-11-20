@@ -34,9 +34,9 @@ export default function DeleteTicketTypeModal({ id }: { id: string }) {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Eliminar Tipo de Entrada</DialogTitle>
+        <DialogTitle>Eliminar Tipo de Ticket</DialogTitle>
         <DialogDescription>
-          ¿Estas seguro de querer eliminar este tipo de entrada? Esta accion no
+          ¿Estás seguro de querer eliminar este tipo de ticket? Esta accion no
           puede ser deshecha.
         </DialogDescription>
 

@@ -212,7 +212,7 @@ export default function CheckoutClient({
                     {(ticketGroup.ticketTypePerGroups.length !== 1 ||
                       ticket.amount !== 1) && (
                       <p className='text-3xl font-extralight py-2'>
-                        Entrada {ticket.ticketType.name} {indexAmount + 1}
+                        Ticket {ticket.ticketType.name} {indexAmount + 1}
                       </p>
                     )}
                     <InputWithLabel

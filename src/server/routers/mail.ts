@@ -145,10 +145,10 @@ export const mailRouter = router({
       const ticketTypeText = ticketGroup?.ticketTypePerGroups
         .map(
           (ticketType) =>
-            `${ticketType.amount} entradas de ${ticketType.ticketType.name}`,
+            `${ticketType.amount} tickets de ${ticketType.ticketType.name}`,
         )
         .join(', ');
-      const bodyText = `Se han vendido entradas para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${totalPrice}. Para más información, ingresá a la plataforma.`;
+      const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${totalPrice}. Para más información, ingresá a la plataforma.`;
 
       try {
         for (const admin of admins) {
@@ -156,7 +156,7 @@ export const mailRouter = router({
             async () =>
               await sendMailWithoutAttachments({
                 to: admin.email,
-                subject: `Entrada vendida - ${eventName}`,
+                subject: `Ticket vendido - ${eventName}`,
                 body: bodyText,
               }),
             3, // 3 intentos máximo

@@ -320,10 +320,10 @@ export function EventGeneralInformation({
       </section>
       <section className='flex gap-2'>
         <h3 className='text-accent-dark text-lg font-semibold'>
-          Datos múltiples por entrada
+          Datos múltiples por ticket
         </h3>
         <InputWithLabel
-          label='Pedir datos personales en todas las entradas'
+          label='Pedir datos personales en todos los tickets'
           id='extraTicketData'
           disabled={action === 'PREVIEW'}
           type='checkbox'
@@ -503,7 +503,7 @@ export function EventGeneralInformation({
           Los usuarios &quot;Acceso&quot; podrán{' '}
           <span className='font-bold'>ver el evento</span> hasta la fecha de
           finalización, <span className='font-bold'>emitir tickets</span> y{' '}
-          <span className='font-bold'>escanear entradas</span>.
+          <span className='font-bold'>escanear tickets</span>.
         </p>
       </section>
       {action === 'CREATE' && (

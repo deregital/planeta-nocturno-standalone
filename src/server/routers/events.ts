@@ -1148,7 +1148,7 @@ export const eventsRouter = router({
           ...tickets.reduce(
             (acc, ticket) => {
               acc[`tipo_entrada_${ticket.ticketType}`] =
-                `Tipo de entrada: ${ticket.ticketType}`;
+                `Tipo de ticket: ${ticket.ticketType}`;
               return acc;
             },
             {} as Record<`tipo_entrada_${string}`, string>,

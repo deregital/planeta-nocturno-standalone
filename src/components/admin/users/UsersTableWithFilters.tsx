@@ -1,16 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { userColumns } from '@/components/admin/users/UserColumns';
 import { DataTable } from '@/components/common/DataTable';
-import { type RouterOutputs } from '@/server/routers/app';
+import { MultiSelect } from '@/components/common/MultiSelect';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { role as roleEnum } from '@/drizzle/schema';
 import { roleTranslation } from '@/lib/translations';
-import { Button } from '@/components/ui/button';
-import { MultiSelect } from '@/components/common/MultiSelect';
+import { type RouterOutputs } from '@/server/routers/app';
 
 interface UsersTableProps {
   data: RouterOutputs['user']['getAll'];
@@ -109,9 +109,9 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
               options={availableBatches}
               selectedValues={selectedBatches}
               onSelectionChange={setSelectedBatches}
-              label='Filtrar por batch'
-              placeholder='Todos los batches'
-              emptyMessage='No hay batches disponibles'
+              label='Filtrar por grupo'
+              placeholder='Todos los grupos'
+              emptyMessage='No hay grupos disponibles'
             />
           </div>
           <div className='flex flex-row items-center gap-2 pt-4 md:pt-0 md:place-self-end'>

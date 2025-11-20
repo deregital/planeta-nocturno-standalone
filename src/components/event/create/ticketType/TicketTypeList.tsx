@@ -16,7 +16,7 @@ export default function TicketTypeList({
 }) {
   return ticketTypes.length === 0 ? (
     <div className='flex justify-center'>
-      <p className='text-xl font-extralight'>Todavía no hay entradas creadas</p>
+      <p className='text-xl font-extralight'>Todavía no hay tickets creados</p>
     </div>
   ) : (
     <ul className='gap-y-2 flex flex-col'>

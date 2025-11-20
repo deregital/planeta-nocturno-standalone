@@ -1,20 +1,20 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowDown, ArrowUp, Cake, Edit } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
-import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { formatInTimeZone } from 'date-fns-tz';
-import Link from 'next/link';
+import { format as formatPhoneNumber } from 'libphonenumber-js';
+import { ArrowDown, ArrowUp, ArrowUpDown, Cake, Edit } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
-import { type RouterOutputs } from '@/server/routers/app';
-import { Button } from '@/components/ui/button';
-import { daysUntilBirthday } from '@/lib/utils';
-import { genderTranslation, roleTranslation } from '@/lib/translations';
-import { type role as roleEnum } from '@/drizzle/schema';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { type role as roleEnum } from '@/drizzle/schema';
+import { genderTranslation, roleTranslation } from '@/lib/translations';
+import { daysUntilBirthday } from '@/lib/utils';
+import { type RouterOutputs } from '@/server/routers/app';
 
 export const userColumns: StrictColumnDef<
   RouterOutputs['user']['getAll'][number]
@@ -240,7 +240,7 @@ export const userColumns: StrictColumnDef<
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           className='flex items-center gap-2 font-bold p-2'
         >
-          <span className='text-sm'>Batch</span>
+          <span className='text-sm'>Grupo</span>
           {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
           {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
           {!sorted && <ArrowUpDown className='h-4 w-4' />}
@@ -275,7 +275,7 @@ export const userColumns: StrictColumnDef<
     meta: {
       exportValue: (row) =>
         row.original.userXTags.map(({ tag }) => tag.name).join(', '),
-      exportHeader: 'Batch',
+      exportHeader: 'Grupo',
     },
   },
   {

@@ -6,8 +6,8 @@ import {
   HardDriveDownload,
   Upload,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -248,18 +248,18 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
           </div>
 
           <div className='space-y-2'>
-            <Label htmlFor='batch-name'>Nombre del batch</Label>
+            <Label htmlFor='batch-name'>Nombre del grupo</Label>
             <Input
               disabled={!file}
               id='batch-name'
               type='text'
-              placeholder='Ingresa un nombre para este batch de usuarios'
+              placeholder='Ingresa un nombre para este grupo de usuarios'
               value={batchName}
               onChange={(e) => setBatchName(e.target.value)}
             />
             <p className='text-xs text-muted-foreground'>
               Este nombre se aplicará como etiqueta a todos los usuarios
-              importados en este batch
+              importados en este grupo
             </p>
           </div>
 
