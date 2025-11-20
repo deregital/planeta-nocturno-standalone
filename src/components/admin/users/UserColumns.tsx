@@ -183,6 +183,18 @@ export const userColumns: StrictColumnDef<
     },
   },
   {
+    accessorKey: 'instagram',
+    header: () => <p className='text-sm p-2'>Instagram</p>,
+    cell: ({ row }) => {
+      const instagram = row.original.instagram;
+      return <p className='text-sm p-2'>{instagram || '-'}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.instagram || '-',
+      exportHeader: 'Instagram',
+    },
+  },
+  {
     accessorKey: 'phoneNumber',
     header: () => <p className='text-sm p-2'>Teléfono</p>,
     cell: ({ row }) => {
