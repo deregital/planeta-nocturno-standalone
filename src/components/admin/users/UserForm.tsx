@@ -8,6 +8,7 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { role } from '@/drizzle/schema';
 import { roleTranslation } from '@/lib/translations';
 import { type User } from '@/server/types';
@@ -75,17 +76,6 @@ export function UserForm({
         error={errors?.fullName}
         onChange={(e) => {
           handleChange('fullName', e.target.value);
-        }}
-      />
-      <InputWithLabel
-        required
-        label='Nombre de usuario'
-        id='username'
-        name='username'
-        value={internalState?.name}
-        error={errors?.name}
-        onChange={(e) => {
-          handleChange('name', e.target.value);
         }}
       />
       <InputWithLabel
@@ -186,6 +176,18 @@ export function UserForm({
           handleChange('instagram', e.target.value);
         }}
         placeholder='@'
+      />
+      <Separator className='border rounded-full border-accent-light' />
+      <InputWithLabel
+        required
+        label='Nombre de usuario'
+        id='username'
+        name='username'
+        value={internalState?.name}
+        error={errors?.name}
+        onChange={(e) => {
+          handleChange('name', e.target.value);
+        }}
       />
       <InputWithLabel
         required={type === 'CREATE'}
