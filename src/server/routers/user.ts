@@ -71,6 +71,11 @@ export const userRouter = router({
     await assertUniqueUser(ctx.db, input);
 
     const hashedPassword = await hash(input.password, 10);
+
+    const instagram = input.instagram?.startsWith('@')
+      ? input.instagram.slice(1)
+      : input.instagram;
+
     const [user] = await ctx.db
       .insert(userTable)
       .values({
@@ -78,6 +83,7 @@ export const userRouter = router({
         fullName: input.fullName,
         name: input.name,
         password: hashedPassword,
+        instagram,
       })
       .returning();
     await sendMailWithoutAttachments({
@@ -92,12 +98,17 @@ export const userRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertUniqueUser(ctx.db, input, input.id);
 
+      const instagram = input.instagram?.startsWith('@')
+        ? input.instagram.slice(1)
+        : input.instagram;
+
       const user = await ctx.db
         .update(userTable)
         .set({
           ...input,
           name: input.name,
           birthDate: input.birthDate,
+          instagram,
         })
         .where(eq(userTable.id, input.id));
 
