@@ -3,10 +3,10 @@
 import { redirect } from 'next/navigation';
 import z from 'zod';
 
-import { trpc } from '@/server/trpc/server';
+import { type UserData } from '@/components/admin/users/UserForm';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
-import { type UserData } from '@/components/admin/users/UserForm';
+import { trpc } from '@/server/trpc/server';
 
 export type CreateUserActionState = {
   data?: UserData;
@@ -26,6 +26,7 @@ export async function createUser(
   const dni = formData.get('dni') as string;
   const gender = formData.get('gender') as string;
   const phoneNumber = formData.get('phoneNumber') as string;
+  const instagram = formData.get('instagram') as string;
 
   const data = {
     fullName,
@@ -37,6 +38,7 @@ export async function createUser(
     dni,
     gender,
     phoneNumber,
+    instagram,
   };
 
   const validation = userSchema.safeParse(data);
