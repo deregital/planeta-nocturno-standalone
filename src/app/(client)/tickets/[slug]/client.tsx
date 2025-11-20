@@ -66,14 +66,14 @@ export default function TicketsClient({
         </CardHeader>
         <CardContent>
           <p className='text-muted-foreground'>
-            Ya podés descargar tus entradas. También fueron enviadas a el/los
+            Ya podés descargar tus tickets. También fueron enviadas a el/los
             email/s que proporcionaste.
           </p>
         </CardContent>
         <CardFooter className='justify-center'>
           <Button variant='accent' onClick={() => downloadAllPdfs()}>
             <Download className='mr-2 h-4 w-4' />
-            Descargar Entradas
+            Descargar Tickets
           </Button>
         </CardFooter>
       </Card>

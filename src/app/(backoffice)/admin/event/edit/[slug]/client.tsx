@@ -3,16 +3,16 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import GoBack from '@/components/common/GoBack';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
+import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
+import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
-import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
-import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
-import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
-import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
 
 export default function Client({
   event,
@@ -111,7 +111,7 @@ export default function Client({
       </div>
       <EventGeneralInformation action='EDIT' externalErrors={error} />
       <section className='my-6' id='ticket-types'>
-        <h3 className='text-2xl text-accent font-bold'>Entradas</h3>
+        <h3 className='text-2xl text-accent font-bold'>Tickets</h3>
         <TicketTypeAction />
       </section>
       <section>

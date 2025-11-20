@@ -164,7 +164,7 @@ export const createEventStore = (initState: EventState = initialState) => {
           {
             id: crypto.randomUUID(),
             name: ORGANIZER_TICKET_TYPE_NAME,
-            description: 'Entrada para los organizadores',
+            description: 'Tickets para los organizadores',
             price: 0,
             maxAvailable: state.organizers.length,
             maxPerPurchase: 1,

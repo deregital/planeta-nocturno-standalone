@@ -2,11 +2,11 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
+import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
+import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
+import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
-import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
-import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
-import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
@@ -81,7 +81,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
         </section>
       )}
       <section>
-        <h3 className='text-2xl'>Entradas</h3>
+        <h3 className='text-2xl'>Tickets</h3>
         <TicketTypeList
           action='PREVIEW'
           ticketTypes={ticketTypes}

@@ -239,7 +239,7 @@ export async function generateTicketTemplate(
         {
           name: 'ticketType_title',
           type: 'text',
-          content: 'Tipo de entrada:',
+          content: 'Tipo de ticket:',
           position: { x: 47, y: 282 },
           width: 201.08,
           height: 10.05,

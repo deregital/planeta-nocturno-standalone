@@ -15,7 +15,7 @@ export const FEATURE_CONFIG = {
     validator: z.null(),
   },
   [FEATURE_KEYS.EMAIL_NOTIFICATION]: {
-    label: 'Recibir notificaciones de entradas emitidas',
+    label: 'Recibir notificaciones de tickets emitidos',
     validator: z.null(),
   },
   [FEATURE_KEYS.SERVICE_FEE]: {
@@ -23,7 +23,7 @@ export const FEATURE_CONFIG = {
     validator: z.coerce.number().min(0),
   },
   [FEATURE_KEYS.EXTRA_DATA_CHECKOUT]: {
-    label: 'Pedir datos extra a partir de la segunda entrada',
+    label: 'Pedir datos extra a partir del segundo ticket',
     validator: z.null(),
   },
 } as const satisfies Record<

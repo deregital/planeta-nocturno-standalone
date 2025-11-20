@@ -115,7 +115,7 @@ export default function ComparativeTable() {
   const rows = useMemo<StatRow[]>(() => {
     return [
       {
-        label: 'Entradas emitidas',
+        label: 'Tickets emitidos',
         ...Object.fromEntries(selectedData.map((c) => [c.id, c.totalEmitted])),
       },
       {

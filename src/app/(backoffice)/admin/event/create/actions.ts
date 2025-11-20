@@ -94,7 +94,7 @@ export async function validateTicketType(
   if (validation.data.maxAvailable > maxAvailableLeft) {
     errors.maxAvailable = {
       errors: [
-        `La cantidad máxima de entradas disponibles es ${maxAvailableLeft}`,
+        `La cantidad máxima de tickets disponibles es ${maxAvailableLeft}`,
       ],
     };
   }
@@ -103,7 +103,7 @@ export async function validateTicketType(
   if (validation.data.scanLimit && validation.data.scanLimit > eventEndDate) {
     errors.scanLimit = {
       errors: [
-        'La fecha de finalización de escaneo de entradas no puede ser mayor a la fecha de finalización del evento',
+        'La fecha de finalización de escaneo de tickets no puede ser mayor a la fecha de finalización del evento',
       ],
     };
   }
@@ -115,7 +115,7 @@ export async function validateTicketType(
   ) {
     errors.maxSellDate = {
       errors: [
-        'La fecha de finalización de venta de entradas no puede ser mayor a la fecha de finalización del evento',
+        'La fecha de finalización de venta de tickets no puede ser mayor a la fecha de finalización del evento',
       ],
     };
   }
@@ -127,7 +127,7 @@ export async function validateTicketType(
   ) {
     errors.lowStockThreshold = {
       errors: [
-        `La cantidad de entradas no puede ser mayor a la cantidad de entradas disponibles (${validation.data.maxAvailable})`,
+        `La cantidad de tickets no puede ser mayor a la cantidad de tickets disponibles (${validation.data.maxAvailable})`,
       ],
     };
   }
