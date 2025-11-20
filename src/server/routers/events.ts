@@ -435,23 +435,24 @@ export const eventsRouter = router({
             }
 
             // Agregar organizadores al evento
-            await tx.insert(eventXorganizer).values(
-              organizersInput.map((organizer) => ({
-                eventId: eventCreated.id,
-                organizerId: organizer.id,
-                discountPercentage:
-                  event.inviteCondition === 'TRADITIONAL' &&
-                  'discountPercentage' in organizer
-                    ? organizer.discountPercentage
-                    : null,
-                ticketAmount:
-                  event.inviteCondition === 'INVITATION' &&
-                  'ticketAmount' in organizer
-                    ? organizer.ticketAmount
-                    : null,
-              })),
-            );
-
+            if (organizersInput.length > 0) {
+              await tx.insert(eventXorganizer).values(
+                organizersInput.map((organizer) => ({
+                  eventId: eventCreated.id,
+                  organizerId: organizer.id,
+                  discountPercentage:
+                    event.inviteCondition === 'TRADITIONAL' &&
+                    'discountPercentage' in organizer
+                      ? organizer.discountPercentage
+                      : null,
+                  ticketAmount:
+                    event.inviteCondition === 'INVITATION' &&
+                    'ticketAmount' in organizer
+                      ? organizer.ticketAmount
+                      : null,
+                })),
+              );
+            }
             // Crear tickets para organizadores
             if (organizersInput.length > 0) {
               // Buscar o crear tipo de ticket "Organizador"
@@ -580,6 +581,7 @@ export const eventsRouter = router({
 
             return { eventCreated, ticketTypesCreated };
           } catch (error) {
+            console.error(error);
             tx.rollback();
             throw error;
           }
