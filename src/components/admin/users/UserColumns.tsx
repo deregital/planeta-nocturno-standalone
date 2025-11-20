@@ -41,7 +41,7 @@ export const userColumns: StrictColumnDef<
     cell: ({ row }) => {
       return (
         <div className='text-sm'>
-          <span>{row.original.autoId}</span>
+          <span>{row.original.shortId}</span>
         </div>
       );
     },

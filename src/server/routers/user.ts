@@ -15,7 +15,6 @@ import {
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { type Tag, type User } from '@/server/types';
 import { generateRandomPassword } from '@/server/utils/users';
-import { getBuyersCodeByDni } from '@/server/utils/utils';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
@@ -29,17 +28,7 @@ export const userRouter = router({
       },
     });
 
-    const usersWithAutoId = await getBuyersCodeByDni(
-      ctx.db,
-      users.map((user) => user.id),
-    );
-
-    return users.map((user) => ({
-      ...user,
-      autoId:
-        usersWithAutoId?.find((code) => code.dni === user.id)?.id.toString() ||
-        '---',
-    }));
+    return users;
   }),
   getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany({
