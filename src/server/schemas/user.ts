@@ -40,4 +40,5 @@ export const userSchema = z.object({
       // Convert to UTC string
       return date.toISOString();
     }),
+  instagram: z.string().nullable(),
 });

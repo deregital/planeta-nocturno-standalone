@@ -41,7 +41,7 @@ export const userColumns: StrictColumnDef<
     cell: ({ row }) => {
       return (
         <div className='text-sm'>
-          <span>{row.original.autoId}</span>
+          <span>{row.original.shortId}</span>
         </div>
       );
     },
@@ -180,6 +180,29 @@ export const userColumns: StrictColumnDef<
             : '-'}
         </p>
       );
+    },
+  },
+  {
+    accessorKey: 'instagram',
+    header: () => <p className='text-sm p-2'>Instagram</p>,
+    cell: ({ row }) => {
+      const instagram = row.original.instagram;
+      return instagram ? (
+        <a
+          href={`https://instagram.com/${instagram}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
+        >
+          @{instagram}
+        </a>
+      ) : (
+        <p className='text-sm p-2'>-</p>
+      );
+    },
+    meta: {
+      exportValue: (row) => row.original.instagram || '-',
+      exportHeader: 'Instagram',
     },
   },
   {

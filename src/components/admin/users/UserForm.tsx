@@ -5,12 +5,13 @@ import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
+import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { role } from '@/drizzle/schema';
 import { roleTranslation } from '@/lib/translations';
 import { type User } from '@/server/types';
-import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import 'react-phone-number-input/style.css';
 
 export type UserData = Pick<
@@ -24,6 +25,7 @@ export type UserData = Pick<
   | 'dni'
   | 'gender'
   | 'phoneNumber'
+  | 'instagram'
 >;
 
 const defaultState: UserData = {
@@ -36,6 +38,7 @@ const defaultState: UserData = {
   gender: 'male',
   phoneNumber: '',
   dni: '',
+  instagram: '',
 };
 
 export function UserForm({
@@ -73,17 +76,6 @@ export function UserForm({
         error={errors?.fullName}
         onChange={(e) => {
           handleChange('fullName', e.target.value);
-        }}
-      />
-      <InputWithLabel
-        required
-        label='Nombre de usuario'
-        id='username'
-        name='username'
-        value={internalState?.name}
-        error={errors?.name}
-        onChange={(e) => {
-          handleChange('name', e.target.value);
         }}
       />
       <InputWithLabel
@@ -173,6 +165,29 @@ export function UserForm({
           handleChange('gender', value as 'male' | 'female' | 'other');
         }}
         required
+      />
+      <InputWithLabel
+        label='Instagram'
+        id='instagram'
+        name='instagram'
+        value={internalState?.instagram ?? ''}
+        error={errors?.instagram}
+        onChange={(e) => {
+          handleChange('instagram', e.target.value);
+        }}
+        placeholder='@'
+      />
+      <Separator className='border rounded-full border-accent-light' />
+      <InputWithLabel
+        required
+        label='Nombre de usuario'
+        id='username'
+        name='username'
+        value={internalState?.name}
+        error={errors?.name}
+        onChange={(e) => {
+          handleChange('name', e.target.value);
+        }}
       />
       <InputWithLabel
         required={type === 'CREATE'}
