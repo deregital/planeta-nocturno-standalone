@@ -1,7 +1,6 @@
 import z from 'zod';
 
 export const FEATURE_KEYS = {
-  DATATABLE_EXPORT: 'datatable-export',
   EMAIL_NOTIFICATION: 'email-notification',
   SERVICE_FEE: 'service-fee',
   EXTRA_DATA_CHECKOUT: 'extra-data-checkout',
@@ -10,10 +9,6 @@ export const FEATURE_KEYS = {
 export type FeatureKey = (typeof FEATURE_KEYS)[keyof typeof FEATURE_KEYS];
 
 export const FEATURE_CONFIG = {
-  [FEATURE_KEYS.DATATABLE_EXPORT]: {
-    label: 'Exportar tablas a Excel',
-    validator: z.null(),
-  },
   [FEATURE_KEYS.EMAIL_NOTIFICATION]: {
     label: 'Recibir notificaciones de tickets emitidos',
     validator: z.null(),
