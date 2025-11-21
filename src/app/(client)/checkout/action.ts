@@ -141,19 +141,6 @@ export const handlePurchase = async (
     }
   }
 
-  await checkFeature(
-    FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
-    () => {
-      const entradaWithMail = entradas.find((e) => e.mail && e.mail !== '');
-      if (entradaWithMail) {
-        for (const entrada of entradas) {
-          entrada.mail = entradaWithMail.mail;
-        }
-      }
-    },
-    true,
-  );
-
   const validation = createManyTicketSchema.safeParse(entradas);
   const invitedByValue =
     invitedBy && invitedBy.trim() !== '' ? invitedBy : null;
@@ -252,15 +239,8 @@ export const handlePurchase = async (
 
       // Enviar emails de forma secuencial para evitar rate limits
       try {
-        // Enviar un solo mail con todas las entradas si extraTicketData = false o si la feature EXTRA_DATA_CHECKOUT está desactivada
-        if (
-          !group.event.extraTicketData ||
-          (await checkFeature(
-            FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
-            () => true,
-            true,
-          ))
-        ) {
+        // Enviar un solo mail con todas las entradas si extraTicketData = false
+        if (!group.event.extraTicketData) {
           await trpc.mail.send({
             eventName: group.event.name,
             receiver: entradas[0].mail,

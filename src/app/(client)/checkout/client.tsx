@@ -12,7 +12,6 @@ import {
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
-import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
 import FormInputGender from '@/components/checkout/FormInputGender';
 import FormInputInstagram from '@/components/checkout/FormInputInstagram';
 import FormInputMail from '@/components/checkout/FormInputMail';
@@ -24,7 +23,6 @@ import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
 import { type EmittedTicketInput } from '@/server/schemas/emitted-tickets';
 import { trpc } from '@/server/trpc/client';
@@ -235,27 +233,13 @@ export default function CheckoutClient({
                           : undefined
                       }
                     />
-                    <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}>
-                      <FormInputMail
-                        state={state}
-                        tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                        defaultValue={
-                          isFirstTicket ? lastPurchase?.mail : undefined
-                        }
-                      />
-                    </FeatureWrapper>
-                    <FeatureWrapper
-                      feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}
-                      negate
-                    >
-                      {isFirstTicket && (
-                        <FormInputMail
-                          state={state}
-                          tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
-                          defaultValue={lastPurchase?.mail}
-                        />
-                      )}
-                    </FeatureWrapper>
+                    <FormInputMail
+                      state={state}
+                      tag={`mail_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={
+                        isFirstTicket ? lastPurchase?.mail : undefined
+                      }
+                    />
                     <InputWithLabel
                       name={`dni_${ticket.ticketType.id}-${indexAmount}`}
                       id={`dni_${ticket.ticketType.id}-${indexAmount}`}
@@ -346,43 +330,20 @@ export default function CheckoutClient({
                           : undefined
                       }
                     />
-                    <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}>
-                      <>
-                        <FormInputGender
-                          state={state}
-                          tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
-                          defaultValue={
-                            isFirstTicket ? lastPurchase?.gender : undefined
-                          }
-                        />
-                        <FormInputInstagram
-                          state={state}
-                          tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                          defaultValue={
-                            isFirstTicket ? lastPurchase?.instagram : undefined
-                          }
-                        />
-                      </>
-                    </FeatureWrapper>
-                    <FeatureWrapper
-                      feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}
-                      negate
-                    >
-                      {isFirstTicket && (
-                        <>
-                          <FormInputGender
-                            state={state}
-                            tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
-                            defaultValue={lastPurchase?.gender}
-                          />
-                          <FormInputInstagram
-                            state={state}
-                            tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
-                            defaultValue={lastPurchase?.instagram}
-                          />
-                        </>
-                      )}
-                    </FeatureWrapper>
+                    <FormInputGender
+                      state={state}
+                      tag={`gender_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={
+                        isFirstTicket ? lastPurchase?.gender : undefined
+                      }
+                    />
+                    <FormInputInstagram
+                      state={state}
+                      tag={`instagram_${ticket.ticketType.id}-${indexAmount}`}
+                      defaultValue={
+                        isFirstTicket ? lastPurchase?.instagram : undefined
+                      }
+                    />
                     <input
                       type='hidden'
                       name={`ticketTypeId_${ticket.ticketType.id}-${indexAmount}`}
@@ -423,20 +384,11 @@ export default function CheckoutClient({
                   : undefined
               }
             />
-            <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT}>
-              <FormInputMail
-                state={state}
-                tag={`mail_all-tickets`}
-                defaultValue={lastPurchase?.mail}
-              />
-            </FeatureWrapper>
-            <FeatureWrapper feature={FEATURE_KEYS.EXTRA_DATA_CHECKOUT} negate>
-              <FormInputMail
-                state={state}
-                tag={`mail_all-tickets`}
-                defaultValue={lastPurchase?.mail}
-              />
-            </FeatureWrapper>
+            <FormInputMail
+              state={state}
+              tag={`mail_all-tickets`}
+              defaultValue={lastPurchase?.mail}
+            />
             <InputWithLabel
               name={`dni_all-tickets`}
               id={`dni_all-tickets`}

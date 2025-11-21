@@ -62,10 +62,7 @@ export async function POST(req: Request) {
     );
 
     // enviar mail con los pdf de forma secuencial para evitar rate limits
-    if (
-      !group.event.extraTicketData ||
-      (await checkFeature(FEATURE_KEYS.EXTRA_DATA_CHECKOUT, () => true, true))
-    ) {
+    if (!group.event.extraTicketData) {
       await trpc.mail.send({
         eventName: group.event.name,
         receiver: pdfs[0].ticket.mail,
