@@ -1,21 +1,16 @@
-import z from 'zod';
+import type z from 'zod';
 
 export const FEATURE_KEYS = {
-  EMAIL_NOTIFICATION: 'email-notification',
-  SERVICE_FEE: 'service-fee',
+  // EXAMPLE: 'example-feature'
 } as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[keyof typeof FEATURE_KEYS];
 
 export const FEATURE_CONFIG = {
-  [FEATURE_KEYS.EMAIL_NOTIFICATION]: {
-    label: 'Recibir notificaciones de tickets emitidos',
-    validator: z.null(),
-  },
-  [FEATURE_KEYS.SERVICE_FEE]: {
-    label: 'Cargo por servicio %',
-    validator: z.coerce.number().min(0),
-  },
+  // [FEATURE_KEYS.EXAMPLE]: {
+  //   label: 'Example feature',
+  //   validator: z.string(),
+  // },
 } as const satisfies Record<
   FeatureKey,
   { label: string; validator: z.ZodType }
