@@ -9,7 +9,12 @@ import { InputFromSchema } from '@/components/admin/config/InputFromSchema';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { FEATURE_CONFIG, FEATURE_KEYS } from '@/server/constants/feature-keys';
+import {
+  FEATURE_CONFIG,
+  FEATURE_KEYS,
+  type FeatureConfig,
+  type FeatureKey,
+} from '@/server/constants/feature-keys';
 import { trpc } from '@/server/trpc/client';
 
 export default function Page() {
@@ -34,15 +39,19 @@ export default function Page() {
   ) : (
     <form action={action} className='flex flex-col gap-6 p-6'>
       {Object.values(FEATURE_KEYS).map((featureKey, index) => {
-        const config = FEATURE_CONFIG[featureKey];
-        const feature = features?.find((f) => f.key === featureKey);
+        const typedKey = featureKey as FeatureKey;
+        const configRaw = FEATURE_CONFIG[typedKey];
+        if (!configRaw) return null;
+
+        const config = configRaw as FeatureConfig;
+        const feature = features?.find((f) => f.key === typedKey);
         const error = state.errors?.[index];
 
         return (
-          <div key={featureKey} className='flex flex-col gap-2'>
+          <div key={typedKey} className='flex flex-col gap-2'>
             <div className='grid grid-cols-3 gap-4 max-w-3xl'>
               <Label
-                htmlFor={`${featureKey}-enabled`}
+                htmlFor={`${typedKey}-enabled`}
                 className='text-lg font-medium col-span-2'
               >
                 {config.label}
@@ -50,18 +59,18 @@ export default function Page() {
 
               <div className='flex gap-4 justify-end items-center'>
                 <InputFromSchema
-                  id={`${featureKey}-value`}
-                  name={`${featureKey}-value`}
+                  id={`${typedKey}-value`}
+                  name={`${typedKey}-value`}
                   field={config.validator}
                   defaultValue={
-                    state.formData?.[index].value ?? feature?.value ?? ''
+                    state.formData?.[index]?.value ?? feature?.value ?? ''
                   }
                   className='w-24'
                 />
                 <Switch
                   className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
-                  id={`${featureKey}-enabled`}
-                  name={`${featureKey}-enabled`}
+                  id={`${typedKey}-enabled`}
+                  name={`${typedKey}-enabled`}
                   defaultChecked={feature?.enabled ?? false}
                 />
               </div>
