@@ -31,7 +31,7 @@ export function Steps() {
       component: <EventGeneralInformation action='CREATE' next={goNext} />,
     },
     {
-      title: 'Tipo de evento',
+      title: 'Organizadores',
       component: <EventInvitationTypeAction next={goNext} back={goBack} />,
     },
     {

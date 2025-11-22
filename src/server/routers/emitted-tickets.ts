@@ -150,15 +150,12 @@ export const emittedTicketsRouter = router({
           };
         });
 
-        console.log('VALUES', values);
         const res = await ctx.db
           .insert(emittedTicket)
           .values(values)
           .returning();
 
         if (!res) throw 'Error al crear ticket/s';
-
-        console.log('RES', res);
 
         // Si hay tickets creados, verificar si hay un ticketXorganizer asociado al ticketGroup
         // y actualizar su ticketId con el primer ticket creado (modo INVITATION)

@@ -64,6 +64,8 @@ const initialState: EventState = {
     authorizedUsers: [],
     inviteCondition: 'TRADITIONAL',
     extraTicketData: false,
+    serviceFee: null,
+    emailNotification: null,
   },
   ticketTypes: [],
   organizers: [],

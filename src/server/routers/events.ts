@@ -396,6 +396,8 @@ export const eventsRouter = router({
         categoryId: event.categoryId,
         inviteCondition: event.inviteCondition,
         extraTicketData: event.extraTicketData,
+        serviceFee: event.serviceFee,
+        emailNotification: event.emailNotification,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -626,6 +628,8 @@ export const eventsRouter = router({
         locationId: event.locationId,
         categoryId: event.categoryId,
         extraTicketData: event.extraTicketData,
+        serviceFee: event.serviceFee,
+        emailNotification: event.emailNotification,
       };
 
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(

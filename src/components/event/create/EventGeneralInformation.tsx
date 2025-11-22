@@ -288,7 +288,7 @@ export function EventGeneralInformation({
             id='minAgeEnabled'
             disabled={action === 'PREVIEW'}
             type='checkbox'
-            className='[&>input]:w-6 items-center'
+            className='[&>input]:w-6 [&>input]:ml-4'
             placeholder='Edad mínima'
             name='minAgeEnabled'
             checked={event.minAge !== null}
@@ -327,7 +327,7 @@ export function EventGeneralInformation({
           id='extraTicketData'
           disabled={action === 'PREVIEW'}
           type='checkbox'
-          className='[&>input]:w-6 items-center flex-3'
+          className='[&>input]:w-6 [&>input]:ml-4'
           placeholder='Datos extra de ticket'
           name='extraTicketData'
           checked={event.extraTicketData}
@@ -504,6 +504,70 @@ export function EventGeneralInformation({
           <span className='font-bold'>ver el evento</span> hasta la fecha de
           finalización, <span className='font-bold'>emitir tickets</span> y{' '}
           <span className='font-bold'>escanear tickets</span>.
+        </p>
+      </section>
+      <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Notificaciones
+        </h3>
+        <InputWithLabel
+          label='Correo electrónico (opcional)'
+          id='emailNotification'
+          type='email'
+          placeholder='correo@ejemplo.com'
+          name='emailNotification'
+          value={event.emailNotification ?? ''}
+          onChange={(e) => handleChange('emailNotification', e.target.value)}
+          error={error.emailNotification}
+          readOnly={action === 'PREVIEW'}
+          disabled={action === 'PREVIEW'}
+        />
+        <p className='text-sm'>
+          Se enviarán notificaciones a este correo electrónico cuando se emitan
+          tickets. Si se deja vacío, no se enviarán notificaciones.
+        </p>
+      </section>
+      <section>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Cargo por servicio
+        </h3>
+        <div className='flex flex-row! gap-2'>
+          <InputWithLabel
+            label='¿Cargo por servicio?'
+            id='serviceFeeEnabled'
+            disabled={action === 'PREVIEW'}
+            type='checkbox'
+            className='[&>input]:w-6 [&>input]:ml-4'
+            placeholder='Edad mínima'
+            name='serviceFeeEnabled'
+            checked={event.serviceFee !== null}
+            onChange={(e) => {
+              if (action === 'PREVIEW') return;
+              handleChange('serviceFee', e.target.checked ? 0 : null);
+            }}
+          />
+          {event.serviceFee !== null && (
+            <InputWithLabel
+              label='Cargo por servicio %'
+              id='serviceFee'
+              type='number'
+              name='serviceFee'
+              value={event.serviceFee ?? 0}
+              min={0}
+              max={100}
+              onChange={(e) =>
+                handleChange('serviceFee', Number(e.target.value))
+              }
+              error={error.serviceFee}
+              readOnly={action === 'PREVIEW'}
+              disabled={action === 'PREVIEW'}
+            />
+          )}
+        </div>
+        <p className='text-sm'>
+          El cargo por servicio se calculará sobre el precio total de los
+          tickets. Si se desmarca la opción, no se agregará ningún cargo por
+          servicio.
         </p>
       </section>
       {action === 'CREATE' && (
