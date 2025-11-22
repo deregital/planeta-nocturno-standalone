@@ -4,10 +4,10 @@ import {
   timestamp,
   text,
   integer,
-  uuid,
   foreignKey,
-  doublePrecision,
+  uuid,
   boolean,
+  doublePrecision,
   uniqueIndex,
   index,
   serial,
@@ -47,6 +47,47 @@ export const prismaMigrations = pgTable('_prisma_migrations', {
     .notNull(),
   appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
 });
+
+export const event = pgTable(
+  'event',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    description: text().notNull(),
+    coverImageUrl: text().notNull(),
+    slug: text().notNull(),
+    startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    endingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    minAge: integer(),
+    isDeleted: boolean().default(false).notNull(),
+    isActive: boolean().default(false).notNull(),
+    locationId: uuid().notNull(),
+    categoryId: uuid().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    inviteCondition: inviteCondition().default('TRADITIONAL').notNull(),
+    extraTicketData: boolean().default(true).notNull(),
+    emailNotification: text(),
+    serviceFee: doublePrecision(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.locationId],
+      foreignColumns: [location.id],
+      name: 'event_locationId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+    foreignKey({
+      columns: [table.categoryId],
+      foreignColumns: [eventCategory.id],
+      name: 'event_categoryId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+  ],
+);
 
 export const location = pgTable('location', {
   id: uuid().defaultRandom().primaryKey().notNull(),
@@ -225,45 +266,6 @@ export const session = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-  ],
-);
-
-export const event = pgTable(
-  'event',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-    description: text().notNull(),
-    coverImageUrl: text().notNull(),
-    slug: text().notNull(),
-    startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-    endingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-    minAge: integer(),
-    isDeleted: boolean().default(false).notNull(),
-    isActive: boolean().default(false).notNull(),
-    locationId: uuid().notNull(),
-    categoryId: uuid().notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    inviteCondition: inviteCondition().default('TRADITIONAL').notNull(),
-    extraTicketData: boolean().default(true).notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.locationId],
-      foreignColumns: [location.id],
-      name: 'event_locationId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
-    foreignKey({
-      columns: [table.categoryId],
-      foreignColumns: [eventCategory.id],
-      name: 'event_categoryId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
   ],
 );
 
