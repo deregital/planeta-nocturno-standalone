@@ -123,6 +123,8 @@ export const ticketGroupRouter = router({
               coverImageUrl: true,
               inviteCondition: true,
               extraTicketData: true,
+              emailNotification: true,
+              serviceFee: true,
             },
             with: {
               location: {

@@ -3,8 +3,6 @@ import { createHmac } from 'crypto';
 import { Payment } from 'mercadopago';
 import { NextResponse } from 'next/server';
 
-import { checkFeature } from '@/components/admin/config/checkFeature';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { mercadoPago } from '@/server/routers/mercado-pago';
 import { trpc } from '@/server/trpc/server';
 
@@ -82,12 +80,13 @@ export async function POST(req: Request) {
       }
     }
 
-    await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+    if (group.event.emailNotification) {
       await trpc.mail.sendNotification({
         eventName: group.event.name,
         ticketGroupId: group.id,
+        email: group.event.emailNotification,
       });
-    });
+    }
   }
 
   return new NextResponse(null, { status: 200 });

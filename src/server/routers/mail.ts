@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import z from 'zod';
 
-import { ticketGroup as ticketGroupSchema, user } from '@/drizzle/schema';
+import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
 import { publicProcedure, router } from '@/server/trpc';
@@ -106,6 +106,7 @@ export const mailRouter = router({
       z.object({
         eventName: z.string(),
         ticketGroupId: z.string(),
+        email: z.email(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -126,15 +127,11 @@ export const mailRouter = router({
         },
       });
 
-      const admins = await ctx.db.query.user.findMany({
-        where: eq(user.role, 'ADMIN'),
-      });
-
       // No deberia ser posible
-      if (!admins) {
+      if (!input.email) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'No se encontró el administrador',
+          message: 'No se agregó el correo electrónico',
         });
       }
 
@@ -151,25 +148,23 @@ export const mailRouter = router({
       const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${totalPrice}. Para más información, ingresá a la plataforma.`;
 
       try {
-        for (const admin of admins) {
-          const result = await retryWithBackoff(
-            async () =>
-              await sendMailWithoutAttachments({
-                to: admin.email,
-                subject: `Ticket vendido - ${eventName}`,
-                body: bodyText,
-              }),
-            3, // 3 intentos máximo
-            1000, // 1 segundo de delay
-          );
+        const result = await retryWithBackoff(
+          async () =>
+            await sendMailWithoutAttachments({
+              to: input.email,
+              subject: `Ticket vendido - ${eventName}`,
+              body: bodyText,
+            }),
+          3, // 3 intentos máximo
+          1000, // 1 segundo de delay
+        );
 
-          if (result.error) {
-            throw new TRPCError({
-              code: 'INTERNAL_SERVER_ERROR',
-              message: `Algo salió mal al enviar el mail a ${admin.email} para la notificación de ${bodyText}`,
-              cause: result.error,
-            });
-          }
+        if (result.error) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: `Algo salió mal al enviar el mail a ${input.email} para la notificación de ${bodyText}`,
+            cause: result.error,
+          });
         }
       } catch (error) {
         console.error(error);

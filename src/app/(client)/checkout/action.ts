@@ -7,8 +7,6 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { checkFeature } from '@/components/admin/config/checkFeature';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import {
   type CreateManyTicket,
   createManyTicketSchema,
@@ -202,6 +200,7 @@ export const handlePurchase = async (
     };
   }
   try {
+    // Total Price WITHOUT DISCOUNT OR SERVICE FEE
     const totalPrice = await trpc.ticketGroup.getTotalPriceById(
       ticketGroupId?.toString() ?? '',
     );
@@ -268,12 +267,13 @@ export const handlePurchase = async (
         };
       }
 
-      await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+      if (group.event.emailNotification) {
         await trpc.mail.sendNotification({
           eventName: group.event.name,
           ticketGroupId,
+          email: group.event.emailNotification,
         });
-      });
+      }
 
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
       (await cookies()).delete('carrito');
