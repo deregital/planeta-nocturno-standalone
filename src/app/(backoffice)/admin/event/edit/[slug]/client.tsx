@@ -20,7 +20,23 @@ export default function Client({
 }) {
   const router = useRouter();
 
-  const updateEvent = trpc.events.update.useMutation();
+  const updateEvent = trpc.events.update.useMutation({
+    onSuccess: () => {
+      toast.success('¡Evento editado con éxito!');
+      router.push('/admin/event');
+    },
+    onError: (error) => {
+      toast.error(
+        error.message ||
+          'Error al actualizar el evento. Por favor, intente nuevamente.',
+      );
+      setError({
+        general:
+          error.message ||
+          'Error al actualizar el evento. Por favor, intente nuevamente.',
+      });
+    },
+  });
 
   const ticketTypesState = useCreateEventStore((state) => state.ticketTypes);
   const eventState = useCreateEventStore((state) => state.event);
@@ -115,9 +131,6 @@ export default function Client({
       ticketTypes: ticketTypesState,
       organizersInput: organizers,
     });
-
-    toast('¡Evento editado con éxito!');
-    router.push('/admin/event');
   }
 
   if (!event) return null;
