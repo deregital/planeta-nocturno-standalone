@@ -27,8 +27,8 @@ export default function PreviewEvent({ back }: { back: () => void }) {
           }),
       number:
         organizer.type === 'TRADITIONAL'
-          ? organizer.discountPercentage
-          : organizer.ticketAmount,
+          ? (organizer.discountPercentage ?? 0)
+          : (organizer.ticketAmount ?? 0),
       dni: organizer.dni,
     }),
   );
