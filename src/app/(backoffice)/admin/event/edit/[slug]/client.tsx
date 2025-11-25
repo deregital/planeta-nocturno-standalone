@@ -8,7 +8,6 @@ import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provi
 import GoBack from '@/components/common/GoBack';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
-import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -21,7 +20,23 @@ export default function Client({
 }) {
   const router = useRouter();
 
-  const updateEvent = trpc.events.update.useMutation();
+  const updateEvent = trpc.events.update.useMutation({
+    onSuccess: () => {
+      toast.success('¡Evento editado con éxito!');
+      router.push('/admin/event');
+    },
+    onError: (error) => {
+      toast.error(
+        error.message ||
+          'Error al actualizar el evento. Por favor, intente nuevamente.',
+      );
+      setError({
+        general:
+          error.message ||
+          'Error al actualizar el evento. Por favor, intente nuevamente.',
+      });
+    },
+  });
 
   const ticketTypesState = useCreateEventStore((state) => state.ticketTypes);
   const eventState = useCreateEventStore((state) => state.event);
@@ -46,15 +61,26 @@ export default function Client({
         })),
       });
       setOrganizers(
-        event.eventXorganizers.map((e) => ({
-          type: event.inviteCondition,
-          dni: e.user.dni,
-          id: e.user.id,
-          fullName: e.user.fullName,
-          phoneNumber: e.user.phoneNumber,
-          discountPercentage: e.discountPercentage ?? 0,
-          ticketAmount: e.ticketAmount ?? 0,
-        })),
+        event.eventXorganizers.map((e) => {
+          const base = {
+            type: event.inviteCondition,
+            dni: e.user.dni,
+            id: e.user.id,
+            fullName: e.user.fullName,
+            phoneNumber: e.user.phoneNumber,
+          };
+          return event.inviteCondition === 'TRADITIONAL'
+            ? {
+                ...base,
+                type: 'TRADITIONAL' as const,
+                discountPercentage: e.discountPercentage,
+              }
+            : {
+                ...base,
+                type: 'INVITATION' as const,
+                ticketAmount: e.ticketAmount,
+              };
+        }),
       );
       setTicketTypes(
         event.ticketTypes.map((t) => ({
@@ -93,20 +119,26 @@ export default function Client({
       return;
     }
 
+    if (event.inviteCondition === 'INVITATION' && organizers.length === 0) {
+      setError({
+        general: 'Debe agregar al menos un organizador para el evento.',
+      });
+      return;
+    }
+
     updateEvent.mutate({
       event: { ...eventState, id: event.id, slug: event.slug },
       ticketTypes: ticketTypesState,
       organizersInput: organizers,
     });
-
-    toast('¡Evento editado con éxito!');
-    router.push('/admin/event');
   }
+
+  if (!event) return null;
 
   return (
     <div className='w-full p-4 [&_section]:flex [&_section]:flex-col [&_section]:gap-4 [&_section]:p-4 [&_section]:border-2 [&_section]:bg-accent-ultra-light [&_section]:border-stroke [&_section]:rounded-md [&_section]:w-full'>
       <div className='flex gap-2 items-center'>
-        <GoBack className='self-baseline' />
+        <GoBack className='self-baseline' route='/admin/event' />
         <h1 className='text-4xl font-bold'>Editar Evento</h1>
       </div>
       <EventGeneralInformation action='EDIT' externalErrors={error} />
@@ -116,34 +148,7 @@ export default function Client({
       </section>
       <section>
         <h3 className='text-2xl'>Organizadores</h3>
-        {event?.inviteCondition === 'TRADITIONAL' ? (
-          <EventOrganizers type='TRADITIONAL' />
-        ) : (
-          <>
-            <p className='text-xs text-accent mb-2'>
-              En modo invitación no se pueden modificar los organizadores
-              después de crear el evento.
-            </p>
-            <OrganizerTableWithAction
-              data={organizers.map((org) => ({
-                id: org.id,
-                dni: org.dni,
-                fullName: org.fullName,
-                phoneNumber: org.phoneNumber,
-                number:
-                  org.type === 'TRADITIONAL'
-                    ? org.discountPercentage
-                    : org.ticketAmount,
-              }))}
-              numberTitle='Cantidad de tickets'
-              disableActions={true}
-              type='INVITATION'
-              maxNumber={100}
-            >
-              <></>
-            </OrganizerTableWithAction>
-          </>
-        )}
+        <EventOrganizers type={event.inviteCondition} />
       </section>
       {error.general && (
         <p className='text-red-500 font-bold'>{error.general}</p>
