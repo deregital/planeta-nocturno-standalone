@@ -1,5 +1,6 @@
+import { CreateUserForm } from '@/components/admin/config/CreateUserForm';
 import UpdateFeatures from '@/components/admin/config/UpdateFeatures';
-import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
+import { UsersTable } from '@/components/admin/config/UsersTable';
 import { trpc } from '@/server/trpc/server';
 
 export default async function Page() {
@@ -9,10 +10,11 @@ export default async function Page() {
     <div className='flex flex-col gap-4 py-4'>
       <UpdateFeatures />
       <section>
-        <h2 className='mx-4 text-2xl font-bold'>Administradores</h2>
-        <UsersTableWithFilters
-          data={data.filter((user) => user.role === 'ADMIN')}
-        />
+        <div className='flex justify-between items-center px-4'>
+          <h2 className='text-2xl font-bold'>Usuarios</h2>
+          <CreateUserForm />
+        </div>
+        <UsersTable data={data.filter((user) => user.role !== 'ORGANIZER')} />
       </section>
     </div>
   );

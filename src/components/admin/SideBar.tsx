@@ -60,7 +60,7 @@ export const navRoutes: {
   {
     href: '/admin/users',
     icon: <Users />,
-    title: 'Usuarios',
+    title: 'Organizadores',
     roles: ['ADMIN'],
   },
   {

@@ -11,12 +11,11 @@ import Link from 'next/link';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { type role as roleEnum } from '@/drizzle/schema';
-import { genderTranslation, roleTranslation } from '@/lib/translations';
+import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
-export const userColumns: StrictColumnDef<
+export const organizerColumns: StrictColumnDef<
   RouterOutputs['user']['getAll'][number]
 >[] = [
   {
@@ -48,28 +47,6 @@ export const userColumns: StrictColumnDef<
     meta: {
       exportValue: (row) => row.original.id,
       exportHeader: 'ID',
-    },
-  },
-  {
-    accessorKey: 'role',
-    header: () => <p className='text-sm p-2'>Rol</p>,
-    cell: ({ row }) => {
-      return (
-        <p className='text-sm p-2'>
-          {
-            roleTranslation[
-              row.original.role as (typeof roleEnum.enumValues)[number]
-            ]
-          }
-        </p>
-      );
-    },
-    meta: {
-      exportValue: (row) =>
-        roleTranslation[
-          row.original.role as (typeof roleEnum.enumValues)[number]
-        ],
-      exportHeader: 'Rol',
     },
   },
   {

@@ -3,33 +3,32 @@
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import { organizerColumns } from '@/components/admin/users/OrganizerColumns';
+import { userColumns } from '@/components/admin/config/UserColumns';
 import { DataTable } from '@/components/common/DataTable';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { role as roleEnum } from '@/drizzle/schema';
+import { roleTranslation } from '@/lib/translations';
 import { type RouterOutputs } from '@/server/routers/app';
 
 interface UsersTableProps {
   data: RouterOutputs['user']['getAll'];
 }
 
-export function UsersTableWithFilters({ data }: UsersTableProps) {
+export function UsersTable({ data }: UsersTableProps) {
   const [globalFilter, setGlobalFilter] = useState('');
-  const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
-  // Extract all unique batches from data
-  const availableBatches = useMemo(() => {
-    const batchSet = new Set<string>();
-    data.forEach((user) => {
-      user.userXTags.forEach(({ tag }) => {
-        batchSet.add(tag.name);
-      });
-    });
-    return Array.from(batchSet)
-      .sort()
-      .map((batch) => ({ value: batch, label: batch }));
-  }, [data]);
+  // Create role options
+  const roleOptions = useMemo(() => {
+    return roleEnum.enumValues
+      .filter((role) => role !== 'ORGANIZER')
+      .map((role) => ({
+        value: role,
+        label: roleTranslation[role as (typeof roleEnum.enumValues)[number]],
+      }));
+  }, []);
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
@@ -57,13 +56,12 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
           });
         })();
 
-      const matchesBatch =
-        selectedBatches.length === 0 ||
-        item.userXTags.some(({ tag }) => selectedBatches.includes(tag.name));
+      const matchesRole =
+        selectedRoles.length === 0 || selectedRoles.includes(item.role);
 
-      return matchesSearch && matchesBatch;
+      return matchesSearch && matchesRole;
     });
-  }, [data, globalFilter, selectedBatches]);
+  }, [data, globalFilter, selectedRoles]);
 
   return (
     <div className='space-y-4'>
@@ -82,27 +80,27 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
           </div>
           <div className='flex flex-row md:items-center gap-4 w-full md:w-auto'>
             <MultiSelect
-              className='w-full'
-              options={availableBatches}
-              selectedValues={selectedBatches}
-              onSelectionChange={setSelectedBatches}
-              label='Filtrar por grupo'
-              placeholder='Todos los grupos'
-              emptyMessage='No hay grupos disponibles'
+              className='w-full min-w-48'
+              options={roleOptions}
+              selectedValues={selectedRoles}
+              onSelectionChange={setSelectedRoles}
+              label='Filtrar por rol'
+              placeholder='Todos los roles'
+              emptyMessage='No hay roles disponibles'
             />
           </div>
           <div className='flex flex-row items-center gap-2 pt-4 md:pt-0 md:place-self-end'>
             <p className='text-sm text-accent'>
               {filteredData.length} de {data.length} resultados
             </p>
-            {(globalFilter || selectedBatches.length > 0) && (
+            {(globalFilter || selectedRoles.length > 0) && (
               <Button
                 variant={'ghost'}
                 size={'icon'}
                 className='mx-2'
                 onClick={() => {
                   setGlobalFilter('');
-                  setSelectedBatches([]);
+                  setSelectedRoles([]);
                 }}
               >
                 <X className='size-4' />
@@ -113,7 +111,7 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
       </div>
       <DataTable
         fullWidth={true}
-        columns={organizerColumns}
+        columns={userColumns}
         data={filteredData}
         exportFileName={`Usuarios`}
       />
