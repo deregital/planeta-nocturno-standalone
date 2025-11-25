@@ -9,7 +9,7 @@ export default async function UsersPage() {
   return (
     <div className='flex flex-col gap-4 py-4'>
       <div className='flex justify-between items-center px-4'>
-        <h1 className='text-2xl font-bold'>Usuarios</h1>
+        <h1 className='text-2xl font-bold'>Organizadores</h1>
         <div className='flex gap-2'>
           <ImportUsersWrapper />
           <CreateOrganizerForm />
