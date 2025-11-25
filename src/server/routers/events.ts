@@ -556,7 +556,8 @@ export const eventsRouter = router({
 
                 if (
                   event.inviteCondition === 'INVITATION' &&
-                  'ticketAmount' in organizer
+                  'ticketAmount' in organizer &&
+                  organizer.ticketAmount !== null
                 ) {
                   // Agrupo todos los tickets del organizador en un solo grupo
                   const [thisOrganizerTicketGroup] = await tx
@@ -764,13 +765,28 @@ export const eventsRouter = router({
               const addedOrganizers = await tx.query.user.findMany({
                 where: inArray(user.id, addedOrganizersIds),
               });
-              const organizerTicketType = ticketTypesDB.find(
+              let organizerTicketType = ticketTypesDB.find(
                 (tt) => tt.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
               );
               if (!organizerTicketType) {
-                throw new Error(
-                  `Tipo de ticket "${ORGANIZER_TICKET_TYPE_NAME}" no encontrado`,
-                );
+                const [createdOrganizerTicketType] = await tx
+                  .insert(ticketType)
+                  .values({
+                    name: ORGANIZER_TICKET_TYPE_NAME,
+                    description: 'Tickets para los organizadores',
+                    price: 0,
+                    maxAvailable: addedOrganizers.length,
+                    maxPerPurchase: 1,
+                    category: 'FREE',
+                    lowStockThreshold: null,
+                    maxSellDate: null,
+                    scanLimit: null,
+                    visibleInWeb: false,
+                    eventId: eventUpdated.id,
+                  })
+                  .returning();
+
+                organizerTicketType = createdOrganizerTicketType;
               }
               const emittedTickets = await tx
                 .insert(emittedTicket)
@@ -874,6 +890,7 @@ export const eventsRouter = router({
 
             return { eventUpdated, ticketTypesUpdated };
           } catch (error) {
+            console.log('Rollback edit event', error);
             tx.rollback();
             throw error;
           }
@@ -881,6 +898,7 @@ export const eventsRouter = router({
       );
 
       revalidatePath(`/admin/event/edit/${event.slug}`);
+      revalidatePath('/admin/event');
 
       return { eventUpdated, ticketTypesUpdated };
     }),
