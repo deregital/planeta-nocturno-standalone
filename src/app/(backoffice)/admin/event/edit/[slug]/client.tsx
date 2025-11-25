@@ -103,6 +103,13 @@ export default function Client({
       return;
     }
 
+    if (event.inviteCondition === 'INVITATION' && organizers.length === 0) {
+      setError({
+        general: 'Debe agregar al menos un organizador para el evento.',
+      });
+      return;
+    }
+
     updateEvent.mutate({
       event: { ...eventState, id: event.id, slug: event.slug },
       ticketTypes: ticketTypesState,

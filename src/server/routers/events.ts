@@ -603,6 +603,17 @@ export const eventsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { event, ticketTypes, organizersInput } = input;
+
+      if (
+        event.inviteCondition === 'INVITATION' &&
+        organizersInput.length === 0
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Debe agregar al menos un organizador para el evento.',
+        });
+      }
+
       const slug = generateSlug(event.name);
 
       const existingEvent = await ctx.db.query.event.findMany({
