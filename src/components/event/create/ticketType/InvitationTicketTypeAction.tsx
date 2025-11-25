@@ -56,7 +56,7 @@ export function InvitationTicketTypeAction({
       description: ticketTypeInfo.description,
       price: 0,
       maxAvailable: organizers.reduce((acc, organizer) => {
-        if ('ticketAmount' in organizer) {
+        if ('ticketAmount' in organizer && organizer.ticketAmount !== null) {
           return acc + organizer.ticketAmount;
         }
         return acc;
