@@ -2,8 +2,9 @@
 
 import { useActionState } from 'react';
 
-import { UserForm } from '@/components/admin/users/UserForm';
-import { createUser } from '@/app/(backoffice)/admin/users/create/actions';
+import { createOrganizer } from '@/app/(backoffice)/admin/users/create/actions';
+import { OrganizerForm } from '@/components/admin/users/OrganizerForm';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,21 +12,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 
-export function CreateUserForm() {
-  const [state, formAction, isPending] = useActionState(createUser, {});
+export function CreateOrganizerForm() {
+  const [state, formAction, isPending] = useActionState(createOrganizer, {});
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className='w-fit'>+ Nuevo usuario</Button>
+        <Button className='w-fit'>+ Nuevo organizador</Button>
       </DialogTrigger>
-      <DialogContent aria-describedby={undefined} title='Crear usuario'>
+      <DialogContent aria-describedby={undefined} title='Crear organizador'>
         <DialogHeader>
-          <DialogTitle>Crear usuario</DialogTitle>
+          <DialogTitle>Crear organizador</DialogTitle>
         </DialogHeader>
-        <UserForm
+        <OrganizerForm
           type='CREATE'
           initialState={state.data ?? undefined}
           formAction={formAction}

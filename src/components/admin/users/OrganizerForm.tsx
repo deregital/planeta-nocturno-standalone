@@ -9,8 +9,6 @@ import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { role } from '@/drizzle/schema';
-import { roleTranslation } from '@/lib/translations';
 import { type User } from '@/server/types';
 import 'react-phone-number-input/style.css';
 
@@ -41,7 +39,7 @@ const defaultState: UserData = {
   instagram: '',
 };
 
-export function UserForm({
+export function OrganizerForm({
   userId,
   initialState,
   errors,
@@ -102,22 +100,6 @@ export function UserForm({
         }
         onChange={(date) => {
           handleChange('birthDate', date.toISOString());
-        }}
-      />
-      <SelectWithLabel
-        label='Rol'
-        required
-        id='role'
-        name='role'
-        value={internalState?.role}
-        className='w-full'
-        values={role.enumValues.map((roleValue) => ({
-          label: roleTranslation[roleValue],
-          value: roleValue,
-        }))}
-        error={errors?.role}
-        onValueChange={(value) => {
-          handleChange('role', value as (typeof role.enumValues)[number]);
         }}
       />
       <div>
