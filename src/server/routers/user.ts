@@ -6,7 +6,12 @@ import { z } from 'zod';
 
 import { type db } from '@/drizzle';
 
-import { tag as tagTable, user as userTable, userXTag } from '@/drizzle/schema';
+import {
+  role,
+  tag as tagTable,
+  user as userTable,
+  userXTag,
+} from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
 import {
   generateWelcomeEmail,
@@ -30,6 +35,21 @@ export const userRouter = router({
 
     return users;
   }),
+  getByRole: adminProcedure
+    .input(z.enum(role.enumValues))
+    .query(async ({ ctx, input }) => {
+      const users = await ctx.db.query.user.findMany({
+        where: eq(userTable.role, input),
+        with: {
+          userXTags: {
+            with: {
+              tag: true,
+            },
+          },
+        },
+      });
+      return users;
+    }),
   getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany({
       where: eq(userTable.role, 'TICKETING'),
