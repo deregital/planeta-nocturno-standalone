@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { organizerColumns } from '@/components/admin/users/OrganizerColumns';
 import { DataTable } from '@/components/common/DataTable';
@@ -15,6 +16,8 @@ interface UsersTableProps {
 }
 
 export function UsersTableWithFilters({ data }: UsersTableProps) {
+  const router = useRouter();
+
   const [globalFilter, setGlobalFilter] = useState('');
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
 
@@ -64,6 +67,10 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
       return matchesSearch && matchesBatch;
     });
   }, [data, globalFilter, selectedBatches]);
+
+  const handleRowClick = (id: string) => {
+    router.push(`/admin/users/${id}`);
+  };
 
   return (
     <div className='space-y-4'>
@@ -116,6 +123,7 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
         columns={organizerColumns}
         data={filteredData}
         exportFileName={`Usuarios`}
+        onClickRow={handleRowClick}
       />
     </div>
   );

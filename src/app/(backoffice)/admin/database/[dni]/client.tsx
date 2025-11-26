@@ -111,6 +111,10 @@ export default function Client({
             </p>
           </div>
           <div>
+            <Mail />
+            <p>Email: {buyer.mail}</p>
+          </div>
+          <div>
             <Instagram />
             <p>
               Instagram: {buyer.instagram ? `@${normalizedInstagram}` : '-'}
