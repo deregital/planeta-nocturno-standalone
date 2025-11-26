@@ -12,7 +12,7 @@ import {
   user as userTable,
   userXTag,
 } from '@/drizzle/schema';
-import { userSchema } from '@/server/schemas/user';
+import { resetPasswordSchema, userSchema } from '@/server/schemas/user';
 import {
   generateWelcomeEmail,
   sendMailWithoutAttachments,
@@ -134,6 +134,37 @@ export const userRouter = router({
 
       revalidatePath('/admin/users');
       return user;
+    }),
+  resetPassword: adminProcedure
+    .input(resetPasswordSchema)
+    .mutation(async ({ ctx, input }) => {
+      const hashedPassword = await hash(input.password, 10);
+
+      await ctx.db
+        .update(userTable)
+        .set({
+          password: hashedPassword,
+        })
+        .where(eq(userTable.id, input.id));
+
+      const user = await ctx.db.query.user.findFirst({
+        where: eq(userTable.id, input.id),
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Usuario no encontrado',
+        });
+      }
+
+      return {
+        username: user.name,
+        password: input.password,
+        fullName: user.fullName,
+        instagram: user.instagram,
+        phoneNumber: user.phoneNumber,
+      };
     }),
   delete: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const user = await ctx.db.delete(userTable).where(eq(userTable.id, input));

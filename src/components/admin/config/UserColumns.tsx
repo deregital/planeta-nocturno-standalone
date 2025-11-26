@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
+import { ResetPasswordForm } from '@/components/admin/users/ResetPasswordForm';
 import { Button } from '@/components/ui/button';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { genderTranslation, roleTranslation } from '@/lib/translations';
@@ -266,6 +267,11 @@ export const userColumns: StrictColumnDef<
               <Edit className='size-4' />
             </Link>
           </Button>
+          <ResetPasswordForm
+            userId={row.original.id}
+            userName={row.original.name}
+            userRole={row.original.role}
+          />
           <DeleteUserModal user={row.original} />
         </div>
       );

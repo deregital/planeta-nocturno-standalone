@@ -42,3 +42,11 @@ export const userSchema = z.object({
     }),
   instagram: z.string().nullable(),
 });
+
+export const resetPasswordSchema = userSchema
+  .pick({
+    password: true,
+  })
+  .extend({
+    id: z.string(),
+  });
