@@ -1,9 +1,10 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
 import { createUser } from '@/app/(backoffice)/admin/users/create/actions';
 import { UserForm } from '@/components/admin/config/UserForm';
+import { CredentialsModal } from '@/components/admin/users/CredentialsModal';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,24 +16,54 @@ import {
 
 export function CreateUserForm() {
   const [state, formAction, isPending] = useActionState(createUser, {});
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (state.credentials) {
+      setCreateDialogOpen(false);
+      setCredentialsModalOpen(true);
+    }
+  }, [state.credentials]);
+
+  const handleCreateDialogOpen = (open: boolean) => {
+    setCreateDialogOpen(open);
+    if (!open && state.credentials) {
+      setCredentialsModalOpen(false);
+    }
+  };
+
+  const handleCredentialsModalClose = (open: boolean) => {
+    setCredentialsModalOpen(open);
+  };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button className='w-fit'>+ Nuevo usuario</Button>
-      </DialogTrigger>
-      <DialogContent aria-describedby={undefined} title='Crear usuario'>
-        <DialogHeader>
-          <DialogTitle>Crear usuario</DialogTitle>
-        </DialogHeader>
-        <UserForm
-          type='CREATE'
-          initialState={state.data ?? undefined}
-          formAction={formAction}
-          isPending={isPending}
-          errors={state.errors ?? undefined}
+    <>
+      <Dialog open={createDialogOpen} onOpenChange={handleCreateDialogOpen}>
+        <DialogTrigger asChild>
+          <Button className='w-fit'>+ Nuevo usuario</Button>
+        </DialogTrigger>
+        <DialogContent aria-describedby={undefined} title='Crear usuario'>
+          <DialogHeader>
+            <DialogTitle>Crear usuario</DialogTitle>
+          </DialogHeader>
+          <UserForm
+            type='CREATE'
+            initialState={state.data ?? undefined}
+            formAction={formAction}
+            isPending={isPending}
+            errors={state.errors ?? undefined}
+          />
+        </DialogContent>
+      </Dialog>
+      {state.credentials && (
+        <CredentialsModal
+          open={credentialsModalOpen}
+          onOpenChange={handleCredentialsModalClose}
+          credentials={state.credentials}
+          type='user'
         />
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   );
 }
