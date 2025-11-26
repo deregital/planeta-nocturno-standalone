@@ -570,6 +570,30 @@ export function EventGeneralInformation({
           servicio.
         </p>
       </section>
+      <section className='flex gap-2'>
+        <h3 className='text-accent-dark text-lg font-semibold'>
+          Mostrar identificador único en ticket
+        </h3>
+        <InputWithLabel
+          label='¿Identificador único en ticket?'
+          id='ticketSlugVisibleInPdf'
+          disabled={action === 'PREVIEW'}
+          type='checkbox'
+          className='[&>input]:w-6 [&>input]:ml-4'
+          placeholder='Datos extra de ticket'
+          name='ticketSlugVisibleInPdf'
+          checked={event.ticketSlugVisibleInPdf}
+          onChange={(e) => {
+            if (action === 'PREVIEW') return;
+            handleChange('ticketSlugVisibleInPdf', e.target.checked);
+          }}
+        />
+        <p className='text-sm'>
+          Al seleccionar esta opción, se mostrará el identificador único en el
+          PDF de ticket. El identificador se compone del tipo de ticket seguido
+          de un numero. Ej. free-1. Si se deja desmarcada, no se mostrará.
+        </p>
+      </section>
       {action === 'CREATE' && (
         <Button type='submit' variant={'accent'}>
           Continuar

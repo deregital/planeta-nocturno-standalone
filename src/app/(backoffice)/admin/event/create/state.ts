@@ -66,6 +66,7 @@ const initialState: EventState = {
     extraTicketData: false,
     serviceFee: null,
     emailNotification: null,
+    ticketSlugVisibleInPdf: false,
   },
   ticketTypes: [],
   organizers: [],
