@@ -1,16 +1,25 @@
 'use server';
 
-import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import z from 'zod';
 
 import { type UserData } from '@/components/admin/users/OrganizerForm';
 import { type role as roleEnum } from '@/drizzle/schema';
-import { userSchema } from '@/server/schemas/user';
+import { resetPasswordSchema, userSchema } from '@/server/schemas/user';
 import { trpc } from '@/server/trpc/server';
+
+export type UserFirstTimeCredentials = {
+  username: string;
+  password: string;
+  fullName: string;
+  instagram: string | null;
+  phoneNumber: string;
+};
 
 export type CreateUserActionState = {
   data?: UserData;
   errors?: Partial<Record<keyof UserData | 'general', string>>;
+  credentials?: UserFirstTimeCredentials;
 };
 
 export async function createUser(
@@ -78,7 +87,17 @@ export async function createUser(
     };
   }
 
-  redirect('/admin/users');
+  revalidatePath('/admin/users');
+
+  return {
+    credentials: {
+      username: validation.data.name,
+      password: validation.data.password,
+      fullName: validation.data.fullName,
+      instagram: validation.data.instagram,
+      phoneNumber: validation.data.phoneNumber,
+    },
+  };
 }
 
 export async function createOrganizer(
@@ -145,5 +164,67 @@ export async function createOrganizer(
     };
   }
 
-  redirect('/admin/users');
+  revalidatePath('/admin/config');
+
+  return {
+    credentials: {
+      username: validation.data.name,
+      password: validation.data.password,
+      fullName: validation.data.fullName,
+      instagram: validation.data.instagram,
+      phoneNumber: validation.data.phoneNumber,
+    },
+  };
+}
+
+export type ResetPasswordActionState = {
+  errors?: {
+    password?: string;
+    general?: string;
+  };
+  credentials?: UserFirstTimeCredentials;
+};
+
+export async function resetPassword(
+  prevValues: ResetPasswordActionState,
+  formData: FormData,
+): Promise<ResetPasswordActionState> {
+  const userId = formData.get('userId') as string;
+  const password = formData.get('password') as string;
+
+  const validation = resetPasswordSchema.safeParse({
+    id: userId,
+    password,
+  });
+
+  if (!validation.success) {
+    const validateErrors = z.treeifyError(validation.error).properties;
+    return {
+      errors: {
+        password: validateErrors?.password?.errors?.[0],
+      },
+    };
+  }
+
+  try {
+    const credentials = await trpc.user.resetPassword({
+      id: userId,
+      password,
+    });
+
+    return {
+      credentials,
+    };
+  } catch (error) {
+    console.error('RESET PASSWORD ERROR', error);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Error al restablecer contraseña';
+    return {
+      errors: {
+        general: errorMessage,
+      },
+    };
+  }
 }
