@@ -86,20 +86,22 @@ export function CredentialsModal({
                   <WhatsApp />
                 </div>
               </a>
-              <a
-                href={`https://ig.me/m/${credentials.instagram}?text=${shareMessage}`}
-                target='_blank'
-              >
-                <div
-                  className='flex items-center justify-center p-4 rounded-full transition-all cursor-pointer text-white hover:brightness-110'
-                  style={{
-                    background:
-                      'radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)',
-                  }}
+              {credentials.instagram && (
+                <a
+                  href={`https://ig.me/m/${credentials.instagram}?text=${shareMessage}`}
+                  target='_blank'
                 >
-                  <Instagram />
-                </div>
-              </a>
+                  <div
+                    className='flex items-center justify-center p-4 rounded-full transition-all cursor-pointer text-white hover:brightness-110'
+                    style={{
+                      background:
+                        'radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)',
+                    }}
+                  >
+                    <Instagram />
+                  </div>
+                </a>
+              )}
             </div>
           </div>
         </div>
