@@ -323,6 +323,7 @@ export const emittedTicketsRouter = router({
         id: ticket.id,
         invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
         slug: ticket.slug,
+        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
       });
 
       return pdf;
@@ -539,6 +540,7 @@ export const emittedTicketsRouter = router({
         id: ticket.id,
         invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
         slug: ticket.slug,
+        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
       });
 
       const { data, error } = await sendMail({

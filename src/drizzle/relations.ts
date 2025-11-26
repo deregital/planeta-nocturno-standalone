@@ -1,13 +1,13 @@
 import { relations } from 'drizzle-orm/relations';
 import {
-  location,
   event,
-  eventCategory,
   ticketType,
   user,
   emittedTicket,
   ticketGroup,
   session,
+  location,
+  eventCategory,
   eventXUser,
   tag,
   userXTag,
@@ -18,7 +18,19 @@ import {
   account,
 } from './schema';
 
+export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
+  event: one(event, {
+    fields: [ticketType.eventId],
+    references: [event.id],
+  }),
+  emittedTickets: many(emittedTicket),
+  ticketTypePerGroups: many(ticketTypePerGroup),
+}));
+
 export const eventRelations = relations(event, ({ one, many }) => ({
+  ticketTypes: many(ticketType),
+  emittedTickets: many(emittedTicket),
+  ticketGroups: many(ticketGroup),
   location: one(location, {
     fields: [event.locationId],
     references: [location.id],
@@ -27,29 +39,9 @@ export const eventRelations = relations(event, ({ one, many }) => ({
     fields: [event.categoryId],
     references: [eventCategory.id],
   }),
-  ticketTypes: many(ticketType),
-  emittedTickets: many(emittedTicket),
-  ticketGroups: many(ticketGroup),
   eventXUsers: many(eventXUser),
   eventXorganizers: many(eventXorganizer),
   ticketXorganizers: many(ticketXorganizer),
-}));
-
-export const locationRelations = relations(location, ({ many }) => ({
-  events: many(event),
-}));
-
-export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
-  events: many(event),
-}));
-
-export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
-  event: one(event, {
-    fields: [ticketType.eventId],
-    references: [event.id],
-  }),
-  emittedTickets: many(emittedTicket),
-  ticketTypePerGroups: many(ticketTypePerGroup),
 }));
 
 export const emittedTicketRelations = relations(
@@ -106,6 +98,14 @@ export const sessionRelations = relations(session, ({ one }) => ({
     fields: [session.userId],
     references: [user.id],
   }),
+}));
+
+export const locationRelations = relations(location, ({ many }) => ({
+  events: many(event),
+}));
+
+export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
+  events: many(event),
 }));
 
 export const eventXUserRelations = relations(eventXUser, ({ one }) => ({

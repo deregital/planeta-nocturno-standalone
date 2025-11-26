@@ -410,6 +410,7 @@ export const eventsRouter = router({
         extraTicketData: event.extraTicketData,
         serviceFee: event.serviceFee,
         emailNotification: event.emailNotification,
+        ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -556,6 +557,8 @@ export const eventsRouter = router({
                   dni: organizerEmittedTicket.dni,
                   createdAt: organizerEmittedTicket.createdAt,
                   ticketType: organizerEmittedTicket.ticketType.name,
+                  ticketSlugVisibleInPdf:
+                    organizerEmittedTicket.event.ticketSlugVisibleInPdf,
                 });
 
                 await sendMail({
@@ -654,6 +657,7 @@ export const eventsRouter = router({
         extraTicketData: event.extraTicketData,
         serviceFee: event.serviceFee,
         emailNotification: event.emailNotification,
+        ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
       };
 
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(
@@ -857,6 +861,7 @@ export const eventsRouter = router({
                     createdAt: emittedTicket.createdAt,
                     ticketType: organizerTicketType.name,
                     eventLocation: eventLocation?.address ?? '-',
+                    ticketSlugVisibleInPdf: eventUpdated.ticketSlugVisibleInPdf,
                   });
                   await sendMail({
                     to: org.email,
@@ -930,6 +935,11 @@ export const eventsRouter = router({
                       with: {
                         ticketType: true,
                         event: {
+                          columns: {
+                            name: true,
+                            startingDate: true,
+                            ticketSlugVisibleInPdf: true,
+                          },
                           with: {
                             location: true,
                           },
@@ -950,6 +960,8 @@ export const eventsRouter = router({
                       dni: organizerEmittedTicketFull.dni,
                       createdAt: organizerEmittedTicketFull.createdAt,
                       ticketType: organizerEmittedTicketFull.ticketType.name,
+                      ticketSlugVisibleInPdf:
+                        organizerEmittedTicketFull.event.ticketSlugVisibleInPdf,
                     });
 
                     await sendMail({

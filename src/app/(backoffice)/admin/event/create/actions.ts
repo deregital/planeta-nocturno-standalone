@@ -22,6 +22,8 @@ const generalEventSchema = createEventSchema.pick({
   isActive: true,
   locationId: true,
   minAge: true,
+  emailNotification: true,
+  serviceFee: true,
 });
 
 export async function validateGeneralInformation(
@@ -36,6 +38,8 @@ export async function validateGeneralInformation(
     | 'isActive'
     | 'locationId'
     | 'minAge'
+    | 'emailNotification'
+    | 'serviceFee'
   >,
 ) {
   const validatedEvent = generalEventSchema.safeParse(event);
