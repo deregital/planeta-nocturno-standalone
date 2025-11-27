@@ -20,7 +20,7 @@ export async function generateTicketTemplate(
 
   const offset = await measureTextWidth(`${first_word} `, fontBold, 20);
 
-  const slugSpace = 34.43;
+  const slugSpace = 40.43;
   const verticalOffset = showSlug ? 0 : slugSpace;
 
   // Campos base del template

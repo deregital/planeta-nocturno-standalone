@@ -1,6 +1,5 @@
 'use client';
 
-import { Loader } from 'lucide-react';
 import { useActionState, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -22,7 +21,7 @@ export default function UpdateFeatures() {
     success: false,
   });
 
-  const { data: features, isLoading } = trpc.feature.getAll.useQuery();
+  const { data: features } = trpc.feature.getAll.useQuery();
   const utils = trpc.useUtils();
 
   useEffect(() => {
@@ -36,58 +35,59 @@ export default function UpdateFeatures() {
 
   if (features?.length === 0) return null;
 
-  return isLoading ? (
-    <Loader className='animate-spin' />
-  ) : (
-    <form action={action} className='flex flex-col gap-6 p-6'>
-      {Object.values(FEATURE_KEYS).map((featureKey, index) => {
-        const typedKey = featureKey as FeatureKey;
-        const configRaw = FEATURE_CONFIG[typedKey];
-        if (!configRaw) return null;
+  // Poner un Skeleton para cuando SI haya features
+  return (
+    features && (
+      <form action={action} className='flex flex-col gap-6 p-6'>
+        {Object.values(FEATURE_KEYS).map((featureKey, index) => {
+          const typedKey = featureKey as FeatureKey;
+          const configRaw = FEATURE_CONFIG[typedKey];
+          if (!configRaw) return null;
 
-        const config = configRaw as FeatureConfig;
-        const feature = features?.find((f) => f.key === typedKey);
-        const error = state.errors?.[index];
+          const config = configRaw as FeatureConfig;
+          const feature = features?.find((f) => f.key === typedKey);
+          const error = state.errors?.[index];
 
-        return (
-          <div key={typedKey} className='flex flex-col gap-2'>
-            <div className='grid grid-cols-3 gap-4 max-w-3xl'>
-              <Label
-                htmlFor={`${typedKey}-enabled`}
-                className='text-lg font-medium col-span-2'
-              >
-                {config.label}
-              </Label>
+          return (
+            <div key={typedKey} className='flex flex-col gap-2'>
+              <div className='grid grid-cols-3 gap-4 max-w-3xl'>
+                <Label
+                  htmlFor={`${typedKey}-enabled`}
+                  className='text-lg font-medium col-span-2'
+                >
+                  {config.label}
+                </Label>
 
-              <div className='flex gap-4 justify-end items-center'>
-                <InputFromSchema
-                  id={`${typedKey}-value`}
-                  name={`${typedKey}-value`}
-                  field={config.validator}
-                  defaultValue={
-                    state.formData?.[index]?.value ?? feature?.value ?? ''
-                  }
-                  className='w-24'
-                />
-                <Switch
-                  className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
-                  id={`${typedKey}-enabled`}
-                  name={`${typedKey}-enabled`}
-                  defaultChecked={feature?.enabled ?? false}
-                />
+                <div className='flex gap-4 justify-end items-center'>
+                  <InputFromSchema
+                    id={`${typedKey}-value`}
+                    name={`${typedKey}-value`}
+                    field={config.validator}
+                    defaultValue={
+                      state.formData?.[index]?.value ?? feature?.value ?? ''
+                    }
+                    className='w-24'
+                  />
+                  <Switch
+                    className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
+                    id={`${typedKey}-enabled`}
+                    name={`${typedKey}-enabled`}
+                    defaultChecked={feature?.enabled ?? false}
+                  />
+                </div>
               </div>
+              {error?.value && (
+                <p className='text-sm text-red-500 font-bold ml-4'>
+                  {error.value}
+                </p>
+              )}
             </div>
-            {error?.value && (
-              <p className='text-sm text-red-500 font-bold ml-4'>
-                {error.value}
-              </p>
-            )}
-          </div>
-        );
-      })}
-      <Button type='submit' disabled={isPending} className='w-fit'>
-        Actualizar
-      </Button>
-    </form>
+          );
+        })}
+        <Button type='submit' disabled={isPending} className='w-fit'>
+          Actualizar
+        </Button>
+      </form>
+    )
   );
 }

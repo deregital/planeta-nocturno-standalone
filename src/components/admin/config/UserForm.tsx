@@ -48,6 +48,7 @@ export function UserForm({
   formAction,
   isPending,
   type,
+  lockedRole,
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
@@ -55,10 +56,13 @@ export function UserForm({
   errors?: Partial<Record<keyof UserData | 'general', string>>;
   formAction: (formData: FormData) => void;
   isPending: boolean;
+  lockedRole?: (typeof role.enumValues)[number];
 }) {
-  const [internalState, setInternalState] = useState<UserData>(
-    initialState ?? defaultState,
-  );
+  const [internalState, setInternalState] = useState<UserData>({
+    ...defaultState,
+    ...initialState,
+    role: lockedRole ?? initialState?.role ?? defaultState.role,
+  });
 
   function handleChange<K extends keyof UserData>(key: K, value: UserData[K]) {
     setInternalState((prev) => ({ ...prev, [key]: value }));
@@ -104,24 +108,33 @@ export function UserForm({
           handleChange('birthDate', date.toISOString());
         }}
       />
-      <SelectWithLabel
-        label='Rol'
-        required
-        id='role'
-        name='role'
-        value={internalState?.role}
-        className='w-full'
-        values={role.enumValues
-          .filter((roleValue) => roleValue !== 'ORGANIZER')
-          .map((roleValue) => ({
-            label: roleTranslation[roleValue],
-            value: roleValue,
-          }))}
-        error={errors?.role}
-        onValueChange={(value) => {
-          handleChange('role', value as (typeof role.enumValues)[number]);
-        }}
-      />
+      {lockedRole ? (
+        <>
+          <input type='hidden' name='role' value={lockedRole} />
+          <p className='text-sm text-accent-dark'>
+            Rol asignado: {roleTranslation[lockedRole]}
+          </p>
+        </>
+      ) : (
+        <SelectWithLabel
+          label='Rol'
+          required
+          id='role'
+          name='role'
+          value={internalState?.role}
+          className='w-full'
+          values={role.enumValues
+            .filter((roleValue) => roleValue !== 'ORGANIZER')
+            .map((roleValue) => ({
+              label: roleTranslation[roleValue],
+              value: roleValue,
+            }))}
+          error={errors?.role}
+          onValueChange={(value) => {
+            handleChange('role', value as (typeof role.enumValues)[number]);
+          }}
+        />
+      )}
       <div>
         <PhoneInputWithLabel
           label='Número de teléfono'

@@ -7,7 +7,7 @@ import { type RouterOutputs } from '@/server/routers/app';
 
 type Event = RouterOutputs['events']['getAll'][
   | 'upcomingEvents'
-  | 'pastEvents'][number];
+  | 'pastEvents']['folders'][number]['events'][number];
 
 interface EventCardContainerProps {
   event: Event;

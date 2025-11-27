@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
+import ChangeEventFolder from '@/components/events/admin/ChangeEventFolder';
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
 import { Button } from '@/components/ui/button';
@@ -24,16 +25,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { lightenColor } from '@/lib/utils-client';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
 export default function EventCardHorizontal({
   event,
+  folderColor,
   showActions = true,
 }: {
   event: RouterOutputs['events']['getAll'][
     | 'upcomingEvents'
-    | 'pastEvents'][number];
+    | 'pastEvents']['folders'][number]['events'][number];
+  folderColor?: string;
   showActions?: boolean;
 }) {
   const router = useRouter();
@@ -50,6 +54,8 @@ export default function EventCardHorizontal({
   const exportXlsxByTicketType =
     trpc.events.exportXlsxByTicketType.useMutation();
 
+  const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
+
   return (
     <Card
       variant={'accent'}
@@ -57,6 +63,9 @@ export default function EventCardHorizontal({
         'flex flex-row py-2 rounded-lg',
         !showActions && 'border-accent-light py-4',
       )}
+      style={{
+        backgroundColor: lighterColor || undefined,
+      }}
     >
       <CardContent className='flex w-full justify-between px-4 text-on-accent'>
         <div className='flex sm:flex-row flex-col sm:gap-4 gap-2 sm:items-center'>
@@ -93,6 +102,10 @@ export default function EventCardHorizontal({
             >
               <Pencil />
             </Button>
+            <ChangeEventFolder
+              eventId={event.id}
+              folderId={event.folderId ?? undefined}
+            />
             {isAdmin && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
