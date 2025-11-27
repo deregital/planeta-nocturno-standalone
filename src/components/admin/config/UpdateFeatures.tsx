@@ -21,7 +21,7 @@ export default function UpdateFeatures() {
     success: false,
   });
 
-  const { data: features, isLoading } = trpc.feature.getAll.useQuery();
+  const { data: features } = trpc.feature.getAll.useQuery();
   const utils = trpc.useUtils();
 
   useEffect(() => {
