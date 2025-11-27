@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 
+import Client from '@/app/(backoffice)/admin/event/client';
 import { auth } from '@/server/auth';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/server';
-import Client from '@/app/(backoffice)/admin/event/client';
 
 export default async function Page() {
   const session = await auth();
@@ -13,8 +13,14 @@ export default async function Page() {
   }
 
   let events: RouterOutputs['events']['getAll'] = {
-    pastEvents: [],
-    upcomingEvents: [],
+    pastEvents: {
+      folders: [],
+      withoutFolders: [],
+    },
+    upcomingEvents: {
+      folders: [],
+      withoutFolders: [],
+    },
   };
 
   if (session.user.role === 'ADMIN') {
@@ -23,9 +29,5 @@ export default async function Page() {
     events = await trpc.events.getAuthorized(session.user.id);
   }
 
-  return (
-    <div>
-      <Client events={events} />
-    </div>
-  );
+  return <Client events={events} />;
 }

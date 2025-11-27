@@ -9,6 +9,7 @@ import { Calendar, ChevronDown } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+import EventFolderModal from '@/components/events/admin/EventFolderModal';
 import EventList from '@/components/events/admin/EventList';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -25,14 +26,17 @@ export default function Client({
   return (
     <div className='flex w-full p-4 flex-col gap-6'>
       <h1 className='text-4xl font-bold text-accent'>Gestor de Eventos</h1>
+      <div className='flex gap-2'>
+        <Button
+          className='w-fit py-4 px-8'
+          onClick={() => router.push('/admin/event/create')}
+          disabled={session.data?.user.role !== 'ADMIN'}
+        >
+          <Calendar /> Crear evento
+        </Button>
+        <EventFolderModal action='CREATE' />
+      </div>
 
-      <Button
-        className='w-fit py-4 px-8'
-        onClick={() => router.push('/admin/event/create')}
-        disabled={session.data?.user.role !== 'ADMIN'}
-      >
-        <Calendar /> Crear evento
-      </Button>
       <p className='text-2xl font-bold text-accent'>Próximos Eventos</p>
       <EventList events={events.upcomingEvents} />
       <Separator className='border rounded-full border-accent-light' />

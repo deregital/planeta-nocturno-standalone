@@ -1,8 +1,9 @@
 import React from 'react';
-import Link from 'next/link';
 import { type Route } from 'next';
+import Link from 'next/link';
 
 import EventCardHorizontal from '@/components/events/admin/EventCardHorizontal';
+import EventFolder from '@/components/events/admin/EventFolder';
 import { type RouterOutputs } from '@/server/routers/app';
 
 type EventListType = RouterOutputs['events']['getAll'][
@@ -31,7 +32,10 @@ export default function EventList(props: {
   const { events, href, showActions = true } = props;
   return (
     <div className='flex flex-col gap-4'>
-      {events.map((event, index) =>
+      {events.folders.map((folder, index) => (
+        <EventFolder key={index} folder={folder} href={href} />
+      ))}
+      {events.withoutFolders.map((event, index) =>
         href ? (
           <Link href={href(event.slug) as Route} key={index}>
             <EventCardHorizontal
