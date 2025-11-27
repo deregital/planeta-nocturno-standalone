@@ -2,6 +2,7 @@ import { type Font } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
+import { isAfter, isBefore } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   and,
@@ -13,7 +14,6 @@ import {
   isNull,
   like,
   lt,
-  lte,
   not,
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -22,6 +22,7 @@ import z from 'zod';
 
 import {
   emittedTicket,
+  eventFolder,
   event as eventSchema,
   eventXorganizer,
   eventXUser,
@@ -61,10 +62,30 @@ import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    const pastEvents = await ctx.db.query.event.findMany({
+    const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
+      with: {
+        events: {
+          where: eq(eventSchema.isDeleted, false),
+          with: {
+            ticketTypes: true,
+            location: {
+              columns: {
+                id: true,
+                name: true,
+                address: true,
+              },
+            },
+          },
+          orderBy: desc(eventSchema.endingDate),
+        },
+      },
+      orderBy: desc(eventFolder.name),
+    });
+
+    const eventsWithoutFolders = await ctx.db.query.event.findMany({
       where: and(
         eq(eventSchema.isDeleted, false),
-        lte(eventSchema.endingDate, new Date().toISOString()),
+        isNull(eventSchema.folderId),
       ),
       with: {
         ticketTypes: true,
@@ -79,22 +100,41 @@ export const eventsRouter = router({
       orderBy: desc(eventSchema.endingDate),
     });
 
-    const upcomingEvents = await ctx.db.query.event.findMany({
-      where: and(
-        eq(eventSchema.isDeleted, false),
-        gt(eventSchema.endingDate, new Date().toISOString()),
+    const pastEvents = {
+      folders: eventsWithFolders
+        .filter((folder) => folder.events.length > 0)
+        .map((folder) => {
+          return {
+            id: folder.id,
+            name: folder.name,
+            color: folder.color,
+            events: folder.events.filter((event) =>
+              isBefore(event.endingDate, new Date()),
+            ),
+          };
+        }),
+      withoutFolders: eventsWithoutFolders.filter((event) =>
+        isBefore(event.endingDate, new Date()),
       ),
-      with: {
-        ticketTypes: true,
-        location: {
-          columns: {
-            id: true,
-            name: true,
-            address: true,
-          },
-        },
-      },
-    });
+    };
+
+    const upcomingEvents = {
+      folders: eventsWithFolders
+        .filter((folder) => folder.events.length > 0)
+        .map((folder) => {
+          return {
+            id: folder.id,
+            name: folder.name,
+            color: folder.color,
+            events: folder.events.filter((event) =>
+              isAfter(event.endingDate, new Date()),
+            ),
+          };
+        }),
+      withoutFolders: eventsWithoutFolders.filter((event) =>
+        isAfter(event.endingDate, new Date()),
+      ),
+    };
 
     return { pastEvents, upcomingEvents };
   }),
@@ -116,10 +156,33 @@ export const eventsRouter = router({
 
       const eventIds = userFound.eventXUsers.map((event) => event.event.id);
 
-      const pastEvents = await ctx.db.query.event.findMany({
+      const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
+        with: {
+          events: {
+            where: and(
+              eq(eventSchema.isDeleted, false),
+              inArray(eventSchema.id, eventIds),
+            ),
+            with: {
+              ticketTypes: true,
+              location: {
+                columns: {
+                  id: true,
+                  name: true,
+                  address: true,
+                },
+              },
+            },
+            orderBy: desc(eventSchema.endingDate),
+          },
+        },
+        orderBy: desc(eventFolder.name),
+      });
+
+      const eventsWithoutFolders = await ctx.db.query.event.findMany({
         where: and(
           eq(eventSchema.isDeleted, false),
-          lte(eventSchema.endingDate, new Date().toISOString()),
+          isNull(eventSchema.folderId),
           inArray(eventSchema.id, eventIds),
         ),
         with: {
@@ -135,23 +198,39 @@ export const eventsRouter = router({
         orderBy: desc(eventSchema.endingDate),
       });
 
-      const upcomingEvents = await ctx.db.query.event.findMany({
-        where: and(
-          eq(eventSchema.isDeleted, false),
-          gt(eventSchema.endingDate, new Date().toISOString()),
-          inArray(eventSchema.id, eventIds),
+      const pastEvents = {
+        folders: eventsWithFolders.map((folder) => {
+          return {
+            id: folder.id,
+            name: folder.name,
+            color: folder.color,
+            events: folder.events.filter((event) =>
+              isBefore(event.endingDate, new Date()),
+            ),
+          };
+        }),
+        withoutFolders: eventsWithoutFolders.filter((event) =>
+          isBefore(event.endingDate, new Date()),
         ),
-        with: {
-          ticketTypes: true,
-          location: {
-            columns: {
-              id: true,
-              name: true,
-              address: true,
-            },
-          },
-        },
-      });
+      };
+
+      const upcomingEvents = {
+        folders: eventsWithFolders.map((folder) => {
+          return {
+            id: folder.id,
+            name: folder.name,
+            color: folder.color,
+            events: folder.events.filter((event) =>
+              isAfter(event.endingDate, new Date()),
+            ),
+          };
+        }),
+        withoutFolders: eventsWithoutFolders.filter((event) =>
+          isAfter(event.endingDate, new Date()),
+        ),
+      };
+
+      return { pastEvents, upcomingEvents };
 
       return { pastEvents, upcomingEvents };
     }),
