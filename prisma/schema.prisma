@@ -135,6 +135,9 @@ model Event {
   categoryId String        @db.Uuid
   category   EventCategory @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id])
 
+  folderId String?      @db.Uuid
+  folder   EventFolder? @relation("EVENT_FOLDER_X_EVENT", fields: [folderId], references: [id])
+
   authorizedUsers User[] @relation("EVENT_X_USER")
 
   // Los organizadores asociados al evento
@@ -157,6 +160,17 @@ model Event {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("event")
+}
+
+model EventFolder {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name   String
+  color  String
+  events Event[] @relation("EVENT_FOLDER_X_EVENT")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("eventFolder")
 }
 
 model Location {
