@@ -105,7 +105,7 @@ export default function EventFolderModal({
         });
       }
     }
-  }, [open, folder?.id, folder?.name, folder?.color, randomColorValue]);
+  }, [open, folder, randomColorValue]);
 
   const handleColorChange = useCallback((rgba: unknown) => {
     if (Array.isArray(rgba) && rgba.length >= 3) {
