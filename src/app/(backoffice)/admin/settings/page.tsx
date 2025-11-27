@@ -1,3 +1,4 @@
+import CategoryList from '@/components/admin/category/CategoryList';
 import { CreateUserForm } from '@/components/admin/config/CreateUserForm';
 import UpdateFeatures from '@/components/admin/config/UpdateFeatures';
 import { UsersTable } from '@/components/admin/config/UsersTable';
@@ -17,9 +18,8 @@ export default async function Page() {
         </div>
         <UsersTable data={data.filter((user) => user.role !== 'ORGANIZER')} />
       </section>
-      <section>
-        <LocationList />
-      </section>
+      <LocationList />
+      <CategoryList />
     </div>
   );
 }
