@@ -80,6 +80,7 @@ export function InvitationTicketTypeAction({
           label='Nombre del ticket'
           value={ticketTypeInfo.name}
           onChange={handleChange}
+          required
         />
         <InputWithLabel
           id='description'
@@ -88,6 +89,7 @@ export function InvitationTicketTypeAction({
           label='Descripción del ticket'
           value={ticketTypeInfo.description}
           onChange={handleChange}
+          required
         />
       </section>
       <div className='flex flex-1 mt-4 w-full gap-4'>
