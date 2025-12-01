@@ -36,7 +36,7 @@ export const eventFolderRouter = router({
     .input(
       z.object({
         eventId: eventSchema.shape.id,
-        folderId: eventFolderSchema.shape.id,
+        folderId: eventFolderSchema.shape.id.nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -49,14 +49,16 @@ export const eventFolderRouter = router({
           message: 'Evento no encontrado',
         });
       }
-      const folderFound = await ctx.db.query.eventFolder.findFirst({
-        where: eq(eventFolder.id, input.folderId),
-      });
-      if (!folderFound) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Carpeta no encontrada',
+      if (input.folderId !== null) {
+        const folderFound = await ctx.db.query.eventFolder.findFirst({
+          where: eq(eventFolder.id, input.folderId),
         });
+        if (!folderFound) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Carpeta no encontrada',
+          });
+        }
       }
       return ctx.db
         .update(event)
