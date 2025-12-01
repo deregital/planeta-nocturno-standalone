@@ -101,36 +101,32 @@ export const eventsRouter = router({
     });
 
     const pastEvents = {
-      folders: eventsWithFolders
-        .filter((folder) => folder.events.length > 0)
-        .map((folder) => {
-          return {
-            id: folder.id,
-            name: folder.name,
-            color: folder.color,
-            events: folder.events.filter((event) =>
-              isBefore(event.endingDate, new Date()),
-            ),
-          };
-        }),
+      folders: eventsWithFolders.map((folder) => {
+        return {
+          id: folder.id,
+          name: folder.name,
+          color: folder.color,
+          events: folder.events.filter((event) =>
+            isBefore(event.endingDate, new Date()),
+          ),
+        };
+      }),
       withoutFolders: eventsWithoutFolders.filter((event) =>
         isBefore(event.endingDate, new Date()),
       ),
     };
 
     const upcomingEvents = {
-      folders: eventsWithFolders
-        .filter((folder) => folder.events.length > 0)
-        .map((folder) => {
-          return {
-            id: folder.id,
-            name: folder.name,
-            color: folder.color,
-            events: folder.events.filter((event) =>
-              isAfter(event.endingDate, new Date()),
-            ),
-          };
-        }),
+      folders: eventsWithFolders.map((folder) => {
+        return {
+          id: folder.id,
+          name: folder.name,
+          color: folder.color,
+          events: folder.events.filter((event) =>
+            isAfter(event.endingDate, new Date()),
+          ),
+        };
+      }),
       withoutFolders: eventsWithoutFolders.filter((event) =>
         isAfter(event.endingDate, new Date()),
       ),
