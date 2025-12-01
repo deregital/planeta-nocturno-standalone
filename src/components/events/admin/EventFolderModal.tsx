@@ -1,6 +1,6 @@
 'use client';
 import Color from 'color';
-import { Pencil, Plus } from 'lucide-react';
+import { Folder, Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -32,13 +32,17 @@ import { trpc } from '@/server/trpc/client';
 interface EventFolderModalProps {
   action: 'CREATE' | 'EDIT';
   folder?: EventFolder;
+  disabled?: boolean;
 }
 
 export default function EventFolderModal({
   action,
   folder,
+  disabled,
 }: EventFolderModalProps) {
+  const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
+  const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
   const randomColorValue = useMemo(() => randomColor(), []);
   const [folderState, setFolderState] = useState<EventFolder>(() => {
     if (folder) {
@@ -65,6 +69,7 @@ export default function EventFolderModal({
     onSuccess: () => {
       toast.success('Carpeta creada correctamente');
       setOpen(false);
+      utils.events.getAll.invalidate();
     },
   });
   const updateFolder = trpc.eventFolder.update.useMutation({
@@ -77,6 +82,7 @@ export default function EventFolderModal({
     onSuccess: () => {
       toast.success('Carpeta editada correctamente');
       setOpen(false);
+      utils.events.getAll.invalidate();
     },
   });
   const deleteFolder = trpc.eventFolder.delete.useMutation({
@@ -86,11 +92,17 @@ export default function EventFolderModal({
           'Error al eliminar la carpeta de eventos',
       );
     },
+    onSuccess: () => {
+      toast.success('Carpeta eliminada correctamente');
+      setOpen(false);
+      utils.events.getAll.invalidate();
+    },
   });
 
   // Reset state when dialog opens or folder changes
   useEffect(() => {
     if (open) {
+      setIsDeleteConfirmed(false);
       if (folder) {
         setFolderState({
           id: folder.id,
@@ -135,6 +147,10 @@ export default function EventFolderModal({
       toast.error('No se encontró la carpeta');
       return;
     }
+    if (!isDeleteConfirmed) {
+      setIsDeleteConfirmed(true);
+      return;
+    }
     deleteFolder.mutate(folder.id);
   }
 
@@ -142,8 +158,8 @@ export default function EventFolderModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {action === 'CREATE' ? (
-          <Button>
-            <Plus /> Crear carpeta
+          <Button disabled={disabled}>
+            <Folder /> Crear carpeta
           </Button>
         ) : (
           <Button variant='ghost' className='text-white'>
@@ -202,7 +218,7 @@ export default function EventFolderModal({
           ) : (
             <>
               <Button onClick={handleDelete} variant='destructive'>
-                Eliminar
+                {isDeleteConfirmed ? '¿Estás seguro?' : 'Eliminar'}
               </Button>
               <Button onClick={handleSubmit}>Editar</Button>
             </>
