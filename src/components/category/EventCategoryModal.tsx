@@ -71,7 +71,9 @@ export default function EventCategoryModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {action === 'CREATE' ? (
-          <Button className='w-fit my-4'>Crear nueva categoría</Button>
+          <div className='w-full flex justify-end'>
+            <Button className='w-fit my-4'>Crear nueva categoría</Button>
+          </div>
         ) : (
           <Button variant='ghost' className='text-inherit'>
             <Pencil />
