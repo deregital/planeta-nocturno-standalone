@@ -1371,6 +1371,43 @@ export const eventsRouter = router({
               }
             }
 
+            // === ACTUALIZAR discountPercentage DE ORGANIZADORES EXISTENTES (SOLO TRADITIONAL) ===
+            if (event.inviteCondition === 'TRADITIONAL') {
+              // Encontrar organizadores que ya existen pero con discountPercentage cambiado
+              for (const organizerInput of organizersInput) {
+                if (!('discountPercentage' in organizerInput)) continue;
+
+                const existingOrganizer = organizersDB.find(
+                  (org) => org.organizerId === organizerInput.id,
+                );
+
+                if (!existingOrganizer) continue; // Ya se procesó como nuevo
+
+                const newDiscountPercentage =
+                  organizerInput.discountPercentage !== null &&
+                  organizerInput.discountPercentage !== undefined
+                    ? organizerInput.discountPercentage
+                    : null;
+
+                // Solo actualizar si el discountPercentage cambió
+                if (
+                  existingOrganizer.discountPercentage !== newDiscountPercentage
+                ) {
+                  await tx
+                    .update(eventXorganizer)
+                    .set({
+                      discountPercentage: newDiscountPercentage,
+                    })
+                    .where(
+                      and(
+                        eq(eventXorganizer.eventId, eventUpdated.id),
+                        eq(eventXorganizer.organizerId, organizerInput.id),
+                      ),
+                    );
+                }
+              }
+            }
+
             // === ACTUALIZAR CANTIDAD DE TICKETS DEL TIPO ORGANIZADOR ===
             // Siempre actualizar la cantidad de tickets del tipo ORGANIZER_TICKET_TYPE_NAME
             // con la cantidad total de organizadores
