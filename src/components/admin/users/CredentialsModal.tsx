@@ -51,7 +51,11 @@ export function CredentialsModal({
         <div className='space-y-4'>
           <p className='text-sm text-gray-600'>
             Las credenciales han sido creadas exitosamente. Podés compartirlas
-            con el {type === 'organizer' ? 'organizador' : 'usuario'}.
+            con el {type === 'organizer' ? 'organizador' : 'usuario'}.{' '}
+            <span className='font-bold'>
+              Una vez cerrado este diálogo, no podrás volver a ver las
+              credenciales.
+            </span>
           </p>
 
           <div
