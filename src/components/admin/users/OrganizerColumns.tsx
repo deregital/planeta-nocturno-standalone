@@ -287,7 +287,10 @@ export const organizerColumns: StrictColumnDef<
       const session = useSession();
       if (session.data?.user.id === row.original.id) return null;
       return (
-        <div className='flex items-center gap-2'>
+        <div
+          className='flex items-center gap-2'
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button variant='ghost' size='icon' asChild>
             <Link href={`/admin/users/${row.original.id}/edit`}>
               <Edit className='size-4' />
