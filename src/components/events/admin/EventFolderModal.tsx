@@ -157,7 +157,6 @@ export default function EventFolderModal({
   }, []);
 
   async function handleSubmit() {
-    console.log(folderState);
     if (action === 'CREATE') {
       createFolder.mutate({ name: folderState.name, color: folderState.color });
     } else if (action === 'EDIT') {

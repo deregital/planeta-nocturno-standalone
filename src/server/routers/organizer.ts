@@ -202,19 +202,11 @@ export const organizerRouter = router({
       // Calculate total money generated
       let moneyGenerated = 0;
       for (const tg of ticketGroups) {
-        try {
-          const totalPrice = await calculateTotalPrice({
-            ticketGroupId: tg.id,
-            discountPercentage: null,
-          });
-          moneyGenerated += totalPrice;
-        } catch (error) {
-          // Skip if calculation fails
-          console.error(
-            `Error calculating price for ticketGroup ${tg.id}:`,
-            error,
-          );
-        }
+        const totalPrice = await calculateTotalPrice({
+          ticketGroupId: tg.id,
+          discountPercentage: null,
+        });
+        moneyGenerated += totalPrice;
       }
 
       return {

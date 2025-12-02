@@ -76,7 +76,6 @@ export async function createUser(
       birthDate: birthDate,
     });
   } catch (error) {
-    console.error('ENACTION ERROR', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Error al crear usuario';
     return {
@@ -153,7 +152,6 @@ export async function createOrganizer(
       birthDate: birthDate,
     });
   } catch (error) {
-    console.error('ENACTION ERROR', error);
     const errorMessage =
       error instanceof Error ? error.message : 'Error al crear usuario';
     return {
@@ -216,7 +214,6 @@ export async function resetPassword(
       credentials,
     };
   } catch (error) {
-    console.error('RESET PASSWORD ERROR', error);
     const errorMessage =
       error instanceof Error
         ? error.message
