@@ -1,10 +1,10 @@
 'use client';
 
+import { type StrictColumnDef } from '@tanstack/react-table';
 import { addDays, format, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { parseAsIsoDate, useQueryState } from 'nuqs';
-import { type StrictColumnDef } from '@tanstack/react-table';
 import { Loader, Mail } from 'lucide-react';
+import { parseAsIsoDate, useQueryState } from 'nuqs';
 
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
 import { DataTable } from '@/components/common/DataTable';
@@ -169,6 +169,7 @@ export default function Client({ organizerId }: { organizerId: string }) {
             <DataTable
               columns={eventColumns}
               data={info?.recentEvents || []}
+              fullWidth={false}
               noResultsPlaceholder='No hay eventos registrados'
             />
           )}
