@@ -69,7 +69,10 @@ export function UserForm({
   }
 
   return (
-    <form className='flex flex-col gap-4' action={formAction}>
+    <form
+      className='flex flex-col gap-4 max-h-[80vh] overflow-y-auto px-1'
+      action={formAction}
+    >
       {userId && <input type='hidden' name='id' value={userId} />}
       <InputWithLabel
         required

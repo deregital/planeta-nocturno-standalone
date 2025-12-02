@@ -63,7 +63,10 @@ export function OrganizerForm({
   }
 
   return (
-    <form className='flex flex-col gap-4' action={formAction}>
+    <form
+      className='flex flex-col gap-4 max-h-[90vh] overflow-y-auto px-1'
+      action={formAction}
+    >
       {userId && <input type='hidden' name='id' value={userId} />}
       <InputWithLabel
         required
