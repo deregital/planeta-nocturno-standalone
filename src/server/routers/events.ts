@@ -801,6 +801,123 @@ export const eventsRouter = router({
               .map((org) => org.organizerId);
 
             if (deletedOrganizersIds.length > 0) {
+              // Si es evento de tipo INVITATION, eliminar TicketXOrganizer y emittedTicket
+              if (event.inviteCondition === 'INVITATION') {
+                // Obtener datos de los organizadores eliminados para buscar sus emittedTickets
+                const deletedOrganizers = await tx.query.user.findMany({
+                  where: inArray(user.id, deletedOrganizersIds),
+                  columns: {
+                    id: true,
+                    dni: true,
+                  },
+                });
+
+                // Obtener el tipo de ticket "Organizador"
+                const organizerTicketType = ticketTypesDB.find(
+                  (tt) => tt.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
+                );
+
+                // Eliminar TicketXOrganizer con ticketId null para cada organizador eliminado
+                // Primero obtener los TicketXOrganizer para actualizar los ticketGroups
+                const ticketGroupsToUpdate = new Map<string, number>();
+
+                for (const organizerId of deletedOrganizersIds) {
+                  const ticketXOrgsToDelete =
+                    await tx.query.ticketXorganizer.findMany({
+                      where: and(
+                        eq(ticketXorganizer.eventId, eventUpdated.id),
+                        eq(ticketXorganizer.organizerId, organizerId),
+                        isNull(ticketXorganizer.ticketId),
+                      ),
+                    });
+
+                  // Agrupar por ticketGroupId para actualizar los amountTickets
+                  for (const ticketXOrg of ticketXOrgsToDelete) {
+                    if (ticketXOrg.ticketGroupId) {
+                      const currentCount =
+                        ticketGroupsToUpdate.get(ticketXOrg.ticketGroupId) || 0;
+                      ticketGroupsToUpdate.set(
+                        ticketXOrg.ticketGroupId,
+                        currentCount + 1,
+                      );
+                    }
+                  }
+
+                  // Eliminar los TicketXOrganizer
+                  await tx
+                    .delete(ticketXorganizer)
+                    .where(
+                      and(
+                        eq(ticketXorganizer.eventId, eventUpdated.id),
+                        eq(ticketXorganizer.organizerId, organizerId),
+                        isNull(ticketXorganizer.ticketId),
+                      ),
+                    );
+                }
+
+                // Actualizar amountTickets de los ticketGroups afectados
+                for (const [
+                  ticketGroupId,
+                  deletedCount,
+                ] of ticketGroupsToUpdate.entries()) {
+                  const group = await tx.query.ticketGroup.findFirst({
+                    where: eq(ticketGroup.id, ticketGroupId),
+                  });
+
+                  if (group) {
+                    await tx
+                      .update(ticketGroup)
+                      .set({
+                        amountTickets: Math.max(
+                          0,
+                          group.amountTickets - deletedCount,
+                        ),
+                      })
+                      .where(eq(ticketGroup.id, ticketGroupId));
+                  }
+                }
+
+                // Eliminar emittedTicket de cada organizador eliminado
+                if (organizerTicketType && currentOrganizerGroup) {
+                  for (const deletedOrg of deletedOrganizers) {
+                    const organizerEmittedTicket =
+                      await tx.query.emittedTicket.findFirst({
+                        where: and(
+                          eq(emittedTicket.eventId, eventUpdated.id),
+                          eq(emittedTicket.dni, deletedOrg.dni),
+                          eq(
+                            emittedTicket.ticketTypeId,
+                            organizerTicketType.id,
+                          ),
+                          eq(
+                            emittedTicket.ticketGroupId,
+                            currentOrganizerGroup.id,
+                          ),
+                        ),
+                      });
+
+                    if (organizerEmittedTicket) {
+                      await tx
+                        .delete(emittedTicket)
+                        .where(eq(emittedTicket.id, organizerEmittedTicket.id));
+                    }
+                  }
+
+                  // Actualizar amountTickets del grupo de organizadores
+                  const currentCount = deletedOrganizers.length;
+                  await tx
+                    .update(ticketGroup)
+                    .set({
+                      amountTickets: Math.max(
+                        0,
+                        (currentOrganizerGroup.amountTickets ?? 0) -
+                          currentCount,
+                      ),
+                    })
+                    .where(eq(ticketGroup.id, currentOrganizerGroup.id));
+                }
+              }
+
               // Eliminar SOLO de EventXOrganizer para este evento específico
               await tx
                 .delete(eventXorganizer)
