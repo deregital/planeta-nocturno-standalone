@@ -1,6 +1,6 @@
 'use client';
 import Color from 'color';
-import { Pencil, Plus } from 'lucide-react';
+import { Folder, Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -26,19 +26,26 @@ import {
   ColorPickerSelection,
 } from '@/components/ui/shadcn-io/color-picker';
 import { randomColor } from '@/lib/utils-client';
-import { type EventFolder } from '@/server/schemas/event-folder';
+import {
+  eventFolderSchema,
+  type EventFolder,
+} from '@/server/schemas/event-folder';
 import { trpc } from '@/server/trpc/client';
 
 interface EventFolderModalProps {
   action: 'CREATE' | 'EDIT';
   folder?: EventFolder;
+  disabled?: boolean;
 }
 
 export default function EventFolderModal({
   action,
   folder,
+  disabled,
 }: EventFolderModalProps) {
+  const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
+  const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
   const randomColorValue = useMemo(() => randomColor(), []);
   const [folderState, setFolderState] = useState<EventFolder>(() => {
     if (folder) {
@@ -54,43 +61,77 @@ export default function EventFolderModal({
       color: randomColor(),
     };
   });
+  const [errors, setErrors] = useState<Partial<Omit<EventFolder, 'id'>>>({});
+
+  const parseErrors = (errorMessage: string) => {
+    try {
+      const parsed = JSON.parse(errorMessage);
+      const fieldErrors: Partial<Omit<EventFolder, 'id'>> = {};
+
+      if (Array.isArray(parsed)) {
+        parsed.forEach((issue: { path?: string[]; message?: string }) => {
+          if (issue.path && issue.path.length > 0) {
+            const field = issue.path[0] as keyof EventFolder;
+            if (
+              Object.keys(eventFolderSchema.shape).includes(field) &&
+              field != 'id'
+            ) {
+              fieldErrors[field] = issue.message;
+            }
+          }
+        });
+      }
+
+      return fieldErrors;
+    } catch {
+      return {};
+    }
+  };
 
   const createFolder = trpc.eventFolder.create.useMutation({
     onError: (error) => {
-      toast.error(
-        JSON.parse(error.message)[0].message ||
-          'Error al crear la carpeta de eventos',
-      );
+      const parsedErrors = parseErrors(error.message);
+      setErrors(parsedErrors);
     },
     onSuccess: () => {
       toast.success('Carpeta creada correctamente');
+      setErrors({});
       setOpen(false);
+      utils.events.getAll.invalidate();
     },
   });
   const updateFolder = trpc.eventFolder.update.useMutation({
     onError: (error) => {
-      toast.error(
-        JSON.parse(error.message)[0].message ||
-          'Error al editar la carpeta de eventos',
-      );
+      const parsedErrors = parseErrors(error.message);
+      setErrors(parsedErrors);
     },
     onSuccess: () => {
       toast.success('Carpeta editada correctamente');
+      setErrors({});
       setOpen(false);
+      utils.events.getAll.invalidate();
     },
   });
   const deleteFolder = trpc.eventFolder.delete.useMutation({
     onError: (error) => {
       toast.error(
-        JSON.parse(error.message)[0].message ||
+        JSON.parse(error.message)[0]?.message ||
           'Error al eliminar la carpeta de eventos',
       );
+    },
+    onSuccess: () => {
+      toast.success('Carpeta eliminada correctamente');
+      setErrors({});
+      setOpen(false);
+      utils.events.getAll.invalidate();
     },
   });
 
   // Reset state when dialog opens or folder changes
   useEffect(() => {
     if (open) {
+      setIsDeleteConfirmed(false);
+      setErrors({});
       if (folder) {
         setFolderState({
           id: folder.id,
@@ -111,11 +152,11 @@ export default function EventFolderModal({
     if (Array.isArray(rgba) && rgba.length >= 3) {
       const hex = Color.rgb(rgba[0], rgba[1], rgba[2]).hex();
       setFolderState((prev) => ({ ...prev, color: hex }));
+      setErrors((prev) => ({ ...prev, color: undefined }));
     }
   }, []);
 
   async function handleSubmit() {
-    console.log(folderState);
     if (action === 'CREATE') {
       createFolder.mutate({ name: folderState.name, color: folderState.color });
     } else if (action === 'EDIT') {
@@ -135,6 +176,10 @@ export default function EventFolderModal({
       toast.error('No se encontró la carpeta');
       return;
     }
+    if (!isDeleteConfirmed) {
+      setIsDeleteConfirmed(true);
+      return;
+    }
     deleteFolder.mutate(folder.id);
   }
 
@@ -142,8 +187,8 @@ export default function EventFolderModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {action === 'CREATE' ? (
-          <Button>
-            <Plus /> Crear carpeta
+          <Button disabled={disabled}>
+            <Folder /> Crear carpeta
           </Button>
         ) : (
           <Button variant='ghost' className='text-white'>
@@ -162,14 +207,21 @@ export default function EventFolderModal({
             name='name'
             placeholder='Mi carpeta'
             value={folderState.name}
-            onChange={(e) =>
-              setFolderState({ ...folderState, name: e.target.value })
-            }
+            onChange={(e) => {
+              setFolderState({ ...folderState, name: e.target.value });
+              if (errors.name) {
+                setErrors({ ...errors, name: undefined });
+              }
+            }}
+            error={errors.name}
           />
           <div className='flex flex-col gap-2'>
             <Label htmlFor='color-picker' className='text-accent'>
               Color de la carpeta
             </Label>
+            {errors.color && (
+              <p className='text-red-500 text-sm font-bold'>{errors.color}</p>
+            )}
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -202,7 +254,7 @@ export default function EventFolderModal({
           ) : (
             <>
               <Button onClick={handleDelete} variant='destructive'>
-                Eliminar
+                {isDeleteConfirmed ? '¿Estás seguro?' : 'Eliminar'}
               </Button>
               <Button onClick={handleSubmit}>Editar</Button>
             </>

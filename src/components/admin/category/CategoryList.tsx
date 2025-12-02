@@ -14,13 +14,13 @@ export default function CategoryList() {
         <Skeleton className='h-20 w-full' />
       ) : (
         <>
-          <EventCategoryModal action='CREATE' />
-          <div className='flex flex-wrap gap-4'>
+          <div className='flex flex-wrap gap-4 mt-4'>
             {categories &&
               categories.map((category, index) => (
                 <EventCategoryCard category={category} key={index} />
               ))}
           </div>
+          <EventCategoryModal action='CREATE' />
         </>
       )}
     </div>

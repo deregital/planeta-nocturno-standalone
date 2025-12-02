@@ -43,7 +43,9 @@ export function TicketingUserModal({
       setCredentialsSnapshot(state.credentials);
       onSuccess?.();
       onOpenChange(false);
-      setCredentialsModalOpen(true);
+      setTimeout(() => {
+        setCredentialsModalOpen(true);
+      }, 100);
       setFormKey((prev) => prev + 1);
     }
   }, [state.credentials, onOpenChange, onSuccess]);

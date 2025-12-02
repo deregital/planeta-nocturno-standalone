@@ -69,15 +69,17 @@ export default function EventCategoryModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {action === 'CREATE' ? (
-          <Button className='w-fit my-4'>Crear nueva categoría</Button>
-        ) : (
-          <Button variant='ghost' className='text-inherit'>
-            <Pencil />
-          </Button>
-        )}
-      </DialogTrigger>
+      <div className='flex justify-end'>
+        <DialogTrigger asChild>
+          {action === 'CREATE' ? (
+            <Button className='my-4'>Crear nueva categoría</Button>
+          ) : (
+            <Button variant='ghost' className='text-inherit'>
+              <Pencil />
+            </Button>
+          )}
+        </DialogTrigger>
+      </div>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>

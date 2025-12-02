@@ -22,7 +22,9 @@ export function CreateOrganizerForm() {
   useEffect(() => {
     if (state.credentials) {
       setCreateDialogOpen(false);
-      setCredentialsModalOpen(true);
+      setTimeout(() => {
+        setCredentialsModalOpen(true);
+      }, 100);
     }
   }, [state.credentials]);
 

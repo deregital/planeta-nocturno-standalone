@@ -43,7 +43,9 @@ export function ResetPasswordForm({
   useEffect(() => {
     if (state.credentials) {
       setResetDialogOpen(false);
-      setCredentialsModalOpen(true);
+      setTimeout(() => {
+        setCredentialsModalOpen(true);
+      }, 100);
       setPassword('');
     }
   }, [state.credentials]);

@@ -117,7 +117,7 @@ export const organizerRouter = router({
       const organizer = await ctx.db.query.user.findFirst({
         where: eq(user.id, organizerId),
         columns: {
-          name: true,
+          fullName: true,
           email: true,
           phoneNumber: true,
           instagram: true,
@@ -138,7 +138,7 @@ export const organizerRouter = router({
         })),
         organizer: {
           id: organizerId,
-          name: organizer.name,
+          fullName: organizer.fullName,
           email: organizer.email,
           phoneNumber: organizer.phoneNumber,
           instagram: organizer.instagram,
@@ -202,19 +202,11 @@ export const organizerRouter = router({
       // Calculate total money generated
       let moneyGenerated = 0;
       for (const tg of ticketGroups) {
-        try {
-          const totalPrice = await calculateTotalPrice({
-            ticketGroupId: tg.id,
-            discountPercentage: null,
-          });
-          moneyGenerated += totalPrice;
-        } catch (error) {
-          // Skip if calculation fails
-          console.error(
-            `Error calculating price for ticketGroup ${tg.id}:`,
-            error,
-          );
-        }
+        const totalPrice = await calculateTotalPrice({
+          ticketGroupId: tg.id,
+          discountPercentage: null,
+        });
+        moneyGenerated += totalPrice;
       }
 
       return {
