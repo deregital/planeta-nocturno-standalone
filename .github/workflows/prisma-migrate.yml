@@ -3,6 +3,7 @@ name: Prisma Migrate Deploy
 on:
   push:
     branches: [dev, master]
+  workflow_dispatch:
 
 jobs:
   migrate:

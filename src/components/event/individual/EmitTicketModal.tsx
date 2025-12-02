@@ -247,7 +247,7 @@ export function EmitTicketModal({
               <div className='flex flex-col'>
                 <SelectWithLabel
                   className='w-full'
-                  label='Tipo de entrada'
+                  label='Tipo de ticket'
                   id='ticketTypeId'
                   name='ticketTypeId'
                   defaultValue=''
@@ -271,7 +271,7 @@ export function EmitTicketModal({
                   href={`/admin/event/edit/${event?.slug}`}
                   className='text-sm text-accent hover:underline'
                 >
-                  Crear nuevo tipo de entrada
+                  Crear nuevo tipo de ticket
                 </Link>
               </div>
               <InputWithLabel

@@ -62,21 +62,21 @@ export default function LocationModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {action === 'CREATE' ? (
-          <div className='w-full flex justify-end'>
-            <Button className='w-fit'>Crear nueva locación</Button>
-          </div>
-        ) : (
-          <Button
-            variant='ghost'
-            size={'icon'}
-            className='absolute top-4 right-4'
-          >
-            <Pencil />
-          </Button>
-        )}
-      </DialogTrigger>
+      <div className='flex justify-end'>
+        <DialogTrigger asChild>
+          {action === 'CREATE' ? (
+            <Button>Crear nueva locación</Button>
+          ) : (
+            <Button
+              variant='ghost'
+              size={'icon'}
+              className='absolute top-4 right-4'
+            >
+              <Pencil />
+            </Button>
+          )}
+        </DialogTrigger>
+      </div>
       <DialogContent>
         <form
           action={createAction}

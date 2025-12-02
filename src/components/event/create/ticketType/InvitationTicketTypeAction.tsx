@@ -56,7 +56,7 @@ export function InvitationTicketTypeAction({
       description: ticketTypeInfo.description,
       price: 0,
       maxAvailable: organizers.reduce((acc, organizer) => {
-        if ('ticketAmount' in organizer) {
+        if ('ticketAmount' in organizer && organizer.ticketAmount !== null) {
           return acc + organizer.ticketAmount;
         }
         return acc;
@@ -72,22 +72,24 @@ export function InvitationTicketTypeAction({
   return (
     <div className='w-full'>
       <section className='p-4 border-2 border-stroke rounded-md w-full flex flex-col gap-4 bg-accent-ultra-light'>
-        <h3 className='text-2xl text-center font-bold'>Entrada Única</h3>
+        <h3 className='text-2xl text-center font-bold'>Ticket Único</h3>
         <InputWithLabel
           id='name'
-          placeholder='Nombre de la entrada gratuita única'
+          placeholder='Nombre del ticket gratuito único'
           name='name'
-          label='Nombre de la entrada'
+          label='Nombre del ticket'
           value={ticketTypeInfo.name}
           onChange={handleChange}
+          required
         />
         <InputWithLabel
           id='description'
-          placeholder='Descripción de la entrada gratuita única'
+          placeholder='Descripción del ticket gratuito único'
           name='description'
-          label='Descripción de la entrada'
+          label='Descripción del ticket'
           value={ticketTypeInfo.description}
           onChange={handleChange}
+          required
         />
       </section>
       <div className='flex flex-1 mt-4 w-full gap-4'>

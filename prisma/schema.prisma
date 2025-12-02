@@ -15,18 +15,20 @@ datasource db {
 }
 
 model User {
-  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String @unique
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shortId     Int     @unique @default(autoincrement())
+  name        String  @unique
   fullName    String
   password    String
-  email       String @unique
+  email       String  @unique
   birthDate   String
-  dni         String @unique
+  dni         String  @unique
   phoneNumber String
   gender      String
+  instagram   String?
   role        Role
-  code        String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
-  tags        Tag[]  @relation("USER_X_TAG")
+  code        String  @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+  tags        Tag[]   @relation("USER_X_TAG")
 
   accounts      Account[]
   sessions      Session[]
@@ -133,13 +135,19 @@ model Event {
   categoryId String        @db.Uuid
   category   EventCategory @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id])
 
+  folderId String?      @db.Uuid
+  folder   EventFolder? @relation("EVENT_FOLDER_X_EVENT", fields: [folderId], references: [id])
+
   authorizedUsers User[] @relation("EVENT_X_USER")
 
   // Los organizadores asociados al evento
   organizers      EventXOrganizer[] @relation("EVENT_X_ORGANIZER")
   inviteCondition InviteCondition   @default(TRADITIONAL)
 
-  extraTicketData Boolean @default(true)
+  extraTicketData        Boolean @default(true)
+  serviceFee             Float?
+  emailNotification      String?
+  ticketSlugVisibleInPdf Boolean @default(false)
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
@@ -152,6 +160,17 @@ model Event {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("event")
+}
+
+model EventFolder {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name   String
+  color  String
+  events Event[] @relation("EVENT_FOLDER_X_EVENT")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("eventFolder")
 }
 
 model Location {

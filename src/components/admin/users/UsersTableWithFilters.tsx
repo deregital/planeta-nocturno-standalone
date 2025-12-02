@@ -1,24 +1,24 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-import { userColumns } from '@/components/admin/users/UserColumns';
+import { organizerColumns } from '@/components/admin/users/OrganizerColumns';
 import { DataTable } from '@/components/common/DataTable';
-import { type RouterOutputs } from '@/server/routers/app';
-import { Input } from '@/components/ui/input';
-import { role as roleEnum } from '@/drizzle/schema';
-import { roleTranslation } from '@/lib/translations';
-import { Button } from '@/components/ui/button';
 import { MultiSelect } from '@/components/common/MultiSelect';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { type RouterOutputs } from '@/server/routers/app';
 
 interface UsersTableProps {
   data: RouterOutputs['user']['getAll'];
 }
 
 export function UsersTableWithFilters({ data }: UsersTableProps) {
+  const router = useRouter();
+
   const [globalFilter, setGlobalFilter] = useState('');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
 
   // Extract all unique batches from data
@@ -33,14 +33,6 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
       .sort()
       .map((batch) => ({ value: batch, label: batch }));
   }, [data]);
-
-  // Create role options
-  const roleOptions = useMemo(() => {
-    return roleEnum.enumValues.map((role) => ({
-      value: role,
-      label: roleTranslation[role as (typeof roleEnum.enumValues)[number]],
-    }));
-  }, []);
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
@@ -68,16 +60,17 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
           });
         })();
 
-      const matchesRole =
-        selectedRoles.length === 0 || selectedRoles.includes(item.role);
-
       const matchesBatch =
         selectedBatches.length === 0 ||
         item.userXTags.some(({ tag }) => selectedBatches.includes(tag.name));
 
-      return matchesSearch && matchesRole && matchesBatch;
+      return matchesSearch && matchesBatch;
     });
-  }, [data, globalFilter, selectedRoles, selectedBatches]);
+  }, [data, globalFilter, selectedBatches]);
+
+  const handleRowClick = (id: string) => {
+    router.push(`/admin/users/${id}`);
+  };
 
   return (
     <div className='space-y-4'>
@@ -96,38 +89,26 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
           </div>
           <div className='flex flex-row md:items-center gap-4 w-full md:w-auto'>
             <MultiSelect
-              className='w-full min-w-48'
-              options={roleOptions}
-              selectedValues={selectedRoles}
-              onSelectionChange={setSelectedRoles}
-              label='Filtrar por rol'
-              placeholder='Todos los roles'
-              emptyMessage='No hay roles disponibles'
-            />
-            <MultiSelect
               className='w-full'
               options={availableBatches}
               selectedValues={selectedBatches}
               onSelectionChange={setSelectedBatches}
-              label='Filtrar por batch'
-              placeholder='Todos los batches'
-              emptyMessage='No hay batches disponibles'
+              label='Filtrar por grupo'
+              placeholder='Todos los grupos'
+              emptyMessage='No hay grupos disponibles'
             />
           </div>
           <div className='flex flex-row items-center gap-2 pt-4 md:pt-0 md:place-self-end'>
             <p className='text-sm text-accent'>
               {filteredData.length} de {data.length} resultados
             </p>
-            {(globalFilter ||
-              selectedRoles.length > 0 ||
-              selectedBatches.length > 0) && (
+            {(globalFilter || selectedBatches.length > 0) && (
               <Button
                 variant={'ghost'}
                 size={'icon'}
                 className='mx-2'
                 onClick={() => {
                   setGlobalFilter('');
-                  setSelectedRoles([]);
                   setSelectedBatches([]);
                 }}
               >
@@ -139,9 +120,10 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
       </div>
       <DataTable
         fullWidth={true}
-        columns={userColumns}
+        columns={organizerColumns}
         data={filteredData}
         exportFileName={`Usuarios`}
+        onClickRow={handleRowClick}
       />
     </div>
   );

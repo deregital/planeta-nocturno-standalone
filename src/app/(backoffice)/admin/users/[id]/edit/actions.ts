@@ -1,13 +1,13 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import z from 'zod';
-import { revalidatePath } from 'next/cache';
 
-import { trpc } from '@/server/trpc/server';
+import { type CreateUserActionState } from '@/app/(backoffice)/admin/users/create/actions';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { userSchema } from '@/server/schemas/user';
-import { type CreateUserActionState } from '@/app/(backoffice)/admin/users/create/actions';
+import { trpc } from '@/server/trpc/server';
 
 export type EditUserActionState = CreateUserActionState;
 
@@ -25,6 +25,7 @@ export async function updateUser(
   const gender = formData.get('gender') as string;
   const phoneNumber = formData.get('phoneNumber') as string;
   const password = formData.get('password') as string;
+  const instagram = formData.get('instagram') as string;
 
   const data = {
     fullName,
@@ -36,6 +37,7 @@ export async function updateUser(
     gender,
     phoneNumber,
     password,
+    instagram,
   };
 
   const validation = userSchema.omit({ password: true }).safeParse(data);
@@ -59,6 +61,7 @@ export async function updateUser(
         dni,
         gender,
         phoneNumber,
+        instagram,
       },
       errors: {
         general: '',
@@ -70,6 +73,7 @@ export async function updateUser(
         dni: errors.dni ?? '',
         gender: errors.gender ?? '',
         phoneNumber: errors.phoneNumber ?? '',
+        instagram: errors.instagram ?? '',
       },
     };
   }
@@ -93,6 +97,7 @@ export async function updateUser(
         dni,
         gender,
         phoneNumber,
+        instagram,
       },
       errors: {
         general: errorMessage,
@@ -104,6 +109,7 @@ export async function updateUser(
         dni: '',
         gender: '',
         phoneNumber: '',
+        instagram: '',
       },
     };
   }

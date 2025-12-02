@@ -7,8 +7,6 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { checkFeature } from '@/components/admin/config/checkFeature';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import {
   type CreateManyTicket,
   createManyTicketSchema,
@@ -32,6 +30,8 @@ export const handlePurchase = async (
   const eventId = formData.get('eventId');
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
   const invitedBy = formData.get('invitedBy')?.toString() || '';
+
+  let url: Route | undefined = undefined;
 
   if (!eventId) {
     return {
@@ -139,19 +139,6 @@ export const handlePurchase = async (
     }
   }
 
-  await checkFeature(
-    FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
-    () => {
-      const entradaWithMail = entradas.find((e) => e.mail && e.mail !== '');
-      if (entradaWithMail) {
-        for (const entrada of entradas) {
-          entrada.mail = entradaWithMail.mail;
-        }
-      }
-    },
-    true,
-  );
-
   const validation = createManyTicketSchema.safeParse(entradas);
   const invitedByValue =
     invitedBy && invitedBy.trim() !== '' ? invitedBy : null;
@@ -212,101 +199,119 @@ export const handlePurchase = async (
       formData: formDataRecord,
     };
   }
+  try {
+    // Total Price WITHOUT DISCOUNT OR SERVICE FEE
+    const totalPrice = await trpc.ticketGroup.getTotalPriceById(
+      ticketGroupId?.toString() ?? '',
+    );
 
-  const totalPrice = await trpc.ticketGroup.getTotalPriceById(
-    ticketGroupId?.toString() ?? '',
-  );
+    await trpc.emittedTickets.createMany(entradas);
 
-  await trpc.emittedTickets.createMany(entradas);
+    // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
+    if (invitedBy && invitedBy.trim() !== '') {
+      await trpc.ticketGroup.updateInvitedBy({
+        id: ticketGroupId,
+        invitedBy,
+      });
+    }
 
-  // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
-  if (invitedBy && invitedBy.trim() !== '') {
-    await trpc.ticketGroup.updateInvitedBy({
-      id: ticketGroupId,
-      invitedBy,
-    });
-  }
+    const firstTicket = {
+      fullName: entradas[0].fullName,
+      dni: entradas[0].dni,
+      mail: entradas[0].mail,
+      gender: entradas[0].gender,
+      phoneNumber: entradas[0].phoneNumber,
+      instagram: entradas[0].instagram,
+      birthDate: entradas[0].birthDate,
+    };
 
-  const firstTicket = {
-    fullName: entradas[0].fullName,
-    dni: entradas[0].dni,
-    mail: entradas[0].mail,
-    gender: entradas[0].gender,
-    phoneNumber: entradas[0].phoneNumber,
-    instagram: entradas[0].instagram,
-    birthDate: entradas[0].birthDate,
-  };
+    if (totalPrice === 0) {
+      await trpc.ticketGroup.updateStatus({
+        id: ticketGroupId,
+        status: 'FREE',
+      });
 
-  if (totalPrice === 0) {
-    await trpc.ticketGroup.updateStatus({
-      id: ticketGroupId,
-      status: 'FREE',
-    });
+      const group = await trpc.ticketGroup.getById(ticketGroupId);
 
-    const group = await trpc.ticketGroup.getById(ticketGroupId);
+      const pdfs =
+        await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
 
-    const pdfs =
-      await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
-
-    // Enviar emails de forma secuencial para evitar rate limits
-    try {
-      // Enviar un solo mail con todas las entradas si extraTicketData = false o si la feature EXTRA_DATA_CHECKOUT está desactivada
-      if (
-        !group.event.extraTicketData ||
-        (await checkFeature(FEATURE_KEYS.EXTRA_DATA_CHECKOUT, () => true, true))
-      ) {
-        await trpc.mail.send({
-          eventName: group.event.name,
-          receiver: entradas[0].mail,
-          subject: `¡Llegaron tus tickets para ${group.event.name}!`,
-          body: `Te esperamos.`,
-          attatchments: pdfs.map((pdf) => pdf.pdf.blob),
-        });
-      } else {
-        for (const pdf of pdfs) {
+      // Enviar emails de forma secuencial para evitar rate limits
+      try {
+        // Enviar un solo mail con todas las entradas si extraTicketData = false
+        if (!group.event.extraTicketData) {
           await trpc.mail.send({
             eventName: group.event.name,
-            receiver: pdf.ticket.mail,
+            receiver: entradas[0].mail,
             subject: `¡Llegaron tus tickets para ${group.event.name}!`,
             body: `Te esperamos.`,
-            attatchments: [pdf.pdf.blob],
+            attatchments: pdfs.map((pdf) => pdf.pdf.blob),
           });
+        } else {
+          for (const pdf of pdfs) {
+            await trpc.mail.send({
+              eventName: group.event.name,
+              receiver: pdf.ticket.mail,
+              subject: `¡Llegaron tus tickets para ${group.event.name}!`,
+              body: `Te esperamos.`,
+              attatchments: [pdf.pdf.blob],
+            });
+          }
         }
+      } catch (error) {
+        console.error(error);
+        return {
+          ticketsInput: prevState.ticketsInput,
+          errors: ['Error al enviar los emails, vuelva a intentarlo'],
+          formData: formDataRecord,
+        };
       }
-    } catch (error) {
-      console.error(error);
-      return {
-        ticketsInput: prevState.ticketsInput,
-        errors: ['Error al enviar los emails, vuelva a intentarlo'],
-        formData: formDataRecord,
-      };
-    }
 
-    await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
-      await trpc.mail.sendNotification({
-        eventName: group.event.name,
+      if (group.event.emailNotification) {
+        await trpc.mail.sendNotification({
+          eventName: group.event.name,
+          ticketGroupId,
+          email: group.event.emailNotification,
+        });
+      }
+
+      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
+      (await cookies()).delete('carrito');
+
+      url = `/tickets/${ticketGroupId}` as Route;
+    } else {
+      const mercadoPagoUrl = await trpc.mercadoPago.createPreference({
         ticketGroupId,
       });
+
+      if (!mercadoPagoUrl) {
+        return {
+          ticketsInput: prevState.ticketsInput,
+          errors: [
+            'Error al crear la preferencia de pago, vuelva a intentarlo',
+          ],
+          formData: formDataRecord,
+        };
+      }
+
+      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
+      (await cookies()).delete('carrito');
+
+      url = mercadoPagoUrl as Route;
+    }
+  } catch (error) {
+    throw new Error('Error al procesar la compra, vuelva a intentarlo', {
+      cause: error,
     });
-
-    (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
-    (await cookies()).delete('carrito');
-
-    redirect(`/tickets/${ticketGroupId}`);
-  } else {
-    const url = await trpc.mercadoPago.createPreference({ ticketGroupId });
-
-    if (!url) {
-      return {
-        ticketsInput: prevState.ticketsInput,
-        errors: ['Error al crear la preferencia de pago, vuelva a intentarlo'],
-        formData: formDataRecord,
-      };
+  } finally {
+    if (url) {
+      redirect(url);
     }
 
-    (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
-    (await cookies()).delete('carrito');
-
-    redirect(url as Route);
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: ['Error al finalizar la compra, vuelva a intentarlo'],
+      formData: formDataRecord,
+    };
   }
 };

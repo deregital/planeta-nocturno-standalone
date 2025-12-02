@@ -134,11 +134,19 @@ export function DateRangePicker({
   const [isSmallScreen, setIsSmallScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth < 960 : false,
   );
+  const [isLargeScreen, setIsLargeScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1200 : false,
+  );
 
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    // Set initial screen size state after mount
+    if (typeof window !== 'undefined') {
+      setIsSmallScreen(window.innerWidth < 960);
+      setIsLargeScreen(window.innerWidth >= 1200);
+    }
   }, []);
 
   useEffect(() => {
@@ -153,6 +161,7 @@ export function DateRangePicker({
   useEffect(() => {
     const handleResize = (): void => {
       setIsSmallScreen(window.innerWidth < 960);
+      setIsLargeScreen(window.innerWidth >= 1200);
     };
 
     window.addEventListener('resize', handleResize);
@@ -358,15 +367,20 @@ export function DateRangePicker({
       <PopoverTrigger asChild>
         <Button
           size={'lg'}
-          className='w-full h-full border-stroke text-accent hover:bg-transparent !text-xl'
+          className='w-full h-full border-stroke text-accent hover:bg-transparent text-[clamp(0.875rem,2.5vw+0.5rem,1.25rem)]'
           variant={'outline'}
         >
           {isMounted ? (
             <>
               <div className='text-right'>
                 <div className='py-1'>
-                  {isSmallScreen
-                    ? `${formatDate(range.from, locale, {
+                  {isLargeScreen
+                    ? `${formatDate(range.from, locale)}${
+                        range.to != null
+                          ? ' - ' + formatDate(range.to, locale)
+                          : ''
+                      }`
+                    : `${formatDate(range.from, locale, {
                         month: 'short',
                         day: '2-digit',
                       })}${
@@ -377,19 +391,27 @@ export function DateRangePicker({
                               day: '2-digit',
                             })
                           : ''
-                      }`
-                    : `${formatDate(range.from, locale)}${
-                        range.to != null
-                          ? ' - ' + formatDate(range.to, locale)
-                          : ''
                       }`}
                 </div>
                 {rangeCompare != null && (
                   <div className='-mt-1 text-xs opacity-60'>
                     <>
-                      vs. {formatDate(rangeCompare.from, locale)}
+                      vs.{' '}
+                      {isLargeScreen
+                        ? formatDate(rangeCompare.from, locale)
+                        : formatDate(rangeCompare.from, locale, {
+                            month: 'short',
+                            day: '2-digit',
+                          })}
                       {rangeCompare.to != null
-                        ? ` - ${formatDate(rangeCompare.to, locale)}`
+                        ? ` - ${
+                            isLargeScreen
+                              ? formatDate(rangeCompare.to, locale)
+                              : formatDate(rangeCompare.to, locale, {
+                                  month: 'short',
+                                  day: '2-digit',
+                                })
+                          }`
                         : ''}
                     </>
                   </div>

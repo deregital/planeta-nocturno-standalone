@@ -5,12 +5,13 @@ import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
+import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { role } from '@/drizzle/schema';
 import { roleTranslation } from '@/lib/translations';
 import { type User } from '@/server/types';
-import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import 'react-phone-number-input/style.css';
 
 export type UserData = Pick<
@@ -24,6 +25,7 @@ export type UserData = Pick<
   | 'dni'
   | 'gender'
   | 'phoneNumber'
+  | 'instagram'
 >;
 
 const defaultState: UserData = {
@@ -36,6 +38,7 @@ const defaultState: UserData = {
   gender: 'male',
   phoneNumber: '',
   dni: '',
+  instagram: '',
 };
 
 export function UserForm({
@@ -45,6 +48,7 @@ export function UserForm({
   formAction,
   isPending,
   type,
+  lockedRole,
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
@@ -52,17 +56,23 @@ export function UserForm({
   errors?: Partial<Record<keyof UserData | 'general', string>>;
   formAction: (formData: FormData) => void;
   isPending: boolean;
+  lockedRole?: (typeof role.enumValues)[number];
 }) {
-  const [internalState, setInternalState] = useState<UserData>(
-    initialState ?? defaultState,
-  );
+  const [internalState, setInternalState] = useState<UserData>({
+    ...defaultState,
+    ...initialState,
+    role: lockedRole ?? initialState?.role ?? defaultState.role,
+  });
 
   function handleChange<K extends keyof UserData>(key: K, value: UserData[K]) {
     setInternalState((prev) => ({ ...prev, [key]: value }));
   }
 
   return (
-    <form className='flex flex-col gap-4' action={formAction}>
+    <form
+      className='flex flex-col gap-4 max-h-[80vh] overflow-y-auto px-1'
+      action={formAction}
+    >
       {userId && <input type='hidden' name='id' value={userId} />}
       <InputWithLabel
         required
@@ -73,17 +83,6 @@ export function UserForm({
         error={errors?.fullName}
         onChange={(e) => {
           handleChange('fullName', e.target.value);
-        }}
-      />
-      <InputWithLabel
-        required
-        label='Nombre de usuario'
-        id='username'
-        name='username'
-        value={internalState?.name}
-        error={errors?.name}
-        onChange={(e) => {
-          handleChange('name', e.target.value);
         }}
       />
       <InputWithLabel
@@ -112,22 +111,33 @@ export function UserForm({
           handleChange('birthDate', date.toISOString());
         }}
       />
-      <SelectWithLabel
-        label='Rol'
-        required
-        id='role'
-        name='role'
-        value={internalState?.role}
-        className='w-full'
-        values={role.enumValues.map((roleValue) => ({
-          label: roleTranslation[roleValue],
-          value: roleValue,
-        }))}
-        error={errors?.role}
-        onValueChange={(value) => {
-          handleChange('role', value as (typeof role.enumValues)[number]);
-        }}
-      />
+      {lockedRole ? (
+        <>
+          <input type='hidden' name='role' value={lockedRole} />
+          <p className='text-sm text-accent-dark'>
+            Rol asignado: {roleTranslation[lockedRole]}
+          </p>
+        </>
+      ) : (
+        <SelectWithLabel
+          label='Rol'
+          required
+          id='role'
+          name='role'
+          value={internalState?.role}
+          className='w-full'
+          values={role.enumValues
+            .filter((roleValue) => roleValue !== 'ORGANIZER')
+            .map((roleValue) => ({
+              label: roleTranslation[roleValue],
+              value: roleValue,
+            }))}
+          error={errors?.role}
+          onValueChange={(value) => {
+            handleChange('role', value as (typeof role.enumValues)[number]);
+          }}
+        />
+      )}
       <div>
         <PhoneInputWithLabel
           label='Número de teléfono'
@@ -173,6 +183,29 @@ export function UserForm({
           handleChange('gender', value as 'male' | 'female' | 'other');
         }}
         required
+      />
+      <InputWithLabel
+        label='Instagram'
+        id='instagram'
+        name='instagram'
+        value={internalState?.instagram ?? ''}
+        error={errors?.instagram}
+        onChange={(e) => {
+          handleChange('instagram', e.target.value);
+        }}
+        placeholder='@'
+      />
+      <Separator className='border rounded-full border-accent-light' />
+      <InputWithLabel
+        required
+        label='Nombre de usuario'
+        id='username'
+        name='username'
+        value={internalState?.name}
+        error={errors?.name}
+        onChange={(e) => {
+          handleChange('name', e.target.value);
+        }}
       />
       <InputWithLabel
         required={type === 'CREATE'}

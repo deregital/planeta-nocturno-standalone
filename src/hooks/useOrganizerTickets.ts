@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
-import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 
 export function calculateMaxTicketsPerOrganizer(
   capacity: number,
@@ -34,7 +34,13 @@ export function useOrganizerTickets(type: InviteCondition) {
     return calculateMaxTicketsPerOrganizer(location.capacity, totalOrganizers);
   }, [type, location?.capacity, organizers.length]);
 
+  const minNumber = useMemo(() => {
+    if (type === 'INVITATION') return 1;
+    else return 0;
+  }, [type]);
+
   return {
+    minNumber,
     maxNumber,
     maxCapacity: location?.capacity,
   };

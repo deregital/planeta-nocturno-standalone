@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import {
   FEATURE_CONFIG,
+  type FeatureConfig,
   type FeatureKey,
 } from '@/server/constants/feature-keys';
 import { trpc } from '@/server/trpc/server';
@@ -33,7 +34,8 @@ export async function handleUpdate(
         const enabled = formData.get(`${featureKey}-enabled`) === 'on';
         const valueInput = formData.get(`${featureKey}-value`);
 
-        const validation = featureConfig.validator.safeParse(valueInput);
+        const typedFeatureConfig = featureConfig as FeatureConfig;
+        const validation = typedFeatureConfig.validator.safeParse(valueInput);
 
         if (!validation.success) {
           throw new Error(validation.error.message);

@@ -49,6 +49,9 @@ export const eventSchema = z.object({
     error: 'La condición de invitación es requerida',
   }),
   extraTicketData: z.boolean(),
+  serviceFee: z.number().min(0).nullable(),
+  emailNotification: z.email().nullable(),
+  ticketSlugVisibleInPdf: z.boolean(),
 });
 
 export const createEventSchema = eventSchema.omit({

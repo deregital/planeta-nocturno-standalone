@@ -77,7 +77,7 @@ function TicketPurchase({
                   {type.leftAvailable && (
                     <div className='justify-center items-center hidden lg:flex max-w-36'>
                       <span className='self-center text-red-500 font-medium text-[12px] sm:text-[16px]'>
-                        ¡Quedan {type.leftAvailable} entradas!
+                        ¡Quedan {type.leftAvailable} tickets!
                       </span>
                     </div>
                   )}
@@ -108,7 +108,7 @@ function TicketPurchase({
                     </Select>
                   ) : (
                     <div className='text-red-500 font-medium text-[12px] sm:text-[16px]'>
-                      Entradas agotadas!
+                      ¡Tickets agotados!
                     </div>
                   )}
                 </div>
@@ -125,7 +125,7 @@ function TicketPurchase({
                 key={ticket.id}
                 className='self-center text-red-500 font-medium text-[12px] sm:text-[16px] lg:hidden'
               >
-                ¡Quedan {ticket.leftAvailable} entradas para{' '}
+                ¡Quedan {ticket.leftAvailable} tickets para{' '}
                 <span className='font-bold'>{ticket.name}</span>!
               </span>
             ),

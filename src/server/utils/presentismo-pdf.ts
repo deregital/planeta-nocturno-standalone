@@ -164,7 +164,7 @@ const commonSchema = [
     type: 'text',
     position: { x: 9, y: 40.7 },
     required: false,
-    content: 'Entradas vendidas:',
+    content: 'Tickets vendidos:',
     width: 127.29,
     height: 10,
     rotate: 0,
@@ -245,7 +245,7 @@ export function presentismoPDFSchema(): Template {
           showHead: true,
           head: [
             'Nombre',
-            'Tipo de entrada',
+            'Tipo de ticket',
             'Núm. de teléfono',
             'DNI/Pasaporte',
             'Invitado por',
@@ -327,7 +327,7 @@ export function presentismoPDFSchemaGroupedTicketType(
             {
               name: `tipo_entrada_${ticketType}`,
               type: 'text',
-              content: `Tipo de entrada: ${ticketType}`,
+              content: `Tipo de ticket: ${ticketType}`,
               position: { x: 3.38, y: textOffset },
               width: 202.65,
               height: 10,
@@ -356,7 +356,7 @@ export function presentismoPDFSchemaGroupedTicketType(
               showHead: true,
               head: [
                 'Nombre',
-                'Tipo de entrada',
+                'Tipo de ticket',
                 'Núm. de teléfono',
                 'DNI/Pasaporte',
                 'Invitado por',

@@ -1,12 +1,12 @@
+import EventList from '@/components/events/admin/EventList';
 import {
   Accordion,
+  AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  AccordionContent,
 } from '@/components/ui/accordion';
-import { trpc } from '@/server/trpc/server';
-import EventList from '@/components/events/admin/EventList';
 import { Separator } from '@/components/ui/separator';
+import { trpc } from '@/server/trpc/server';
 
 export default async function OrganizationPage() {
   const myEvents = await trpc.organizer.getMyEvents();
@@ -21,9 +21,12 @@ export default async function OrganizationPage() {
       <p className='text-2xl font-bold text-accent'>Próximos Eventos</p>
       {upcomingEvents.length > 0 ? (
         <EventList
-          events={upcomingEvents.map((event) => event.event)}
+          events={{
+            folders: [],
+            withoutFolders: upcomingEvents.map((event) => event.event),
+          }}
           showActions={false}
-          href={(slug) => `/organization/event/${slug}`}
+          href={(slug: string) => `/organization/event/${slug}`}
         />
       ) : (
         <p className='text-lg font-medium text-accent'>
@@ -49,9 +52,12 @@ export default async function OrganizationPage() {
               >
                 <div className='pt-4 pb-2'>
                   <EventList
-                    events={pastEvents.map((event) => event.event)}
+                    events={{
+                      folders: [],
+                      withoutFolders: pastEvents.map((event) => event.event),
+                    }}
                     showActions={false}
-                    href={(slug) => `/organization/event/${slug}`}
+                    href={(slug: string) => `/organization/event/${slug}`}
                   />
                 </div>
               </AccordionContent>

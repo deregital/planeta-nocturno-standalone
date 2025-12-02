@@ -1,11 +1,11 @@
+import DeleteLocationModal from '@/components/location/DeleteLocationModal';
+import LocationModal from '@/components/location/LocationModal';
 import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { type Location } from '@/server/schemas/location';
-import DeleteLocationModal from '@/components/location/DeleteLocationModal';
-import LocationModal from '@/components/location/LocationModal';
 
 export default function LocationAccordion({
   location,
@@ -19,7 +19,10 @@ export default function LocationAccordion({
       <AccordionTrigger className='text-xl px-4'>
         {location.name}
       </AccordionTrigger>
-      <AccordionContent className='text-lg relative'>
+      <AccordionContent
+        contentClassName='w-full mt-2'
+        className='text-lg relative'
+      >
         <p className='font-medium'>
           Ubicación: <span className='font-light'>{location.address}</span>
         </p>

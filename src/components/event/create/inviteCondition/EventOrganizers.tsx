@@ -1,20 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
-import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
-import { trpc } from '@/server/trpc/client';
 import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
 import { Slider } from '@/components/ui/slider';
-import { type InviteCondition } from '@/server/types';
+import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
 import {
   calculateMaxTicketsPerOrganizer,
   useOrganizerTickets,
 } from '@/hooks/useOrganizerTickets';
 import { cn } from '@/lib/utils';
+import { trpc } from '@/server/trpc/client';
+import { type InviteCondition } from '@/server/types';
 
 export function EventOrganizers({ type }: { type: InviteCondition }) {
-  const { maxNumber, maxCapacity } = useOrganizerTickets(type);
-  const [defaultNumber, setDefaultNumber] = useState<number>(0);
+  const { maxNumber, maxCapacity, minNumber } = useOrganizerTickets(type);
+  const [defaultNumber, setDefaultNumber] = useState<number>(minNumber);
   const [selectedComboboxOption, setSelectedComboboxOption] =
     useState<string>('');
   const { data: organizersData } = trpc.user.getOrganizers.useQuery();
@@ -43,30 +43,53 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
       return;
     }
 
-    const clampedDefault = Math.min(defaultNumber, maxNumber);
+    let clampedDefault = defaultNumber;
 
-    // Actualizar el default si excede el máximo
+    if (maxNumber !== 0) {
+      // Si el maxNumber cambió (especialmente cuando aumenta por eliminar un organizador)
+      if (maxChanged) {
+        const prevMax = prevMaxNumberRef.current;
+        // Solo actualizar el defaultNumber si:
+        // 1. Era igual al maxNumber anterior (para mantener el comportamiento de "máximo")
+        // 2. O excede el nuevo maxNumber (necesita ser ajustado hacia abajo)
+        if (defaultNumber > maxNumber) {
+          // Si excede el nuevo máximo, ajustar hacia abajo
+          clampedDefault = maxNumber;
+        } else if (
+          prevMax !== 0 &&
+          prevMax > maxNumber && // Si agrego un organizador
+          (defaultNumber === prevMax || Math.abs(defaultNumber - prevMax) <= 1)
+        ) {
+          // Si era igual al anterior, actualizar al nuevo máximo
+          clampedDefault = Math.min(defaultNumber, maxNumber);
+        }
+        // Si defaultNumber < maxNumber y no era igual al anterior, NO cambiar (mantener el valor)
+      } else {
+        // Si el maxNumber no cambió, solo ajustar si excede el máximo
+        if (defaultNumber > maxNumber) {
+          clampedDefault = maxNumber;
+        }
+      }
+    }
+
+    // Actualizar el default si cambió
     if (defaultNumber !== clampedDefault) {
       setDefaultNumber(clampedDefault);
     }
 
     // Para el modo INVITACIÓN, asegurar que todos los organizadores respeten los nuevos límites
     if (type === 'INVITATION' && (maxChanged || organizersLengthChanged)) {
-      let needsUpdate = false;
-
       // Verificar si algún organizador excede el nuevo máximo
       organizers.forEach((org) => {
-        const currentAmount = 'ticketAmount' in org ? org.ticketAmount : 0;
-        if (currentAmount > maxNumber) {
+        const currentAmount = 'ticketAmount' in org ? org.ticketAmount : null;
+        if (
+          currentAmount !== null &&
+          currentAmount > maxNumber &&
+          maxNumber !== 0
+        ) {
           updateOrganizerNumber(org, maxNumber, type);
-          needsUpdate = true;
         }
       });
-
-      // Actualizar todos los organizadores al default clamped si es necesario
-      if (needsUpdate || defaultNumber !== clampedDefault) {
-        updateAllOrganizerNumber(clampedDefault, type);
-      }
     }
 
     prevMaxNumberRef.current = maxNumber;
@@ -92,9 +115,15 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
           dni: organizer.dni,
           phoneNumber: organizer.phoneNumber,
           number:
-            org && 'discountPercentage' in org
+            org &&
+            'discountPercentage' in org &&
+            type === 'TRADITIONAL' &&
+            org.discountPercentage !== null
               ? org.discountPercentage
-              : org && 'ticketAmount' in org
+              : org &&
+                  'ticketAmount' in org &&
+                  type === 'INVITATION' &&
+                  org.ticketAmount !== null
                 ? org.ticketAmount
                 : 0,
         };
@@ -216,11 +245,6 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
           selectedOption={selectedComboboxOption}
           onSelectedOptionChange={setSelectedComboboxOption}
         />
-        {type === 'INVITATION' && (
-          <p className='text-xs text-accent'>
-            Una vez creado el evento, no podrás modificar los organizadores.
-          </p>
-        )}
       </div>
 
       <OrganizerTableWithAction
@@ -237,8 +261,8 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
         <div className='w-full max-w-1/3'>
           <p>
             {type === 'TRADITIONAL'
-              ? 'Porcentaje por defecto'
-              : 'Cantidad por defecto'}
+              ? 'Porcentaje de descuento por defecto'
+              : 'Cantidad de tickets por defecto'}
           </p>
           <div className='rounded-t-md bg-accent-ultra-light border-stroke border border-b-0 flex gap-2 px-4 py-2'>
             <p className={cn('tabular-nums', type === 'INVITATION' && 'pr-2')}>
@@ -246,9 +270,9 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
               {type === 'TRADITIONAL' && '%'}
             </p>
             <Slider
-              defaultValue={[defaultNumber ?? 0]}
+              value={[defaultNumber]}
               max={maxNumber}
-              min={0}
+              min={minNumber}
               step={1}
               onValueChange={(value) => {
                 const clampedValue = Math.min(value[0], maxNumber);

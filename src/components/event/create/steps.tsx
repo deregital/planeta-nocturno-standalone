@@ -3,6 +3,9 @@
 import { useState } from 'react';
 
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
+import { EventInvitationTypeAction } from '@/components/event/create/EventInvitationTypeAction';
+import PreviewEvent from '@/components/event/create/PreviewEvent';
+import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
 import {
   Stepper,
   StepperContent,
@@ -15,9 +18,6 @@ import {
   StepperTrigger,
 } from '@/components/ui/stepper';
 import { cn } from '@/lib/utils';
-import PreviewEvent from '@/components/event/create/PreviewEvent';
-import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
-import { EventInvitationTypeAction } from '@/components/event/create/EventInvitationTypeAction';
 
 export function Steps() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -31,11 +31,11 @@ export function Steps() {
       component: <EventGeneralInformation action='CREATE' next={goNext} />,
     },
     {
-      title: 'Tipo de evento',
+      title: 'Organizadores',
       component: <EventInvitationTypeAction next={goNext} back={goBack} />,
     },
     {
-      title: 'Tipos de entradas',
+      title: 'Tickets',
       component: <TicketTypeAction back={goBack} next={goNext} />,
     },
     {

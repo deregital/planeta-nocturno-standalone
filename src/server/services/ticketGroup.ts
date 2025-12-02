@@ -2,9 +2,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/drizzle';
 
-import { checkFeature } from '@/components/admin/config/checkFeature';
 import { ticketGroup } from '@/drizzle/schema';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 
 export async function calculateTotalPrice({
   ticketGroupId,
@@ -28,6 +26,11 @@ export async function calculateTotalPrice({
           amount: true,
         },
       },
+      event: {
+        columns: {
+          serviceFee: true,
+        },
+      },
     },
   });
 
@@ -45,9 +48,9 @@ export async function calculateTotalPrice({
 
   // Calculate service fee over subtotal (pre-discount)
   let serviceFeePrice = 0;
-  await checkFeature(FEATURE_KEYS.SERVICE_FEE, (serviceFee) => {
-    serviceFeePrice = subtotalPrice * (serviceFee / 100);
-  });
+  if (group.event.serviceFee) {
+    serviceFeePrice = subtotalPrice * (group.event.serviceFee / 100);
+  }
 
   // Apply discount to subtotal if exists
   const hasDiscount =
