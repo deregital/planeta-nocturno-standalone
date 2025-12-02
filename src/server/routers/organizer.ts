@@ -117,7 +117,7 @@ export const organizerRouter = router({
       const organizer = await ctx.db.query.user.findFirst({
         where: eq(user.id, organizerId),
         columns: {
-          name: true,
+          fullName: true,
           email: true,
           phoneNumber: true,
           instagram: true,
@@ -138,7 +138,7 @@ export const organizerRouter = router({
         })),
         organizer: {
           id: organizerId,
-          name: organizer.name,
+          fullName: organizer.fullName,
           email: organizer.email,
           phoneNumber: organizer.phoneNumber,
           instagram: organizer.instagram,
