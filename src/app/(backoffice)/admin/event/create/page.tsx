@@ -10,7 +10,7 @@ export default function CreateEventPage() {
         className='self-baseline mx-4 mt-4'
         route='/admin/event'
       />
-      <h1 className='text-4xl font-bold'>Crear evento</h1>
+      <h1 className='text-4xl font-bold hidden md:block'>Crear evento</h1>
       <CreateEventStoreProvider>
         <Steps />
       </CreateEventStoreProvider>
