@@ -314,23 +314,24 @@ export function EventGeneralInformation({
               }}
             />
             {event.minAge !== null && (
-              <InputWithLabel
-                label='‎'
-                id='minAge'
-                type='number'
-                className='flex-1'
-                placeholder='Edad mínima'
-                name='minAge'
-                onChange={(e) => {
-                  handleChange('minAge', parseInt(e.target.value));
-                }}
-                error={error.minAge}
-                defaultValue={
-                  isNaN(event.minAge ?? 0) ? undefined : event.minAge!
-                }
-                readOnly={action === 'PREVIEW'}
-                disabled={action === 'PREVIEW'}
-              />
+              <div className='flex items-end flex-1'>
+                <InputWithLabel
+                  label=''
+                  id='minAge'
+                  type='number'
+                  placeholder='Edad mínima'
+                  name='minAge'
+                  onChange={(e) => {
+                    handleChange('minAge', parseInt(e.target.value));
+                  }}
+                  error={error.minAge}
+                  defaultValue={
+                    isNaN(event.minAge ?? 0) ? undefined : event.minAge!
+                  }
+                  readOnly={action === 'PREVIEW'}
+                  disabled={action === 'PREVIEW'}
+                />
+              </div>
             )}
           </div>
         </section>
