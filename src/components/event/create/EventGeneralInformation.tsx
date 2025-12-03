@@ -150,7 +150,7 @@ export function EventGeneralInformation({
               Descripción general del evento
             </h3>
             <InputWithLabel
-              label='Nombre del evento'
+              label='Nombre'
               id='name'
               type='text'
               placeholder='Nombre del evento'
@@ -163,7 +163,7 @@ export function EventGeneralInformation({
               disabled={action === 'PREVIEW'}
             />
             <InputWithLabel
-              label='Descripción del evento'
+              label='Descripción'
               id='description'
               type='text'
               placeholder='Descripción del evento'
@@ -193,7 +193,7 @@ export function EventGeneralInformation({
           </h3>
           <div className='flex flex-col gap-2 md:flex-row!'>
             <InputDateWithLabel
-              label='Fecha del evento'
+              label='Fecha'
               id='eventDate'
               selected={event.startingDate}
               className='flex-1 max-h-min'
@@ -221,7 +221,7 @@ export function EventGeneralInformation({
               disabled={action === 'PREVIEW'}
             />
             <InputWithLabel
-              label='Hora de inicio'
+              label='Inicio'
               id='startTime'
               type='time'
               required
@@ -258,12 +258,12 @@ export function EventGeneralInformation({
               disabled={action === 'PREVIEW'}
             />
             <InputWithLabel
-              label='Hora de fin'
+              label='Finalización'
               id='endTime'
               type='time'
               required
               className='flex-1'
-              placeholder='Hora de fin'
+              placeholder='Hora de finalización'
               name='endTime'
               value={format(event.endingDate, 'HH:mm')}
               onChange={(e) => {
@@ -315,7 +315,7 @@ export function EventGeneralInformation({
             />
             {event.minAge !== null && (
               <InputWithLabel
-                label='Edad mínima'
+                label='‎'
                 id='minAge'
                 type='number'
                 className='flex-1'
@@ -422,6 +422,11 @@ export function EventGeneralInformation({
             readOnly={action === 'PREVIEW'}
             disabled={action === 'PREVIEW'}
           />
+          <p className='text-sm'>
+            Al seleccionar una locación, se establecerá la cantidad de tickets
+            emitibles según su capacidad máxima. Además, se mostrará los datos
+            de la locación al momento de emitir tickets.
+          </p>
           <SelectWithLabel
             label='Categoría'
             id='categoryId'
@@ -458,6 +463,10 @@ export function EventGeneralInformation({
             readOnly={action === 'PREVIEW'}
             disabled={action === 'PREVIEW'}
           />
+          <p className='text-sm'>
+            La categoría del evento ayuda a organizar y filtrar eventos en el
+            sistema.
+          </p>
         </section>
         <section>
           <h3 className='text-accent-dark text-lg font-semibold'>Acceso</h3>
@@ -558,7 +567,7 @@ export function EventGeneralInformation({
               disabled={action === 'PREVIEW'}
               type='checkbox'
               className='[&>input]:w-6 [&>input]:ml-4'
-              placeholder='Edad mínima'
+              placeholder='Cargo por servicio'
               name='serviceFeeEnabled'
               checked={event.serviceFee !== null}
               onChange={(e) => {
