@@ -147,7 +147,7 @@ export default function Client({
         <TicketTypeAction />
       </section>
       <section>
-        <h3 className='text-2xl'>Organizadores</h3>
+        <h3 className='text-2xl text-accent font-bold'>Organizadores</h3>
         <EventOrganizers type={event.inviteCondition} />
       </section>
       {error.general && (
