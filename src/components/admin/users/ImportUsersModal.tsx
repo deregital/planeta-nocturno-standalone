@@ -268,7 +268,6 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
             <AlertCircle className='h-4 w-4' />
             <AlertDescription>
               <strong>Columnas requeridas:</strong>
-              <br />
               • Nombre
               <br />
               • Apellido
@@ -278,7 +277,11 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
               • DNI
               <br />
               • Fecha nacimiento en formato YYYY-MM-DD
-              <br />• Número de teléfono (se formatea automáticamente con +549)
+              <br />
+              • Número de teléfono (se formatea automáticamente con +549)
+              <br />
+              <br />
+              <strong>Columnas opcionales:</strong>• Instagram
             </AlertDescription>
           </Alert>
 
