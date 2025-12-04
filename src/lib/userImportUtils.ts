@@ -20,6 +20,7 @@ export interface ImportUserData {
   dni: string;
   fechaNacimiento: string;
   telefono: string;
+  instagram?: string;
 }
 
 export interface ValidationError {
@@ -31,6 +32,19 @@ export interface ParseResult {
   users: ImportUserData[];
   errors: ValidationError[];
 }
+
+/**
+ * Normaliza el handle de Instagram removiendo @ si existe
+ */
+const normalizeInstagram = (instagramValue: unknown): string | undefined => {
+  if (!instagramValue) return undefined;
+
+  const instagram = String(instagramValue).trim();
+  if (!instagram) return undefined;
+
+  // Remover @ si existe al inicio
+  return instagram.startsWith('@') ? instagram.slice(1) : instagram;
+};
 
 /**
  * Normaliza el número de teléfono agregando código de país si es necesario
@@ -146,6 +160,7 @@ export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
             try {
               const normalizedDate = normalizeDate(row[4]);
               const normalizedPhone = normalizePhoneNumber(row[5]);
+              const normalizedInstagram = normalizeInstagram(row[6]);
               users.push({
                 nombre: String(row[0] || '').trim(),
                 apellido: String(row[1] || '').trim(),
@@ -153,10 +168,12 @@ export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
                 dni: String(row[3] || '').trim(),
                 fechaNacimiento: normalizedDate,
                 telefono: normalizedPhone,
+                instagram: normalizedInstagram,
               });
             } catch {
               // Si hay error en la fecha, usar el valor original como string
               const normalizedPhone = normalizePhoneNumber(row[5]);
+              const normalizedInstagram = normalizeInstagram(row[6]);
               users.push({
                 nombre: String(row[0] || '').trim(),
                 apellido: String(row[1] || '').trim(),
@@ -164,6 +181,7 @@ export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
                 dni: String(row[3] || '').trim(),
                 fechaNacimiento: String(row[4] || '').trim(),
                 telefono: normalizedPhone,
+                instagram: normalizedInstagram,
               });
             }
           }
@@ -190,6 +208,7 @@ const transformExcelDataToSchema = (user: ImportUserData) => {
     dni: user.dni,
     phoneNumber: user.telefono,
     birthDate: user.fechaNacimiento,
+    instagram: user.instagram || null,
   };
 };
 
@@ -312,6 +331,7 @@ export const generateTemplate = (): void => {
       'DNI',
       'Fecha nacimiento en formato YYYY-MM-DD',
       'Número de teléfono',
+      'Instagram (opcional)',
     ],
   ];
 
