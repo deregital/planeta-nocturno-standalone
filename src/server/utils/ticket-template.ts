@@ -9,6 +9,7 @@ import {
   encryptString,
   getDMSansFonts,
   measureTextWidth,
+  truncateText,
 } from '@/server/utils/utils';
 
 export async function generateTicketTemplate(
@@ -567,9 +568,11 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     ticket.ticketSlugVisibleInPdf,
   );
 
+  const eventName = truncateText(ticket.eventName, 28);
+
   const inputs = [
     {
-      eventName: ticket.eventName,
+      eventName: eventName,
       eventDate: `${formattedDate} - ${formattedTime}`,
       eventLocation: ticket.eventLocation,
       fullName: ticket.fullName,
