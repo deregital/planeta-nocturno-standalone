@@ -100,6 +100,23 @@ export async function measureTextWidth(
 
   return font.widthOfTextAtSize(text, fontSize);
 }
+
+export function truncateText(text: string, maxLength: number = 25): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  const ellipsis = '...';
+  // Dejar espacio para los puntos suspensivos
+  const truncatedLength = maxLength - ellipsis.length;
+
+  if (truncatedLength <= 0) {
+    return ellipsis;
+  }
+
+  return text.substring(0, truncatedLength) + ellipsis;
+}
+
 export async function getBuyersCodeByDni(
   db: typeof database,
   dnis: string[],
