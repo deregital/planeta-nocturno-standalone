@@ -8,9 +8,10 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Cake, Edit } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
+import { AddTag } from '@/components/admin/users/AddTag';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
 import { ResetPasswordForm } from '@/components/admin/users/ResetPasswordForm';
-import { Badge } from '@/components/ui/badge';
+import { TagModal } from '@/components/admin/users/TagModal';
 import { Button } from '@/components/ui/button';
 import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
@@ -236,16 +237,19 @@ export const organizerColumns: StrictColumnDef<
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <Button
-          variant='ghost'
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className='flex items-center gap-2 font-bold p-2'
-        >
-          <span className='text-sm'>Grupo</span>
-          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
-          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
-          {!sorted && <ArrowUpDown className='h-4 w-4' />}
-        </Button>
+        <div className='flex items-center'>
+          <Button
+            variant='ghost'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className='flex items-center font-bold'
+          >
+            <span className='text-sm'>Grupo</span>
+            {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+            {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+            {!sorted && <ArrowUpDown className='h-4 w-4' />}
+          </Button>
+          <TagModal type='CREATE' />
+        </div>
       );
     },
     sortingFn: (rowA, rowB) => {
@@ -263,13 +267,24 @@ export const organizerColumns: StrictColumnDef<
       return batchesA.localeCompare(batchesB);
     },
     cell: ({ row }) => {
+      const currentUserTagIds = row.original.userXTags.map(({ tag }) => tag.id);
       return (
-        <div className='flex flex-wrap gap-1'>
+        <div
+          className='flex flex-wrap gap-1'
+          onClick={(e) => e.stopPropagation()}
+        >
           {row.original.userXTags.map(({ tag }) => (
-            <Badge variant='outline' key={tag.id}>
-              {tag.name}
-            </Badge>
+            <TagModal
+              type='EDIT'
+              key={tag.id}
+              userId={row.original.id}
+              tag={tag}
+            />
           ))}
+          <AddTag
+            userId={row.original.id}
+            currentUserTagIds={currentUserTagIds}
+          />
         </div>
       );
     },
