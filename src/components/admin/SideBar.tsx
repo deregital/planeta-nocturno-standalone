@@ -20,6 +20,12 @@ export const navRoutes: {
     roles: ['ORGANIZER'],
   },
   {
+    href: '/database',
+    icon: <Database />,
+    title: 'Base de Datos',
+    roles: ['ORGANIZER'],
+  },
+  {
     href: '/admin',
     icon: <Home />,
     title: 'Dashboard',

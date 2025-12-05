@@ -224,9 +224,14 @@ const months = [
 interface TicketsTableProps {
   columns: StrictColumnDef<EmittedBuyerTableWithId, unknown>[];
   data: (EmittedBuyerTable & { buyerCode: string })[];
+  clickableRow?: boolean;
 }
 
-export function DatabaseTable({ columns, data }: TicketsTableProps) {
+export function DatabaseTable({
+  columns,
+  data,
+  clickableRow = true,
+}: TicketsTableProps) {
   const router = useRouter();
 
   const [globalFilter, setGlobalFilter] = useState('');
@@ -336,7 +341,7 @@ export function DatabaseTable({ columns, data }: TicketsTableProps) {
       <DataTable
         columns={columns}
         data={filteredData}
-        onClickRow={handleRowClick}
+        onClickRow={clickableRow ? handleRowClick : undefined}
         initialSortingColumn={{
           id: 'buyerCode',
           desc: false,
