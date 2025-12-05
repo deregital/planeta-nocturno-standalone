@@ -183,6 +183,7 @@ export const userRouter = router({
             dni: z.string(),
             fechaNacimiento: z.string(),
             telefono: z.string(),
+            instagram: z.string().nullish(),
           }),
         ),
         batchName: z.string().min(1, 'El nombre del grupo es requerido'),
@@ -324,6 +325,10 @@ export const userRouter = router({
         const randomPassword = generateRandomPassword();
         const hashedPassword = await hash(randomPassword, 10);
 
+        const instagram = user.instagram?.startsWith('@')
+          ? user.instagram.slice(1)
+          : user.instagram;
+
         const [newUser] = await ctx.db
           .insert(userTable)
           .values({
@@ -336,6 +341,7 @@ export const userRouter = router({
             phoneNumber: user.telefono,
             dni: user.dni,
             birthDate: user.fechaNacimiento,
+            instagram: instagram || null,
           })
           .returning();
 

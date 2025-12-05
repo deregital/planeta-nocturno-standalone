@@ -28,7 +28,9 @@ export function CredentialsModal({
 }: CredentialsModalProps) {
   const [copied, setCopied] = useState(false);
 
-  const credentialsText = `Usuario: ${credentials.username}\nContraseña: ${credentials.password}`;
+  const loginUrl = `${window.location.origin}/login`;
+
+  const credentialsText = `Ingresá desde el siguiente enlace:\n${loginUrl}\n\nCredenciales:\nUsuario: ${credentials.username}\nContraseña: ${credentials.password}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(credentialsText);
@@ -37,7 +39,7 @@ export function CredentialsModal({
   };
 
   const shareMessage = encodeURIComponent(
-    `Credenciales de acceso:\nUsuario: ${credentials.username}\nContraseña: ${credentials.password}`,
+    `Ingresá desde el siguiente enlace:\n${loginUrl}\n\nCredenciales:\nUsuario: ${credentials.username}\nContraseña: ${credentials.password}`,
   );
 
   return (

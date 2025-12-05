@@ -80,12 +80,8 @@ export function UploadDropzone({
         </div>
 
         <div className='mt-3 space-y-1 text-center text-accent'>
-          <p className='text-sm font-medium'>
-            Arrastrá y soltá la{' '}
-            <span className='font-bold underline group-hover:underline-offset-4 transition-all'>
-              foto del evento
-            </span>{' '}
-            acá
+          <p className='text-sm font-bold underline group-hover:underline-offset-2 transition-all'>
+            Agregar flyer
           </p>
 
           <p className='text-muted-foreground max-w-64 text-xs'>
@@ -98,7 +94,8 @@ export function UploadDropzone({
                 {description?.maxFileSize &&
                   `${description.maxFiles !== 1 ? 'Cada archivo' : 'El archivo'} debe pesar menos de ${description.maxFileSize}.`}{' '}
                 {description?.fileTypes &&
-                  `Se aceptan archivos de tipo ${description.fileTypes}.`}
+                  `Se aceptan archivos de tipo ${description.fileTypes}.`}{' '}
+                La imagen debe ser cuadrada (relación 1:1).
               </>
             )}
           </p>

@@ -20,8 +20,8 @@ export const userColumns: StrictColumnDef<
   RouterOutputs['user']['getAll'][number]
 >[] = [
   {
-    id: 'autoId',
-    accessorKey: 'autoId',
+    id: 'shortId',
+    accessorKey: 'shortId',
     header: ({ column }) => {
       return (
         <div

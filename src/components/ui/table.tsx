@@ -15,7 +15,7 @@ function Table({
       className={cn(
         'relative overflow-x-auto w-full',
         fullWidth &&
-          'max-w-screen w-[calc(100vw-16px)] md:w-[calc(100vw-16px-var(--sidebar-width))] ',
+          'max-w-full w-[calc(100vw-20px)] md:w-[calc(100vw-20px-var(--sidebar-width))]',
       )}
     >
       <table
@@ -114,11 +114,11 @@ function TableCaption({
 
 export {
   Table,
-  TableHeader,
   TableBody,
+  TableCaption,
+  TableCell,
   TableFooter,
   TableHead,
+  TableHeader,
   TableRow,
-  TableCell,
-  TableCaption,
 };

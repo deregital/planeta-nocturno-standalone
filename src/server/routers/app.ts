@@ -10,6 +10,7 @@ import { mailRouter } from '@/server/routers/mail';
 import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
 import { organizerRouter } from '@/server/routers/organizer';
 import { statisticsRouter } from '@/server/routers/statistics';
+import { tagRouter } from '@/server/routers/tag';
 import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { userRouter } from '@/server/routers/user';
 import { router } from '@/server/trpc';
@@ -27,6 +28,7 @@ export const appRouter = router({
   feature: featureRouter,
   organizer: organizerRouter,
   eventFolder: eventFolderRouter,
+  tag: tagRouter,
 });
 
 export type AppRouter = typeof appRouter;
