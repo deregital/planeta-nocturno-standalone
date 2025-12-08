@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  Calendar,
-  Database,
-  Home,
-  MapPin,
-  Settings,
-  Type,
-  Users,
-} from 'lucide-react';
+import { Calendar, Database, Home, Settings, Users } from 'lucide-react';
 import { type Route } from 'next';
 import { usePathname } from 'next/navigation';
 
@@ -25,6 +17,12 @@ export const navRoutes: {
     href: '/organization',
     icon: <Calendar />,
     title: 'Organización',
+    roles: ['ORGANIZER'],
+  },
+  {
+    href: '/database',
+    icon: <Database />,
+    title: 'Base de Datos',
     roles: ['ORGANIZER'],
   },
   {
@@ -45,22 +43,22 @@ export const navRoutes: {
     title: 'Eventos',
     roles: ['ADMIN', 'TICKETING'],
   },
-  {
-    href: '/admin/locations',
-    icon: <MapPin />,
-    title: 'Locaciones',
-    roles: ['ADMIN'],
-  },
-  {
-    href: '/admin/categories',
-    icon: <Type />,
-    title: 'Categorías',
-    roles: ['ADMIN'],
-  },
+  // {
+  //   href: '/admin/locations',
+  //   icon: <MapPin />,
+  //   title: 'Locaciones',
+  //   roles: ['ADMIN'],
+  // },
+  // {
+  //   href: '/admin/categories',
+  //   icon: <Type />,
+  //   title: 'Categorías',
+  //   roles: ['ADMIN'],
+  // },
   {
     href: '/admin/users',
     icon: <Users />,
-    title: 'Usuarios',
+    title: 'Organizadores',
     roles: ['ADMIN'],
   },
   {

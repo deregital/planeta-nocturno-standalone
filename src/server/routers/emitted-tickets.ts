@@ -20,6 +20,7 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
+  organizerProcedure,
   publicProcedure,
   router,
   ticketingProcedure,
@@ -150,15 +151,12 @@ export const emittedTicketsRouter = router({
           };
         });
 
-        console.log('VALUES', values);
         const res = await ctx.db
           .insert(emittedTicket)
           .values(values)
           .returning();
 
         if (!res) throw 'Error al crear ticket/s';
-
-        console.log('RES', res);
 
         // Si hay tickets creados, verificar si hay un ticketXorganizer asociado al ticketGroup
         // y actualizar su ticketId con el primer ticket creado (modo INVITATION)
@@ -228,6 +226,37 @@ export const emittedTicketsRouter = router({
 
     return dataWithAge;
   }),
+  getAllUniqueBuyerByOrganizer: organizerProcedure
+    .input(z.uuid())
+    .query(async ({ input, ctx }) => {
+      const data = await ctx.db
+        .selectDistinctOn([emittedTicket.dni], {
+          dni: emittedTicket.dni,
+          fullName: emittedTicket.fullName,
+          mail: emittedTicket.mail,
+          gender: emittedTicket.gender,
+          instagram: emittedTicket.instagram,
+          birthDate: emittedTicket.birthDate,
+          phoneNumber: emittedTicket.phoneNumber,
+        })
+        .from(emittedTicket)
+        .leftJoin(ticketGroup, eq(emittedTicket.ticketGroupId, ticketGroup.id))
+        .where(eq(ticketGroup.invitedById, input))
+        .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
+
+      const dnis = data.map((item) => item.dni);
+      const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
+
+      const dataWithAge = data.map((buyer) => ({
+        ...buyer,
+        age: differenceInYears(new Date(), buyer.birthDate).toString(),
+        buyerCode:
+          buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
+          '---',
+      }));
+
+      return dataWithAge;
+    }),
   getUniqueBuyer: adminProcedure
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
@@ -326,6 +355,7 @@ export const emittedTicketsRouter = router({
         id: ticket.id,
         invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
         slug: ticket.slug,
+        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
       });
 
       return pdf;
@@ -542,6 +572,7 @@ export const emittedTicketsRouter = router({
         id: ticket.id,
         invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
         slug: ticket.slug,
+        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
       });
 
       const { data, error } = await sendMail({

@@ -25,7 +25,7 @@ export const ticketTypeSchema = z.object({
     .number()
     .min(0, {
       error:
-        'La cantidad de entradas para mostrar baja disponibilidad debe ser mayor o igual a 0',
+        'La cantidad de tickets para mostrar baja disponibilidad debe ser mayor o igual a 0',
     })
     .nullable(),
 });

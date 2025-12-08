@@ -1,18 +1,18 @@
-import { trpc } from '@/server/trpc/server';
-import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
-import { CreateUserForm } from '@/components/admin/users/CreateUserForm';
+import { CreateOrganizerForm } from '@/components/admin/users/CreateOrganizerForm';
 import { ImportUsersWrapper } from '@/components/admin/users/ImportUsersWrapper';
+import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
+import { trpc } from '@/server/trpc/server';
 
 export default async function UsersPage() {
-  const data = await trpc.user.getAll();
+  const data = await trpc.user.getByRole('ORGANIZER');
 
   return (
     <div className='flex flex-col gap-4 py-4'>
       <div className='flex justify-between items-center px-4'>
-        <h1 className='text-2xl font-bold'>Usuarios</h1>
+        <h1 className='text-2xl font-bold'>Organizadores</h1>
         <div className='flex gap-2'>
           <ImportUsersWrapper />
-          <CreateUserForm />
+          <CreateOrganizerForm />
         </div>
       </div>
       <UsersTableWithFilters data={data} />

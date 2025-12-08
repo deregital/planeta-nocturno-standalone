@@ -79,23 +79,28 @@ export default function Client({
         <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
           <div>
             <Contact />
-            <p>ID: {buyer.buyerCode}</p>
+            <p>
+              <span className='text-gray-600'>ID:</span> {buyer.buyerCode}
+            </p>
           </div>
           <div>
             <IdCard />
-            <p>DNI/Pasaporte: {buyer.dni}</p>
+            <p>
+              <span className='text-gray-600'>DNI/Pasaporte:</span> {buyer.dni}
+            </p>
           </div>
           <div>
             <Cake />
             <p>
-              Fecha de nacimiento: {format(buyer.birthDate, 'dd/MM/yyyy')}{' '}
+              <span className='text-gray-600'>Fecha de nacimiento:</span>{' '}
+              {format(buyer.birthDate, 'dd/MM/yyyy')}{' '}
               <span className='text-sm'>({buyer.age} años)</span>
             </p>
           </div>
           <div>
             <VenusAndMars />
             <p>
-              Género:{' '}
+              <span className='text-gray-600'>Género:</span>{' '}
               {buyer.gender === 'female' ||
               buyer.gender === 'male' ||
               buyer.gender === 'other'
@@ -106,14 +111,21 @@ export default function Client({
           <div>
             <Phone />
             <p>
-              Número de teléfono:{' '}
+              <span className='text-gray-600'>Número de teléfono:</span>{' '}
               {formatPhoneNumber(buyer.phoneNumber, 'INTERNATIONAL')}
+            </p>
+          </div>
+          <div>
+            <Mail />
+            <p>
+              <span className='text-gray-600'>Email:</span> {buyer.mail}
             </p>
           </div>
           <div>
             <Instagram />
             <p>
-              Instagram: {buyer.instagram ? `@${normalizedInstagram}` : '-'}
+              <span className='text-gray-600'>Instagram:</span>{' '}
+              {buyer.instagram ? `@${normalizedInstagram}` : '-'}
             </p>
           </div>
         </FilledCard>

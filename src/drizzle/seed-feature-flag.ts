@@ -1,7 +1,7 @@
 import * as relations from '@/drizzle/relations';
 import * as models from '@/drizzle/schema';
 import { feature } from '@/drizzle/schema';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
+import { FEATURE_KEYS, FeatureKey } from '@/server/constants/feature-keys';
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
@@ -18,7 +18,9 @@ async function main() {
   });
 
   for (const featureKey of features) {
-    await db.insert(feature).values({ key: featureKey, enabled: false });
+    await db
+      .insert(feature)
+      .values({ key: featureKey as FeatureKey, enabled: false });
     console.log(`✓ Created feature: ${featureKey}`);
   }
 

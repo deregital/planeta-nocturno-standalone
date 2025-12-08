@@ -1,12 +1,8 @@
 import React from 'react';
 
-import FeatureWrapper from '@/components/admin/config/FeatureWrapper';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils-client';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { type RouterOutputs } from '@/server/routers/app';
-import { trpc } from '@/server/trpc/client';
 
 export function TicketGroupTable({
   ticketGroup,
@@ -15,10 +11,6 @@ export function TicketGroupTable({
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
   discountPercentage?: number | null;
 }) {
-  const { data: serviceFee, isLoading } = trpc.feature.getByKey.useQuery(
-    FEATURE_KEYS.SERVICE_FEE,
-  );
-
   const subtotalPrice = ticketGroup.ticketTypePerGroups.reduce(
     (acc, type) => acc + (type.ticketType.price || 0) * type.amount,
     0,
@@ -33,9 +25,8 @@ export function TicketGroupTable({
     : subtotalPrice;
 
   // Calculate service fee over the subtotal (pre-discount)
-  const serviceFeePrice = serviceFee?.enabled
-    ? subtotalPrice * (Number(serviceFee?.value ?? 0) / 100)
-    : 0;
+  const serviceFeePrice =
+    subtotalPrice * (Number(ticketGroup.event.serviceFee ?? 0) / 100);
 
   const subtotalPriceString = formatCurrency(subtotalPrice);
   const subtotalWithDiscountString = formatCurrency(subtotalWithDiscount);
@@ -74,46 +65,34 @@ export function TicketGroupTable({
           </React.Fragment>
         ))}
       </div>
-
-      {isLoading ? (
-        <div className='flex flex-col gap-4 items-center w-full mt-4'>
-          <Skeleton className='w-full h-9' />
-          <Skeleton className='w-full h-9' />
-        </div>
-      ) : (
-        <div className='w-full flex-col flex items-end mt-4 [&>div]:w-full [&>div]:md:w-3/5 [&>div]:min-w-44 [&>div]:flex [&>div]:justify-between'>
-          <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
-            <p>Subtotal:</p>
-            {hasDiscount ? (
-              <p className='line-through text-gray-500'>
-                {subtotalPriceString}
-              </p>
-            ) : (
-              <p>{subtotalPriceString}</p>
-            )}
-          </div>
-
-          {hasDiscount && (
-            <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
-              <p>Subtotal con descuento:</p>
-              <p className='text-green-600 font-semibold'>
-                {subtotalWithDiscountString}
-              </p>
-            </div>
+      <div className='w-full flex-col flex items-end mt-4 [&>div]:w-full [&>div]:md:w-3/5 [&>div]:min-w-44 [&>div]:flex [&>div]:justify-between'>
+        <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
+          <p>Subtotal:</p>
+          {hasDiscount ? (
+            <p className='line-through text-gray-500'>{subtotalPriceString}</p>
+          ) : (
+            <p>{subtotalPriceString}</p>
           )}
-          <FeatureWrapper feature={FEATURE_KEYS.SERVICE_FEE}>
-            <div className='mb-3 [&>p]:text-end [&>p]:text-lg'>
-              <p>Costo de servicio:</p>
-              <p>{serviceFeeString}</p>
-            </div>
-          </FeatureWrapper>
-          <Separator className='flex bg-stroke data-[orientation=horizontal]:min-w-44 data-[orientation=horizontal]:w-full data-[orientation=horizontal]:md:w-3/5' />
-          <div className='mt-3 [&>p]:text-end [&>p]:text-lg'>
-            <p>Total:</p>
-            <p>{totalPriceString}</p>
-          </div>
         </div>
-      )}
+
+        {hasDiscount && (
+          <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
+            <p>Subtotal con descuento:</p>
+            <p className='text-green-600 font-semibold'>
+              {subtotalWithDiscountString}
+            </p>
+          </div>
+        )}
+        <div className='mb-3 [&>p]:text-end [&>p]:text-lg'>
+          <p>Costo de servicio:</p>
+          <p>{serviceFeeString}</p>
+        </div>
+        <Separator className='flex bg-stroke data-[orientation=horizontal]:min-w-44 data-[orientation=horizontal]:w-full data-[orientation=horizontal]:md:w-3/5' />
+        <div className='mt-3 [&>p]:text-end [&>p]:text-lg'>
+          <p>Total:</p>
+          <p>{totalPriceString}</p>
+        </div>
+      </div>
     </div>
   );
 }

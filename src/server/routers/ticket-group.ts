@@ -123,6 +123,8 @@ export const ticketGroupRouter = router({
               coverImageUrl: true,
               inviteCondition: true,
               extraTicketData: true,
+              emailNotification: true,
+              serviceFee: true,
             },
             with: {
               location: {
@@ -374,6 +376,7 @@ export const ticketGroupRouter = router({
             columns: {
               name: true,
               startingDate: true,
+              ticketSlugVisibleInPdf: true,
             },
             with: {
               location: {
@@ -418,6 +421,7 @@ export const ticketGroupRouter = router({
           ticketType: ticket.ticketType.name,
           invitedBy: group.user?.fullName ?? '-',
           slug: ticket.slug,
+          ticketSlugVisibleInPdf: group.event.ticketSlugVisibleInPdf,
         });
         return {
           ticket,

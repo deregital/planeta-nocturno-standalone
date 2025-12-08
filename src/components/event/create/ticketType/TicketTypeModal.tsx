@@ -208,7 +208,7 @@ export default function TicketTypeModal({
       <DialogContent className='!max-w-xl md:!max-w-3xl w-full lg:!max-w-4xl'>
         <DialogHeader>
           <DialogTitle className='text-left'>
-            Crear entrada de tipo {text}
+            Crear ticket de tipo {text}
           </DialogTitle>
           <DialogDescription hidden></DialogDescription>
         </DialogHeader>
@@ -220,7 +220,7 @@ export default function TicketTypeModal({
             <InputWithLabel
               id='name'
               name='name'
-              label='Nombre de la entrada'
+              label='Nombre del ticket'
               required
               error={error.name}
               value={editingTicketType.name}
@@ -242,7 +242,7 @@ export default function TicketTypeModal({
           <InputWithLabel
             id='description'
             name='description'
-            label='Descripción de la entrada'
+            label='Descripción del ticket'
             error={error.description}
             required
             value={editingTicketType.description}
@@ -251,7 +251,7 @@ export default function TicketTypeModal({
           <InputWithLabel
             id='price'
             name='price'
-            label='Precio de la entrada ($)'
+            label='Precio del ticket ($)'
             type='number'
             min={0}
             error={error.price}
@@ -265,7 +265,7 @@ export default function TicketTypeModal({
               id='maxAvailable'
               name='maxAvailable'
               className='w-full'
-              label={`Cantidad maxima de entrada (Entradas restantes: ${maxAvailableLeftReal})`}
+              label={`Cantidad maxima de tickets (Tickets restantes: ${maxAvailableLeftReal})`}
               type='number'
               required
               error={error.maxAvailable}
@@ -279,7 +279,7 @@ export default function TicketTypeModal({
               id='maxPerPurchase'
               name='maxPerPurchase'
               className='w-full'
-              label='Cantidad maxima de entradas por venta'
+              label='Cantidad maxima de tickets por venta'
               type='number'
               error={error.maxPerPurchase}
               value={editingTicketType.maxPerPurchase}
@@ -294,7 +294,7 @@ export default function TicketTypeModal({
                 <InputWithLabel
                   id='scanLimit'
                   name='scanLimit'
-                  label='Finalización de escaneo de entradas'
+                  label='Finalización de escaneo de tickets'
                   type='datetime-local'
                   error={error.scanLimit}
                   value={
@@ -317,7 +317,7 @@ export default function TicketTypeModal({
                 <InputWithLabel
                   id='scanLimit'
                   name='scanLimit'
-                  label='Finalización de escaneo de entradas'
+                  label='Finalización de escaneo de tickets'
                   type='text'
                   error={error.scanLimit}
                   value={
@@ -349,7 +349,7 @@ export default function TicketTypeModal({
                 <InputWithLabel
                   id='maxSellDate'
                   name='maxSellDate'
-                  label='Finalización de venta de entradas'
+                  label='Finalización de venta de tickets'
                   type='datetime-local'
                   error={error.maxSellDate}
                   value={
@@ -372,7 +372,7 @@ export default function TicketTypeModal({
                 <InputWithLabel
                   id='maxSellDate'
                   name='maxSellDate'
-                  label='Finalización de venta de entradas'
+                  label='Finalización de venta de tickets'
                   type='text'
                   error={error.maxSellDate}
                   value={
@@ -405,7 +405,7 @@ export default function TicketTypeModal({
               <InputWithLabel
                 id='lowStockThreshold'
                 name='lowStockThreshold'
-                label='Cantidad de entradas para mostrar baja disponibilidad'
+                label='Cantidad de tickets para mostrar baja disponibilidad'
                 type='number'
                 min={0}
                 max={editingTicketType.maxAvailable}
@@ -423,7 +423,7 @@ export default function TicketTypeModal({
               <InputWithLabel
                 id='lowStockThreshold'
                 name='lowStockThreshold'
-                label='Cantidad de entradas para mostrar baja disponibilidad'
+                label='Cantidad de tickets para mostrar baja disponibilidad'
                 type='number'
                 error={error.lowStockThreshold}
                 value={
@@ -449,7 +449,7 @@ export default function TicketTypeModal({
           </div>
           <DialogFooter className='flex !flex-col gap-4'>
             <p className='text-sm text-accent'>
-              {`Esta entrada de tipo`}{' '}
+              {`Este ticket de tipo`}{' '}
               <b>{ticketTypesTranslation[category].text}</b>{' '}
               {`(cuesta $${editingTicketType.price ?? '-'}).`}
               {editingTicketType.visibleInWeb ? (
@@ -467,7 +467,7 @@ export default function TicketTypeModal({
               {`. Solo se
               pueden vender `}
               <b>{editingTicketType.maxAvailable}</b>
-              {` entradas de
+              {` tickets de
               este tipo, y por compra solamente se pueden emitir `}
               <b>{editingTicketType.maxPerPurchase}</b>.
             </p>

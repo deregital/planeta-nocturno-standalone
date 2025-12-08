@@ -104,7 +104,7 @@ export default function Dashboard() {
               {/* Total Sold  */}
               <BaseCard className='sm:row-start-5 sm:row-span-3 lg:grid-start-3 lg:row-span-7 lg:row-start-1 flex flex-col justify-start items-center px-4 py-8'>
                 <p className='text-3xl font-light text-center'>
-                  Entradas vendidas
+                  Tickets vendidos
                 </p>
                 <p className='text-6xl lg:text-5xl xl:text-6xl text-accent font-medium lg:py-16'>
                   {Intl.NumberFormat('es-AR').format(statistics.totalTickets)}
@@ -125,7 +125,7 @@ export default function Dashboard() {
               </BaseCard>
               <BaseCard className='flex w-full lg:w-1/2 flex-col mb-3'>
                 <p className='text-xl sm:text-2xl lg:text-3xl pt-6 font-light text-center mb-2'>
-                  Entradas emitidas por hora
+                  Tickets emitidos por hora
                 </p>
                 <BuyPerHourChart />
               </BaseCard>

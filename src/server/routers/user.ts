@@ -1,19 +1,23 @@
 import { TRPCError } from '@trpc/server';
 import { compare, hash } from 'bcrypt';
-import { eq, or, inArray } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { type db } from '@/drizzle';
 
-import { user as userTable, tag as tagTable, userXTag } from '@/drizzle/schema';
-import { userSchema } from '@/server/schemas/user';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  role,
+  tag as tagTable,
+  user as userTable,
+  userXTag,
+} from '@/drizzle/schema';
+import { resetPasswordSchema, userSchema } from '@/server/schemas/user';
 import {
   generateWelcomeEmail,
   sendMailWithoutAttachments,
 } from '@/server/services/mail';
-import { getBuyersCodeByDni } from '@/server/utils/utils';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { type Tag, type User } from '@/server/types';
 import { generateRandomPassword } from '@/server/utils/users';
 
@@ -29,18 +33,23 @@ export const userRouter = router({
       },
     });
 
-    const usersWithAutoId = await getBuyersCodeByDni(
-      ctx.db,
-      users.map((user) => user.id),
-    );
-
-    return users.map((user) => ({
-      ...user,
-      autoId:
-        usersWithAutoId?.find((code) => code.dni === user.id)?.id.toString() ||
-        '---',
-    }));
+    return users;
   }),
+  getByRole: adminProcedure
+    .input(z.enum(role.enumValues))
+    .query(async ({ ctx, input }) => {
+      const users = await ctx.db.query.user.findMany({
+        where: eq(userTable.role, input),
+        with: {
+          userXTags: {
+            with: {
+              tag: true,
+            },
+          },
+        },
+      });
+      return users;
+    }),
   getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany({
       where: eq(userTable.role, 'TICKETING'),
@@ -82,6 +91,11 @@ export const userRouter = router({
     await assertUniqueUser(ctx.db, input);
 
     const hashedPassword = await hash(input.password, 10);
+
+    const instagram = input.instagram?.startsWith('@')
+      ? input.instagram.slice(1)
+      : input.instagram;
+
     const [user] = await ctx.db
       .insert(userTable)
       .values({
@@ -89,6 +103,7 @@ export const userRouter = router({
         fullName: input.fullName,
         name: input.name,
         password: hashedPassword,
+        instagram,
       })
       .returning();
     await sendMailWithoutAttachments({
@@ -103,17 +118,53 @@ export const userRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertUniqueUser(ctx.db, input, input.id);
 
+      const instagram = input.instagram?.startsWith('@')
+        ? input.instagram.slice(1)
+        : input.instagram;
+
       const user = await ctx.db
         .update(userTable)
         .set({
           ...input,
           name: input.name,
           birthDate: input.birthDate,
+          instagram,
         })
         .where(eq(userTable.id, input.id));
 
       revalidatePath('/admin/users');
       return user;
+    }),
+  resetPassword: adminProcedure
+    .input(resetPasswordSchema)
+    .mutation(async ({ ctx, input }) => {
+      const hashedPassword = await hash(input.password, 10);
+
+      await ctx.db
+        .update(userTable)
+        .set({
+          password: hashedPassword,
+        })
+        .where(eq(userTable.id, input.id));
+
+      const user = await ctx.db.query.user.findFirst({
+        where: eq(userTable.id, input.id),
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Usuario no encontrado',
+        });
+      }
+
+      return {
+        username: user.name,
+        password: input.password,
+        fullName: user.fullName,
+        instagram: user.instagram,
+        phoneNumber: user.phoneNumber,
+      };
     }),
   delete: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const user = await ctx.db.delete(userTable).where(eq(userTable.id, input));
@@ -132,9 +183,10 @@ export const userRouter = router({
             dni: z.string(),
             fechaNacimiento: z.string(),
             telefono: z.string(),
+            instagram: z.string().nullish(),
           }),
         ),
-        batchName: z.string().min(1, 'El nombre del batch es requerido'),
+        batchName: z.string().min(1, 'El nombre del grupo es requerido'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -273,6 +325,10 @@ export const userRouter = router({
         const randomPassword = generateRandomPassword();
         const hashedPassword = await hash(randomPassword, 10);
 
+        const instagram = user.instagram?.startsWith('@')
+          ? user.instagram.slice(1)
+          : user.instagram;
+
         const [newUser] = await ctx.db
           .insert(userTable)
           .values({
@@ -285,6 +341,7 @@ export const userRouter = router({
             phoneNumber: user.telefono,
             dni: user.dni,
             birthDate: user.fechaNacimiento,
+            instagram: instagram || null,
           })
           .returning();
 

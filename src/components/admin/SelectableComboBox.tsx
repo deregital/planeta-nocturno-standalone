@@ -24,11 +24,16 @@ export function SelectableComboBox({
   onSelectAction: onSelect,
   title,
   listOf,
+  createOption,
 }: {
   list: (ComparativeStatWithType & { name: string })[];
   onSelectAction: (item: ComparativeStatWithType & { name?: string }) => void;
   title: string;
   listOf: string;
+  createOption?: {
+    label: string;
+    onClick: () => void;
+  };
 }) {
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState('');
@@ -47,6 +52,19 @@ export function SelectableComboBox({
           <CommandList>
             <CommandEmpty>No se encontro {listOf}</CommandEmpty>
             <CommandGroup>
+              {createOption && (
+                <CommandItem
+                  key='create-new'
+                  value={createOption.label}
+                  className='font-semibold text-accent-dark'
+                  onSelect={() => {
+                    setOpen(false);
+                    createOption.onClick();
+                  }}
+                >
+                  {createOption.label}
+                </CommandItem>
+              )}
               {list.map((item) => (
                 <CommandItem
                   key={item.id}

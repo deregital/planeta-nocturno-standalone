@@ -2,14 +2,27 @@ import { type Font } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
+import { isAfter, isBefore } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, desc, eq, gt, inArray, like, lt, lte } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  like,
+  lt,
+  not,
+} from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import * as XLSX from 'xlsx';
 import z from 'zod';
 
 import {
   emittedTicket,
+  eventFolder,
   event as eventSchema,
   eventXorganizer,
   eventXUser,
@@ -49,10 +62,30 @@ import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    const pastEvents = await ctx.db.query.event.findMany({
+    const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
+      with: {
+        events: {
+          where: eq(eventSchema.isDeleted, false),
+          with: {
+            ticketTypes: true,
+            location: {
+              columns: {
+                id: true,
+                name: true,
+                address: true,
+              },
+            },
+          },
+          orderBy: desc(eventSchema.endingDate),
+        },
+      },
+      orderBy: desc(eventFolder.name),
+    });
+
+    const eventsWithoutFolders = await ctx.db.query.event.findMany({
       where: and(
         eq(eventSchema.isDeleted, false),
-        lte(eventSchema.endingDate, new Date().toISOString()),
+        isNull(eventSchema.folderId),
       ),
       with: {
         ticketTypes: true,
@@ -67,22 +100,37 @@ export const eventsRouter = router({
       orderBy: desc(eventSchema.endingDate),
     });
 
-    const upcomingEvents = await ctx.db.query.event.findMany({
-      where: and(
-        eq(eventSchema.isDeleted, false),
-        gt(eventSchema.endingDate, new Date().toISOString()),
+    const pastEvents = {
+      folders: eventsWithFolders.map((folder) => {
+        return {
+          id: folder.id,
+          name: folder.name,
+          color: folder.color,
+          events: folder.events.filter((event) =>
+            isBefore(event.endingDate, new Date()),
+          ),
+        };
+      }),
+      withoutFolders: eventsWithoutFolders.filter((event) =>
+        isBefore(event.endingDate, new Date()),
       ),
-      with: {
-        ticketTypes: true,
-        location: {
-          columns: {
-            id: true,
-            name: true,
-            address: true,
-          },
-        },
-      },
-    });
+    };
+
+    const upcomingEvents = {
+      folders: eventsWithFolders.map((folder) => {
+        return {
+          id: folder.id,
+          name: folder.name,
+          color: folder.color,
+          events: folder.events.filter((event) =>
+            isAfter(event.endingDate, new Date()),
+          ),
+        };
+      }),
+      withoutFolders: eventsWithoutFolders.filter((event) =>
+        isAfter(event.endingDate, new Date()),
+      ),
+    };
 
     return { pastEvents, upcomingEvents };
   }),
@@ -104,10 +152,33 @@ export const eventsRouter = router({
 
       const eventIds = userFound.eventXUsers.map((event) => event.event.id);
 
-      const pastEvents = await ctx.db.query.event.findMany({
+      const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
+        with: {
+          events: {
+            where: and(
+              eq(eventSchema.isDeleted, false),
+              inArray(eventSchema.id, eventIds),
+            ),
+            with: {
+              ticketTypes: true,
+              location: {
+                columns: {
+                  id: true,
+                  name: true,
+                  address: true,
+                },
+              },
+            },
+            orderBy: desc(eventSchema.endingDate),
+          },
+        },
+        orderBy: desc(eventFolder.name),
+      });
+
+      const eventsWithoutFolders = await ctx.db.query.event.findMany({
         where: and(
           eq(eventSchema.isDeleted, false),
-          lte(eventSchema.endingDate, new Date().toISOString()),
+          isNull(eventSchema.folderId),
           inArray(eventSchema.id, eventIds),
         ),
         with: {
@@ -123,23 +194,39 @@ export const eventsRouter = router({
         orderBy: desc(eventSchema.endingDate),
       });
 
-      const upcomingEvents = await ctx.db.query.event.findMany({
-        where: and(
-          eq(eventSchema.isDeleted, false),
-          gt(eventSchema.endingDate, new Date().toISOString()),
-          inArray(eventSchema.id, eventIds),
+      const pastEvents = {
+        folders: eventsWithFolders.map((folder) => {
+          return {
+            id: folder.id,
+            name: folder.name,
+            color: folder.color,
+            events: folder.events.filter((event) =>
+              isBefore(event.endingDate, new Date()),
+            ),
+          };
+        }),
+        withoutFolders: eventsWithoutFolders.filter((event) =>
+          isBefore(event.endingDate, new Date()),
         ),
-        with: {
-          ticketTypes: true,
-          location: {
-            columns: {
-              id: true,
-              name: true,
-              address: true,
-            },
-          },
-        },
-      });
+      };
+
+      const upcomingEvents = {
+        folders: eventsWithFolders.map((folder) => {
+          return {
+            id: folder.id,
+            name: folder.name,
+            color: folder.color,
+            events: folder.events.filter((event) =>
+              isAfter(event.endingDate, new Date()),
+            ),
+          };
+        }),
+        withoutFolders: eventsWithoutFolders.filter((event) =>
+          isAfter(event.endingDate, new Date()),
+        ),
+      };
+
+      return { pastEvents, upcomingEvents };
 
       return { pastEvents, upcomingEvents };
     }),
@@ -396,6 +483,9 @@ export const eventsRouter = router({
         categoryId: event.categoryId,
         inviteCondition: event.inviteCondition,
         extraTicketData: event.extraTicketData,
+        serviceFee: event.serviceFee,
+        emailNotification: event.emailNotification,
+        ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -435,23 +525,24 @@ export const eventsRouter = router({
             }
 
             // Agregar organizadores al evento
-            await tx.insert(eventXorganizer).values(
-              organizersInput.map((organizer) => ({
-                eventId: eventCreated.id,
-                organizerId: organizer.id,
-                discountPercentage:
-                  event.inviteCondition === 'TRADITIONAL' &&
-                  'discountPercentage' in organizer
-                    ? organizer.discountPercentage
-                    : null,
-                ticketAmount:
-                  event.inviteCondition === 'INVITATION' &&
-                  'ticketAmount' in organizer
-                    ? organizer.ticketAmount
-                    : null,
-              })),
-            );
-
+            if (organizersInput.length > 0) {
+              await tx.insert(eventXorganizer).values(
+                organizersInput.map((organizer) => ({
+                  eventId: eventCreated.id,
+                  organizerId: organizer.id,
+                  discountPercentage:
+                    event.inviteCondition === 'TRADITIONAL' &&
+                    'discountPercentage' in organizer
+                      ? organizer.discountPercentage
+                      : null,
+                  ticketAmount:
+                    event.inviteCondition === 'INVITATION' &&
+                    'ticketAmount' in organizer
+                      ? organizer.ticketAmount
+                      : null,
+                })),
+              );
+            }
             // Crear tickets para organizadores
             if (organizersInput.length > 0) {
               // Buscar o crear tipo de ticket "Organizador"
@@ -541,6 +632,8 @@ export const eventsRouter = router({
                   dni: organizerEmittedTicket.dni,
                   createdAt: organizerEmittedTicket.createdAt,
                   ticketType: organizerEmittedTicket.ticketType.name,
+                  ticketSlugVisibleInPdf:
+                    organizerEmittedTicket.event.ticketSlugVisibleInPdf,
                 });
 
                 await sendMail({
@@ -553,7 +646,8 @@ export const eventsRouter = router({
 
                 if (
                   event.inviteCondition === 'INVITATION' &&
-                  'ticketAmount' in organizer
+                  'ticketAmount' in organizer &&
+                  organizer.ticketAmount !== null
                 ) {
                   // Agrupo todos los tickets del organizador en un solo grupo
                   const [thisOrganizerTicketGroup] = await tx
@@ -580,6 +674,7 @@ export const eventsRouter = router({
 
             return { eventCreated, ticketTypesCreated };
           } catch (error) {
+            console.error(error);
             tx.rollback();
             throw error;
           }
@@ -598,6 +693,17 @@ export const eventsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { event, ticketTypes, organizersInput } = input;
+
+      if (
+        event.inviteCondition === 'INVITATION' &&
+        organizersInput.length === 0
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Debe agregar al menos un organizador para el evento.',
+        });
+      }
+
       const slug = generateSlug(event.name);
 
       const existingEvent = await ctx.db.query.event.findMany({
@@ -624,6 +730,9 @@ export const eventsRouter = router({
         locationId: event.locationId,
         categoryId: event.categoryId,
         extraTicketData: event.extraTicketData,
+        serviceFee: event.serviceFee,
+        emailNotification: event.emailNotification,
+        ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
       };
 
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(
@@ -659,58 +768,168 @@ export const eventsRouter = router({
               ),
             });
 
-            // Eliminar organizadores que no están en la lista de organizadores input
+            // Obtener organizadores actuales de la base de datos
             const organizersDB = await tx.query.eventXorganizer.findMany({
               where: eq(eventXorganizer.eventId, eventUpdated.id),
             });
+
+            // Obtener conteo real de ticketXorganizer para cada organizador (solo INVITATION)
+            // Este será la fuente de verdad para la cantidad de tickets
+            const organizerTicketCounts = new Map<string, number>();
+            if (event.inviteCondition === 'INVITATION') {
+              for (const org of organizersDB) {
+                const ticketXOrgCount =
+                  await tx.query.ticketXorganizer.findMany({
+                    where: and(
+                      eq(ticketXorganizer.eventId, eventUpdated.id),
+                      eq(ticketXorganizer.organizerId, org.organizerId),
+                    ),
+                  });
+                organizerTicketCounts.set(
+                  org.organizerId,
+                  ticketXOrgCount.length,
+                );
+              }
+            }
+
+            // === ELIMINAR ORGANIZADORES ===
+            // Solo eliminar de eventXorganizer para este evento específico
             const deletedOrganizersIds = organizersDB
               .filter(
                 (org) => !organizersInput.some((o) => o.id === org.organizerId),
               )
               .map((org) => org.organizerId);
+
             if (deletedOrganizersIds.length > 0) {
-              const deletedOrganizersDnis = (
-                await tx.query.user.findMany({
+              // Si es evento de tipo INVITATION, eliminar TicketXOrganizer y emittedTicket
+              if (event.inviteCondition === 'INVITATION') {
+                // Obtener datos de los organizadores eliminados para buscar sus emittedTickets
+                const deletedOrganizers = await tx.query.user.findMany({
                   where: inArray(user.id, deletedOrganizersIds),
                   columns: {
+                    id: true,
                     dni: true,
                   },
-                })
-              ).map((o) => o.dni);
+                });
+
+                // Obtener el tipo de ticket "Organizador"
+                const organizerTicketType = ticketTypesDB.find(
+                  (tt) => tt.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
+                );
+
+                // Eliminar TicketXOrganizer con ticketId null para cada organizador eliminado
+                // Primero obtener los TicketXOrganizer para actualizar los ticketGroups
+                const ticketGroupsToUpdate = new Map<string, number>();
+
+                for (const organizerId of deletedOrganizersIds) {
+                  const ticketXOrgsToDelete =
+                    await tx.query.ticketXorganizer.findMany({
+                      where: and(
+                        eq(ticketXorganizer.eventId, eventUpdated.id),
+                        eq(ticketXorganizer.organizerId, organizerId),
+                        isNull(ticketXorganizer.ticketId),
+                      ),
+                    });
+
+                  // Agrupar por ticketGroupId para actualizar los amountTickets
+                  for (const ticketXOrg of ticketXOrgsToDelete) {
+                    if (ticketXOrg.ticketGroupId) {
+                      const currentCount =
+                        ticketGroupsToUpdate.get(ticketXOrg.ticketGroupId) || 0;
+                      ticketGroupsToUpdate.set(
+                        ticketXOrg.ticketGroupId,
+                        currentCount + 1,
+                      );
+                    }
+                  }
+
+                  // Eliminar los TicketXOrganizer
+                  await tx
+                    .delete(ticketXorganizer)
+                    .where(
+                      and(
+                        eq(ticketXorganizer.eventId, eventUpdated.id),
+                        eq(ticketXorganizer.organizerId, organizerId),
+                        isNull(ticketXorganizer.ticketId),
+                      ),
+                    );
+                }
+
+                // Actualizar amountTickets de los ticketGroups afectados
+                for (const [
+                  ticketGroupId,
+                  deletedCount,
+                ] of ticketGroupsToUpdate.entries()) {
+                  const group = await tx.query.ticketGroup.findFirst({
+                    where: eq(ticketGroup.id, ticketGroupId),
+                  });
+
+                  if (group) {
+                    await tx
+                      .update(ticketGroup)
+                      .set({
+                        amountTickets: Math.max(
+                          0,
+                          group.amountTickets - deletedCount,
+                        ),
+                      })
+                      .where(eq(ticketGroup.id, ticketGroupId));
+                  }
+                }
+
+                // Eliminar emittedTicket de cada organizador eliminado
+                if (organizerTicketType && currentOrganizerGroup) {
+                  for (const deletedOrg of deletedOrganizers) {
+                    const organizerEmittedTicket =
+                      await tx.query.emittedTicket.findFirst({
+                        where: and(
+                          eq(emittedTicket.eventId, eventUpdated.id),
+                          eq(emittedTicket.dni, deletedOrg.dni),
+                          eq(
+                            emittedTicket.ticketTypeId,
+                            organizerTicketType.id,
+                          ),
+                          eq(
+                            emittedTicket.ticketGroupId,
+                            currentOrganizerGroup.id,
+                          ),
+                        ),
+                      });
+
+                    if (organizerEmittedTicket) {
+                      await tx
+                        .delete(emittedTicket)
+                        .where(eq(emittedTicket.id, organizerEmittedTicket.id));
+                    }
+                  }
+
+                  // Actualizar amountTickets del grupo de organizadores
+                  const currentCount = deletedOrganizers.length;
+                  await tx
+                    .update(ticketGroup)
+                    .set({
+                      amountTickets: Math.max(
+                        0,
+                        (currentOrganizerGroup.amountTickets ?? 0) -
+                          currentCount,
+                      ),
+                    })
+                    .where(eq(ticketGroup.id, currentOrganizerGroup.id));
+                }
+              }
+
+              // Eliminar SOLO de EventXOrganizer para este evento específico
               await tx
                 .delete(eventXorganizer)
                 .where(
-                  inArray(eventXorganizer.organizerId, deletedOrganizersIds),
-                );
-
-              if (currentOrganizerGroup) {
-                await tx
-                  .update(ticketGroup)
-                  .set({
-                    amountTickets: Math.max(
-                      0,
-                      currentOrganizerGroup.amountTickets -
-                        deletedOrganizersIds.length,
-                    ),
-                  })
-                  .where(
-                    and(
-                      eq(ticketGroup.eventId, eventUpdated.id),
-                      eq(ticketGroup.isOrganizerGroup, true),
-                    ),
-                  );
-              }
-
-              await tx
-                .delete(emittedTicket)
-                .where(
                   and(
-                    eq(emittedTicket.eventId, eventUpdated.id),
-                    inArray(emittedTicket.dni, deletedOrganizersDnis),
+                    eq(eventXorganizer.eventId, eventUpdated.id),
+                    inArray(eventXorganizer.organizerId, deletedOrganizersIds),
                   ),
                 );
             }
 
+            // === AGREGAR ORGANIZADORES ===
             const addedOrganizersIds = organizersInput
               .filter(
                 (o) => !organizersDB.some((org) => org.organizerId === o.id),
@@ -730,94 +949,479 @@ export const eventsRouter = router({
               currentOrganizerGroup = newOrganizerGroup;
             }
 
-            if (
-              addedOrganizersIds.length > 0 &&
-              event.inviteCondition === 'TRADITIONAL'
-            ) {
-              await tx.insert(eventXorganizer).values(
-                addedOrganizersIds.map((id) => ({
-                  eventId: eventUpdated.id,
-                  organizerId: id,
-                  discountPercentage: (
-                    organizersInput.find(
-                      (o) => 'discountPercentage' in o && o.id === id,
-                    ) as { discountPercentage: number }
-                  ).discountPercentage,
-                })),
-              );
-
-              const [updatedTicketGroup] = await tx
-                .update(ticketGroup)
-                .set({
-                  amountTickets:
-                    (currentOrganizerGroup?.amountTickets ?? 0) +
-                    addedOrganizersIds.length,
-                })
-                .where(eq(ticketGroup.id, currentOrganizerGroup!.id))
-                .returning();
+            // Agregar organizadores según el modo
+            if (addedOrganizersIds.length > 0) {
               const addedOrganizers = await tx.query.user.findMany({
                 where: inArray(user.id, addedOrganizersIds),
               });
-              const organizerTicketType = ticketTypesDB.find(
+
+              // Obtener o crear tipo de ticket organizador
+              let organizerTicketType = ticketTypesDB.find(
                 (tt) => tt.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
               );
               if (!organizerTicketType) {
-                throw new Error(
-                  `Tipo de ticket "${ORGANIZER_TICKET_TYPE_NAME}" no encontrado`,
-                );
+                const [createdOrganizerTicketType] = await tx
+                  .insert(ticketType)
+                  .values({
+                    name: ORGANIZER_TICKET_TYPE_NAME,
+                    description: 'Tickets para los organizadores',
+                    price: 0,
+                    maxAvailable: organizersInput.length,
+                    maxPerPurchase: 1,
+                    category: 'FREE',
+                    lowStockThreshold: null,
+                    maxSellDate: null,
+                    scanLimit: null,
+                    visibleInWeb: false,
+                    eventId: eventUpdated.id,
+                  })
+                  .returning();
+
+                organizerTicketType = createdOrganizerTicketType;
               }
-              const emittedTickets = await tx
-                .insert(emittedTicket)
-                .values(
-                  addedOrganizers.map((org, idx) => ({
-                    ticketGroupId: updatedTicketGroup.id,
+
+              if (event.inviteCondition === 'TRADITIONAL') {
+                // Modo TRADITIONAL: crear EventXOrganizer con discountPercentage
+                await tx.insert(eventXorganizer).values(
+                  addedOrganizersIds.map((id) => ({
+                    eventId: eventUpdated.id,
+                    organizerId: id,
+                    discountPercentage:
+                      (
+                        organizersInput.find(
+                          (o) => 'discountPercentage' in o && o.id === id,
+                        ) as { discountPercentage: number }
+                      )?.discountPercentage ?? null,
+                    ticketAmount: null,
+                  })),
+                );
+
+                // Actualizar grupo de organizadores
+                const [updatedTicketGroup] = await tx
+                  .update(ticketGroup)
+                  .set({
+                    amountTickets:
+                      (currentOrganizerGroup?.amountTickets ?? 0) +
+                      addedOrganizersIds.length,
+                  })
+                  .where(eq(ticketGroup.id, currentOrganizerGroup!.id))
+                  .returning();
+
+                // Crear entradas de organizador
+                const emittedTickets = await tx
+                  .insert(emittedTicket)
+                  .values(
+                    addedOrganizers.map((org, idx) => ({
+                      ticketGroupId: updatedTicketGroup.id,
+                      fullName: org.fullName,
+                      dni: org.dni,
+                      mail: org.email,
+                      gender: org.gender,
+                      phoneNumber: org.phoneNumber,
+                      birthDate: org.birthDate,
+                      slug: generateSlug(
+                        `${ORGANIZER_TICKET_TYPE_NAME} ${organizersDB.length + idx}`,
+                      ),
+                      ticketTypeId: organizerTicketType.id,
+                      eventId: eventUpdated.id,
+                    })),
+                  )
+                  .returning();
+
+                // Enviar emails con PDFs
+                const eventLocation = await tx.query.location.findFirst({
+                  where: eq(locationSchema.id, eventUpdated.locationId),
+                  columns: {
+                    address: true,
+                  },
+                });
+                for (const org of addedOrganizers) {
+                  const emittedTicket = emittedTickets.find(
+                    (et) => et.dni === org.dni,
+                  );
+                  if (!emittedTicket) {
+                    throw new Error('Ticket no encontrado');
+                  }
+                  const pdf = await generatePdf({
+                    id: emittedTicket.id,
+                    invitedBy: '-',
+                    slug: emittedTicket.slug,
+                    eventName: eventUpdated.name,
+                    eventDate: eventUpdated.startingDate,
                     fullName: org.fullName,
                     dni: org.dni,
-                    mail: org.email,
-                    gender: org.gender,
-                    phoneNumber: org.phoneNumber,
-                    birthDate: org.birthDate,
-                    slug: generateSlug(
-                      `${ORGANIZER_TICKET_TYPE_NAME} ${organizersDB.length + idx}`,
-                    ),
-                    ticketTypeId: organizerTicketType.id,
-                    eventId: eventUpdated.id,
-                  })),
-                )
-                .returning();
-              const eventLocation = await tx.query.location.findFirst({
-                where: eq(locationSchema.id, eventUpdated.locationId),
-                columns: {
-                  address: true,
-                },
-              });
-              for (const org of addedOrganizers) {
-                const emittedTicket = emittedTickets.find(
-                  (et) => et.dni === org.dni,
-                );
-                if (!emittedTicket) {
-                  throw new Error('Ticket no encontrado');
+                    createdAt: emittedTicket.createdAt,
+                    ticketType: organizerTicketType.name,
+                    eventLocation: eventLocation?.address ?? '-',
+                    ticketSlugVisibleInPdf: eventUpdated.ticketSlugVisibleInPdf,
+                  });
+                  await sendMail({
+                    to: org.email,
+                    subject: `Ticket de ${eventUpdated.name}`,
+                    body: `Hola ${org.fullName}, te enviamos tu ticket de Organizador para ${eventUpdated.name}`,
+                    attachments: [Buffer.from(await pdf.arrayBuffer())],
+                    eventName: eventUpdated.name,
+                  });
                 }
-                const pdf = await generatePdf({
-                  id: emittedTicket.id,
-                  invitedBy: '-',
-                  slug: emittedTicket.slug,
-                  eventName: eventUpdated.name,
-                  eventDate: eventUpdated.startingDate,
-                  fullName: org.fullName,
-                  dni: org.dni,
-                  createdAt: emittedTicket.createdAt,
-                  ticketType: organizerTicketType.name,
-                  eventLocation: eventLocation?.address ?? '-',
-                });
-                await sendMail({
-                  to: org.email,
-                  subject: `Ticket de ${eventUpdated.name}`,
-                  body: `Hola ${org.fullName}, te enviamos tu ticket de Organizador para ${eventUpdated.name}`,
-                  attachments: [Buffer.from(await pdf.arrayBuffer())],
-                  eventName: eventUpdated.name,
-                });
+              } else if (event.inviteCondition === 'INVITATION') {
+                // Modo INVITATION: crear EventXOrganizer, TicketsXOrganizer y entrada de organizador
+                for (const addedOrganizerId of addedOrganizersIds) {
+                  const organizerInput = organizersInput.find(
+                    (o) => o.id === addedOrganizerId,
+                  );
+                  if (!organizerInput) continue;
+
+                  const ticketAmount =
+                    'ticketAmount' in organizerInput &&
+                    organizerInput.ticketAmount !== null
+                      ? organizerInput.ticketAmount
+                      : 0;
+
+                  const org = addedOrganizers.find(
+                    (o) => o.id === addedOrganizerId,
+                  );
+                  if (!org) continue;
+
+                  // Crear EventXOrganizer
+                  await tx.insert(eventXorganizer).values({
+                    eventId: eventUpdated.id,
+                    organizerId: addedOrganizerId,
+                    discountPercentage: null,
+                    ticketAmount: ticketAmount,
+                  });
+
+                  // Crear entrada de organizador (emittedTicket)
+                  const [updatedTicketGroup] = await tx
+                    .update(ticketGroup)
+                    .set({
+                      amountTickets:
+                        (currentOrganizerGroup?.amountTickets ?? 0) + 1,
+                    })
+                    .where(eq(ticketGroup.id, currentOrganizerGroup!.id))
+                    .returning();
+
+                  const [organizerEmittedTicket] = await tx
+                    .insert(emittedTicket)
+                    .values({
+                      fullName: org.fullName,
+                      dni: org.dni,
+                      mail: org.email,
+                      gender: org.gender,
+                      phoneNumber: org.phoneNumber,
+                      birthDate: org.birthDate,
+                      slug: generateSlug(
+                        `${ORGANIZER_TICKET_TYPE_NAME} ${organizersDB.length + addedOrganizersIds.indexOf(addedOrganizerId)}`,
+                      ),
+                      ticketTypeId: organizerTicketType.id,
+                      ticketGroupId: updatedTicketGroup.id,
+                      eventId: eventUpdated.id,
+                    })
+                    .returning({
+                      id: emittedTicket.id,
+                    });
+
+                  // Enviar email con PDF
+                  const organizerEmittedTicketFull =
+                    await tx.query.emittedTicket.findFirst({
+                      where: eq(emittedTicket.id, organizerEmittedTicket.id),
+                      with: {
+                        ticketType: true,
+                        event: {
+                          columns: {
+                            name: true,
+                            startingDate: true,
+                            ticketSlugVisibleInPdf: true,
+                          },
+                          with: {
+                            location: true,
+                          },
+                        },
+                      },
+                    });
+
+                  if (organizerEmittedTicketFull) {
+                    const pdf = await generatePdf({
+                      id: organizerEmittedTicketFull.id,
+                      invitedBy: '-',
+                      slug: organizerEmittedTicketFull.slug,
+                      eventName: organizerEmittedTicketFull.event.name,
+                      eventDate: organizerEmittedTicketFull.event.startingDate,
+                      eventLocation:
+                        organizerEmittedTicketFull.event.location.address,
+                      fullName: organizerEmittedTicketFull.fullName,
+                      dni: organizerEmittedTicketFull.dni,
+                      createdAt: organizerEmittedTicketFull.createdAt,
+                      ticketType: organizerEmittedTicketFull.ticketType.name,
+                      ticketSlugVisibleInPdf:
+                        organizerEmittedTicketFull.event.ticketSlugVisibleInPdf,
+                    });
+
+                    await sendMail({
+                      to: org.email,
+                      subject: `Ticket de ${organizerEmittedTicketFull.event.name}`,
+                      body: `Hola ${organizerEmittedTicketFull.fullName}, te enviamos tu ticket de Organizador para ${organizerEmittedTicketFull.event.name}`,
+                      attachments: [Buffer.from(await pdf.arrayBuffer())],
+                      eventName: organizerEmittedTicketFull.event.name,
+                    });
+                  }
+
+                  // Crear TicketGroup para este organizador y TicketsXOrganizer
+                  if (ticketAmount > 0) {
+                    const [thisOrganizerTicketGroup] = await tx
+                      .insert(ticketGroup)
+                      .values({
+                        eventId: eventUpdated.id,
+                        status: 'FREE',
+                        amountTickets: ticketAmount,
+                      })
+                      .returning();
+
+                    // Crear registros TicketsXOrganizer con ticketId null
+                    await tx.insert(ticketXorganizer).values(
+                      Array.from({ length: ticketAmount }).map(() => ({
+                        eventId: eventUpdated.id,
+                        organizerId: addedOrganizerId,
+                        ticketGroupId: thisOrganizerTicketGroup.id,
+                        // ticketId será null hasta que se use el código
+                      })),
+                    );
+                  }
+                }
               }
+            }
+
+            // === ACTUALIZAR CANTIDAD DE TICKETS DE ORGANIZADORES EXISTENTES (SOLO INVITATION) ===
+            if (event.inviteCondition === 'INVITATION') {
+              // Encontrar organizadores que ya existen pero con cantidad de tickets cambiada
+              for (const organizerInput of organizersInput) {
+                if (!('ticketAmount' in organizerInput)) continue;
+
+                const existingOrganizer = organizersDB.find(
+                  (org) => org.organizerId === organizerInput.id,
+                );
+
+                if (!existingOrganizer) continue; // Ya se procesó como nuevo
+
+                const newTicketAmount =
+                  organizerInput.ticketAmount !== null
+                    ? organizerInput.ticketAmount
+                    : 0;
+
+                // Obtener la cantidad actual contando los ticketXorganizer reales
+                const currentTicketAmount =
+                  organizerTicketCounts.get(organizerInput.id) ?? 0;
+
+                if (newTicketAmount !== currentTicketAmount) {
+                  // Contar TicketsXOrganizer con ticketId no null (tickets ya usados/emitidos)
+                  const usedTickets = await tx.query.ticketXorganizer.findMany({
+                    where: and(
+                      eq(ticketXorganizer.eventId, eventUpdated.id),
+                      eq(ticketXorganizer.organizerId, organizerInput.id),
+                      not(isNull(ticketXorganizer.ticketId)),
+                    ),
+                  });
+
+                  const usedTicketsCount = usedTickets.length;
+
+                  // La nueva cantidad no puede ser menor a la cantidad de tickets ya usados
+                  if (newTicketAmount < usedTicketsCount) {
+                    const organizerUser = await tx.query.user.findFirst({
+                      where: eq(user.id, organizerInput.id),
+                      columns: {
+                        fullName: true,
+                      },
+                    });
+
+                    throw new TRPCError({
+                      code: 'BAD_REQUEST',
+                      message: `No se puede reducir la cantidad de tickets del organizador ${organizerUser?.fullName || organizerInput.id} a ${newTicketAmount} porque ya se han emitido ${usedTicketsCount} tickets. La cantidad mínima permitida es ${usedTicketsCount}.`,
+                    });
+                  }
+
+                  // Actualizar ticketAmount en EventXOrganizer
+                  await tx
+                    .update(eventXorganizer)
+                    .set({
+                      ticketAmount: newTicketAmount,
+                    })
+                    .where(
+                      and(
+                        eq(eventXorganizer.eventId, eventUpdated.id),
+                        eq(eventXorganizer.organizerId, organizerInput.id),
+                      ),
+                    );
+
+                  // Contar registros TicketsXOrganizer existentes con ticketId null
+                  // Ordenar por createdAt ascendente para eliminar los primeros (más antiguos)
+                  const existingTicketXOrganizers =
+                    await tx.query.ticketXorganizer.findMany({
+                      where: and(
+                        eq(ticketXorganizer.eventId, eventUpdated.id),
+                        eq(ticketXorganizer.organizerId, organizerInput.id),
+                        isNull(ticketXorganizer.ticketId),
+                      ),
+                      orderBy: [asc(ticketXorganizer.createdAt)],
+                    });
+
+                  const difference = newTicketAmount - currentTicketAmount;
+
+                  if (difference < 0) {
+                    // Baja la cantidad: eliminar los primeros n registros
+                    const toDelete = existingTicketXOrganizers.slice(
+                      0,
+                      Math.abs(difference),
+                    );
+
+                    // Agrupar por ticketGroupId para actualizar los amountTickets
+                    const ticketGroupsToUpdate = new Map<string, number>();
+
+                    for (const ticketXOrg of toDelete) {
+                      if (ticketXOrg.ticketGroupId) {
+                        const currentCount =
+                          ticketGroupsToUpdate.get(ticketXOrg.ticketGroupId) ||
+                          0;
+                        ticketGroupsToUpdate.set(
+                          ticketXOrg.ticketGroupId,
+                          currentCount + 1,
+                        );
+                      }
+
+                      await tx
+                        .delete(ticketXorganizer)
+                        .where(
+                          and(
+                            eq(ticketXorganizer.eventId, eventUpdated.id),
+                            eq(ticketXorganizer.code, ticketXOrg.code),
+                          ),
+                        );
+                    }
+
+                    // Actualizar amountTickets de los ticketGroups afectados
+                    for (const [
+                      ticketGroupId,
+                      deletedCount,
+                    ] of ticketGroupsToUpdate.entries()) {
+                      const group = await tx.query.ticketGroup.findFirst({
+                        where: eq(ticketGroup.id, ticketGroupId),
+                      });
+
+                      if (group) {
+                        await tx
+                          .update(ticketGroup)
+                          .set({
+                            amountTickets: Math.max(
+                              0,
+                              group.amountTickets - deletedCount,
+                            ),
+                          })
+                          .where(eq(ticketGroup.id, ticketGroupId));
+                      }
+                    }
+                  } else if (difference > 0) {
+                    // Sube la cantidad: crear registros faltantes
+                    // Buscar el ticketGroup del organizador a través de ticketXOrganizers existentes
+                    const existingTicketXOrg = existingTicketXOrganizers[0];
+                    let organizerTicketGroup;
+
+                    if (existingTicketXOrg?.ticketGroupId) {
+                      // Si hay ticketXOrganizers existentes, usar su ticketGroup
+                      organizerTicketGroup =
+                        await tx.query.ticketGroup.findFirst({
+                          where: eq(
+                            ticketGroup.id,
+                            existingTicketXOrg.ticketGroupId,
+                          ),
+                        });
+
+                      if (organizerTicketGroup) {
+                        await tx
+                          .update(ticketGroup)
+                          .set({
+                            amountTickets:
+                              organizerTicketGroup.amountTickets + difference,
+                          })
+                          .where(eq(ticketGroup.id, organizerTicketGroup.id));
+                      }
+                    }
+
+                    // Si no hay ticketGroup existente, crear uno nuevo
+                    if (!organizerTicketGroup) {
+                      const [newTicketGroup] = await tx
+                        .insert(ticketGroup)
+                        .values({
+                          eventId: eventUpdated.id,
+                          status: 'FREE',
+                          amountTickets: difference,
+                        })
+                        .returning();
+                      organizerTicketGroup = newTicketGroup;
+                    }
+
+                    // Crear los registros faltantes
+                    await tx.insert(ticketXorganizer).values(
+                      Array.from({ length: difference }).map(() => ({
+                        eventId: eventUpdated.id,
+                        organizerId: organizerInput.id,
+                        ticketGroupId: organizerTicketGroup.id,
+                        // ticketId será null hasta que se use el código
+                      })),
+                    );
+                  }
+                }
+              }
+            }
+
+            // === ACTUALIZAR discountPercentage DE ORGANIZADORES EXISTENTES (SOLO TRADITIONAL) ===
+            if (event.inviteCondition === 'TRADITIONAL') {
+              // Encontrar organizadores que ya existen pero con discountPercentage cambiado
+              for (const organizerInput of organizersInput) {
+                if (!('discountPercentage' in organizerInput)) continue;
+
+                const existingOrganizer = organizersDB.find(
+                  (org) => org.organizerId === organizerInput.id,
+                );
+
+                if (!existingOrganizer) continue; // Ya se procesó como nuevo
+
+                const newDiscountPercentage =
+                  organizerInput.discountPercentage !== null &&
+                  organizerInput.discountPercentage !== undefined
+                    ? organizerInput.discountPercentage
+                    : null;
+
+                // Solo actualizar si el discountPercentage cambió
+                if (
+                  existingOrganizer.discountPercentage !== newDiscountPercentage
+                ) {
+                  await tx
+                    .update(eventXorganizer)
+                    .set({
+                      discountPercentage: newDiscountPercentage,
+                    })
+                    .where(
+                      and(
+                        eq(eventXorganizer.eventId, eventUpdated.id),
+                        eq(eventXorganizer.organizerId, organizerInput.id),
+                      ),
+                    );
+                }
+              }
+            }
+
+            // === ACTUALIZAR CANTIDAD DE TICKETS DEL TIPO ORGANIZADOR ===
+            // Siempre actualizar la cantidad de tickets del tipo ORGANIZER_TICKET_TYPE_NAME
+            // con la cantidad total de organizadores
+            const organizerTicketType = ticketTypesDB.find(
+              (tt) => tt.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
+            );
+
+            if (organizerTicketType) {
+              await tx
+                .update(ticketType)
+                .set({
+                  maxAvailable: organizersInput.length,
+                })
+                .where(eq(ticketType.id, organizerTicketType.id));
             }
 
             const ticketTypesUpdated = await Promise.all(
@@ -868,13 +1472,25 @@ export const eventsRouter = router({
 
             return { eventUpdated, ticketTypesUpdated };
           } catch (error) {
-            tx.rollback();
-            throw error;
+            // Drizzle hace rollback automáticamente cuando se lanza un error
+            // Si el error es un TRPCError, lo propagamos tal cual para mantener el mensaje
+            if (error instanceof TRPCError) {
+              throw error;
+            }
+            // Si es otro tipo de error, lo convertimos en un TRPCError
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message:
+                error instanceof Error
+                  ? error.message
+                  : 'Error al actualizar el evento',
+            });
           }
         },
       );
 
       revalidatePath(`/admin/event/edit/${event.slug}`);
+      revalidatePath('/admin/event');
 
       return { eventUpdated, ticketTypesUpdated };
     }),
@@ -1148,7 +1764,7 @@ export const eventsRouter = router({
           ...tickets.reduce(
             (acc, ticket) => {
               acc[`tipo_entrada_${ticket.ticketType}`] =
-                `Tipo de entrada: ${ticket.ticketType}`;
+                `Tipo de ticket: ${ticket.ticketType}`;
               return acc;
             },
             {} as Record<`tipo_entrada_${string}`, string>,

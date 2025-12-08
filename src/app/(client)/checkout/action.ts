@@ -7,8 +7,6 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { checkFeature } from '@/components/admin/config/checkFeature';
-import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import {
   type CreateManyTicket,
   createManyTicketSchema,
@@ -141,19 +139,6 @@ export const handlePurchase = async (
     }
   }
 
-  await checkFeature(
-    FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
-    () => {
-      const entradaWithMail = entradas.find((e) => e.mail && e.mail !== '');
-      if (entradaWithMail) {
-        for (const entrada of entradas) {
-          entrada.mail = entradaWithMail.mail;
-        }
-      }
-    },
-    true,
-  );
-
   const validation = createManyTicketSchema.safeParse(entradas);
   const invitedByValue =
     invitedBy && invitedBy.trim() !== '' ? invitedBy : null;
@@ -215,6 +200,7 @@ export const handlePurchase = async (
     };
   }
   try {
+    // Total Price WITHOUT DISCOUNT OR SERVICE FEE
     const totalPrice = await trpc.ticketGroup.getTotalPriceById(
       ticketGroupId?.toString() ?? '',
     );
@@ -252,15 +238,8 @@ export const handlePurchase = async (
 
       // Enviar emails de forma secuencial para evitar rate limits
       try {
-        // Enviar un solo mail con todas las entradas si extraTicketData = false o si la feature EXTRA_DATA_CHECKOUT está desactivada
-        if (
-          !group.event.extraTicketData ||
-          (await checkFeature(
-            FEATURE_KEYS.EXTRA_DATA_CHECKOUT,
-            () => true,
-            true,
-          ))
-        ) {
+        // Enviar un solo mail con todas las entradas si extraTicketData = false
+        if (!group.event.extraTicketData) {
           await trpc.mail.send({
             eventName: group.event.name,
             receiver: entradas[0].mail,
@@ -288,12 +267,13 @@ export const handlePurchase = async (
         };
       }
 
-      await checkFeature(FEATURE_KEYS.EMAIL_NOTIFICATION, async () => {
+      if (group.event.emailNotification) {
         await trpc.mail.sendNotification({
           eventName: group.event.name,
           ticketGroupId,
+          email: group.event.emailNotification,
         });
-      });
+      }
 
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
       (await cookies()).delete('carrito');

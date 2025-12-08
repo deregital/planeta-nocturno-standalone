@@ -40,4 +40,13 @@ export const userSchema = z.object({
       // Convert to UTC string
       return date.toISOString();
     }),
+  instagram: z.string().nullable(),
 });
+
+export const resetPasswordSchema = userSchema
+  .pick({
+    password: true,
+  })
+  .extend({
+    id: z.string(),
+  });

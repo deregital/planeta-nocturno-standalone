@@ -2,9 +2,9 @@
 
 import { useActionState } from 'react';
 
-import { type User } from '@/server/types';
-import { UserForm } from '@/components/admin/users/UserForm';
 import { updateUser } from '@/app/(backoffice)/admin/users/[id]/edit/actions';
+import { UserForm } from '@/components/admin/config/UserForm';
+import { type User } from '@/server/types';
 
 export function EditUserForm({ user }: { user: User }) {
   const [state, formAction, isPending] = useActionState(updateUser, {
@@ -18,6 +18,7 @@ export function EditUserForm({ user }: { user: User }) {
       dni: user.dni,
       gender: user.gender,
       phoneNumber: user.phoneNumber,
+      instagram: user.instagram,
     },
   });
 

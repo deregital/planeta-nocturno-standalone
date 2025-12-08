@@ -12,13 +12,13 @@ export const organizerBaseSchema = z.object({
 export const organizerTraditionalSchema = z.object({
   ...organizerBaseSchema.shape,
   type: z.literal('TRADITIONAL'),
-  discountPercentage: z.number().min(0).max(100),
+  discountPercentage: z.number().min(0).max(100).nullable(),
 });
 
 export const organizerInvitationSchema = z.object({
   ...organizerBaseSchema.shape,
   type: z.literal('INVITATION'),
-  ticketAmount: z.number().min(0),
+  ticketAmount: z.number().min(0).nullable(),
 });
 
 export type OrganizerTraditionalSchema = z.infer<

@@ -30,7 +30,7 @@ export function TraditionalTicketTypeAction({
 
   function handleNext() {
     if (ticketTypes.length === 0) {
-      toast.error('Debe agregar al menos una entrada');
+      toast.error('Debe agregar al menos un ticket');
       return;
     }
 
@@ -48,7 +48,7 @@ export function TraditionalTicketTypeAction({
     if (!location) return 0;
     return (
       location.capacity -
-      organizers.length - // Aca se tiene en cuenta que cada organizador tiene una entrada
+      organizers.length - // Aca se tiene en cuenta que cada organizador tiene un ticket
       ticketTypes.reduce((acc, t) => acc + t.maxAvailable, 0)
     );
   }, [location, ticketTypes, organizers.length]);
@@ -60,7 +60,7 @@ export function TraditionalTicketTypeAction({
           Volver
         </Button>
       )}
-      <h2 className='text-2xl text-center'>Agregar nueva entrada</h2>
+      <h2 className='text-2xl text-center'>Agregar nuevo ticket</h2>
       <div className='flex items-center justify-center gap-4 my-8 flex-wrap'>
         {ticketTypeCategory.enumValues.map((category) => (
           <TicketTypeModal

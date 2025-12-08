@@ -10,7 +10,8 @@ export const locationSchema = z.object({
   }),
   googleMapsUrl: z
     .url({
-      error: 'El link no es válido',
+      error:
+        'El link no es válido, podes usar el botón "Compartir" de Google Maps para obtener el link.',
     })
     .min(1, {
       error: 'El link de Google Maps es requerido',

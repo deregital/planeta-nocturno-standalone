@@ -1,22 +1,23 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowDown, ArrowUp, Cake, Edit } from 'lucide-react';
 import { differenceInYears } from 'date-fns';
-import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { formatInTimeZone } from 'date-fns-tz';
-import Link from 'next/link';
+import { format as formatPhoneNumber } from 'libphonenumber-js';
+import { ArrowDown, ArrowUp, ArrowUpDown, Cake, Edit } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
-import { type RouterOutputs } from '@/server/routers/app';
-import { Button } from '@/components/ui/button';
-import { daysUntilBirthday } from '@/lib/utils';
-import { genderTranslation, roleTranslation } from '@/lib/translations';
-import { type role as roleEnum } from '@/drizzle/schema';
+import { AddTag } from '@/components/admin/users/AddTag';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
-import { Badge } from '@/components/ui/badge';
+import { ResetPasswordForm } from '@/components/admin/users/ResetPasswordForm';
+import { TagModal } from '@/components/admin/users/TagModal';
+import { Button } from '@/components/ui/button';
+import { genderTranslation } from '@/lib/translations';
+import { daysUntilBirthday } from '@/lib/utils';
+import { type RouterOutputs } from '@/server/routers/app';
 
-export const userColumns: StrictColumnDef<
+export const organizerColumns: StrictColumnDef<
   RouterOutputs['user']['getAll'][number]
 >[] = [
   {
@@ -41,35 +42,13 @@ export const userColumns: StrictColumnDef<
     cell: ({ row }) => {
       return (
         <div className='text-sm'>
-          <span>{row.original.autoId}</span>
+          <span>{row.original.shortId}</span>
         </div>
       );
     },
     meta: {
       exportValue: (row) => row.original.id,
       exportHeader: 'ID',
-    },
-  },
-  {
-    accessorKey: 'role',
-    header: () => <p className='text-sm p-2'>Rol</p>,
-    cell: ({ row }) => {
-      return (
-        <p className='text-sm p-2'>
-          {
-            roleTranslation[
-              row.original.role as (typeof roleEnum.enumValues)[number]
-            ]
-          }
-        </p>
-      );
-    },
-    meta: {
-      exportValue: (row) =>
-        roleTranslation[
-          row.original.role as (typeof roleEnum.enumValues)[number]
-        ],
-      exportHeader: 'Rol',
     },
   },
   {
@@ -183,6 +162,29 @@ export const userColumns: StrictColumnDef<
     },
   },
   {
+    accessorKey: 'instagram',
+    header: () => <p className='text-sm p-2'>Instagram</p>,
+    cell: ({ row }) => {
+      const instagram = row.original.instagram;
+      return instagram ? (
+        <a
+          href={`https://instagram.com/${instagram}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
+        >
+          @{instagram}
+        </a>
+      ) : (
+        <p className='text-sm p-2'>-</p>
+      );
+    },
+    meta: {
+      exportValue: (row) => row.original.instagram || '-',
+      exportHeader: 'Instagram',
+    },
+  },
+  {
     accessorKey: 'phoneNumber',
     header: () => <p className='text-sm p-2'>Teléfono</p>,
     cell: ({ row }) => {
@@ -235,16 +237,19 @@ export const userColumns: StrictColumnDef<
     header: ({ column }) => {
       const sorted = column.getIsSorted();
       return (
-        <Button
-          variant='ghost'
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className='flex items-center gap-2 font-bold p-2'
-        >
-          <span className='text-sm'>Batch</span>
-          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
-          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
-          {!sorted && <ArrowUpDown className='h-4 w-4' />}
-        </Button>
+        <div className='flex items-center'>
+          <Button
+            variant='ghost'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className='flex items-center font-bold'
+          >
+            <span className='text-sm'>Grupo</span>
+            {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+            {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+            {!sorted && <ArrowUpDown className='h-4 w-4' />}
+          </Button>
+          <TagModal type='CREATE' />
+        </div>
       );
     },
     sortingFn: (rowA, rowB) => {
@@ -262,20 +267,31 @@ export const userColumns: StrictColumnDef<
       return batchesA.localeCompare(batchesB);
     },
     cell: ({ row }) => {
+      const currentUserTagIds = row.original.userXTags.map(({ tag }) => tag.id);
       return (
-        <div className='flex flex-wrap gap-1'>
+        <div
+          className='flex flex-wrap gap-1'
+          onClick={(e) => e.stopPropagation()}
+        >
           {row.original.userXTags.map(({ tag }) => (
-            <Badge variant='outline' key={tag.id}>
-              {tag.name}
-            </Badge>
+            <TagModal
+              type='EDIT'
+              key={tag.id}
+              userId={row.original.id}
+              tag={tag}
+            />
           ))}
+          <AddTag
+            userId={row.original.id}
+            currentUserTagIds={currentUserTagIds}
+          />
         </div>
       );
     },
     meta: {
       exportValue: (row) =>
         row.original.userXTags.map(({ tag }) => tag.name).join(', '),
-      exportHeader: 'Batch',
+      exportHeader: 'Grupo',
     },
   },
   {
@@ -286,12 +302,20 @@ export const userColumns: StrictColumnDef<
       const session = useSession();
       if (session.data?.user.id === row.original.id) return null;
       return (
-        <div className='flex items-center gap-2'>
+        <div
+          className='flex items-center gap-2'
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button variant='ghost' size='icon' asChild>
             <Link href={`/admin/users/${row.original.id}/edit`}>
               <Edit className='size-4' />
             </Link>
           </Button>
+          <ResetPasswordForm
+            userId={row.original.id}
+            userName={row.original.name}
+            userRole={row.original.role}
+          />
           <DeleteUserModal user={row.original} />
         </div>
       );

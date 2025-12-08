@@ -62,7 +62,7 @@ export default function BuyPerHourChart() {
   return (
     <div className='flex justify-center space-y-4 overflow-hidden h-full'>
       {!data ? (
-        <p className='text-center'>No hay datos de entradas emitidas</p>
+        <p className='text-center'>No hay datos de tickets emitidos</p>
       ) : (
         <ChartContainer config={config} className='h-full w-full'>
           <BarChart data={data?.chartData ?? []}>
@@ -75,7 +75,7 @@ export default function BuyPerHourChart() {
             />
             <YAxis
               label={{
-                value: 'Entradas emitidas',
+                value: 'Tickets emitidos',
                 angle: -90,
               }}
               tickFormatter={(value) => (Number.isInteger(value) ? value : '')}
