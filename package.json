@@ -8,8 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --fix",
-    "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-feature-flag.ts && tsx src/drizzle/seed-ticket-slug.ts",
-    "seed-feature-flag": "tsx src/drizzle/seed-feature-flag.ts",
+    "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-ticket-slug.ts",
     "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",
     "prepare": "husky"
   },
@@ -53,7 +52,7 @@
     "libphonenumber-js": "^1.12.10",
     "lucide-react": "^0.525.0",
     "mercadopago": "^2.8.0",
-    "next": "^15.5.0",
+    "next": "15.5.7",
     "next-auth": "^5.0.0-beta.29",
     "next-themes": "^0.4.6",
     "nuqs": "^2.7.2",
