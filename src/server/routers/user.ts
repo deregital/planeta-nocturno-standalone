@@ -17,7 +17,12 @@ import {
   generateWelcomeEmail,
   sendMailWithoutAttachments,
 } from '@/server/services/mail';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import {
+  adminProcedure,
+  chiefOrganizerProcedure,
+  publicProcedure,
+  router,
+} from '@/server/trpc';
 import { type Tag, type User } from '@/server/types';
 import { generateRandomPassword } from '@/server/utils/users';
 
@@ -35,7 +40,7 @@ export const userRouter = router({
 
     return users;
   }),
-  getByRole: adminProcedure
+  getByRole: chiefOrganizerProcedure
     .input(z.enum(role.enumValues))
     .query(async ({ ctx, input }) => {
       const users = await ctx.db.query.user.findMany({
@@ -87,33 +92,35 @@ export const userRouter = router({
 
       return await compare(input.password, user.password);
     }),
-  create: adminProcedure.input(userSchema).mutation(async ({ ctx, input }) => {
-    await assertUniqueUser(ctx.db, input);
+  create: chiefOrganizerProcedure
+    .input(userSchema)
+    .mutation(async ({ ctx, input }) => {
+      await assertUniqueUser(ctx.db, input);
 
-    const hashedPassword = await hash(input.password, 10);
+      const hashedPassword = await hash(input.password, 10);
 
-    const instagram = input.instagram?.startsWith('@')
-      ? input.instagram.slice(1)
-      : input.instagram;
+      const instagram = input.instagram?.startsWith('@')
+        ? input.instagram.slice(1)
+        : input.instagram;
 
-    const [user] = await ctx.db
-      .insert(userTable)
-      .values({
-        ...input,
-        fullName: input.fullName,
-        name: input.name,
-        password: hashedPassword,
-        instagram,
-      })
-      .returning();
-    await sendMailWithoutAttachments({
-      to: user.email,
-      subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
-      html: generateWelcomeEmail(user.name, input.password),
-    });
-    return user;
-  }),
-  update: adminProcedure
+      const [user] = await ctx.db
+        .insert(userTable)
+        .values({
+          ...input,
+          fullName: input.fullName,
+          name: input.name,
+          password: hashedPassword,
+          instagram,
+        })
+        .returning();
+      await sendMailWithoutAttachments({
+        to: user.email,
+        subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
+        html: generateWelcomeEmail(user.name, input.password),
+      });
+      return user;
+    }),
+  update: chiefOrganizerProcedure
     .input(userSchema.omit({ password: true }).extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertUniqueUser(ctx.db, input, input.id);
@@ -135,7 +142,7 @@ export const userRouter = router({
       revalidatePath('/admin/users');
       return user;
     }),
-  resetPassword: adminProcedure
+  resetPassword: chiefOrganizerProcedure
     .input(resetPasswordSchema)
     .mutation(async ({ ctx, input }) => {
       const hashedPassword = await hash(input.password, 10);
@@ -166,13 +173,17 @@ export const userRouter = router({
         phoneNumber: user.phoneNumber,
       };
     }),
-  delete: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
-    const user = await ctx.db.delete(userTable).where(eq(userTable.id, input));
+  delete: chiefOrganizerProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db
+        .delete(userTable)
+        .where(eq(userTable.id, input));
 
-    revalidatePath('/admin/users');
-    return user;
-  }),
-  importUsers: adminProcedure
+      revalidatePath('/admin/users');
+      return user;
+    }),
+  importUsers: chiefOrganizerProcedure
     .input(
       z.object({
         users: z.array(

@@ -105,6 +105,7 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 
 const levelsOfAccess: (typeof roleEnum.enumValues)[number][] = [
   'ADMIN',
+  'CHIEF_ORGANIZER',
   'ORGANIZER',
   'TICKETING',
 ];
@@ -135,9 +136,11 @@ function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
 
 export const adminProcedure = genericProcedure('ADMIN');
 
-export const ticketingProcedure = genericProcedure('TICKETING');
+export const chiefOrganizerProcedure = genericProcedure('CHIEF_ORGANIZER');
 
 export const organizerProcedure = genericProcedure('ORGANIZER');
+
+export const ticketingProcedure = genericProcedure('TICKETING');
 
 export const router = t.router;
 export const publicProcedure = t.procedure.use(({ next }) => {
