@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 import { createOrganizer } from '@/app/(backoffice)/admin/users/create/actions';
 import { CredentialsModal } from '@/components/admin/users/CredentialsModal';
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 
 export function CreateOrganizerForm() {
+  const session = useSession();
   const [state, formAction, isPending] = useActionState(createOrganizer, {});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
@@ -55,6 +57,7 @@ export function CreateOrganizerForm() {
             formAction={formAction}
             isPending={isPending}
             errors={state.errors ?? undefined}
+            chiefOrganizerId={session.data?.user.id ?? undefined}
           />
         </DialogContent>
       </Dialog>

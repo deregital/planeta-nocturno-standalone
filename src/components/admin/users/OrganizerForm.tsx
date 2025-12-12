@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { type User } from '@/server/types';
 import 'react-phone-number-input/style.css';
 
-export type UserData = Pick<
+export type OrganizerData = Pick<
   User,
   | 'fullName'
   | 'name'
@@ -24,19 +24,21 @@ export type UserData = Pick<
   | 'gender'
   | 'phoneNumber'
   | 'instagram'
+  | 'chiefOrganizerId'
 >;
 
-const defaultState: UserData = {
+const defaultState: OrganizerData = {
   fullName: '',
   name: '',
   email: '',
-  role: 'ADMIN',
+  role: 'ORGANIZER',
   password: '',
   birthDate: '',
   gender: 'male',
   phoneNumber: '',
   dni: '',
   instagram: '',
+  chiefOrganizerId: '',
 };
 
 export function OrganizerForm({
@@ -46,19 +48,24 @@ export function OrganizerForm({
   formAction,
   isPending,
   type,
+  chiefOrganizerId,
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
-  initialState?: UserData;
-  errors?: Partial<Record<keyof UserData | 'general', string>>;
+  initialState?: OrganizerData;
+  errors?: Partial<Record<keyof OrganizerData | 'general', string>>;
   formAction: (formData: FormData) => void;
   isPending: boolean;
+  chiefOrganizerId?: string;
 }) {
-  const [internalState, setInternalState] = useState<UserData>(
+  const [internalState, setInternalState] = useState<OrganizerData>(
     initialState ?? defaultState,
   );
 
-  function handleChange<K extends keyof UserData>(key: K, value: UserData[K]) {
+  function handleChange<K extends keyof OrganizerData>(
+    key: K,
+    value: OrganizerData[K],
+  ) {
     setInternalState((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -187,6 +194,7 @@ export function OrganizerForm({
           handleChange('password', e.target.value);
         }}
       />
+      <input hidden readOnly name='chiefOrganizerId' value={chiefOrganizerId} />
       {errors?.general && (
         <p className='pl-1 font-bold text-xs text-red-500'>{errors?.general}</p>
       )}

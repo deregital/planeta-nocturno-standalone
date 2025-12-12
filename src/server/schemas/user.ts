@@ -41,6 +41,7 @@ export const userSchema = z.object({
       return date.toISOString();
     }),
   instagram: z.string().nullable(),
+  chiefOrganizerId: z.uuid().nullable(),
 });
 
 export const resetPasswordSchema = userSchema
