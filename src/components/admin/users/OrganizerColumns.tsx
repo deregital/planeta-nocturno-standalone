@@ -4,12 +4,12 @@ import { type StrictColumnDef } from '@tanstack/react-table';
 import { differenceInYears } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
-import { ArrowDown, ArrowUp, ArrowUpDown, Cake, Edit } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
 
 import { AddTag } from '@/components/admin/users/AddTag';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
+import EditOrganizerForm from '@/components/admin/users/EditOrganizerForm';
 import { ResetPasswordForm } from '@/components/admin/users/ResetPasswordForm';
 import { TagModal } from '@/components/admin/users/TagModal';
 import { Button } from '@/components/ui/button';
@@ -306,11 +306,7 @@ export const organizerColumns: StrictColumnDef<
           className='flex items-center gap-2'
           onClick={(e) => e.stopPropagation()}
         >
-          <Button variant='ghost' size='icon' asChild>
-            <Link href={`/admin/users/${row.original.id}/edit`}>
-              <Edit className='size-4' />
-            </Link>
-          </Button>
+          <EditOrganizerForm organizer={row.original} />
           <ResetPasswordForm
             userId={row.original.id}
             userName={row.original.name}

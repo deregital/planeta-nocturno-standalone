@@ -13,7 +13,10 @@ export default async function OrganizationLayout({
     redirect('/login');
   }
 
-  if (session.user.role !== 'ORGANIZER') {
+  if (
+    session.user.role !== 'ORGANIZER' &&
+    session.user.role !== 'CHIEF_ORGANIZER'
+  ) {
     redirect('/admin');
   }
 
