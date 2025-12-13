@@ -4,7 +4,7 @@ import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFi
 import { trpc } from '@/server/trpc/server';
 
 export default async function UsersPage() {
-  const data = await trpc.user.getByRole('ORGANIZER');
+  const data = await trpc.user.getOrganizers();
 
   return (
     <div className='flex flex-col gap-4 py-4'>
