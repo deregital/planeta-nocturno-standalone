@@ -181,19 +181,20 @@ export function OrganizerForm({
           handleChange('name', e.target.value);
         }}
       />
-      <InputWithLabel
-        required={type === 'CREATE'}
-        disabled={type === 'EDIT'}
-        label='Contraseña'
-        id='password'
-        type='password'
-        name='password'
-        value={internalState?.password}
-        error={errors?.password}
-        onChange={(e) => {
-          handleChange('password', e.target.value);
-        }}
-      />
+      {type === 'CREATE' && (
+        <InputWithLabel
+          required
+          label='Contraseña'
+          id='password'
+          type='password'
+          name='password'
+          value={internalState?.password}
+          error={errors?.password}
+          onChange={(e) => {
+            handleChange('password', e.target.value);
+          }}
+        />
+      )}
       <input hidden readOnly name='chiefOrganizerId' value={chiefOrganizerId} />
       {errors?.general && (
         <p className='pl-1 font-bold text-xs text-red-500'>{errors?.general}</p>

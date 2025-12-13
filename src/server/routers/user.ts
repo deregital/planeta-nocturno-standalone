@@ -121,7 +121,11 @@ export const userRouter = router({
       return user;
     }),
   update: chiefOrganizerProcedure
-    .input(userSchema.omit({ password: true }).extend({ id: z.string() }))
+    .input(
+      userSchema
+        .omit({ password: true, chiefOrganizerId: true })
+        .extend({ id: z.string() }),
+    )
     .mutation(async ({ ctx, input }) => {
       await assertUniqueUser(ctx.db, input, input.id);
 
