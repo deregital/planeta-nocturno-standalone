@@ -62,6 +62,7 @@ export function CreateOrganizerForm() {
                 ? session.data?.user.id
                 : undefined
             }
+            isAdmin={session.data?.user.role === 'ADMIN'}
           />
         </DialogContent>
       </Dialog>

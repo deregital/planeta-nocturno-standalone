@@ -7,7 +7,7 @@ export default function OrganizerSkeleton() {
         <Skeleton className='w-64 h-12' />
         <Skeleton className='w-32 h-12' />
       </div>
-      <Skeleton className='w-full h-56' />
+      <Skeleton className='w-full h-72' />
     </div>
   );
 }

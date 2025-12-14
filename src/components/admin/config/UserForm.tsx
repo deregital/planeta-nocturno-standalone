@@ -127,7 +127,10 @@ export function UserForm({
           value={internalState?.role}
           className='w-full'
           values={role.enumValues
-            .filter((roleValue) => roleValue !== 'ORGANIZER')
+            .filter(
+              (roleValue) =>
+                roleValue !== 'ORGANIZER' && roleValue !== 'CHIEF_ORGANIZER',
+            )
             .map((roleValue) => ({
               label: roleTranslation[roleValue],
               value: roleValue,

@@ -423,11 +423,6 @@ export function EventGeneralInformation({
             readOnly={action === 'PREVIEW'}
             disabled={action === 'PREVIEW'}
           />
-          <p className='text-sm'>
-            Al seleccionar una locación, se establecerá la cantidad de tickets
-            emitibles según su capacidad máxima. Además, se mostrará los datos
-            de la locación al momento de emitir tickets.
-          </p>
           <SelectWithLabel
             label='Categoría'
             id='categoryId'

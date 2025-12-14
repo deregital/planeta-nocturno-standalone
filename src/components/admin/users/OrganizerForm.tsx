@@ -9,6 +9,7 @@ import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { roleTranslation } from '@/lib/translations';
 import { type User } from '@/server/types';
 import 'react-phone-number-input/style.css';
 
@@ -49,6 +50,7 @@ export function OrganizerForm({
   isPending,
   type,
   chiefOrganizerId,
+  isAdmin,
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
@@ -57,6 +59,7 @@ export function OrganizerForm({
   formAction: (formData: FormData) => void;
   isPending: boolean;
   chiefOrganizerId?: string;
+  isAdmin?: boolean;
 }) {
   const [internalState, setInternalState] = useState<OrganizerData>(
     initialState ?? defaultState,
@@ -71,7 +74,7 @@ export function OrganizerForm({
 
   return (
     <form
-      className='flex flex-col gap-4 max-h-[90vh] overflow-y-auto px-1'
+      className='flex flex-col gap-4 max-h-[80vh] overflow-y-auto px-1 '
       action={formAction}
     >
       {userId && <input type='hidden' name='id' value={userId} />}
@@ -112,6 +115,32 @@ export function OrganizerForm({
           handleChange('birthDate', date.toISOString());
         }}
       />
+      {isAdmin && type === 'CREATE' ? (
+        <SelectWithLabel
+          label='Rol'
+          required
+          id='role'
+          name='role'
+          value={internalState?.role}
+          className='w-full'
+          values={[
+            {
+              label: roleTranslation['ORGANIZER'],
+              value: 'ORGANIZER',
+            },
+            {
+              label: roleTranslation['CHIEF_ORGANIZER'],
+              value: 'CHIEF_ORGANIZER',
+            },
+          ]}
+          error={errors?.role}
+          onValueChange={(value) => {
+            handleChange('role', value as 'ORGANIZER' | 'CHIEF_ORGANIZER');
+          }}
+        />
+      ) : (
+        <input type='hidden' name='role' value={internalState?.role} />
+      )}
       <div>
         <PhoneInputWithLabel
           label='Número de teléfono'
@@ -195,7 +224,15 @@ export function OrganizerForm({
           }}
         />
       )}
-      <input hidden readOnly name='chiefOrganizerId' value={chiefOrganizerId} />
+
+      {chiefOrganizerId && internalState?.role !== 'CHIEF_ORGANIZER' && (
+        <input
+          hidden
+          readOnly
+          name='chiefOrganizerId'
+          value={chiefOrganizerId}
+        />
+      )}
       {errors?.general && (
         <p className='pl-1 font-bold text-xs text-red-500'>{errors?.general}</p>
       )}

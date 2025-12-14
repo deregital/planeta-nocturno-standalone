@@ -119,13 +119,16 @@ export async function createOrganizer(
   const gender = formData.get('gender') as string;
   const phoneNumber = formData.get('phoneNumber') as string;
   const instagram = formData.get('instagram') as string;
-  const chiefOrganizerId = formData.get('chiefOrganizerId') as string;
+  const chiefOrganizerId = formData.get('chiefOrganizerId') as string | null;
+  const role =
+    (formData.get('role') as (typeof roleEnum.enumValues)[number]) ||
+    'ORGANIZER';
 
   const data = {
     fullName,
     name,
     email,
-    role: 'ORGANIZER' as (typeof roleEnum.enumValues)[number],
+    role,
     password,
     birthDate,
     dni,

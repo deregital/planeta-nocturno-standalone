@@ -23,7 +23,7 @@ export function UsersTable({ data }: UsersTableProps) {
   // Create role options
   const roleOptions = useMemo(() => {
     return roleEnum.enumValues
-      .filter((role) => role !== 'ORGANIZER')
+      .filter((role) => role !== 'ORGANIZER' && role !== 'CHIEF_ORGANIZER')
       .map((role) => ({
         value: role,
         label: roleTranslation[role as (typeof roleEnum.enumValues)[number]],

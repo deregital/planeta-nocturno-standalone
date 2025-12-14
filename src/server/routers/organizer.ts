@@ -1,4 +1,13 @@
-import { and, between, desc, eq, isNotNull, isNull, not } from 'drizzle-orm';
+import {
+  and,
+  between,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  not,
+} from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -75,13 +84,37 @@ export const organizerRouter = router({
   getAdminInfoById: adminProcedure
     .input(organizerBaseSchema.shape.id)
     .query(async ({ ctx, input: organizerId }) => {
-      // Get recent events attended (ordered by endingDate descending)
+      // Get the user to check if they are a CHIEF_ORGANIZER
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: eq(user.id, organizerId),
+        columns: {
+          id: true,
+          role: true,
+        },
+      });
+
+      if (!targetUser) {
+        throw new Error('User not found');
+      }
+
+      // Get all organizer IDs to include in events (chief + their organizers if chief)
+      let organizerIds = [organizerId];
+      if (targetUser.role === 'CHIEF_ORGANIZER') {
+        const relatedOrganizers = await ctx.db.query.user.findMany({
+          where: eq(user.chiefOrganizerId, organizerId),
+          columns: {
+            id: true,
+          },
+        });
+        organizerIds = [organizerId, ...relatedOrganizers.map((o) => o.id)];
+      }
 
       // Get last 20 organizer groups (we'll later filter to those with scanned tickets)
       const recentEvents = await ctx.db.query.ticketGroup.findMany({
         where: and(
           eq(ticketGroup.isOrganizerGroup, true),
           not(eq(ticketGroup.status, 'BOOKED')),
+          inArray(ticketGroup.invitedById, organizerIds),
         ),
         with: {
           emittedTickets: {
@@ -156,9 +189,34 @@ export const organizerRouter = router({
     .query(async ({ ctx, input }) => {
       const { organizerId, from, to } = input;
 
-      // Get all events assigned to this organizer
+      // Get the user to check if they are a CHIEF_ORGANIZER
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: eq(user.id, organizerId),
+        columns: {
+          id: true,
+          role: true,
+        },
+      });
+
+      if (!targetUser) {
+        throw new Error('User not found');
+      }
+
+      // Get all organizer IDs to include in stats (chief + their organizers if chief)
+      let organizerIds = [organizerId];
+      if (targetUser.role === 'CHIEF_ORGANIZER') {
+        const relatedOrganizers = await ctx.db.query.user.findMany({
+          where: eq(user.chiefOrganizerId, organizerId),
+          columns: {
+            id: true,
+          },
+        });
+        organizerIds = [organizerId, ...relatedOrganizers.map((o) => o.id)];
+      }
+
+      // Get all events assigned to these organizers
       const allAssignedEvents = await ctx.db.query.eventXorganizer.findMany({
-        where: eq(eventXorganizer.organizerId, organizerId),
+        where: inArray(eventXorganizer.organizerId, organizerIds),
         with: {
           event: true,
         },
@@ -178,7 +236,7 @@ export const organizerRouter = router({
       // Get tickets sold (ticketXorganizer with non-null ticketId) within time period
       const ticketsSold = await ctx.db.query.ticketXorganizer.findMany({
         where: and(
-          eq(ticketXorganizer.organizerId, organizerId),
+          inArray(ticketXorganizer.organizerId, organizerIds),
           isNotNull(ticketXorganizer.ticketId),
           between(
             ticketXorganizer.createdAt,
@@ -190,10 +248,10 @@ export const organizerRouter = router({
 
       const ticketsSoldCount = ticketsSold.length;
 
-      // Get ticket groups with this organizer as invitedById within time period
+      // Get ticket groups with these organizers as invitedById within time period
       const ticketGroups = await ctx.db.query.ticketGroup.findMany({
         where: and(
-          eq(ticketGroup.invitedById, organizerId),
+          inArray(ticketGroup.invitedById, organizerIds),
           between(ticketGroup.createdAt, from.toISOString(), to.toISOString()),
           not(eq(ticketGroup.status, 'BOOKED')),
         ),
