@@ -1,3 +1,6 @@
+-- AlterEnum
+ALTER TYPE "Role" ADD VALUE 'CHIEF_ORGANIZER';
+
 -- DropForeignKey
 ALTER TABLE "public"."eventXOrganizer" DROP CONSTRAINT "eventXOrganizer_organizerId_fkey";
 
@@ -42,8 +45,12 @@ ALTER TABLE "ticketXOrganizer" ALTER COLUMN "code" SET DEFAULT upper(substr(md5(
 ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "user" ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP,
+ALTER TABLE "user" ADD COLUMN     "chiefOrganizerId" UUID,
+ALTER COLUMN "createdAt" SET DEFAULT CURRENT_TIMESTAMP,
 ALTER COLUMN "code" SET DEFAULT upper(substr(md5(random()::text), 1, 6));
+
+-- AddForeignKey
+ALTER TABLE "user" ADD CONSTRAINT "user_chiefOrganizerId_fkey" FOREIGN KEY ("chiefOrganizerId") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ticketXOrganizer" ADD CONSTRAINT "ticketXOrganizer_organizerId_fkey" FOREIGN KEY ("organizerId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
