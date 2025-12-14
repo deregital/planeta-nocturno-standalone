@@ -48,9 +48,6 @@ model User {
   organizers       User[]  @relation("USER_X_CHIEF_ORGANIZER")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
-  users     User[]   @relation("USER_X_PARENT")
-  user      User?    @relation("USER_X_PARENT", fields: [userId], references: [id], onDelete: SetNull)
-  userId    String?  @db.Uuid
 
   @@index([code])
   @@map("user")

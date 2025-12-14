@@ -31,5 +31,5 @@ export const roleTranslation: Record<
   ADMIN: 'Administrador',
   TICKETING: 'Acceso',
   ORGANIZER: 'Organizador',
-  CHIEF_ORGANIZER: 'Jefe de Publicas',
+  CHIEF_ORGANIZER: 'Jefe de Organizadores',
 };

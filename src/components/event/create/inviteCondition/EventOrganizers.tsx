@@ -8,6 +8,7 @@ import {
   calculateMaxTicketsPerOrganizer,
   useOrganizerTickets,
 } from '@/hooks/useOrganizerTickets';
+import { roleTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
@@ -233,7 +234,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
     // Grupo 2: Jefes de Organizadores (debajo de tags, arriba de organizadores)
     if (chiefOptions.length > 0) {
       groups.push({
-        group: 'Jefes de Publicas',
+        group: roleTranslation['CHIEF_ORGANIZER'],
         options: chiefOptions,
       });
     }
@@ -308,9 +309,9 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
               const chiefId = option.replace('chief:', '');
               if (!groupedOptions || !organizersData) return;
 
-              // Buscar en el grupo de Jefes de Publicas
+              // Buscar en el grupo de Jefes de Organizadores
               const chiefsGroup = groupedOptions.find(
-                (g) => g.group === 'Jefes de Publicas',
+                (g) => g.group === roleTranslation['CHIEF_ORGANIZER'],
               );
               const chiefOption = chiefsGroup?.options.find(
                 (
