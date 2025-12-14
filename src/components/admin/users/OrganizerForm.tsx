@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
@@ -64,6 +64,12 @@ export function OrganizerForm({
   const [internalState, setInternalState] = useState<OrganizerData>(
     initialState ?? defaultState,
   );
+
+  useEffect(() => {
+    if (initialState) {
+      setInternalState(initialState);
+    }
+  }, [initialState]);
 
   function handleChange<K extends keyof OrganizerData>(
     key: K,

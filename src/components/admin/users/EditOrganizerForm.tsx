@@ -47,6 +47,22 @@ export default function EditOrganizerForm({
     }
   }, [state.success, utils, setOpen]);
 
+  const currentInitialState: OrganizerData = open
+    ? {
+        fullName: organizer.fullName,
+        name: organizer.name,
+        email: organizer.email,
+        role: organizer.role,
+        password: '',
+        birthDate: organizer.birthDate,
+        dni: organizer.dni,
+        gender: organizer.gender,
+        phoneNumber: organizer.phoneNumber,
+        instagram: organizer.instagram ?? '',
+        chiefOrganizerId: organizer.chiefOrganizerId ?? '',
+      }
+    : (state.data as OrganizerData);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -61,7 +77,7 @@ export default function EditOrganizerForm({
         <OrganizerForm
           type='EDIT'
           userId={organizer.id}
-          initialState={state.data as OrganizerData}
+          initialState={currentInitialState}
           formAction={formAction}
           isPending={isPending}
           errors={state.errors}
