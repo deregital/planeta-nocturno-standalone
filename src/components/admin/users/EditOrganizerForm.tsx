@@ -29,6 +29,7 @@ export default function EditOrganizerForm({
       fullName: organizer.fullName,
       name: organizer.name,
       email: organizer.email,
+      role: organizer.role,
       birthDate: organizer.birthDate,
       dni: organizer.dni,
       gender: organizer.gender,

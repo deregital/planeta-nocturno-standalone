@@ -21,11 +21,10 @@ export type EditUserActionState = {
 };
 
 export type EditOrganizerActionState = {
-  data?: Omit<OrganizerData, 'password' | 'chiefOrganizerId' | 'role'>;
+  data?: Omit<OrganizerData, 'password' | 'chiefOrganizerId'>;
   errors?: Partial<
     Record<
-      | keyof Omit<OrganizerData, 'password' | 'chiefOrganizerId' | 'role'>
-      | 'general',
+      keyof Omit<OrganizerData, 'password' | 'chiefOrganizerId'> | 'general',
       string
     >
   >;
@@ -170,7 +169,7 @@ export async function updateOrganizer(
   };
 
   const validation = userSchema
-    .omit({ password: true, chiefOrganizerId: true, role: true })
+    .omit({ password: true, chiefOrganizerId: true })
     .safeParse(data);
 
   if (!validation.success) {
@@ -187,6 +186,7 @@ export async function updateOrganizer(
         fullName,
         name: username,
         email,
+        role,
         birthDate,
         dni,
         gender,
@@ -210,7 +210,7 @@ export async function updateOrganizer(
     await trpc.user.update({
       ...validation.data,
       id,
-      role: 'ORGANIZER',
+      role,
       birthDate: birthDate,
     });
   } catch (error) {
@@ -222,6 +222,7 @@ export async function updateOrganizer(
         fullName,
         name: username,
         email,
+        role,
         birthDate,
         dni,
         gender,
