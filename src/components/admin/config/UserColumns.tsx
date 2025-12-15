@@ -4,10 +4,10 @@ import { type StrictColumnDef } from '@tanstack/react-table';
 import { differenceInYears } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
-import { ArrowDown, ArrowUp, ArrowUpDown, Cake, Edit } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
 
+import { EditUserForm } from '@/components/admin/config/EditUserForm';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
 import { ResetPasswordForm } from '@/components/admin/users/ResetPasswordForm';
 import { Button } from '@/components/ui/button';
@@ -262,11 +262,7 @@ export const userColumns: StrictColumnDef<
       if (session.data?.user.id === row.original.id) return null;
       return (
         <div className='flex items-center gap-2'>
-          <Button variant='ghost' size='icon' asChild>
-            <Link href={`/admin/users/${row.original.id}/edit`}>
-              <Edit className='size-4' />
-            </Link>
-          </Button>
+          <EditUserForm user={row.original} />
           <ResetPasswordForm
             userId={row.original.id}
             userName={row.original.name}

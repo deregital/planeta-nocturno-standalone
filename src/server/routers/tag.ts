@@ -2,19 +2,21 @@ import { and, eq } from 'drizzle-orm';
 import z from 'zod';
 
 import { tag, userXTag } from '@/drizzle/schema';
-import { adminProcedure, router } from '@/server/trpc';
+import { chiefOrganizerProcedure, router } from '@/server/trpc';
 
 export const tagRouter = router({
-  getAll: adminProcedure.query(async ({ ctx }) => {
+  getAll: chiefOrganizerProcedure.query(async ({ ctx }) => {
     return ctx.db.query.tag.findMany({
       orderBy: (tags, { asc }) => [asc(tags.name)],
     });
   }),
-  create: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
-    const createdTag = await ctx.db.insert(tag).values({ name: input });
-    return createdTag;
-  }),
-  update: adminProcedure
+  create: chiefOrganizerProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const createdTag = await ctx.db.insert(tag).values({ name: input });
+      return createdTag;
+    }),
+  update: chiefOrganizerProcedure
     .input(z.object({ id: z.string(), name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const updatedTag = await ctx.db
@@ -23,11 +25,13 @@ export const tagRouter = router({
         .where(eq(tag.id, input.id));
       return updatedTag;
     }),
-  delete: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
-    const deletedTag = await ctx.db.delete(tag).where(eq(tag.id, input));
-    return deletedTag;
-  }),
-  removeUserFromTag: adminProcedure
+  delete: chiefOrganizerProcedure
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const deletedTag = await ctx.db.delete(tag).where(eq(tag.id, input));
+      return deletedTag;
+    }),
+  removeUserFromTag: chiefOrganizerProcedure
     .input(z.object({ userId: z.string(), tagId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const removedUserFromTag = await ctx.db
@@ -35,7 +39,7 @@ export const tagRouter = router({
         .where(and(eq(userXTag.a, input.tagId), eq(userXTag.b, input.userId)));
       return removedUserFromTag;
     }),
-  addUserToTag: adminProcedure
+  addUserToTag: chiefOrganizerProcedure
     .input(
       z.object({
         userId: z.string(),

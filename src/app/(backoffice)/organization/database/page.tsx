@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
-import Client from '@/app/(backoffice)/database/client';
+import Client from '@/app/(backoffice)/organization/database/client';
 import { auth } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
 

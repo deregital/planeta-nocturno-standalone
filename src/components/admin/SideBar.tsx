@@ -16,14 +16,20 @@ export const navRoutes: {
   {
     href: '/organization',
     icon: <Calendar />,
-    title: 'Organización',
-    roles: ['ORGANIZER'],
+    title: 'Eventos',
+    roles: ['ORGANIZER', 'CHIEF_ORGANIZER'],
   },
   {
-    href: '/database',
+    href: '/organization/database',
     icon: <Database />,
     title: 'Base de Datos',
-    roles: ['ORGANIZER'],
+    roles: ['ORGANIZER', 'CHIEF_ORGANIZER'],
+  },
+  {
+    href: '/organization/organizers',
+    icon: <Users />,
+    title: 'Organizadores',
+    roles: ['CHIEF_ORGANIZER'],
   },
   {
     href: '/admin',
