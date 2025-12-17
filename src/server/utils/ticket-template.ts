@@ -288,7 +288,7 @@ export async function generateTicketTemplate(
     {
       name: 'invitedBy_title',
       type: 'text',
-      content: 'Invitada por:',
+      content: 'Invita:',
       position: { x: 47, y: 332 },
       width: 201.08,
       height: 10.05,
