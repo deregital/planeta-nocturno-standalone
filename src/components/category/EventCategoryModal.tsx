@@ -101,8 +101,10 @@ export default function EventCategoryModal({
           />
           <p className='text-red-500 text-sm font-bold'>
             {(
-              createMutation.error?.data?.zodError as { _errors?: string[] }
-            )?._errors?.join(', ') || createMutation.error?.message}
+              createMutation.error?.data?.zodError as {
+                properties: { name: { errors: string[] } };
+              }
+            )?.properties?.name?.errors?.[0] || createMutation.error?.message}
           </p>
         </div>
         <DialogFooter>
