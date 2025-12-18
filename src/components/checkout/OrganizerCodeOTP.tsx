@@ -72,6 +72,8 @@ export default function OrganizerCodeOTP({
               value={value.toUpperCase()}
               onChange={handleValueChange}
               disabled={disabled}
+              inputMode='text'
+              type='text'
             >
               <InputOTPGroup>
                 <InputOTPSlot index={0} />
