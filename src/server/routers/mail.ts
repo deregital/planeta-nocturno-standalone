@@ -2,7 +2,10 @@ import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import z from 'zod';
 
-import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
+import {
+  eventXorganizer,
+  ticketGroup as ticketGroupSchema,
+} from '@/drizzle/schema';
 import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
 import { publicProcedure, router } from '@/server/trpc';
@@ -115,6 +118,16 @@ export const mailRouter = router({
       const ticketGroup = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroupSchema.id, ticketGroupId),
         with: {
+          event: {
+            with: {
+              eventXorganizers: {
+                where: eq(
+                  eventXorganizer.organizerId,
+                  ticketGroupSchema?.invitedById,
+                ),
+              },
+            },
+          },
           ticketTypePerGroups: {
             with: {
               ticketType: {
@@ -137,6 +150,8 @@ export const mailRouter = router({
 
       const totalPrice = await calculateTotalPrice({
         ticketGroupId: input.ticketGroupId,
+        discountPercentage:
+          ticketGroup?.event.eventXorganizers[0].discountPercentage ?? null,
       });
 
       const ticketTypeText = ticketGroup?.ticketTypePerGroups

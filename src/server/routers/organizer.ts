@@ -227,7 +227,11 @@ export const organizerRouter = router({
             ),
           ),
           with: {
-            emittedTicket: true,
+            emittedTicket: {
+              columns: {
+                scanned: true,
+              },
+            },
           },
         });
 
@@ -253,18 +257,32 @@ export const organizerRouter = router({
           ),
         ),
         with: {
-          emittedTickets: true,
+          emittedTickets: {
+            columns: {
+              scanned: true,
+            },
+          },
+          event: {
+            with: {
+              eventXorganizers: {
+                where: inArray(eventXorganizer.organizerId, organizerIds),
+              },
+            },
+          },
         },
       });
 
-      // Calculate total money generated + tickets sold count
+      // Calculate traditional stats
       let ticketsSoldTraditional = 0;
       let moneyGenerated = 0;
       let attendanceCountTraditional = 0;
       for (const tg of ticketGroups) {
         const totalPrice = await calculateTotalPrice({
           ticketGroupId: tg.id,
-          discountPercentage: null,
+          discountPercentage:
+            tg.event.eventXorganizers.find(
+              (eo) => eo.organizerId === organizerId,
+            )?.discountPercentage ?? null,
         });
         moneyGenerated += totalPrice;
         ticketsSoldTraditional += tg.amountTickets;
