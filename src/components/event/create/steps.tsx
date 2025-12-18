@@ -36,7 +36,9 @@ export function Steps() {
     },
     {
       title: 'Tickets',
-      component: <TicketTypeAction back={goBack} next={goNext} />,
+      component: (
+        <TicketTypeAction action='CREATE' back={goBack} next={goNext} />
+      ),
     },
     {
       title: 'Revisión y publicación',
