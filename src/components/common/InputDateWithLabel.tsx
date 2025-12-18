@@ -32,7 +32,10 @@ export default function InputDateWithLabel({
     if (value) {
       // Parse date in local timezone to avoid timezone conversion issues
       const [year, month, day] = value.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
+      const date = new Date();
+      date.setFullYear(year);
+      date.setMonth(month - 1);
+      date.setDate(day);
       // Verificar que la fecha sea válida
       if (!isNaN(date.getTime())) {
         onChange(date);
