@@ -35,12 +35,14 @@ export default function EventCategoryModal({
   openController,
   open: controlledOpen,
 }: EventCategoryModalProps) {
+  const utils = trpc.useUtils();
   const router = useRouter();
   const createMutation = trpc.eventCategory.create.useMutation({
     onSuccess: () => {
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
       router.refresh();
+      utils.eventCategory.getAll.invalidate();
       onSuccess?.();
     },
   });
@@ -49,6 +51,7 @@ export default function EventCategoryModal({
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
       router.refresh();
+      utils.eventCategory.getAll.invalidate();
       onSuccess?.();
     },
   });
@@ -120,7 +123,7 @@ export default function EventCategoryModal({
           ) : (
             <Button
               onClick={() => createMutation.mutate({ name })}
-              disabled={createMutation.isPending}
+              disabled={name.length === 0 || createMutation.isPending}
               className='w-full rounded-md'
             >
               Crear
