@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, isValid, parse } from 'date-fns';
 
 import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ type InputDateWithLabelProps = Omit<
   onChange: (date: Date) => void;
   error?: string;
   selected?: Date;
+  dateType?: 'date' | 'datetime-local';
 };
 
 export default function InputDateWithLabel({
@@ -19,11 +20,15 @@ export default function InputDateWithLabel({
   error,
   onChange,
   selected,
+  dateType = 'date',
   ...inputProps
 }: InputDateWithLabelProps) {
   const formatDateForInput = (date: Date | undefined): string => {
-    if (!date) return '';
+    if (!date || !isValid(date)) return '';
     // Format date in local timezone using date-fns
+    if (dateType === 'datetime-local') {
+      return format(date, "yyyy-MM-dd'T'HH:mm");
+    }
     return format(date, 'yyyy-MM-dd');
   };
 
@@ -32,10 +37,16 @@ export default function InputDateWithLabel({
     if (value) {
       // Parse date in local timezone to avoid timezone conversion issues
       const [year, month, day] = value.split('-').map(Number);
-      const date = new Date();
+      let date = new Date();
       date.setFullYear(year);
       date.setMonth(month - 1);
       date.setDate(day);
+
+      if (dateType === 'datetime-local') {
+        // Parse datetime-local format: YYYY-MM-DDTHH:mm using date-fns
+        date = parse(value, "yyyy-MM-dd'T'HH:mm", new Date());
+      }
+
       // Verificar que la fecha sea válida
       if (!isNaN(date.getTime())) {
         onChange(date);
@@ -53,7 +64,7 @@ export default function InputDateWithLabel({
     >
       <Input
         {...inputProps}
-        type='date'
+        type={dateType}
         value={formatDateForInput(selected)}
         onChange={handleInputChange}
       />
