@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <TRPCReactProvider>
-      <html lang='en'>
+      <html lang='es' className='notranslate' translate='no'>
         <body className={`${dmSans.className} antialiased`}>
           {children}
           <Toaster />

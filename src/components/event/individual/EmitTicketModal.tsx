@@ -287,7 +287,7 @@ export function EmitTicketModal({
             </FormRow>
             <FormRow>
               <InputWithLabel
-                label='Invitada por:'
+                label='Invita:'
                 id='invitedBy'
                 name='invitedBy'
                 error={error.invitedBy}

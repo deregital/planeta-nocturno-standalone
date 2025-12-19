@@ -57,7 +57,9 @@ export async function createUser(
     instagram,
   };
 
-  const validation = userSchema.safeParse(data);
+  const validation = userSchema
+    .omit({ chiefOrganizerId: true })
+    .safeParse(data);
 
   if (!validation.success) {
     const validateErrors = z.treeifyError(validation.error).properties;
@@ -81,6 +83,7 @@ export async function createUser(
     await trpc.user.create({
       ...validation.data,
       birthDate: birthDate,
+      chiefOrganizerId: null,
     });
   } catch (error) {
     const errorMessage =

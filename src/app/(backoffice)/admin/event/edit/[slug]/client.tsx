@@ -144,7 +144,7 @@ export default function Client({
       <EventGeneralInformation action='EDIT' externalErrors={error} />
       <section className='my-6' id='ticket-types'>
         <h3 className='text-2xl text-accent font-bold'>Tickets</h3>
-        <TicketTypeAction />
+        <TicketTypeAction action='EDIT' />
       </section>
       <section>
         <h3 className='text-2xl text-accent font-bold'>Organizadores</h3>

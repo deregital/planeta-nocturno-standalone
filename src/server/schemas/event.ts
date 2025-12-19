@@ -50,7 +50,11 @@ export const eventSchema = z.object({
   }),
   extraTicketData: z.boolean(),
   serviceFee: z.number().min(0).nullable(),
-  emailNotification: z.email().nullable(),
+  emailNotification: z
+    .email({
+      error: 'El email no es válido',
+    })
+    .nullable(),
   ticketSlugVisibleInPdf: z.boolean(),
 });
 

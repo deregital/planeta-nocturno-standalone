@@ -21,7 +21,7 @@ export async function generateTicketTemplate(
 
   const offset = await measureTextWidth(`${first_word} `, fontBold, 20);
 
-  const slugSpace = 40.43;
+  const slugSpace = 56.43;
   const verticalOffset = showSlug ? 0 : slugSpace;
 
   // Campos base del template
@@ -31,7 +31,7 @@ export async function generateTicketTemplate(
       type: 'rectangle',
       position: { x: 32.81, y: 158.99 },
       width: 245.27,
-      height: 274.64 - verticalOffset,
+      height: 284.64 - verticalOffset,
       rotate: 0,
       opacity: 1,
       borderWidth: 1.5,
@@ -288,7 +288,7 @@ export async function generateTicketTemplate(
     {
       name: 'invitedBy_title',
       type: 'text',
-      content: 'Invitada por:',
+      content: 'Invita:',
       position: { x: 47, y: 332 },
       width: 201.08,
       height: 10.05,
@@ -387,7 +387,7 @@ export async function generateTicketTemplate(
       name: 'barcode',
       type: 'qrcode',
       content: 'This is Code 128!',
-      position: { x: 109.5, y: 450.23 },
+      position: { x: 109.5, y: 455.23 - verticalOffset / 2 },
       backgroundColor: '#e4e4e4',
       barColor: accentColor,
       textColor: '#000000',
@@ -569,13 +569,15 @@ export async function generatePdf(ticket: GenerateTicketProps) {
   );
 
   const eventName = truncateText(ticket.eventName, 28);
+  const ticketType = truncateText(ticket.ticketType, 26);
+  const fullName = truncateText(ticket.fullName, 26);
 
   const inputs = [
     {
       eventName: eventName,
       eventDate: `${formattedDate} - ${formattedTime}`,
       eventLocation: ticket.eventLocation,
-      fullName: ticket.fullName,
+      fullName: fullName,
       dni: normalizedDni,
       barcode: encryptString(ticket.id),
       footer: `Para cualquier duda, reclamo o consulta comunicarse vía mail a ${process.env.INSTANCE_CONTACT_EMAIL}.\nMás información en ${process.env.INSTANCE_WEB_URL}.`,
@@ -584,7 +586,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
         'America/Argentina/Buenos_Aires',
         'dd/MM/yyyy HH:mm',
       ),
-      ticketType: ticket.ticketType,
+      ticketType: ticketType,
       name_first_word: firstWord,
       name_second_word: rest.join(' '),
       invitedBy: ticket.invitedBy || '-',
