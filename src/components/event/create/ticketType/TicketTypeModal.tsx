@@ -6,6 +6,7 @@ import { validateTicketType } from '@/app/(backoffice)/admin/event/create/action
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
 import { FormRow } from '@/components/common/FormRow';
+import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import {
@@ -291,25 +292,15 @@ export default function TicketTypeModal({
           <FormRow className='md:flex-row flex-col'>
             <div className='flex w-full'>
               {hasScanLimit ? (
-                <InputWithLabel
+                <InputDateWithLabel
                   id='scanLimit'
                   name='scanLimit'
                   label='Finalización de escaneo de tickets'
-                  type='datetime-local'
                   error={error.scanLimit}
-                  value={
-                    editingTicketType.scanLimit
-                      ? format(
-                          editingTicketType.scanLimit,
-                          "yyyy-MM-dd'T'HH:mm",
-                        )
-                      : ''
-                  }
-                  onChange={(e) => {
-                    if (!e.target.value) {
-                      return;
-                    }
-                    handleInputChange('scanLimit', new Date(e.target.value));
+                  selected={editingTicketType.scanLimit ?? undefined}
+                  dateType='datetime-local'
+                  onChange={(date) => {
+                    handleInputChange('scanLimit', date);
                   }}
                   className='w-full'
                 />
@@ -346,25 +337,15 @@ export default function TicketTypeModal({
             </div>
             <div className='flex w-full'>
               {hasMaxSellDate ? (
-                <InputWithLabel
+                <InputDateWithLabel
                   id='maxSellDate'
                   name='maxSellDate'
                   label='Finalización de venta de tickets'
-                  type='datetime-local'
                   error={error.maxSellDate}
-                  value={
-                    editingTicketType.maxSellDate
-                      ? format(
-                          editingTicketType.maxSellDate,
-                          "yyyy-MM-dd'T'HH:mm",
-                        )
-                      : ''
-                  }
-                  onChange={(e) => {
-                    if (!e.target.value) {
-                      return;
-                    }
-                    handleInputChange('maxSellDate', new Date(e.target.value));
+                  selected={editingTicketType.maxSellDate ?? undefined}
+                  dateType='datetime-local'
+                  onChange={(date) => {
+                    handleInputChange('maxSellDate', date);
                   }}
                   className='w-full'
                 />

@@ -1,10 +1,16 @@
+'use client';
 import { CreateOrganizerForm } from '@/components/admin/users/CreateOrganizerForm';
 import { ImportUsersWrapper } from '@/components/admin/users/ImportUsersWrapper';
 import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
-import { trpc } from '@/server/trpc/server';
+import OrganizerSkeleton from '@/components/organization/organizers/OrganizerSkeleton';
+import { trpc } from '@/server/trpc/client';
 
-export default async function UsersPage() {
-  const data = await trpc.user.getOrganizers();
+export default function Client({
+  chiefOrganizerId,
+}: {
+  chiefOrganizerId: string;
+}) {
+  const { data, isLoading } = trpc.user.getByRole.useQuery('ORGANIZER');
 
   return (
     <div className='flex flex-col gap-4 py-4'>
@@ -15,7 +21,17 @@ export default async function UsersPage() {
           <CreateOrganizerForm />
         </div>
       </div>
-      <UsersTableWithFilters data={data} />
+      {isLoading ? (
+        <OrganizerSkeleton />
+      ) : (
+        <UsersTableWithFilters
+          data={
+            data?.filter(
+              (user) => user.chiefOrganizerId === chiefOrganizerId,
+            ) ?? []
+          }
+        />
+      )}
     </div>
   );
 }

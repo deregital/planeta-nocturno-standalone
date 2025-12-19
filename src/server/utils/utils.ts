@@ -117,6 +117,25 @@ export function truncateText(text: string, maxLength: number = 25): string {
   return text.substring(0, truncatedLength) + ellipsis;
 }
 
+/**
+ * Calcula el final del día en UTC (23:59:59.999) para una fecha dada.
+ * Esta función mantiene el mismo día en UTC.
+ */
+export function endOfDayUTC(date: Date): Date {
+  const utcDate = new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+  return utcDate;
+}
+
 export async function getBuyersCodeByDni(
   db: typeof database,
   dnis: string[],

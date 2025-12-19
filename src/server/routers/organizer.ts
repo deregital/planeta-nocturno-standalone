@@ -1,4 +1,13 @@
-import { and, between, desc, eq, isNotNull, isNull, not } from 'drizzle-orm';
+import {
+  and,
+  between,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  not,
+} from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -12,6 +21,7 @@ import { eventSchema } from '@/server/schemas/event';
 import { organizerBaseSchema } from '@/server/schemas/organizer';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
 import { adminProcedure, organizerProcedure, router } from '@/server/trpc';
+import { endOfDayUTC } from '@/server/utils/utils';
 
 export const organizerRouter = router({
   getMyEvents: organizerProcedure.query(async ({ ctx }) => {
@@ -75,13 +85,37 @@ export const organizerRouter = router({
   getAdminInfoById: adminProcedure
     .input(organizerBaseSchema.shape.id)
     .query(async ({ ctx, input: organizerId }) => {
-      // Get recent events attended (ordered by endingDate descending)
+      // Get the user to check if they are a CHIEF_ORGANIZER
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: eq(user.id, organizerId),
+        columns: {
+          id: true,
+          role: true,
+        },
+      });
+
+      if (!targetUser) {
+        throw new Error('User not found');
+      }
+
+      // Get all organizer IDs to include in events (chief + their organizers if chief)
+      let organizerIds = [organizerId];
+      if (targetUser.role === 'CHIEF_ORGANIZER') {
+        const relatedOrganizers = await ctx.db.query.user.findMany({
+          where: eq(user.chiefOrganizerId, organizerId),
+          columns: {
+            id: true,
+          },
+        });
+        organizerIds = [organizerId, ...relatedOrganizers.map((o) => o.id)];
+      }
 
       // Get last 20 organizer groups (we'll later filter to those with scanned tickets)
       const recentEvents = await ctx.db.query.ticketGroup.findMany({
         where: and(
           eq(ticketGroup.isOrganizerGroup, true),
           not(eq(ticketGroup.status, 'BOOKED')),
+          inArray(ticketGroup.invitedById, organizerIds),
         ),
         with: {
           emittedTickets: {
@@ -156,63 +190,120 @@ export const organizerRouter = router({
     .query(async ({ ctx, input }) => {
       const { organizerId, from, to } = input;
 
-      // Get all events assigned to this organizer
-      const allAssignedEvents = await ctx.db.query.eventXorganizer.findMany({
-        where: eq(eventXorganizer.organizerId, organizerId),
-        with: {
-          event: true,
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: eq(user.id, organizerId),
+        columns: {
+          id: true,
+          role: true,
         },
       });
 
-      // Count events attended (events that have ended)
-      const now = new Date();
-      const eventsAttended = allAssignedEvents.filter(
-        (rel) => new Date(rel.event.endingDate) < now,
-      ).length;
-      const totalEventsAssigned = allAssignedEvents.length;
-      const attendancePercentage =
-        totalEventsAssigned > 0
-          ? (eventsAttended / totalEventsAssigned) * 100
-          : 0;
+      if (!targetUser) {
+        throw new Error('User not found');
+      }
 
-      // Get tickets sold (ticketXorganizer with non-null ticketId) within time period
-      const ticketsSold = await ctx.db.query.ticketXorganizer.findMany({
-        where: and(
-          eq(ticketXorganizer.organizerId, organizerId),
-          isNotNull(ticketXorganizer.ticketId),
-          between(
-            ticketXorganizer.createdAt,
-            from.toISOString(),
-            to.toISOString(),
+      // IF its a CHIEF_ORGANIZER: Get all organizer IDs to include in stats (chief + their organizers if chief)
+      let organizerIds = [organizerId];
+      if (targetUser.role === 'CHIEF_ORGANIZER') {
+        const relatedOrganizers = await ctx.db.query.user.findMany({
+          where: eq(user.chiefOrganizerId, organizerId),
+          columns: {
+            id: true,
+          },
+        });
+        organizerIds = [organizerId, ...relatedOrganizers.map((o) => o.id)];
+      }
+
+      // INVITATION: Get tickets sold (ticketXorganizer with non-null ticketId) within time period
+      const ticketsSoldInvitation =
+        await ctx.db.query.ticketXorganizer.findMany({
+          where: and(
+            inArray(ticketXorganizer.organizerId, organizerIds),
+            isNotNull(ticketXorganizer.ticketId),
+            between(
+              ticketXorganizer.createdAt,
+              from.toISOString(),
+              endOfDayUTC(to).toISOString(),
+            ),
           ),
-        ),
-      });
+          with: {
+            emittedTicket: {
+              columns: {
+                scanned: true,
+              },
+            },
+          },
+        });
 
-      const ticketsSoldCount = ticketsSold.length;
+      const attendanceCountInvitation = ticketsSoldInvitation.reduce(
+        (acc, ticket) => {
+          if (ticket.emittedTicket?.scanned) {
+            acc++;
+          }
+          return acc;
+        },
+        0,
+      );
 
-      // Get ticket groups with this organizer as invitedById within time period
+      // TRADITIONAL: Get ticket groups with these organizers as invitedById within time period
       const ticketGroups = await ctx.db.query.ticketGroup.findMany({
         where: and(
-          eq(ticketGroup.invitedById, organizerId),
-          between(ticketGroup.createdAt, from.toISOString(), to.toISOString()),
+          inArray(ticketGroup.invitedById, organizerIds),
           not(eq(ticketGroup.status, 'BOOKED')),
+          between(
+            ticketGroup.createdAt,
+            from.toISOString(),
+            endOfDayUTC(to).toISOString(),
+          ),
         ),
+        with: {
+          emittedTickets: {
+            columns: {
+              scanned: true,
+            },
+          },
+          event: {
+            with: {
+              eventXorganizers: {
+                where: inArray(eventXorganizer.organizerId, organizerIds),
+              },
+            },
+          },
+        },
       });
 
-      // Calculate total money generated
+      // Calculate traditional stats
+      let ticketsSoldTraditional = 0;
       let moneyGenerated = 0;
+      let attendanceCountTraditional = 0;
       for (const tg of ticketGroups) {
         const totalPrice = await calculateTotalPrice({
           ticketGroupId: tg.id,
-          discountPercentage: null,
+          discountPercentage:
+            tg.event.eventXorganizers.find(
+              (eo) => eo.organizerId === organizerId,
+            )?.discountPercentage ?? null,
         });
         moneyGenerated += totalPrice;
+        ticketsSoldTraditional += tg.amountTickets;
+        attendanceCountTraditional += tg.emittedTickets.filter(
+          (et) => et.scanned,
+        ).length;
       }
+
+      const ticketsSold = ticketsSoldTraditional + ticketsSoldInvitation.length;
+
+      const attendancePercentage =
+        ticketsSold > 0
+          ? ((attendanceCountInvitation + attendanceCountTraditional) /
+              ticketsSold) *
+            100
+          : 0;
 
       return {
         statistics: {
-          ticketsSold: ticketsSoldCount,
-          attendancePercentage: Math.round(attendancePercentage * 100) / 100,
+          ticketsSold,
+          attendancePercentage,
           moneyGenerated: Math.round(moneyGenerated * 100) / 100,
         },
       };

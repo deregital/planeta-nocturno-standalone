@@ -16,7 +16,12 @@ export default async function Page() {
           <h2 className='text-2xl font-bold'>Usuarios</h2>
           <CreateUserForm />
         </div>
-        <UsersTable data={data.filter((user) => user.role !== 'ORGANIZER')} />
+        <UsersTable
+          data={data.filter(
+            (user) =>
+              user.role !== 'ORGANIZER' && user.role !== 'CHIEF_ORGANIZER',
+          )}
+        />
       </section>
       <LocationList />
       <CategoryList />

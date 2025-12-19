@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import z from 'zod';
 
-import { type UserData } from '@/components/admin/users/OrganizerForm';
+import { type UserData } from '@/components/admin/config/UserForm';
+import { type OrganizerData } from '@/components/admin/users/OrganizerForm';
 import { type role as roleEnum } from '@/drizzle/schema';
 import { resetPasswordSchema, userSchema } from '@/server/schemas/user';
 import { trpc } from '@/server/trpc/server';
@@ -19,6 +20,12 @@ export type UserFirstTimeCredentials = {
 export type CreateUserActionState = {
   data?: UserData;
   errors?: Partial<Record<keyof UserData | 'general', string>>;
+  credentials?: UserFirstTimeCredentials;
+};
+
+export type CreateOrganizerActionState = {
+  data?: OrganizerData;
+  errors?: Partial<Record<keyof OrganizerData | 'general', string>>;
   credentials?: UserFirstTimeCredentials;
 };
 
@@ -50,7 +57,9 @@ export async function createUser(
     instagram,
   };
 
-  const validation = userSchema.safeParse(data);
+  const validation = userSchema
+    .omit({ chiefOrganizerId: true })
+    .safeParse(data);
 
   if (!validation.success) {
     const validateErrors = z.treeifyError(validation.error).properties;
@@ -74,6 +83,7 @@ export async function createUser(
     await trpc.user.create({
       ...validation.data,
       birthDate: birthDate,
+      chiefOrganizerId: null,
     });
   } catch (error) {
     const errorMessage =
@@ -100,9 +110,9 @@ export async function createUser(
 }
 
 export async function createOrganizer(
-  prevValues: CreateUserActionState,
+  prevValues: CreateOrganizerActionState,
   formData: FormData,
-): Promise<CreateUserActionState> {
+): Promise<CreateOrganizerActionState> {
   const fullName = formData.get('fullName') as string;
   const name = formData.get('username') as string;
   const email = formData.get('email') as string;
@@ -112,18 +122,23 @@ export async function createOrganizer(
   const gender = formData.get('gender') as string;
   const phoneNumber = formData.get('phoneNumber') as string;
   const instagram = formData.get('instagram') as string;
+  const chiefOrganizerId = formData.get('chiefOrganizerId') as string | null;
+  const role =
+    (formData.get('role') as (typeof roleEnum.enumValues)[number]) ||
+    'ORGANIZER';
 
   const data = {
     fullName,
     name,
     email,
-    role: 'ORGANIZER' as (typeof roleEnum.enumValues)[number],
+    role,
     password,
     birthDate,
     dni,
     gender,
     phoneNumber,
     instagram,
+    chiefOrganizerId,
   };
 
   const validation = userSchema.safeParse(data);
@@ -132,10 +147,10 @@ export async function createOrganizer(
     const validateErrors = z.treeifyError(validation.error).properties;
     const errors = Object.entries(validateErrors ?? {}).reduce(
       (acc, [key, value]) => {
-        acc[key as keyof UserData] = value.errors[0];
+        acc[key as keyof OrganizerData] = value.errors[0];
         return acc;
       },
-      {} as Record<keyof UserData, string>,
+      {} as Record<keyof OrganizerData, string>,
     );
     return {
       data,
@@ -163,6 +178,7 @@ export async function createOrganizer(
   }
 
   revalidatePath('/admin/config');
+  revalidatePath('/organization/organizers');
 
   return {
     credentials: {

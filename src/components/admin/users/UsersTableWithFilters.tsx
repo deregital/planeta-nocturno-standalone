@@ -1,25 +1,32 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
 import { organizerColumns } from '@/components/admin/users/OrganizerColumns';
 import { DataTable } from '@/components/common/DataTable';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { roleTranslation } from '@/lib/translations';
 import { type RouterOutputs } from '@/server/routers/app';
 
 interface UsersTableProps {
-  data: RouterOutputs['user']['getAll'];
+  data:
+    | RouterOutputs['user']['getAll']
+    | RouterOutputs['user']['getOrganizers'];
 }
 
 export function UsersTableWithFilters({ data }: UsersTableProps) {
   const router = useRouter();
+  const session = useSession();
+  const isAdmin = session.data?.user.role === 'ADMIN';
 
   const [globalFilter, setGlobalFilter] = useState('');
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   // Extract all unique batches from data
   const availableBatches = useMemo(() => {
@@ -33,6 +40,21 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
       .sort()
       .map((batch) => ({ value: batch, label: batch }));
   }, [data]);
+
+  // Create role options for admin
+  const roleOptions = useMemo(() => {
+    if (!isAdmin) return [];
+    return [
+      {
+        value: 'ORGANIZER',
+        label: roleTranslation['ORGANIZER'],
+      },
+      {
+        value: 'CHIEF_ORGANIZER',
+        label: roleTranslation['CHIEF_ORGANIZER'],
+      },
+    ];
+  }, [isAdmin]);
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
@@ -64,9 +86,14 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
         selectedBatches.length === 0 ||
         item.userXTags.some(({ tag }) => selectedBatches.includes(tag.name));
 
-      return matchesSearch && matchesBatch;
+      const matchesRole =
+        !isAdmin ||
+        selectedRoles.length === 0 ||
+        selectedRoles.includes(item.role);
+
+      return matchesSearch && matchesBatch && matchesRole;
     });
-  }, [data, globalFilter, selectedBatches]);
+  }, [data, globalFilter, selectedBatches, selectedRoles, isAdmin]);
 
   const handleRowClick = (id: string) => {
     router.push(`/admin/users/${id}`);
@@ -88,6 +115,17 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
             />
           </div>
           <div className='flex flex-row md:items-center gap-4 w-full md:w-auto'>
+            {isAdmin && (
+              <MultiSelect
+                className='w-full min-w-48'
+                options={roleOptions}
+                selectedValues={selectedRoles}
+                onSelectionChange={setSelectedRoles}
+                label='Filtrar por rol'
+                placeholder='Todos los roles'
+                emptyMessage='No hay roles disponibles'
+              />
+            )}
             <MultiSelect
               className='w-full'
               options={availableBatches}
@@ -102,7 +140,9 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
             <p className='text-sm text-accent'>
               {filteredData.length} de {data.length} resultados
             </p>
-            {(globalFilter || selectedBatches.length > 0) && (
+            {(globalFilter ||
+              selectedBatches.length > 0 ||
+              selectedRoles.length > 0) && (
               <Button
                 variant={'ghost'}
                 size={'icon'}
@@ -110,6 +150,7 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
                 onClick={() => {
                   setGlobalFilter('');
                   setSelectedBatches([]);
+                  setSelectedRoles([]);
                 }}
               >
                 <X className='size-4' />

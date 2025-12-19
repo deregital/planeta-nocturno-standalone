@@ -35,12 +35,14 @@ export default function EventCategoryModal({
   openController,
   open: controlledOpen,
 }: EventCategoryModalProps) {
+  const utils = trpc.useUtils();
   const router = useRouter();
   const createMutation = trpc.eventCategory.create.useMutation({
     onSuccess: () => {
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
       router.refresh();
+      utils.eventCategory.getAll.invalidate();
       onSuccess?.();
     },
   });
@@ -49,6 +51,7 @@ export default function EventCategoryModal({
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
       router.refresh();
+      utils.eventCategory.getAll.invalidate();
       onSuccess?.();
     },
   });
@@ -98,8 +101,10 @@ export default function EventCategoryModal({
           />
           <p className='text-red-500 text-sm font-bold'>
             {(
-              createMutation.error?.data?.zodError as { _errors?: string[] }
-            )?._errors?.join(', ') || createMutation.error?.message}
+              createMutation.error?.data?.zodError as {
+                properties: { name: { errors: string[] } };
+              }
+            )?.properties?.name?.errors?.[0] || createMutation.error?.message}
           </p>
         </div>
         <DialogFooter>
@@ -120,7 +125,7 @@ export default function EventCategoryModal({
           ) : (
             <Button
               onClick={() => createMutation.mutate({ name })}
-              disabled={createMutation.isPending}
+              disabled={name.length === 0 || createMutation.isPending}
               className='w-full rounded-md'
             >
               Crear

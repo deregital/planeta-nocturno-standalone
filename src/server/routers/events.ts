@@ -704,19 +704,6 @@ export const eventsRouter = router({
         });
       }
 
-      const slug = generateSlug(event.name);
-
-      const existingEvent = await ctx.db.query.event.findMany({
-        where: like(eventSchema.slug, `${slug}%`),
-      });
-
-      // same slug is slug or slug-1, slug-2, etc
-      const sameSlugAmount = existingEvent.filter((event) =>
-        event.slug.match(new RegExp(`^${slug}-(\\d+)$`)),
-      ).length;
-      const sameSlug =
-        sameSlugAmount > 0 ? `${slug}-${sameSlugAmount + 1}` : slug;
-
       const eventData = {
         id: event.id,
         name: event.name,
@@ -726,7 +713,7 @@ export const eventsRouter = router({
         endingDate: event.endingDate.toISOString(),
         minAge: event.minAge,
         isActive: event.isActive,
-        slug: sameSlug,
+        slug: event.slug,
         locationId: event.locationId,
         categoryId: event.categoryId,
         extraTicketData: event.extraTicketData,

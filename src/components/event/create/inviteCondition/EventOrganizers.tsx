@@ -8,6 +8,7 @@ import {
   calculateMaxTicketsPerOrganizer,
   useOrganizerTickets,
 } from '@/hooks/useOrganizerTickets';
+import { roleTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
@@ -131,12 +132,17 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
   }, [organizersData, organizers]);
 
   const organizerOptions = useMemo(() => {
-    return organizersData
-      ?.filter(
-        (organizer) =>
-          !selectedOrganizers?.some((org) => org.id === organizer.id),
-      )
-      .map((organizer) => `${organizer.fullName} - ${organizer.dni}`);
+    if (!organizersData) return [];
+
+    const selectableOrganizers = organizersData.filter(
+      (organizer) =>
+        organizer.role === 'ORGANIZER' &&
+        !selectedOrganizers?.some((org) => org.id === organizer.id),
+    );
+
+    return selectableOrganizers.map(
+      (organizer) => `${organizer.fullName} - ${organizer.dni}`,
+    );
   }, [organizersData, selectedOrganizers]);
 
   const groupedOptions = useMemo(() => {
@@ -147,13 +153,20 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
         !selectedOrganizers?.some((org) => org.id === organizer.id),
     );
 
+    const chiefOrganizers = selectableOrganizers.filter(
+      (org) => org.role === 'CHIEF_ORGANIZER',
+    );
+    const regularOrganizers = selectableOrganizers.filter(
+      (org) => org.role === 'ORGANIZER',
+    );
+
     // Agrupar organizadores por sus tags
     const tagGroups = new Map<
       string,
-      { name: string; organizers: typeof selectableOrganizers }
+      { name: string; organizers: typeof regularOrganizers }
     >();
 
-    selectableOrganizers.forEach((organizer) => {
+    regularOrganizers.forEach((organizer) => {
       organizer.userXTags?.forEach((userXTag) => {
         const tag = userXTag.tag;
         if (!tagGroups.has(tag.id)) {
@@ -172,12 +185,61 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
       }),
     );
 
-    return [
-      {
+    // Agrupar CHIEF_ORGANIZER
+    const chiefGroups = new Map<
+      string,
+      { name: string; organizers: typeof chiefOrganizers }
+    >();
+
+    chiefOrganizers.forEach((organizer) => {
+      const key = organizer.id;
+      if (!chiefGroups.has(key)) {
+        chiefGroups.set(key, {
+          name: organizer.fullName,
+          organizers: [],
+        });
+      }
+      chiefGroups.get(key)!.organizers.push(organizer);
+    });
+
+    // Convertir chiefs a opciones agrupadas
+    const chiefOptions = Array.from(chiefGroups.entries()).map(
+      ([chiefId, chiefData]) => {
+        // Contar organizadores relacionados con este CHIEF_ORGANIZER
+        const relatedCount = organizersData.filter(
+          (org) =>
+            org.role === 'ORGANIZER' &&
+            org.chiefOrganizerId === chiefId &&
+            !selectedOrganizers?.some((selected) => selected.id === org.id),
+        ).length;
+
+        return {
+          value: `chief:${chiefId}`,
+          label: `👤 ${chiefData.name} - ${chiefData.organizers[0]?.dni}${relatedCount > 0 ? ` (${relatedCount} organizador${relatedCount > 1 ? 'es' : ''})` : ''}`,
+          chiefData,
+        };
+      },
+    );
+
+    const groups = [];
+
+    // Grupo 1: Tags (arriba)
+    if (tagOptions.length > 0) {
+      groups.push({
         group: 'Tags',
         options: tagOptions,
-      },
-    ];
+      });
+    }
+
+    // Grupo 2: Jefes de Organizadores (debajo de tags, arriba de organizadores)
+    if (chiefOptions.length > 0) {
+      groups.push({
+        group: roleTranslation['CHIEF_ORGANIZER'],
+        options: chiefOptions,
+      });
+    }
+
+    return groups.length > 0 ? groups : undefined;
   }, [organizersData, selectedOrganizers]);
 
   // Limpiar la selección del combobox cuando se eliminan organizadores
@@ -200,22 +262,115 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
           onSelectOption={(option) => {
             if (option.startsWith('tag:')) {
               const tagId = option.replace('tag:', '');
-              const tagOption = groupedOptions?.[0]?.options.find(
-                (opt) => opt.value === `tag:${tagId}`,
+              if (!groupedOptions) return;
+
+              // Buscar en el grupo de Tags
+              const tagsGroup = groupedOptions.find((g) => g.group === 'Tags');
+              const tagOption = tagsGroup?.options.find(
+                (
+                  opt,
+                ): opt is {
+                  value: string;
+                  label: string;
+                  tagData: {
+                    name: string;
+                    organizers: NonNullable<typeof organizersData>;
+                  };
+                } => opt.value === `tag:${tagId}` && 'tagData' in opt,
               );
+
               if (tagOption && 'tagData' in tagOption) {
-                tagOption.tagData.organizers.forEach((organizer) => {
+                const organizersToAdd = tagOption.tagData.organizers;
+                const totalToAdd = organizersToAdd.length;
+
+                // Calcular el máximo permitido una vez, considerando todos los organizadores que se agregarán
+                const maxAllowed =
+                  type === 'INVITATION'
+                    ? maxCapacity
+                      ? calculateMaxTicketsPerOrganizer(
+                          maxCapacity,
+                          organizers.length + totalToAdd,
+                        )
+                      : maxNumber
+                    : undefined;
+
+                organizersToAdd.forEach((organizer) => {
                   if (type === 'TRADITIONAL') {
                     addOrganizer(organizer, defaultNumber, type);
                   } else {
-                    const maxAllowed = maxCapacity
+                    const clampedNumber = maxAllowed
+                      ? Math.min(defaultNumber, maxAllowed)
+                      : defaultNumber;
+                    addOrganizer(organizer, clampedNumber, type);
+                  }
+                });
+              }
+            } else if (option.startsWith('chief:')) {
+              const chiefId = option.replace('chief:', '');
+              if (!groupedOptions || !organizersData) return;
+
+              // Buscar en el grupo de Jefes de Organizadores
+              const chiefsGroup = groupedOptions.find(
+                (g) => g.group === roleTranslation['CHIEF_ORGANIZER'],
+              );
+              const chiefOption = chiefsGroup?.options.find(
+                (
+                  opt,
+                ): opt is {
+                  value: string;
+                  label: string;
+                  chiefData: {
+                    name: string;
+                    organizers: NonNullable<typeof organizersData>;
+                  };
+                } => opt.value === `chief:${chiefId}` && 'chiefData' in opt,
+              );
+
+              if (chiefOption && 'chiefData' in chiefOption) {
+                const chiefOrganizer = chiefOption.chiefData.organizers[0];
+                if (!chiefOrganizer) return;
+
+                // Buscar todos los ORGANIZER relacionados con este CHIEF_ORGANIZER
+                const relatedOrganizers = organizersData.filter(
+                  (org) =>
+                    org.role === 'ORGANIZER' &&
+                    org.chiefOrganizerId === chiefOrganizer.id &&
+                    !organizers.some((o) => o.id === org.id),
+                );
+
+                // Calcular total de organizadores a agregar (CHIEF + sus relacionados)
+                const totalToAdd = 1 + relatedOrganizers.length;
+
+                // Calcular el máximo permitido una vez, considerando todos los organizadores que se agregarán
+                const maxAllowed =
+                  type === 'INVITATION'
+                    ? maxCapacity
                       ? calculateMaxTicketsPerOrganizer(
                           maxCapacity,
-                          organizers.length + 1,
+                          organizers.length + totalToAdd,
                         )
-                      : maxNumber;
-                    const clampedNumber = Math.min(defaultNumber, maxAllowed);
-                    addOrganizer(organizer, clampedNumber, type);
+                      : maxNumber
+                    : undefined;
+
+                // Agregar el CHIEF_ORGANIZER
+                if (type === 'TRADITIONAL') {
+                  addOrganizer(chiefOrganizer, defaultNumber, type);
+                } else {
+                  const clampedNumber = maxAllowed
+                    ? Math.min(defaultNumber, maxAllowed)
+                    : defaultNumber;
+                  addOrganizer(chiefOrganizer, clampedNumber, type);
+                }
+
+                // Agregar todos los ORGANIZER relacionados
+                relatedOrganizers.forEach((relatedOrg) => {
+                  if (type === 'TRADITIONAL') {
+                    addOrganizer(relatedOrg, defaultNumber, type);
+                  } else {
+                    const clampedNumber = maxAllowed
+                      ? Math.min(defaultNumber, maxAllowed)
+                      : defaultNumber;
+                    addOrganizer(relatedOrg, clampedNumber, type);
                   }
                 });
               }

@@ -1,7 +1,7 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { addDays, format, subMonths } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader, Mail } from 'lucide-react';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
@@ -189,11 +189,7 @@ export default function Client({ organizerId }: { organizerId: string }) {
               locale='es-AR'
               onUpdate={({ range }) => {
                 setFrom(range.from);
-                setTo(
-                  range.to
-                    ? new Date(addDays(range.to, 1).getTime() - 1000)
-                    : new Date(addDays(new Date(), 1).getTime() - 1000),
-                );
+                setTo(range.to ?? today);
               }}
             />
           </div>
