@@ -92,7 +92,7 @@ export default function Dashboard() {
                 <p className='text-3xl font-light text-center'>
                   Dinero recaudado
                 </p>
-                <p className='text-6xl lg:text-5xl xl:text-6xl text-accent font-medium lg:py-16'>
+                <p className='text-[clamp(2rem,3vw,8rem)] text-accent font-medium lg:py-16'>
                   {Intl.NumberFormat('es-AR', {
                     style: 'currency',
                     currency: 'ARS',
@@ -106,7 +106,7 @@ export default function Dashboard() {
                 <p className='text-3xl font-light text-center'>
                   Tickets vendidos
                 </p>
-                <p className='text-6xl lg:text-5xl xl:text-6xl text-accent font-medium lg:py-16'>
+                <p className='text-[clamp(2rem,4vw,8rem)] text-accent font-medium lg:py-16'>
                   {Intl.NumberFormat('es-AR').format(statistics.totalTickets)}
                 </p>
               </BaseCard>
