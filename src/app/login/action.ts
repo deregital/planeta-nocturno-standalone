@@ -23,7 +23,7 @@ export async function authenticate(
   formData: FormData,
 ): Promise<LoginActionState> {
   const rawData: z.infer<typeof loginSchema> = {
-    name: formData.get('username') as string,
+    name: (formData.get('username') as string)?.trim(),
     password: formData.get('password') as string,
   };
   try {
