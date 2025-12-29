@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useMemo, useState } from 'react';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { type TicketType } from '@/server/types';
-import { trpc } from '@/server/trpc/client';
-import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
 import { SearchTickets } from '@/components/event/individual/SearchTickets';
+import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
+import { TicketTableSectionChief } from '@/components/event/individual/ticketsTable/TicketTableSectionChief';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { trpc } from '@/server/trpc/client';
+import { type TicketType } from '@/server/types';
 
 export function TicketTableWithTabs({
   ticketTypes,
@@ -78,11 +79,18 @@ export function TicketTableWithTabs({
         </TabsList>
         {Object.keys(ticketsByType).map((type) => (
           <TabsContent key={type} value={type}>
-            <TicketTableSection
-              tickets={ticketsByType[type]}
-              highlightedTicketId={highlightedTicketId}
-              isAdmin={isAdmin}
-            />
+            {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
+              <TicketTableSectionChief
+                tickets={ticketsByType[type]}
+                highlightedTicketId={highlightedTicketId}
+              />
+            ) : (
+              <TicketTableSection
+                tickets={ticketsByType[type]}
+                highlightedTicketId={highlightedTicketId}
+                isAdmin={isAdmin}
+              />
+            )}
           </TabsContent>
         ))}
       </Tabs>
