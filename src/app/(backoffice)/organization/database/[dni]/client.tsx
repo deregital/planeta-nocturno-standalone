@@ -22,7 +22,7 @@ export default function Client({
 
   return (
     <div className='flex flex-col gap-4 p-4'>
-      <GoBack route='/admin/database' className='size-fit my-2' />
+      <GoBack route='/organization/database' className='size-fit my-2' />
       <div className='flex'>
         <h1 className='text-4xl font-bold text-accent'>
           {buyer.fullName}{' '}

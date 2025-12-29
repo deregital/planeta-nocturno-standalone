@@ -225,12 +225,14 @@ interface TicketsTableProps {
   columns: StrictColumnDef<EmittedBuyerTableWithId, unknown>[];
   data: (EmittedBuyerTable & { buyerCode: string })[];
   clickableRow?: boolean;
+  onClickRow?: (id: string) => void;
 }
 
 export function DatabaseTable({
   columns,
   data,
   clickableRow = true,
+  onClickRow,
 }: TicketsTableProps) {
   const router = useRouter();
 
@@ -282,7 +284,11 @@ export function DatabaseTable({
   }, [dataWithIdFilteredByMonth, globalFilter]);
 
   const handleRowClick = (id: string) => {
-    router.push(`/admin/database/${id}`);
+    if (onClickRow) {
+      onClickRow(id);
+    } else {
+      router.push(`/admin/database/${id}`);
+    }
   };
 
   return (

@@ -20,7 +20,6 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
-  chiefOrganizerProcedure,
   organizerProcedure,
   publicProcedure,
   router,
@@ -258,7 +257,7 @@ export const emittedTicketsRouter = router({
 
       return dataWithAge;
     }),
-  getUniqueBuyer: chiefOrganizerProcedure
+  getUniqueBuyer: organizerProcedure
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
       const buyer = await ctx.db.query.emittedTicket.findFirst({
