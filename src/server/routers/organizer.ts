@@ -20,7 +20,11 @@ import {
 import { eventSchema } from '@/server/schemas/event';
 import { organizerBaseSchema } from '@/server/schemas/organizer';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
-import { adminProcedure, organizerProcedure, router } from '@/server/trpc';
+import {
+  chiefOrganizerProcedure,
+  organizerProcedure,
+  router,
+} from '@/server/trpc';
 import { endOfDayUTC } from '@/server/utils/utils';
 
 export const organizerRouter = router({
@@ -82,7 +86,7 @@ export const organizerRouter = router({
     });
     return code?.code;
   }),
-  getAdminInfoById: adminProcedure
+  getInfoById: chiefOrganizerProcedure
     .input(organizerBaseSchema.shape.id)
     .query(async ({ ctx, input: organizerId }) => {
       // Get the user to check if they are a CHIEF_ORGANIZER
@@ -179,7 +183,7 @@ export const organizerRouter = router({
         },
       };
     }),
-  getAdminStatsById: adminProcedure
+  getStatsById: chiefOrganizerProcedure
     .input(
       z.object({
         organizerId: organizerBaseSchema.shape.id,

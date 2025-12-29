@@ -1,3 +1,6 @@
+'use client';
+import { useRouter } from 'next/navigation';
+
 import { CreateOrganizerForm } from '@/components/admin/users/CreateOrganizerForm';
 import { ImportUsersWrapper } from '@/components/admin/users/ImportUsersWrapper';
 import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
@@ -8,6 +11,7 @@ export default function Client({
 }: {
   organizers: RouterOutputs['user']['getOrganizersByChiefOrganizer'];
 }) {
+  const router = useRouter();
   return (
     <div className='flex flex-col gap-4 py-4'>
       <div className='flex justify-between items-center px-4'>
@@ -17,7 +21,10 @@ export default function Client({
           <CreateOrganizerForm />
         </div>
       </div>
-      <UsersTableWithFilters data={organizers} />
+      <UsersTableWithFilters
+        data={organizers}
+        onClickRow={(id) => router.push(`/organization/organizers/${id}`)}
+      />
     </div>
   );
 }

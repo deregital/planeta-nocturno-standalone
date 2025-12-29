@@ -17,9 +17,10 @@ interface UsersTableProps {
   data:
     | RouterOutputs['user']['getAll']
     | RouterOutputs['user']['getOrganizers'];
+  onClickRow?: (id: string) => void;
 }
 
-export function UsersTableWithFilters({ data }: UsersTableProps) {
+export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
   const router = useRouter();
   const session = useSession();
   const isAdmin = session.data?.user.role === 'ADMIN';
@@ -96,7 +97,11 @@ export function UsersTableWithFilters({ data }: UsersTableProps) {
   }, [data, globalFilter, selectedBatches, selectedRoles, isAdmin]);
 
   const handleRowClick = (id: string) => {
-    router.push(`/admin/users/${id}`);
+    if (onClickRow) {
+      onClickRow(id);
+    } else {
+      router.push(`/admin/users/${id}`);
+    }
   };
 
   return (
