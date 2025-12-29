@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import Client from '@/app/(backoffice)/organization/organizers/client';
 import { auth } from '@/server/auth';
+import { trpc } from '@/server/trpc/server';
 
 export default async function Page() {
   const session = await auth();
@@ -10,5 +11,7 @@ export default async function Page() {
     redirect('/organization');
   }
 
-  return <Client chiefOrganizerId={session.user.id} />;
+  const organizers = await trpc.user.getOrganizersByChiefOrganizer();
+
+  return <Client organizers={organizers} />;
 }

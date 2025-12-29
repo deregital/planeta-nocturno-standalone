@@ -1,17 +1,13 @@
-'use client';
 import { CreateOrganizerForm } from '@/components/admin/users/CreateOrganizerForm';
 import { ImportUsersWrapper } from '@/components/admin/users/ImportUsersWrapper';
 import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
-import OrganizerSkeleton from '@/components/organization/organizers/OrganizerSkeleton';
-import { trpc } from '@/server/trpc/client';
+import { type RouterOutputs } from '@/server/routers/app';
 
 export default function Client({
-  chiefOrganizerId,
+  organizers,
 }: {
-  chiefOrganizerId: string;
+  organizers: RouterOutputs['user']['getOrganizersByChiefOrganizer'];
 }) {
-  const { data, isLoading } = trpc.user.getByRole.useQuery('ORGANIZER');
-
   return (
     <div className='flex flex-col gap-4 py-4'>
       <div className='flex justify-between items-center px-4'>
@@ -21,17 +17,7 @@ export default function Client({
           <CreateOrganizerForm />
         </div>
       </div>
-      {isLoading ? (
-        <OrganizerSkeleton />
-      ) : (
-        <UsersTableWithFilters
-          data={
-            data?.filter(
-              (user) => user.chiefOrganizerId === chiefOrganizerId,
-            ) ?? []
-          }
-        />
-      )}
+      <UsersTableWithFilters data={organizers} />
     </div>
   );
 }
