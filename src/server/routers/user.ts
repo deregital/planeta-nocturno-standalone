@@ -55,6 +55,21 @@ export const userRouter = router({
       });
       return users;
     }),
+  getOrganizersByChiefOrganizer: chiefOrganizerProcedure.query(
+    async ({ ctx }) => {
+      const users = await ctx.db.query.user.findMany({
+        where: eq(userTable.chiefOrganizerId, ctx.session.user.id),
+        with: {
+          userXTags: {
+            with: {
+              tag: true,
+            },
+          },
+        },
+      });
+      return users;
+    },
+  ),
   getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany({
       where: eq(userTable.role, 'TICKETING'),

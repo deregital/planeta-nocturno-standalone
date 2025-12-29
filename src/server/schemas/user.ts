@@ -21,9 +21,14 @@ export const userSchema = z.object({
   }),
   gender: genderSchema,
   phoneNumber: phoneNumberSchema,
-  dni: z.string().min(1, {
-    error: 'El DNI/Pasaporte es requerido',
-  }),
+  dni: z
+    .string()
+    .min(1, {
+      error: 'El DNI/Pasaporte es requerido',
+    })
+    .regex(/^[^.,]+$/, {
+      error: 'El DNI/Pasaporte no puede contener puntos ni comas',
+    }),
   birthDate: z.coerce
     .date({
       error: (issue) => {

@@ -96,6 +96,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
             })
           }
           variant={'outline'}
+          disabled={createEvent.isPending}
         >
           Crear sin publicar
         </Button>
@@ -108,6 +109,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
                 isActive: true,
               })
             }
+            disabled={createEvent.isPending}
           >
             Crear y publicar
           </Button>

@@ -110,7 +110,7 @@ export default function Client({ organizerId }: { organizerId: string }) {
 
   return (
     <div className='flex flex-col gap-4 p-4'>
-      <GoBack route='/admin/users' className='size-fit my-2' />
+      <GoBack route='/organization/organizers' className='size-fit my-2' />
       <div className='flex gap-2'>
         <h1 className='text-4xl font-bold text-accent'>
           {info?.organizer.fullName}
