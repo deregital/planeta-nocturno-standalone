@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -20,6 +20,7 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
+  chiefOrganizerProcedure,
   organizerProcedure,
   publicProcedure,
   router,
@@ -211,7 +212,7 @@ export const emittedTicketsRouter = router({
         phoneNumber: emittedTicket.phoneNumber,
       })
       .from(emittedTicket)
-      .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
+      .orderBy(emittedTicket.dni, asc(emittedTicket.createdAt));
 
     const dnis = data.map((item) => item.dni);
     const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
@@ -242,7 +243,7 @@ export const emittedTicketsRouter = router({
         .from(emittedTicket)
         .leftJoin(ticketGroup, eq(emittedTicket.ticketGroupId, ticketGroup.id))
         .where(eq(ticketGroup.invitedById, input))
-        .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
+        .orderBy(emittedTicket.dni, asc(emittedTicket.createdAt));
 
       const dnis = data.map((item) => item.dni);
       const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
@@ -257,7 +258,7 @@ export const emittedTicketsRouter = router({
 
       return dataWithAge;
     }),
-  getUniqueBuyer: adminProcedure
+  getUniqueBuyer: chiefOrganizerProcedure
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
       const buyer = await ctx.db.query.emittedTicket.findFirst({
