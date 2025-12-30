@@ -21,6 +21,7 @@ export type CreateUserActionState = {
   data?: UserData;
   errors?: Partial<Record<keyof UserData | 'general', string>>;
   credentials?: UserFirstTimeCredentials;
+  requiresPasswordConfirmation?: boolean;
 };
 
 export type CreateOrganizerActionState = {
@@ -76,6 +77,15 @@ export async function createUser(
         general: '',
         ...errors,
       },
+    };
+  }
+
+  // Si el rol es ADMIN y no se ha confirmado la contraseña, solo validar y pedir confirmación
+  const passwordConfirmed = formData.get('passwordConfirmed') === 'true';
+  if (role === 'ADMIN' && !passwordConfirmed) {
+    return {
+      data: validation.data,
+      requiresPasswordConfirmation: true,
     };
   }
 

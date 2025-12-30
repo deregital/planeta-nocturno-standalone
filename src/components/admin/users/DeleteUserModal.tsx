@@ -1,21 +1,21 @@
 'use client';
 
 import { Trash } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
-  DialogTitle,
-  DialogDescription,
   DialogContent,
-  DialogTrigger,
+  DialogDescription,
   DialogFooter,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { type User } from '@/server/types';
 import { trpc } from '@/server/trpc/client';
+import { type User } from '@/server/types';
 
 export function DeleteUserModal({ user }: { user: User }) {
   const [open, setOpen] = useState(false);
@@ -23,9 +23,7 @@ export function DeleteUserModal({ user }: { user: User }) {
 
   const deleteUser = trpc.user.delete.useMutation({
     onSuccess: () => {
-      toast.success(
-        'Usuario eliminado correctamente, refresque la página para ver los cambios',
-      );
+      toast.success('Usuario eliminado correctamente');
       router.refresh();
       setOpen(false);
     },
