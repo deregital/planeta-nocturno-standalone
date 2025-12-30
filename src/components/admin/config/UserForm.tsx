@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { startTransition, useState } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
@@ -49,6 +49,7 @@ export function UserForm({
   isPending,
   type,
   lockedRole,
+  onSubmit,
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
@@ -57,6 +58,7 @@ export function UserForm({
   formAction: (formData: FormData) => void;
   isPending: boolean;
   lockedRole?: (typeof role.enumValues)[number];
+  onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
 }) {
   const [internalState, setInternalState] = useState<UserData>({
     ...defaultState,
@@ -68,10 +70,23 @@ export function UserForm({
     setInternalState((prev) => ({ ...prev, [key]: value }));
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (onSubmit) {
+      onSubmit(e);
+    } else {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      startTransition(() => {
+        formAction(formData);
+      });
+    }
+  }
+
   return (
     <form
       className='flex flex-col gap-4 max-h-[80vh] overflow-y-auto px-1'
       action={formAction}
+      onSubmit={handleSubmit}
     >
       {userId && <input type='hidden' name='id' value={userId} />}
       <InputWithLabel
@@ -210,19 +225,20 @@ export function UserForm({
           handleChange('name', e.target.value);
         }}
       />
-      <InputWithLabel
-        required={type === 'CREATE'}
-        disabled={type === 'EDIT'}
-        label='Contraseña'
-        id='password'
-        type='password'
-        name='password'
-        value={internalState?.password}
-        error={errors?.password}
-        onChange={(e) => {
-          handleChange('password', e.target.value);
-        }}
-      />
+      {type === 'CREATE' && (
+        <InputWithLabel
+          required
+          label='Contraseña'
+          id='password'
+          type='password'
+          name='password'
+          value={internalState?.password}
+          error={errors?.password}
+          onChange={(e) => {
+            handleChange('password', e.target.value);
+          }}
+        />
+      )}
       {errors?.general && (
         <p className='pl-1 font-bold text-xs text-red-500'>{errors?.general}</p>
       )}

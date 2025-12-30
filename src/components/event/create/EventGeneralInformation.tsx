@@ -518,6 +518,15 @@ export function EventGeneralInformation({
                   );
                 }}
                 disabled={action === 'PREVIEW'}
+                onUserUpdated={(updatedName) => {
+                  handleChange(
+                    'authorizedUsers',
+                    event.authorizedUsers.map((u) =>
+                      u.id === user.id ? { ...u, name: updatedName } : u,
+                    ),
+                  );
+                  utils.user.getTicketingUsers.invalidate();
+                }}
               />
             ))}
             {event.authorizedUsers.length === 0 && (
