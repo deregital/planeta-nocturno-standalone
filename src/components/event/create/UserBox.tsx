@@ -17,7 +17,7 @@ export function UserBox({
   onUserUpdated?: (updatedName: string) => void;
 }) {
   return (
-    <div className='flex justify-between items-center pl-3 gap-2 border rounded-md border-accent'>
+    <div className='flex justify-between items-center pl-3 border rounded-md border-accent'>
       <p className='text-base'>{name}</p>
       {disabled ? (
         <Button variant={'destructiveGhost'} className='text-accent' disabled>
@@ -25,7 +25,9 @@ export function UserBox({
         </Button>
       ) : (
         <>
-          <EditTicketingUserModal userId={id} onSuccess={onUserUpdated} />
+          <div className='pl-2'>
+            <EditTicketingUserModal userId={id} onSuccess={onUserUpdated} />
+          </div>
           <Button variant={'destructiveGhost'} onClick={remove}>
             <Trash2 />
           </Button>
