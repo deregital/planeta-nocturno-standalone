@@ -242,17 +242,13 @@ const ticketChiefColumns: StrictColumnDef<
 
 export function TicketTableSectionChief({
   tickets,
-  highlightedTicketId,
 }: {
   tickets: RouterOutputs['emittedTickets']['getByEventId'];
-  highlightedTicketId?: string | null;
 }) {
   return (
     <DataTable
       columns={ticketChiefColumns}
       data={tickets}
-      highlightedRowId={highlightedTicketId}
-      exportExcludeColumnIds={['actions']}
       exportFileName={'Tickets'}
     />
   );

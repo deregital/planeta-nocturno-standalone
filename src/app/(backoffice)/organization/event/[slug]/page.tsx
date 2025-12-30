@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
-import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
+import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
 import { TraditionalTicketTableWrapper } from '@/components/organization/event/TraditionalTicketTableWrapper';
@@ -60,7 +60,10 @@ export default async function EventPage({
         fallback={<div className='text-center p-8'>Cargando ventas...</div>}
       >
         {session?.user.role === 'CHIEF_ORGANIZER' ? (
-          <TicketTableWithTabs ticketTypes={event.ticketTypes} />
+          <ChiefOrganizerEventView
+            event={event}
+            chiefOrganizerId={session.user.id}
+          />
         ) : (
           <TraditionalTicketTableWrapper eventId={event.id} />
         )}
