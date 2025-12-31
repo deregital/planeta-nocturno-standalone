@@ -1,92 +1,76 @@
 'use client';
 
-import { useState, useCallback } from 'react';
 import { Search } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
-import { type TicketType } from '@/server/types';
 import { type RouterOutputs } from '@/server/routers/app';
 
 interface SearchTicketsProps {
   tickets: RouterOutputs['emittedTickets']['getByEventId'] | undefined;
-  ticketTypes: TicketType[];
-  onSearchResult: (
-    highlightedTicketId: string | null,
-    targetTab: string | null,
+  onFilteredTicketsChange: (
+    filteredTickets:
+      | RouterOutputs['emittedTickets']['getByEventId']
+      | undefined,
   ) => void;
+  externalSearchValue?: string;
 }
 
 export function SearchTickets({
   tickets,
-  ticketTypes,
-  onSearchResult,
+  onFilteredTicketsChange,
+  externalSearchValue,
 }: SearchTicketsProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const prevExternalValue = useRef<string | undefined>(undefined);
 
-  // Search function to find tickets by nombre, DNI, email, or telefono
-  const searchTickets = useCallback(
-    (searchValue: string) => {
-      if (!searchValue.trim() || !tickets) {
-        onSearchResult(null, null);
-        return;
-      }
+  // Filter tickets based on search term
+  const filteredTickets = useMemo(() => {
+    if (!tickets || !searchTerm.trim()) return tickets;
 
-      const searchLower = searchValue
+    return tickets.filter((ticket) => {
+      const searchLower = searchTerm
         .toLowerCase()
         .trim()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
 
-      // Find the first matching ticket across all ticket types
-      const matchingTicket = tickets.find((ticket) => {
-        const fullName =
-          ticket.fullName
-            ?.toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') || '';
-        const dni =
-          ticket.dni
-            ?.toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') || '';
-        const mail =
-          ticket.mail
-            ?.toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') || '';
-        const phoneNumber =
-          ticket.phoneNumber
-            ?.toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') || '';
+      const searchableFields = [
+        ticket.fullName,
+        ticket.dni,
+        ticket.mail,
+        ticket.phoneNumber,
+        ticket.ticketGroup.invitedBy,
+      ].filter(Boolean);
 
-        return (
-          fullName.includes(searchLower) ||
-          dni.includes(searchLower) ||
-          mail.includes(searchLower) ||
-          phoneNumber.includes(searchLower)
-        );
+      return searchableFields.some((field) => {
+        const normalizedField = String(field)
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        return normalizedField.includes(searchLower);
       });
+    });
+  }, [tickets, searchTerm]);
 
-      if (matchingTicket) {
-        // Find which ticket type this ticket belongs to
-        const ticketType = ticketTypes.find(
-          (type) => type.id === matchingTicket.ticketType.id,
-        );
+  // Notify parent component of filtered tickets
+  useEffect(() => {
+    onFilteredTicketsChange(filteredTickets);
+  }, [filteredTickets, onFilteredTicketsChange]);
 
-        if (ticketType) {
-          onSearchResult(matchingTicket.id, ticketType.name);
-        }
-      } else {
-        onSearchResult(null, null);
-      }
-    },
-    [tickets, ticketTypes, onSearchResult],
-  );
+  // Sync external search value - only set when it comes from outside (card click)
+  useEffect(() => {
+    if (
+      externalSearchValue !== undefined &&
+      externalSearchValue !== prevExternalValue.current
+    ) {
+      prevExternalValue.current = externalSearchValue;
+      setSearchTerm(externalSearchValue);
+    }
+  }, [externalSearchValue]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    searchTickets(value);
   };
 
   return (
@@ -94,7 +78,7 @@ export function SearchTickets({
       <div className='relative max-w-md mx-auto'>
         <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
         <Input
-          placeholder='Buscar por nombre, DNI, email o teléfono...'
+          placeholder='Buscar por nombre, DNI, email, teléfono o organizador...'
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
           className='pl-10'

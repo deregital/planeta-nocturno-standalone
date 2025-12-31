@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
+import { Loader2 } from 'lucide-react';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
 import FormInputGender from '@/components/checkout/FormInputGender';
@@ -541,7 +542,13 @@ export default function CheckoutClient({
           className='rounded-full sm:text-2xl text-xl font-bold py-6 mt-8'
           disabled={isPending}
         >
-          <span>COMPRAR</span>
+          <span>
+            {isPending ? (
+              <Loader2 className='size-8 animate-spin' />
+            ) : (
+              'COMPRAR'
+            )}
+          </span>
         </Button>
       </form>
     </div>

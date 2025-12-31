@@ -1,4 +1,5 @@
 'use client';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -72,6 +73,7 @@ export default function Client({
             id: e.user.id,
             fullName: e.user.fullName,
             phoneNumber: e.user.phoneNumber,
+            role: e.user.role,
           };
           return event.inviteCondition === 'TRADITIONAL'
             ? {
@@ -164,7 +166,11 @@ export default function Client({
         className='w-full justify-self-end'
         disabled={isSubmitting}
       >
-        Actualizar
+        {isSubmitting ? (
+          <Loader2 className='size-4 animate-spin' />
+        ) : (
+          'Actualizar'
+        )}
       </Button>
     </div>
   );

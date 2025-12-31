@@ -123,7 +123,7 @@ export const userRouter = router({
         .values({
           ...input,
           fullName: input.fullName,
-          name: input.name,
+          name: input.name.trim(),
           password: hashedPassword,
           instagram,
         })
@@ -152,7 +152,7 @@ export const userRouter = router({
         .update(userTable)
         .set({
           ...input,
-          name: input.name,
+          name: input.name.trim(),
           birthDate: input.birthDate,
           instagram,
         })
