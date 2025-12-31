@@ -1,13 +1,7 @@
 'use client';
 
 import { Pencil } from 'lucide-react';
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { startTransition, useActionState, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { updateUser } from '@/app/(backoffice)/admin/users/[id]/edit/actions';
@@ -36,11 +30,6 @@ export function EditTicketingUserModal({
     enabled: open && !!userId,
   });
 
-  const onSuccessRef = useRef(onSuccess);
-  useEffect(() => {
-    onSuccessRef.current = onSuccess;
-  }, [onSuccess]);
-
   const initialState = user
     ? {
         fullName: user.fullName,
@@ -65,7 +54,7 @@ export function EditTicketingUserModal({
       const updatedName = state.data?.name ?? user.name;
       toast.success('Usuario actualizado correctamente');
 
-      onSuccessRef.current?.(updatedName);
+      onSuccess?.(updatedName);
 
       setTimeout(() => {
         setOpen(false);
@@ -76,7 +65,7 @@ export function EditTicketingUserModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant='ghost' size='icon' className='h-8 w-8'>
+        <Button type='button' variant='ghost' size='icon' className='h-8 w-8'>
           <Pencil className='size-4' />
         </Button>
       </DialogTrigger>
@@ -97,6 +86,7 @@ export function EditTicketingUserModal({
             lockedRole='TICKETING'
             onSubmit={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               const formData = new FormData(e.currentTarget);
               startTransition(() => {
                 formAction(formData);
