@@ -35,20 +35,18 @@ export default function InputDateWithLabel({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value) {
-      // Parse date in local timezone to avoid timezone conversion issues
-      const [year, month, day] = value.split('-').map(Number);
-      let date = new Date();
-      date.setFullYear(year);
-      date.setMonth(month - 1);
-      date.setDate(day);
+      let date: Date;
 
       if (dateType === 'datetime-local') {
         // Parse datetime-local format: YYYY-MM-DDTHH:mm using date-fns
         date = parse(value, "yyyy-MM-dd'T'HH:mm", new Date());
+      } else {
+        // Parse date format: YYYY-MM-DD using date-fns to avoid timezone issues
+        date = parse(value, 'yyyy-MM-dd', new Date());
       }
 
       // Verificar que la fecha sea válida
-      if (!isNaN(date.getTime())) {
+      if (isValid(date)) {
         onChange(date);
       }
     }
