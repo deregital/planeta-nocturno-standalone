@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/drizzle';
 
 import { ticketGroup } from '@/drizzle/schema';
+import { calculateTotalPriceFromData } from '@/lib/utils';
 
 export async function calculateTotalPrice({
   ticketGroupId,
@@ -46,23 +47,11 @@ export async function calculateTotalPrice({
     0,
   );
 
-  // Calculate service fee over subtotal (pre-discount)
-  let serviceFeePrice = 0;
-  if (group.event.serviceFee) {
-    serviceFeePrice = subtotalPrice * (group.event.serviceFee / 100);
-  }
-
-  // Apply discount to subtotal if exists
-  const hasDiscount =
-    discountPercentage !== null &&
-    discountPercentage !== undefined &&
-    discountPercentage > 0;
-  const subtotalWithDiscount = hasDiscount
-    ? subtotalPrice * (1 - discountPercentage / 100)
-    : subtotalPrice;
-
-  // Total = subtotal with discount + service fee
-  const totalPrice = subtotalWithDiscount + serviceFeePrice;
+  const totalPrice = calculateTotalPriceFromData({
+    subtotalPrice,
+    serviceFee: group.event.serviceFee,
+    discountPercentage,
+  });
 
   return totalPrice;
 }

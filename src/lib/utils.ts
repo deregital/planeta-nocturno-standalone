@@ -39,3 +39,28 @@ export function daysUntilBirthday(dateStr: string): number {
   const diff = nextBirthday.getTime() - today.getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
+
+export function calculateTotalPriceFromData({
+  subtotalPrice,
+  serviceFee,
+  discountPercentage,
+}: {
+  subtotalPrice: number;
+  serviceFee: number | null | undefined;
+  discountPercentage?: number | null;
+}): number {
+  let serviceFeePrice = 0;
+  if (serviceFee) {
+    serviceFeePrice = subtotalPrice * (serviceFee / 100);
+  }
+
+  const hasDiscount =
+    discountPercentage !== null &&
+    discountPercentage !== undefined &&
+    discountPercentage > 0;
+  const subtotalWithDiscount = hasDiscount
+    ? subtotalPrice * (1 - discountPercentage / 100)
+    : subtotalPrice;
+
+  return subtotalWithDiscount + serviceFeePrice;
+}
