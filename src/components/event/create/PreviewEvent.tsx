@@ -1,7 +1,7 @@
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
@@ -32,6 +32,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
           ? (organizer.discountPercentage ?? 0)
           : (organizer.ticketAmount ?? 0),
       dni: organizer.dni,
+      role: organizer.role,
     }),
   );
 

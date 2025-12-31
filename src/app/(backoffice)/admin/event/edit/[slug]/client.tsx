@@ -1,8 +1,8 @@
 'use client';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 
 import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
@@ -73,6 +73,7 @@ export default function Client({
             id: e.user.id,
             fullName: e.user.fullName,
             phoneNumber: e.user.phoneNumber,
+            role: e.user.role,
           };
           return event.inviteCondition === 'TRADITIONAL'
             ? {

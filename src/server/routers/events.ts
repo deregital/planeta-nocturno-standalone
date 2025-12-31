@@ -325,6 +325,7 @@ export const eventsRouter = router({
                 fullName: true,
                 phoneNumber: true,
                 chiefOrganizerId: true,
+                role: true,
               },
             },
           },

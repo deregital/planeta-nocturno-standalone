@@ -7,6 +7,7 @@ export const organizerBaseSchema = z.object({
   id: z.uuid(),
   fullName: userSchema.shape.fullName,
   phoneNumber: userSchema.shape.phoneNumber,
+  role: userSchema.shape.role,
 });
 
 export const organizerTraditionalSchema = z.object({
