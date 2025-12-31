@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
-import { Tabs, TabsTrigger, TabsList, TabsContent } from '@/components/ui/tabs';
-import { type InviteCondition } from '@/server/types';
-import { inviteCondition } from '@/drizzle/schema';
 import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { inviteCondition } from '@/drizzle/schema';
+import { type InviteCondition } from '@/server/types';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export function EventInvitationTypeAction({
   next,
@@ -20,6 +21,10 @@ export function EventInvitationTypeAction({
   const resetOrganizers = useCreateEventStore((state) => state.resetOrganizers);
   const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const setEvent = useCreateEventStore((state) => state.setEvent);
+  const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const addOrganizerTicketType = useCreateEventStore(
+    (state) => state.addOrganizerTicketType,
+  );
 
   const [tab, setTab] = useState<InviteCondition>(event.inviteCondition);
 
@@ -36,6 +41,14 @@ export function EventInvitationTypeAction({
         'Debes seleccionar al menos un organizador en modo invitación',
       );
       return;
+    }
+
+    // Asegurarse de que el ticket de organizador existe
+    if (
+      organizers.length > 0 &&
+      !ticketTypes.some((t) => t.name === ORGANIZER_TICKET_TYPE_NAME)
+    ) {
+      addOrganizerTicketType();
     }
 
     next();

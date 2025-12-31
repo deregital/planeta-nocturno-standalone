@@ -30,9 +30,6 @@ export function InvitationTicketTypeAction({
   );
   const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const organizers = useCreateEventStore((state) => state.organizers);
-  const addOrganizerTicketType = useCreateEventStore(
-    (state) => state.addOrganizerTicketType,
-  );
 
   // Encontrar el ticket único existente (excluyendo el ticket de organizador)
   const existingUniqueTicket = ticketTypes.find(
@@ -133,14 +130,6 @@ export function InvitationTicketTypeAction({
           maxPerPurchase: 1,
           maxSellDate: null,
         });
-      }
-
-      // Asegurarse de que el ticket de organizador existe
-      const organizerTicketExists = ticketTypes.some(
-        (t) => t.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
-      );
-      if (!organizerTicketExists) {
-        addOrganizerTicketType();
       }
 
       next?.();
