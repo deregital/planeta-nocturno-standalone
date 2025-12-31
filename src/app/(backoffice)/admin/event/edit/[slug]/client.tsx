@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
@@ -164,7 +165,11 @@ export default function Client({
         className='w-full justify-self-end'
         disabled={isSubmitting}
       >
-        Actualizar
+        {isSubmitting ? (
+          <Loader2 className='size-4 animate-spin' />
+        ) : (
+          'Actualizar'
+        )}
       </Button>
     </div>
   );

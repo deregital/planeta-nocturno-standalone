@@ -1,5 +1,7 @@
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
@@ -36,8 +38,13 @@ export default function PreviewEvent({ back }: { back: () => void }) {
   const createEvent = trpc.events.create.useMutation();
 
   const router = useRouter();
+  const [activeButton, setActiveButton] = useState<'draft' | 'publish' | null>(
+    null,
+  );
 
   const handleSubmit = async ({ isActive }: { isActive: boolean }) => {
+    const buttonType = isActive ? 'publish' : 'draft';
+    setActiveButton(buttonType);
     try {
       await createEvent.mutateAsync({
         event: { ...event, isActive },
@@ -52,6 +59,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
           ? e.message
           : 'Error desconocido, vuelva a intentarlo.';
       toast(`Error al crear el evento: ${msg}`);
+      setActiveButton(null);
     }
   };
 
@@ -98,12 +106,15 @@ export default function PreviewEvent({ back }: { back: () => void }) {
           variant={'outline'}
           disabled={createEvent.isPending}
         >
-          Crear sin publicar
+          {activeButton === 'draft' && createEvent.isPending ? (
+            <Loader2 className='size-4 animate-spin' />
+          ) : (
+            'Crear sin publicar'
+          )}
         </Button>
         {event.inviteCondition === 'TRADITIONAL' && (
           <Button
             variant={'accent'}
-            className=''
             onClick={() =>
               handleSubmit({
                 isActive: true,
@@ -111,7 +122,11 @@ export default function PreviewEvent({ back }: { back: () => void }) {
             }
             disabled={createEvent.isPending}
           >
-            Crear y publicar
+            {activeButton === 'publish' && createEvent.isPending ? (
+              <Loader2 className='size-4 animate-spin' />
+            ) : (
+              'Crear y publicar'
+            )}
           </Button>
         )}
       </div>
