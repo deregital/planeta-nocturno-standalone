@@ -52,12 +52,12 @@ export const userSchema = z.object({
     .max(24, {
       error: 'El CVU/Alias debe ser menor a 24 caracteres',
     })
-    .nullable(),
+    .nullish(),
   googleDriveUrl: z
     .url({
       error: 'La URL debe ser válida',
     })
-    .nullable(),
+    .nullish(),
 });
 
 export const resetPasswordSchema = userSchema
