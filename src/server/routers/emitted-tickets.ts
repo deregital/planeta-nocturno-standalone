@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -212,7 +212,7 @@ export const emittedTicketsRouter = router({
         phoneNumber: emittedTicket.phoneNumber,
       })
       .from(emittedTicket)
-      .orderBy(emittedTicket.dni, asc(emittedTicket.createdAt));
+      .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
 
     const dnis = data.map((item) => item.dni);
     const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
@@ -243,7 +243,7 @@ export const emittedTicketsRouter = router({
         .from(emittedTicket)
         .leftJoin(ticketGroup, eq(emittedTicket.ticketGroupId, ticketGroup.id))
         .where(eq(ticketGroup.invitedById, input))
-        .orderBy(emittedTicket.dni, asc(emittedTicket.createdAt));
+        .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
 
       const dnis = data.map((item) => item.dni);
       const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
@@ -263,6 +263,7 @@ export const emittedTicketsRouter = router({
     .query(async ({ input, ctx }) => {
       const buyer = await ctx.db.query.emittedTicket.findFirst({
         where: eq(emittedTicket.dni, input),
+        orderBy: desc(emittedTicket.createdAt),
         columns: {
           fullName: true,
           dni: true,
