@@ -159,6 +159,8 @@ export const organizerRouter = router({
           email: true,
           phoneNumber: true,
           instagram: true,
+          mercadopago: true,
+          googleDriveUrl: true,
         },
       });
 
@@ -180,6 +182,8 @@ export const organizerRouter = router({
           email: organizer.email,
           phoneNumber: organizer.phoneNumber,
           instagram: organizer.instagram,
+          mercadopago: organizer.mercadopago,
+          googleDriveUrl: organizer.googleDriveUrl,
         },
       };
     }),

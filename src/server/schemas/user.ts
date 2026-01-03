@@ -47,6 +47,17 @@ export const userSchema = z.object({
     }),
   instagram: z.string().nullable(),
   chiefOrganizerId: z.uuid().nullable(),
+  mercadopago: z
+    .string()
+    .max(24, {
+      error: 'El CVU/Alias debe ser menor a 24 caracteres',
+    })
+    .nullable(),
+  googleDriveUrl: z
+    .url({
+      error: 'La URL debe ser válida',
+    })
+    .nullable(),
 });
 
 export const resetPasswordSchema = userSchema
