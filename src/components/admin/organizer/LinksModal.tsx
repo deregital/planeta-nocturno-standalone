@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,6 +57,7 @@ export default function LinksModal({
           <DialogTitle>
             <p className='font-bold text-xl'>Enlaces</p>
           </DialogTitle>
+          <DialogDescription />
         </DialogHeader>
         <form action={action} className='flex flex-col gap-4'>
           <input
@@ -68,7 +70,7 @@ export default function LinksModal({
           <InputWithLabel
             id='mercadopago'
             name='mercadopago'
-            label='Mercado Pago (opcional)'
+            label='Alias/CVU (opcional)'
             defaultValue={state.data?.mercadopago ?? mercadopago ?? ''}
             error={state.errors?.mercadopago}
           />
