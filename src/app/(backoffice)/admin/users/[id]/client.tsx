@@ -122,11 +122,8 @@ export default function Client({ organizerId }: { organizerId: string }) {
           phoneNumber={info?.organizer.phoneNumber}
           mail={info?.organizer.email}
         />
-        <div className='flex items-center justify-center mx-4'>
-          <Separator
-            orientation='vertical'
-            className='border-accent-ultra-light border'
-          />
+        <div className='flex items-center justify-center mx-2'>
+          <Separator orientation='vertical' className='border-accent border' />
         </div>
         <OrganizerLinks
           mercadopago={info?.organizer.mercadopago}
