@@ -7,10 +7,12 @@ import { Loader } from 'lucide-react';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
 
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
+import OrganizerLinks from '@/components/admin/organizer/OrganizerLinks';
 import { DataTable } from '@/components/common/DataTable';
 import { FilledCard } from '@/components/common/FilledCard';
 import GoBack from '@/components/common/GoBack';
 import BuyerLinks from '@/components/database/BuyerLinks';
+import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -119,6 +121,17 @@ export default function Client({ organizerId }: { organizerId: string }) {
           instagram={normalizedInstagram}
           phoneNumber={info?.organizer.phoneNumber}
           mail={info?.organizer.email}
+        />
+        <div className='flex items-center justify-center mx-4'>
+          <Separator
+            orientation='vertical'
+            className='border-accent-ultra-light border'
+          />
+        </div>
+        <OrganizerLinks
+          mercadopago={info?.organizer.mercadopago}
+          googleDriveUrl={info?.organizer.googleDriveUrl}
+          organizerId={organizerId}
         />
       </div>
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
