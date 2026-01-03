@@ -9,9 +9,14 @@ export const emittedTicketSchema = z.object({
   fullName: z.string().min(2, {
     error: 'El nombre es requerido',
   }),
-  dni: z.string().min(4, {
-    error: 'El DNI no es valido, asegúrese de no incluir puntos ni comas',
-  }),
+  dni: z
+    .string()
+    .min(4, {
+      error: 'El DNI no es válido',
+    })
+    .regex(/^[^.,]+$/, {
+      error: 'El DNI no puede contener puntos ni comas',
+    }),
   mail: z.email({
     error: 'El email no es válido',
   }),

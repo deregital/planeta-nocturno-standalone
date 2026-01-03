@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ticketTypeCategory } from '@/drizzle/schema';
 import { trpc } from '@/server/trpc/client';
-import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export function TraditionalTicketTypeAction({
   back,
@@ -20,9 +19,6 @@ export function TraditionalTicketTypeAction({
   const event = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers);
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
-  const addOrganizerTicketType = useCreateEventStore(
-    (state) => state.addOrganizerTicketType,
-  );
 
   const { data: location } = trpc.location.getById.useQuery(event.locationId, {
     enabled: !!event.locationId,
@@ -34,13 +30,6 @@ export function TraditionalTicketTypeAction({
       return;
     }
 
-    if (
-      organizers.length > 0 &&
-      !ticketTypes.some((t) => t.name === ORGANIZER_TICKET_TYPE_NAME)
-    ) {
-      addOrganizerTicketType();
-    }
-
     next?.();
   }
 
@@ -48,7 +37,6 @@ export function TraditionalTicketTypeAction({
     if (!location) return 0;
     return (
       location.capacity -
-      organizers.length - // Aca se tiene en cuenta que cada organizador tiene un ticket
       ticketTypes.reduce((acc, t) => acc + t.maxAvailable, 0)
     );
   }, [location, ticketTypes, organizers.length]);

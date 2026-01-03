@@ -1,14 +1,15 @@
+import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import { headers } from 'next/headers';
 
-import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
-import { trpc } from '@/server/trpc/server';
-import { auth } from '@/server/auth';
 import GoBack from '@/components/common/GoBack';
-import { TraditionalTicketTableWrapper } from '@/components/organization/event/TraditionalTicketTableWrapper';
-import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
+import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
+import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
+import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
+import { TraditionalTicketTableWrapper } from '@/components/organization/event/TraditionalTicketTableWrapper';
+import { auth } from '@/server/auth';
+import { trpc } from '@/server/trpc/server';
 import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 export default async function EventPage({
@@ -58,7 +59,14 @@ export default async function EventPage({
       <Suspense
         fallback={<div className='text-center p-8'>Cargando ventas...</div>}
       >
-        <TraditionalTicketTableWrapper eventId={event.id} />
+        {session?.user.role === 'CHIEF_ORGANIZER' ? (
+          <ChiefOrganizerEventView
+            event={event}
+            chiefOrganizerId={session.user.id}
+          />
+        ) : (
+          <TraditionalTicketTableWrapper eventId={event.id} />
+        )}
       </Suspense>
 
       {event.inviteCondition === 'INVITATION' && (

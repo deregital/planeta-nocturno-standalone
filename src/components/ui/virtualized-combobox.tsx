@@ -65,7 +65,14 @@ function VirtualizedCommand({
     const flatOptions: AllOption[] = [];
 
     if (groupedOptions) {
-      groupedOptions.forEach((group) => {
+      groupedOptions.forEach((group, index) => {
+        // Agregar separador antes de cada grupo excepto el primero
+        if (index > 0) {
+          flatOptions.push({
+            type: 'separator',
+            id: `separator-${group.group}-${index}`,
+          });
+        }
         flatOptions.push(...group.options);
       });
     }
@@ -91,37 +98,47 @@ function VirtualizedCommand({
 
     const searchLower = searchTerm.toLowerCase();
     const filtered = allOptions.filter((option) => {
-      // Saltar separadores
+      // Mantener separadores temporalmente
       if ('type' in option) return true;
 
       // Buscar en el label de la opción
       return option.label.toLowerCase().includes(searchLower);
     });
 
-    // Verificar si tenemos ambos grupos y opciones individuales en los resultados filtrados
-    const hasGroupedOptions =
-      groupedOptions &&
-      groupedOptions.some((group) =>
-        group.options.some((option) =>
-          option.label.toLowerCase().includes(searchLower),
-        ),
-      );
-    const hasIndividualOptions = options.some((option) =>
-      option.label.toLowerCase().includes(searchLower),
-    );
+    // Limpiar separadores que no tienen opciones antes y después
+    const cleaned: AllOption[] = [];
+    for (let i = 0; i < filtered.length; i++) {
+      const option = filtered[i];
 
-    // Si no tenemos ambos tipos, eliminar separadores
-    if (!hasGroupedOptions || !hasIndividualOptions) {
-      return filtered.filter((option) => !('type' in option));
+      if ('type' in option) {
+        // Es un separador - mantenerlo solo si hay opciones antes y después
+        const hasOptionBefore = i > 0 && !('type' in filtered[i - 1]);
+        const hasOptionAfter =
+          i < filtered.length - 1 && !('type' in filtered[i + 1]);
+
+        if (hasOptionBefore && hasOptionAfter) {
+          cleaned.push(option);
+        }
+      } else {
+        // Es una opción regular - siempre incluirla
+        cleaned.push(option);
+      }
     }
 
-    return filtered;
+    return cleaned;
   }, [allOptions, searchTerm, groupedOptions, options]);
 
   const virtualizer = useVirtualizer({
     count: filteredOptions.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 35,
+    estimateSize: (index) => {
+      const option = filteredOptions[index];
+      // Separadores tienen una altura más pequeña
+      if (option && 'type' in option) {
+        return 8;
+      }
+      return 35;
+    },
   });
 
   const virtualOptions = virtualizer.getVirtualItems();

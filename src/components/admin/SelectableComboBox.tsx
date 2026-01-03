@@ -12,6 +12,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -53,17 +54,20 @@ export function SelectableComboBox({
             <CommandEmpty>No se encontro {listOf}</CommandEmpty>
             <CommandGroup>
               {createOption && (
-                <CommandItem
-                  key='create-new'
-                  value={createOption.label}
-                  className='font-semibold text-accent-dark'
-                  onSelect={() => {
-                    setOpen(false);
-                    createOption.onClick();
-                  }}
-                >
-                  {createOption.label}
-                </CommandItem>
+                <>
+                  <CommandItem
+                    key='create-new'
+                    value={createOption.label}
+                    className='font-semibold text-accent-dark py-1.25'
+                    onSelect={() => {
+                      setOpen(false);
+                      createOption.onClick();
+                    }}
+                  >
+                    {createOption.label}
+                  </CommandItem>
+                  <CommandSeparator />
+                </>
               )}
               {list.map((item) => (
                 <CommandItem

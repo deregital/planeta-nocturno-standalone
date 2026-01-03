@@ -144,26 +144,36 @@ export async function getBuyersCodeByDni(
 
   const firstPurchaseDate = min(emittedTicket.createdAt).as('firstPurchase');
 
-  const allBuyersCte = db
+  // Primera CTE: agrupa por DNI y obtiene la primera fecha de compra
+  const buyersWithDateCte = db
     .select({
       dni: emittedTicket.dni,
       firstPurchase: firstPurchaseDate,
     })
     .from(emittedTicket)
     .groupBy(emittedTicket.dni)
-    .as('all_buyers');
+    .as('buyers_with_date');
 
-  // Agarramos los DNIs pasados y le asignamos un ID global
-  const filteredBuyers = await db
-    .with(allBuyersCte) // Indica a Drizzle que use la CTE
+  // Segunda CTE: calcula el ID único para TODOS los compradores (ordenados por primera compra)
+  const allBuyersCte = db
     .select({
-      dni: allBuyersCte.dni,
-      id: sql<number>`ROW_NUMBER() OVER (ORDER BY ${allBuyersCte.firstPurchase} ASC)`.as(
+      dni: buyersWithDateCte.dni,
+      id: sql<number>`ROW_NUMBER() OVER (ORDER BY ${buyersWithDateCte.firstPurchase} ASC)`.as(
         'id',
       ),
     })
+    .from(buyersWithDateCte)
+    .as('all_buyers');
+
+  // Filtramos por los DNIs solicitados, manteniendo los IDs únicos globales
+  const filteredBuyers = await db
+    .with(buyersWithDateCte, allBuyersCte)
+    .select({
+      dni: allBuyersCte.dni,
+      id: allBuyersCte.id,
+    })
     .from(allBuyersCte)
-    .where(inArray(allBuyersCte.dni, dnis)); // Filtro los DNIs pasados
+    .where(inArray(allBuyersCte.dni, dnis));
 
   return filteredBuyers;
 }

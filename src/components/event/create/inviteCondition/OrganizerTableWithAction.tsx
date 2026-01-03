@@ -1,19 +1,22 @@
 import { type ColumnDef } from '@tanstack/react-table';
 import { TrashIcon } from 'lucide-react';
-import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
-import { DataTable } from '@/components/common/DataTable';
-import { Input } from '@/components/ui/input';
-import { type InviteCondition } from '@/server/types';
-import { type CreateEventStore } from '@/app/(backoffice)/admin/event/create/state';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
+import { type CreateEventStore } from '@/app/(backoffice)/admin/event/create/state';
+import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { type role } from '@/drizzle/schema';
+import { roleTranslation } from '@/lib/translations';
+import { type InviteCondition } from '@/server/types';
 
 type OrganizerTableData = {
   id: string;
   fullName: string;
   dni: string;
   phoneNumber: string;
+  role: (typeof role.enumValues)[number];
   number: number;
 };
 
@@ -54,6 +57,13 @@ function columns({
       accessorKey: 'phoneNumber',
       cell: ({ row }) => {
         return <div>{row.original.phoneNumber}</div>;
+      },
+    },
+    {
+      header: 'Rol',
+      accessorKey: 'role',
+      cell: ({ row }) => {
+        return <div>{roleTranslation[row.original.role]}</div>;
       },
     },
     {

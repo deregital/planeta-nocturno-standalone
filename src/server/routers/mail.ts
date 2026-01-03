@@ -2,10 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
 import z from 'zod';
 
-import {
-  eventXorganizer,
-  ticketGroup as ticketGroupSchema,
-} from '@/drizzle/schema';
+import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
 import { publicProcedure, router } from '@/server/trpc';
@@ -120,12 +117,7 @@ export const mailRouter = router({
         with: {
           event: {
             with: {
-              eventXorganizers: {
-                where: eq(
-                  eventXorganizer.organizerId,
-                  ticketGroupSchema?.invitedById,
-                ),
-              },
+              eventXorganizers: true,
             },
           },
           ticketTypePerGroups: {
@@ -139,6 +131,14 @@ export const mailRouter = router({
           },
         },
       });
+
+      // Filter eventXorganizers by invitedById after fetching
+      if (ticketGroup?.event.eventXorganizers && ticketGroup.invitedById) {
+        ticketGroup.event.eventXorganizers =
+          ticketGroup.event.eventXorganizers.filter(
+            (eo) => eo.organizerId === ticketGroup.invitedById,
+          );
+      }
 
       // No deberia ser posible
       if (!input.email) {

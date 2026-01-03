@@ -127,6 +127,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
                   org.ticketAmount !== null
                 ? org.ticketAmount
                 : 0,
+          role: organizer.role,
         };
       });
   }, [organizersData, organizers]);

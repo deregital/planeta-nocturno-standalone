@@ -55,6 +55,21 @@ export const userRouter = router({
       });
       return users;
     }),
+  getOrganizersByChiefOrganizer: chiefOrganizerProcedure.query(
+    async ({ ctx }) => {
+      const users = await ctx.db.query.user.findMany({
+        where: eq(userTable.chiefOrganizerId, ctx.session.user.id),
+        with: {
+          userXTags: {
+            with: {
+              tag: true,
+            },
+          },
+        },
+      });
+      return users;
+    },
+  ),
   getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany({
       where: eq(userTable.role, 'TICKETING'),
@@ -108,7 +123,7 @@ export const userRouter = router({
         .values({
           ...input,
           fullName: input.fullName,
-          name: input.name,
+          name: input.name.trim(),
           password: hashedPassword,
           instagram,
         })
@@ -137,13 +152,41 @@ export const userRouter = router({
         .update(userTable)
         .set({
           ...input,
-          name: input.name,
+          name: input.name.trim(),
           birthDate: input.birthDate,
           instagram,
         })
         .where(eq(userTable.id, input.id));
 
       revalidatePath('/admin/users');
+      return user;
+    }),
+  partialUpdate: chiefOrganizerProcedure
+    .input(
+      userSchema
+        .omit({
+          password: true,
+          chiefOrganizerId: true,
+          email: true,
+          dni: true,
+          name: true,
+        })
+        .partial()
+        .extend({ id: z.string() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const instagram = input.instagram?.startsWith('@')
+        ? input.instagram.slice(1)
+        : input.instagram;
+
+      const user = await ctx.db
+        .update(userTable)
+        .set({
+          ...input,
+          instagram,
+        })
+        .where(eq(userTable.id, input.id));
+
       return user;
     }),
   resetPassword: chiefOrganizerProcedure

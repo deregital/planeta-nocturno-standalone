@@ -1,18 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { type TicketType } from '@/server/types';
-import { trpc } from '@/server/trpc/client';
-import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
 import { SearchTickets } from '@/components/event/individual/SearchTickets';
+import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
+import { TicketTableSectionChief } from '@/components/event/individual/ticketsTable/TicketTableSectionChief';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { trpc } from '@/server/trpc/client';
+import { type TicketType } from '@/server/types';
 
 export function TicketTableWithTabs({
   ticketTypes,
+  externalSearchValue,
 }: {
   ticketTypes: TicketType[];
+  externalSearchValue?: string;
 }) {
   const { data: tickets } = trpc.emittedTickets.getByEventId.useQuery(
     {
@@ -26,42 +29,39 @@ export function TicketTableWithTabs({
   const session = useSession();
   const isAdmin = session.data?.user.role === 'ADMIN';
 
-  const [highlightedTicketId, setHighlightedTicketId] = useState<string | null>(
-    null,
-  );
+  const [filteredTickets, setFilteredTickets] = useState<
+    typeof tickets | undefined
+  >(tickets);
+
+  // Sync filtered tickets when tickets change (initial load)
+  useEffect(() => {
+    if (tickets) {
+      setFilteredTickets(tickets);
+    }
+  }, [tickets]);
 
   const ticketsByType = useMemo(() => {
-    if (!tickets) return {};
+    if (!filteredTickets) return {};
     return ticketTypes?.reduce(
       (acc, type) => {
-        const ticketsByType = tickets.filter(
+        const ticketsByType = filteredTickets.filter(
           (ticket) => ticket.ticketType.id === type.id,
         );
         acc[type.name] = [...ticketsByType];
         return acc;
       },
-      {} as Record<string, typeof tickets>,
+      {} as Record<string, typeof filteredTickets>,
     );
-  }, [tickets, ticketTypes]);
+  }, [filteredTickets, ticketTypes]);
 
   const [tab, setTab] = useState(ticketTypes[0].name);
-
-  const handleSearchResult = (
-    highlightedId: string | null,
-    targetTab: string | null,
-  ) => {
-    setHighlightedTicketId(highlightedId);
-    if (targetTab) {
-      setTab(targetTab);
-    }
-  };
 
   return (
     <>
       <SearchTickets
         tickets={tickets}
-        ticketTypes={ticketTypes}
-        onSearchResult={handleSearchResult}
+        onFilteredTicketsChange={setFilteredTickets}
+        externalSearchValue={externalSearchValue}
       />
 
       <Tabs
@@ -78,11 +78,14 @@ export function TicketTableWithTabs({
         </TabsList>
         {Object.keys(ticketsByType).map((type) => (
           <TabsContent key={type} value={type}>
-            <TicketTableSection
-              tickets={ticketsByType[type]}
-              highlightedTicketId={highlightedTicketId}
-              isAdmin={isAdmin}
-            />
+            {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
+              <TicketTableSectionChief tickets={ticketsByType[type]} />
+            ) : (
+              <TicketTableSection
+                tickets={ticketsByType[type]}
+                isAdmin={isAdmin}
+              />
+            )}
           </TabsContent>
         ))}
       </Tabs>

@@ -1,14 +1,10 @@
 'use client';
-import { format } from 'date-fns';
-import { format as formatPhoneNumber } from 'libphonenumber-js';
-import { Cake, Contact, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
 
 import AttendedEventsTable from '@/components/admin/BuyerTable';
 import { FilledCard } from '@/components/common/FilledCard';
 import GoBack from '@/components/common/GoBack';
-import { Instagram } from '@/components/icons/Instagram';
-import { WhatsApp } from '@/components/icons/WhatsApp';
-import { genderTranslation } from '@/lib/translations';
+import BuyerInformation from '@/components/database/BuyerInformation';
+import BuyerLinks from '@/components/database/BuyerLinks';
 import { type RouterOutputs } from '@/server/routers/app';
 
 export default function Client({
@@ -32,103 +28,17 @@ export default function Client({
           {buyer.fullName}{' '}
           <span className='text-3xl text-gray-500'>ID: {buyer.buyerCode}</span>
         </h1>
-        <div className='flex justify-center items-center gap-4 ml-8 [&>div]:w-9 [&>div]:h-9 [&>div]:inline-flex [&>div]:items-center [&>div]:justify-center [&>div]:border [&>div]:rounded-sm [&>div]:transition'>
-          {buyer.instagram && (
-            <div className='bg-[#DA00A4] hover:bg-[#DA00A4]/75'>
-              <a
-                href={`https://instagram.com/${normalizedInstagram}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                aria-label='Instagram'
-                className='text-white '
-              >
-                <Instagram />
-              </a>
-            </div>
-          )}
-          {buyer.phoneNumber && (
-            <div className='bg-[#00C500] hover:bg-[#00C500]/75'>
-              <a
-                href={`https://wa.me/${buyer.phoneNumber}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                aria-label='WhatsApp'
-                className='text-white'
-              >
-                <WhatsApp />
-              </a>
-            </div>
-          )}
-          {buyer.mail && (
-            <div className='bg-[#DA0004] hover:bg-[#DA0004]/75'>
-              <a
-                href={`mailto:${buyer.mail}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                aria-label='Email'
-                className='text-white'
-              >
-                <Mail />
-              </a>
-            </div>
-          )}
-        </div>
+        <BuyerLinks
+          instagram={normalizedInstagram}
+          phoneNumber={buyer.phoneNumber}
+          mail={buyer.mail}
+        />
       </div>
 
       <div className='flex gap-8 flex-col lg:flex-row'>
-        <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
-          <div>
-            <Contact />
-            <p>
-              <span className='text-gray-600'>ID:</span> {buyer.buyerCode}
-            </p>
-          </div>
-          <div>
-            <IdCard />
-            <p>
-              <span className='text-gray-600'>DNI/Pasaporte:</span> {buyer.dni}
-            </p>
-          </div>
-          <div>
-            <Cake />
-            <p>
-              <span className='text-gray-600'>Fecha de nacimiento:</span>{' '}
-              {format(buyer.birthDate, 'dd/MM/yyyy')}{' '}
-              <span className='text-sm'>({buyer.age} años)</span>
-            </p>
-          </div>
-          <div>
-            <VenusAndMars />
-            <p>
-              <span className='text-gray-600'>Género:</span>{' '}
-              {buyer.gender === 'female' ||
-              buyer.gender === 'male' ||
-              buyer.gender === 'other'
-                ? genderTranslation[buyer.gender]
-                : 'No definido'}
-            </p>
-          </div>
-          <div>
-            <Phone />
-            <p>
-              <span className='text-gray-600'>Número de teléfono:</span>{' '}
-              {formatPhoneNumber(buyer.phoneNumber, 'INTERNATIONAL')}
-            </p>
-          </div>
-          <div>
-            <Mail />
-            <p>
-              <span className='text-gray-600'>Email:</span> {buyer.mail}
-            </p>
-          </div>
-          <div>
-            <Instagram />
-            <p>
-              <span className='text-gray-600'>Instagram:</span>{' '}
-              {buyer.instagram ? `@${normalizedInstagram}` : '-'}
-            </p>
-          </div>
-        </FilledCard>
+        <BuyerInformation
+          buyer={{ ...buyer, instagram: normalizedInstagram }}
+        />
 
         <FilledCard className='flex flex-1 max-w-full p-4 flex-col text-accent-dark'>
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>

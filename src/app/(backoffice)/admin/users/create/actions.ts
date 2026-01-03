@@ -21,6 +21,7 @@ export type CreateUserActionState = {
   data?: UserData;
   errors?: Partial<Record<keyof UserData | 'general', string>>;
   credentials?: UserFirstTimeCredentials;
+  requiresPasswordConfirmation?: boolean;
 };
 
 export type CreateOrganizerActionState = {
@@ -71,11 +72,20 @@ export async function createUser(
       {} as Record<keyof UserData, string>,
     );
     return {
-      data,
+      data: validation.data,
       errors: {
         general: '',
         ...errors,
       },
+    };
+  }
+
+  // Si el rol es ADMIN y no se ha confirmado la contraseña, solo validar y pedir confirmación
+  const passwordConfirmed = formData.get('passwordConfirmed') === 'true';
+  if (role === 'ADMIN' && !passwordConfirmed) {
+    return {
+      data: validation.data,
+      requiresPasswordConfirmation: true,
     };
   }
 
@@ -89,7 +99,7 @@ export async function createUser(
     const errorMessage =
       error instanceof Error ? error.message : 'Error al crear usuario';
     return {
-      data,
+      data: validation.data,
       errors: {
         general: errorMessage,
       },
@@ -123,9 +133,9 @@ export async function createOrganizer(
   const phoneNumber = formData.get('phoneNumber') as string;
   const instagram = formData.get('instagram') as string;
   const chiefOrganizerId = formData.get('chiefOrganizerId') as string | null;
-  const role =
-    (formData.get('role') as (typeof roleEnum.enumValues)[number]) ||
-    'ORGANIZER';
+  const role = formData.get('role') as
+    | (typeof roleEnum.enumValues)[number]
+    | null;
 
   const data = {
     fullName,
@@ -153,7 +163,7 @@ export async function createOrganizer(
       {} as Record<keyof OrganizerData, string>,
     );
     return {
-      data,
+      data: validation.data,
       errors: {
         general: '',
         ...errors,
@@ -170,7 +180,7 @@ export async function createOrganizer(
     const errorMessage =
       error instanceof Error ? error.message : 'Error al crear usuario';
     return {
-      data,
+      data: validation.data,
       errors: {
         general: errorMessage,
       },
