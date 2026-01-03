@@ -15,20 +15,22 @@ datasource db {
 }
 
 model User {
-  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  shortId     Int     @unique @default(autoincrement())
-  name        String  @unique
-  fullName    String
-  password    String
-  email       String  @unique
-  birthDate   String
-  dni         String  @unique
-  phoneNumber String
-  gender      String
-  instagram   String?
-  role        Role
-  code        String  @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
-  tags        Tag[]   @relation("USER_X_TAG")
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shortId        Int     @unique @default(autoincrement())
+  name           String  @unique
+  fullName       String
+  password       String
+  email          String  @unique
+  birthDate      String
+  dni            String  @unique
+  phoneNumber    String
+  gender         String
+  instagram      String?
+  mercadopago    String?
+  googleDriveUrl String?
+  role           Role
+  code           String  @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+  tags           Tag[]   @relation("USER_X_TAG")
 
   accounts      Account[]
   sessions      Session[]
