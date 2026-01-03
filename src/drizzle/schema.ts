@@ -316,6 +316,8 @@ export const user = pgTable(
     instagram: text(),
     shortId: serial().notNull(),
     chiefOrganizerId: uuid(),
+    googleDriveUrl: text(),
+    mercadopago: text(),
   },
   (table) => [
     index('user_code_idx').using(

@@ -2,6 +2,7 @@
 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Loader2 } from 'lucide-react';
 import {
   useActionState,
   useCallback,
@@ -10,7 +11,6 @@ import {
   useState,
 } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
-import { Loader2 } from 'lucide-react';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
 import FormInputGender from '@/components/checkout/FormInputGender';
@@ -24,6 +24,7 @@ import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { calculateTotalPriceFromData } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { type EmittedTicketInput } from '@/server/schemas/emitted-tickets';
 import { trpc } from '@/server/trpc/client';
@@ -170,6 +171,25 @@ export default function CheckoutClient({
     "EEEE d 'de' MMMM 'de' yyyy - HH:mm 'hrs.'",
     { locale: es },
   );
+
+  const discountPercentage =
+    validateOrganizerCode.data?.valid &&
+    validateOrganizerCode.data.discountPercentage !== undefined
+      ? validateOrganizerCode.data.discountPercentage
+      : null;
+
+  const subtotalPrice = ticketGroup.ticketTypePerGroups.reduce(
+    (total, ticketType) => {
+      return total + ticketType.amount * (ticketType.ticketType.price ?? 0);
+    },
+    0,
+  );
+
+  const totalPrice = calculateTotalPriceFromData({
+    subtotalPrice,
+    serviceFee: ticketGroup.event.serviceFee,
+    discountPercentage,
+  });
 
   return (
     <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
@@ -545,6 +565,8 @@ export default function CheckoutClient({
           <span>
             {isPending ? (
               <Loader2 className='size-8 animate-spin' />
+            ) : totalPrice === 0 ? (
+              'ADQUIRIR'
             ) : (
               'COMPRAR'
             )}

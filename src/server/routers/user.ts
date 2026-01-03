@@ -161,6 +161,34 @@ export const userRouter = router({
       revalidatePath('/admin/users');
       return user;
     }),
+  partialUpdate: chiefOrganizerProcedure
+    .input(
+      userSchema
+        .omit({
+          password: true,
+          chiefOrganizerId: true,
+          email: true,
+          dni: true,
+          name: true,
+        })
+        .partial()
+        .extend({ id: z.string() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const instagram = input.instagram?.startsWith('@')
+        ? input.instagram.slice(1)
+        : input.instagram;
+
+      const user = await ctx.db
+        .update(userTable)
+        .set({
+          ...input,
+          instagram,
+        })
+        .where(eq(userTable.id, input.id));
+
+      return user;
+    }),
   resetPassword: chiefOrganizerProcedure
     .input(resetPasswordSchema)
     .mutation(async ({ ctx, input }) => {
