@@ -3,21 +3,22 @@
 import { type StrictColumnDef } from '@tanstack/react-table';
 import { format, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Loader, Mail } from 'lucide-react';
+import { Loader } from 'lucide-react';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
 
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
+import OrganizerLinks from '@/components/admin/organizer/OrganizerLinks';
 import { DataTable } from '@/components/common/DataTable';
 import { FilledCard } from '@/components/common/FilledCard';
 import GoBack from '@/components/common/GoBack';
-import { Instagram } from '@/components/icons/Instagram';
-import { WhatsApp } from '@/components/icons/WhatsApp';
+import BuyerLinks from '@/components/database/BuyerLinks';
+import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
-type OrganizerInfo = RouterOutputs['organizer']['getAdminInfoById'];
-type OrganizerStats = RouterOutputs['organizer']['getAdminStatsById'];
+type OrganizerInfo = RouterOutputs['organizer']['getInfoById'];
+type OrganizerStats = RouterOutputs['organizer']['getStatsById'];
 
 type RecentEvent = OrganizerInfo['recentEvents'][number];
 
@@ -80,13 +81,13 @@ export default function Client({ organizerId }: { organizerId: string }) {
     data: info,
     isLoading: isLoadingInfo,
     isError: isErrorInfo,
-  } = trpc.organizer.getAdminInfoById.useQuery(organizerId);
+  } = trpc.organizer.getInfoById.useQuery(organizerId);
 
   const {
     data: stats,
     isLoading: isLoadingStats,
     isError: isErrorStats,
-  } = trpc.organizer.getAdminStatsById.useQuery({
+  } = trpc.organizer.getStatsById.useQuery({
     organizerId,
     from,
     to,
@@ -116,47 +117,19 @@ export default function Client({ organizerId }: { organizerId: string }) {
         <h1 className='text-4xl font-bold text-accent'>
           {info?.organizer.fullName}
         </h1>
-        <div className='flex justify-center items-center gap-4 ml-8 [&>div]:w-9 [&>div]:h-9 [&>div]:inline-flex [&>div]:items-center [&>div]:justify-center [&>div]:border [&>div]:rounded-sm [&>div]:transition'>
-          {info?.organizer.instagram && (
-            <div className='bg-[#DA00A4] hover:bg-[#DA00A4]/75'>
-              <a
-                href={`https://instagram.com/${normalizedInstagram}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                aria-label='Instagram'
-                className='text-white '
-              >
-                <Instagram />
-              </a>
-            </div>
-          )}
-          {info?.organizer.phoneNumber && (
-            <div className='bg-[#00C500] hover:bg-[#00C500]/75'>
-              <a
-                href={`https://wa.me/${info.organizer.phoneNumber}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                aria-label='WhatsApp'
-                className='text-white'
-              >
-                <WhatsApp />
-              </a>
-            </div>
-          )}
-          {info?.organizer.email && (
-            <div className='bg-[#DA0004] hover:bg-[#DA0004]/75'>
-              <a
-                href={`mailto:${info?.organizer.email}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                aria-label='Email'
-                className='text-white'
-              >
-                <Mail />
-              </a>
-            </div>
-          )}
+        <BuyerLinks
+          instagram={normalizedInstagram}
+          phoneNumber={info?.organizer.phoneNumber}
+          mail={info?.organizer.email}
+        />
+        <div className='flex items-center justify-center mx-2'>
+          <Separator orientation='vertical' className='border-accent border' />
         </div>
+        <OrganizerLinks
+          mercadopago={info?.organizer.mercadopago}
+          googleDriveUrl={info?.organizer.googleDriveUrl}
+          organizerId={organizerId}
+        />
       </div>
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         <FilledCard className='lg:col-span-2 p-4 flex-col text-accent-dark'>

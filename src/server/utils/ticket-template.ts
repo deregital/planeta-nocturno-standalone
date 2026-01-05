@@ -156,7 +156,7 @@ export async function generateTicketTemplate(
     {
       name: 'fullName_title',
       type: 'text',
-      content: 'Nombre completo del titular del ticket:',
+      content: 'Nombre completo del titular:',
       position: { x: 47, y: 185 },
       width: 201.08,
       height: 10.05,
@@ -200,7 +200,7 @@ export async function generateTicketTemplate(
     {
       name: 'dni_title',
       type: 'text',
-      content: 'DNI del titular del ticket:',
+      content: 'DNI del titular:',
       position: { x: 47, y: 233 },
       width: 201.08,
       height: 10.05,

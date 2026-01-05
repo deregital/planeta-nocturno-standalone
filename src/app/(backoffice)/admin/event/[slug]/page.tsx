@@ -6,12 +6,12 @@ import { Suspense } from 'react';
 import GoBack from '@/components/common/GoBack';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
+import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
+import { ScanTicket } from '@/components/event/individual/ScanTicket';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { trpc } from '@/server/trpc/server';
-import { ScanTicket } from '@/components/event/individual/ScanTicket';
-import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
 
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
@@ -21,8 +21,8 @@ async function EventDetails({ slug }: { slug: string }) {
   }
 
   return (
-    <div className='flex flex-col items-center mt-4'>
-      <div className='flex w-full px-4'>
+    <div className='flex flex-col items-center mt-4 relative'>
+      <div className='absolute top-0 left-0 px-4'>
         <GoBack route='/admin/event' />
       </div>
       <div className='flex flex-col items-center mt-4'>

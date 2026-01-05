@@ -11,6 +11,7 @@ import {
   ticketGroup,
   ticketType as ticketTypeTable,
   ticketXorganizer,
+  user,
 } from '@/drizzle/schema';
 import {
   createManyTicketSchema,
@@ -257,11 +258,12 @@ export const emittedTicketsRouter = router({
 
       return dataWithAge;
     }),
-  getUniqueBuyer: adminProcedure
+  getUniqueBuyer: organizerProcedure
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
       const buyer = await ctx.db.query.emittedTicket.findFirst({
         where: eq(emittedTicket.dni, input),
+        orderBy: desc(emittedTicket.createdAt),
         columns: {
           fullName: true,
           dni: true,
@@ -493,8 +495,40 @@ export const emittedTicketsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      let ticketGroupIds: string[] = [];
+      if (ctx.session?.user.role === 'CHIEF_ORGANIZER') {
+        const organizers = await ctx.db.query.user.findMany({
+          where: eq(user.chiefOrganizerId, ctx.session.user.id),
+          columns: {
+            id: true,
+          },
+        });
+        const organizerIds = organizers.map((o) => o.id);
+
+        if (organizerIds.length > 0) {
+          // Obtener los IDs de los ticketGroups que corresponden a los organizadores del jefe
+          const groups = await ctx.db
+            .select({
+              id: ticketGroup.id,
+            })
+            .from(ticketGroup)
+            .where(
+              and(
+                eq(ticketGroup.eventId, input.eventId),
+                inArray(ticketGroup.invitedById, organizerIds),
+              ),
+            );
+          ticketGroupIds = groups.map((g) => g.id);
+        }
+      }
+
       const tickets = await ctx.db.query.emittedTicket.findMany({
-        where: eq(emittedTicket.eventId, input.eventId),
+        where: and(
+          eq(emittedTicket.eventId, input.eventId),
+          ticketGroupIds.length > 0
+            ? inArray(emittedTicket.ticketGroupId, ticketGroupIds)
+            : undefined,
+        ),
         with: {
           ticketType: true,
           ticketGroup: {
@@ -502,6 +536,13 @@ export const emittedTicketsRouter = router({
               user: {
                 columns: {
                   fullName: true,
+                },
+                with: {
+                  user: {
+                    columns: {
+                      fullName: true,
+                    },
+                  },
                 },
               },
             },

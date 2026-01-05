@@ -22,7 +22,7 @@ export async function emitTicket(
       attatchments: [pdf.pdf.blob],
     });
   } catch (error) {
-    console.log(error);
+    console.error('Error al emitir el ticket y enviar el mail', error);
   }
 }
 

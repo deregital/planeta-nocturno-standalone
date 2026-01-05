@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { signIn } from '@/server/auth';
-import { trpc } from '@/server/trpc/server';
 import { userSchema } from '@/server/schemas/user';
+import { trpc } from '@/server/trpc/server';
 
 const loginSchema = userSchema.pick({ name: true, password: true });
 type LoginActionState = {
@@ -23,7 +23,7 @@ export async function authenticate(
   formData: FormData,
 ): Promise<LoginActionState> {
   const rawData: z.infer<typeof loginSchema> = {
-    name: formData.get('username') as string,
+    name: (formData.get('username') as string)?.trim(),
     password: formData.get('password') as string,
   };
   try {
@@ -59,7 +59,7 @@ export async function authenticate(
 
   if (user?.role === 'TICKETING') {
     redirect('/admin/event');
-  } else if (user?.role === 'ORGANIZER') {
+  } else if (user?.role === 'ORGANIZER' || user?.role === 'CHIEF_ORGANIZER') {
     redirect('/organization');
   } else {
     redirect('/admin');

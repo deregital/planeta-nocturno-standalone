@@ -1,4 +1,5 @@
 'use client';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -20,10 +21,13 @@ export default function Client({
 }) {
   const router = useRouter();
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const updateEvent = trpc.events.update.useMutation({
     onSuccess: () => {
       toast.success('¡Evento editado con éxito!');
       router.push('/admin/event');
+      setIsSubmitting(false);
     },
     onError: (error) => {
       toast.error(
@@ -35,6 +39,7 @@ export default function Client({
           error.message ||
           'Error al actualizar el evento. Por favor, intente nuevamente.',
       });
+      setIsSubmitting(false);
     },
   });
 
@@ -68,6 +73,7 @@ export default function Client({
             id: e.user.id,
             fullName: e.user.fullName,
             phoneNumber: e.user.phoneNumber,
+            role: e.user.role,
           };
           return event.inviteCondition === 'TRADITIONAL'
             ? {
@@ -93,6 +99,7 @@ export default function Client({
   }, [event, setEvent, setOrganizers, setTicketTypes]);
 
   async function handleSubmit() {
+    setIsSubmitting(true);
     const validatedEvent = await validateGeneralInformation(eventState);
 
     if (!validatedEvent.success) {
@@ -146,7 +153,7 @@ export default function Client({
         <h3 className='text-2xl text-accent font-bold'>Tickets</h3>
         <TicketTypeAction action='EDIT' />
       </section>
-      <section>
+      <section className='mb-4'>
         <h3 className='text-2xl text-accent font-bold'>Organizadores</h3>
         <EventOrganizers type={event.inviteCondition} />
       </section>
@@ -157,8 +164,13 @@ export default function Client({
         onClick={() => handleSubmit()}
         variant={'accent'}
         className='w-full justify-self-end'
+        disabled={isSubmitting}
       >
-        Actualizar
+        {isSubmitting ? (
+          <Loader2 className='size-4 animate-spin' />
+        ) : (
+          'Actualizar'
+        )}
       </Button>
     </div>
   );

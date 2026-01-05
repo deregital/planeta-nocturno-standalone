@@ -1,4 +1,6 @@
 'use client';
+import { useRouter } from 'next/navigation';
+
 import {
   DatabaseTable,
   emittedBuyerColumns,
@@ -10,13 +12,14 @@ export default function Client({
 }: {
   buyers: RouterOutputs['emittedTickets']['getAllUniqueBuyerByOrganizer'];
 }) {
+  const router = useRouter();
   return (
     <div className='flex flex-col gap-4'>
       <h1 className='text-4xl font-bold p-4 text-accent'>Base de Datos</h1>
       <DatabaseTable
-        clickableRow={false}
         columns={emittedBuyerColumns}
         data={buyers}
+        onClickRow={(id) => router.push(`/organization/database/${id}`)}
       />
     </div>
   );

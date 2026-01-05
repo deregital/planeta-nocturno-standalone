@@ -21,9 +21,14 @@ export const userSchema = z.object({
   }),
   gender: genderSchema,
   phoneNumber: phoneNumberSchema,
-  dni: z.string().min(1, {
-    error: 'El DNI/Pasaporte es requerido',
-  }),
+  dni: z
+    .string()
+    .min(1, {
+      error: 'El DNI/Pasaporte es requerido',
+    })
+    .regex(/^[^.,]+$/, {
+      error: 'El DNI/Pasaporte no puede contener puntos ni comas',
+    }),
   birthDate: z.coerce
     .date({
       error: (issue) => {
@@ -42,6 +47,17 @@ export const userSchema = z.object({
     }),
   instagram: z.string().nullable(),
   chiefOrganizerId: z.uuid().nullable(),
+  mercadopago: z
+    .string()
+    .max(24, {
+      error: 'El CVU/Alias debe ser menor a 24 caracteres',
+    })
+    .nullish(),
+  googleDriveUrl: z
+    .url({
+      error: 'La URL debe ser válida',
+    })
+    .nullish(),
 });
 
 export const resetPasswordSchema = userSchema

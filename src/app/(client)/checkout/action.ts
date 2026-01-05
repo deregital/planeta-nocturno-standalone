@@ -300,9 +300,12 @@ export const handlePurchase = async (
       url = mercadoPagoUrl as Route;
     }
   } catch (error) {
-    throw new Error('Error al procesar la compra, vuelva a intentarlo', {
-      cause: error,
-    });
+    console.error(error);
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: ['Error al procesar la compra, vuelva a intentarlo'],
+      formData: formDataRecord,
+    };
   } finally {
     if (url) {
       redirect(url);
