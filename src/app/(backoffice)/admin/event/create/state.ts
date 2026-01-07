@@ -123,6 +123,34 @@ export const createEventStore = (initState: EventState = initialState) => {
           state.event.inviteCondition,
         );
 
+        const organizerTicketType = state.ticketTypes.find(
+          (t) => t.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
+        );
+
+        // Si no existe el ticket type de organizador y hay organizadores, crearlo
+        if (!organizerTicketType && organizers.length > 0) {
+          return {
+            organizers,
+            ticketTypes: [
+              ...state.ticketTypes,
+              {
+                id: crypto.randomUUID(),
+                name: ORGANIZER_TICKET_TYPE_NAME,
+                description: 'Tickets para los organizadores',
+                price: 0,
+                maxAvailable,
+                maxPerPurchase: 1,
+                category: 'FREE',
+                lowStockThreshold: null,
+                maxSellDate: null,
+                scanLimit: null,
+                visibleInWeb: false,
+              },
+            ],
+          };
+        }
+
+        // Si existe, actualizarlo
         return {
           organizers,
           ticketTypes: updateOrganizerTicketTypeMaxAvailable(
