@@ -233,6 +233,18 @@ export const organizerColumns: StrictColumnDef<
     },
   },
   {
+    accessorKey: 'chiefOrganizerFullName',
+    header: () => <p className='text-sm p-2'>Jefe del Organizador</p>,
+    cell: ({ row }) => {
+      const chiefFullName = row.original.user?.fullName;
+      return <p className='text-sm p-2'>{chiefFullName ?? '-'}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.user?.fullName ?? '-',
+      exportHeader: 'Jefe del Organizador',
+    },
+  },
+  {
     accessorKey: 'tags',
     header: ({ column }) => {
       const sorted = column.getIsSorted();

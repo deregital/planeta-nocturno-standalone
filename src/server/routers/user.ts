@@ -35,6 +35,11 @@ export const userRouter = router({
             tag: true,
           },
         },
+        user: {
+          columns: {
+            fullName: true,
+          },
+        },
       },
     });
 
@@ -63,6 +68,11 @@ export const userRouter = router({
           userXTags: {
             with: {
               tag: true,
+            },
+          },
+          user: {
+            columns: {
+              fullName: true,
             },
           },
         },
@@ -432,6 +442,11 @@ export const userRouter = router({
         userXTags: {
           with: {
             tag: true,
+          },
+        },
+        user: {
+          columns: {
+            fullName: true,
           },
         },
       },

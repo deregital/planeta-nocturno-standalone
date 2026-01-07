@@ -72,6 +72,7 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
             item.fullName,
             item.phoneNumber,
             item.email,
+            item.user?.fullName,
           ].filter(Boolean);
 
           return searchableFields.some((field) => {
