@@ -4,14 +4,14 @@ import { z } from 'zod';
 import { userSchema } from '@/server/schemas/user';
 
 // Schema para validar usuarios del Excel (sin género, username, password, role)
-const excelUserSchema = userSchema
-  .omit({ gender: true, name: true, password: true, role: true })
-  .extend({
-    // Mapear los campos del Excel a los campos del schema
-    fullName: z.string().min(1, {
-      error: 'El nombre completo es requerido',
-    }),
-  });
+const excelUserSchema = userSchema.pick({
+  fullName: true,
+  email: true,
+  dni: true,
+  birthDate: true,
+  phoneNumber: true,
+  instagram: true,
+});
 
 export interface ImportUserData {
   nombre: string;
