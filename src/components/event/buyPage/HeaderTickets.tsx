@@ -1,6 +1,7 @@
-import { MapPin } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
+import { MapPin } from 'lucide-react';
+import Image from 'next/image';
 
 import { type RouterOutputs } from '@/server/routers/app';
 
@@ -34,10 +35,14 @@ function HeaderTickets({
       {/* Lado izquierdo - Nombre del evento y fecha */}
       <div className='col-span-1 md:col-span-5 px-4 py-2 md:px-4 md:py-3 lg:px-6 lg:py-4 flex flex-col justify-center overflow-hidden relative border-b border-stroke md:border-b-0'>
         {/* Fondo solo visible en móvil (menos que md) */}
-        <div
-          className='absolute right-0 bg-cover aspect-square bg-center h-full md:hidden'
-          style={{ backgroundImage: `url(${backgroundImageUrl})` }}
-        ></div>
+        <div className='absolute right-0 bg-cover aspect-square bg-center h-full hidden min-[400px]:block md:hidden'>
+          <Image
+            alt='Imagen del evento'
+            src={backgroundImageUrl}
+            width={100}
+            height={100}
+          />
+        </div>
 
         <div className='relative z-10'>
           <h1 className='text-xl md:text-2xl lg:text-3xl font-base text-black line-clamp-2 md:line-clamp-1'>
@@ -71,10 +76,14 @@ function HeaderTickets({
 
       {/* Medio - Banner del evento (solo visible en desktop) */}
       <div className='hidden absolute right-0 md:block md:col-span-1 h-full w-fit'>
-        <div
-          className='aspect-square h-full max-h-25 bg-cover bg-center'
-          style={{ backgroundImage: `url(${backgroundImageUrl})` }}
-        ></div>
+        <div className='aspect-square h-full max-h-25 bg-cover bg-center'>
+          <Image
+            alt='Imagen del evento'
+            src={backgroundImageUrl}
+            width={100}
+            height={100}
+          />
+        </div>
       </div>
     </div>
   );
