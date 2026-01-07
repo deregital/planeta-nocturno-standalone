@@ -248,7 +248,6 @@ export const organizerColumns: StrictColumnDef<
             {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
             {!sorted && <ArrowUpDown className='h-4 w-4' />}
           </Button>
-          <TagModal type='CREATE' />
         </div>
       );
     },
