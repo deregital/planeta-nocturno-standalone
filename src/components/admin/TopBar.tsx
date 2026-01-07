@@ -23,7 +23,6 @@ export default function TopBar({ auth }: { auth: Session | null }) {
   const { data: user } = trpc.user.getUnsensitiveInfoById.useQuery(
     auth?.user.id as string,
   );
-  console.log('user', user);
 
   return (
     <div className='w-full h-16 flex items-center justify-between px-8 bg-accent-dark'>

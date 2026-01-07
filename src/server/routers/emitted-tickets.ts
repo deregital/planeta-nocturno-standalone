@@ -492,6 +492,7 @@ export const emittedTicketsRouter = router({
     .input(
       z.object({
         eventId: z.string(),
+        userId: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -503,7 +504,11 @@ export const emittedTicketsRouter = router({
             id: true,
           },
         });
-        const organizerIds = organizers.map((o) => o.id);
+
+        let organizerIds = organizers.map((o) => o.id);
+        if (input.userId) {
+          organizerIds = [...organizerIds, input.userId];
+        }
 
         if (organizerIds.length > 0) {
           // Obtener los IDs de los ticketGroups que corresponden a los organizadores del jefe
