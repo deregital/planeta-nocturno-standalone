@@ -92,6 +92,17 @@ export const userRouter = router({
     });
     return user;
   }),
+  getUnsensitiveInfoById: publicProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.db.query.user.findFirst({
+        where: eq(userTable.id, input),
+        columns: {
+          googleDriveUrl: true,
+        },
+      });
+      return user;
+    }),
   getByName: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const user = await ctx.db.query.user.findFirst({
       where: eq(userTable.name, input),
