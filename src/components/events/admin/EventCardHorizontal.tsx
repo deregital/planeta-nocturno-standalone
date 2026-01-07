@@ -102,112 +102,114 @@ export default function EventCardHorizontal({
             >
               <Pencil />
             </Button>
-            <ChangeEventFolder
-              eventId={event.id}
-              folderId={event.folderId ?? undefined}
-            />
             {isAdmin && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant={'ghost'}
-                    size={'icon'}
-                    className='text-on-accent'
-                  >
-                    <MoreVertical className='w-4 h-4' />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align='end'>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      generatePresentismoOrdenAlfPDF.mutate(
-                        { eventId: event.id },
-                        {
+              <>
+                <ChangeEventFolder
+                  eventId={event.id}
+                  folderId={event.folderId ?? undefined}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={'ghost'}
+                      size={'icon'}
+                      className='text-on-accent'
+                    >
+                      <MoreVertical className='w-4 h-4' />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align='end'>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        generatePresentismoOrdenAlfPDF.mutate(
+                          { eventId: event.id },
+                          {
+                            onError: (error) => {
+                              toast.error(error.message);
+                            },
+                            onSuccess: (pdf) => {
+                              const blob = new Blob(
+                                [pdf as unknown as ArrayBuffer],
+                                {
+                                  type: 'application/pdf',
+                                },
+                              );
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `Asistencia ${event.slug}.pdf`;
+                              a.click();
+                            },
+                          },
+                        );
+                      }}
+                      className='cursor-pointer'
+                    >
+                      <span className='mr-2 inline-flex'>
+                        <FileMarkdown />
+                      </span>
+                      PDF en orden alfabético
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        generatePresentismoGroupedTicketTypePDF.mutate(
+                          { eventId: event.id },
+                          {
+                            onError: (error) => {
+                              toast.error(error.message);
+                            },
+                            onSuccess: (pdf) => {
+                              const blob = new Blob(
+                                [pdf as unknown as ArrayBuffer],
+                                {
+                                  type: 'application/pdf',
+                                },
+                              );
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `Asistencia ${event.slug}.pdf`;
+                              a.click();
+                            },
+                          },
+                        );
+                      }}
+                      className='cursor-pointer'
+                    >
+                      <span className='mr-2 inline-flex'>
+                        <FileSmile />
+                      </span>
+                      PDF agrupado por tipo de ticket
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        await exportXlsxByTicketType.mutateAsync(event.id, {
                           onError: (error) => {
                             toast.error(error.message);
                           },
-                          onSuccess: (pdf) => {
-                            const blob = new Blob(
-                              [pdf as unknown as ArrayBuffer],
-                              {
-                                type: 'application/pdf',
-                              },
-                            );
+                          onSuccess: (out) => {
+                            const blob = new Blob([out], {
+                              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            });
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = `Asistencia ${event.slug}.pdf`;
+                            a.download = `tickets-${event.slug}.xlsx`;
                             a.click();
+                            URL.revokeObjectURL(url);
                           },
-                        },
-                      );
-                    }}
-                    className='cursor-pointer'
-                  >
-                    <span className='mr-2 inline-flex'>
-                      <FileMarkdown />
-                    </span>
-                    PDF en orden alfabético
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      generatePresentismoGroupedTicketTypePDF.mutate(
-                        { eventId: event.id },
-                        {
-                          onError: (error) => {
-                            toast.error(error.message);
-                          },
-                          onSuccess: (pdf) => {
-                            const blob = new Blob(
-                              [pdf as unknown as ArrayBuffer],
-                              {
-                                type: 'application/pdf',
-                              },
-                            );
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `Asistencia ${event.slug}.pdf`;
-                            a.click();
-                          },
-                        },
-                      );
-                    }}
-                    className='cursor-pointer'
-                  >
-                    <span className='mr-2 inline-flex'>
-                      <FileSmile />
-                    </span>
-                    PDF agrupado por tipo de ticket
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      await exportXlsxByTicketType.mutateAsync(event.id, {
-                        onError: (error) => {
-                          toast.error(error.message);
-                        },
-                        onSuccess: (out) => {
-                          const blob = new Blob([out], {
-                            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                          });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `tickets-${event.slug}.xlsx`;
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        },
-                      });
-                    }}
-                    className='cursor-pointer'
-                  >
-                    <span className='mr-2 inline-flex'>
-                      <FileSpreadsheet />
-                    </span>
-                    Excel por tipo de ticket
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                        });
+                      }}
+                      className='cursor-pointer'
+                    >
+                      <span className='mr-2 inline-flex'>
+                        <FileSpreadsheet />
+                      </span>
+                      Excel por tipo de ticket
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             )}
           </div>
         )}

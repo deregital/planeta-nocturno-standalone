@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useActionState, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 
 import { createOrganizer } from '@/app/(backoffice)/admin/users/create/actions';
 import { CredentialsModal } from '@/components/admin/users/CredentialsModal';
@@ -45,7 +46,9 @@ export function CreateOrganizerForm() {
     <>
       <Dialog open={createDialogOpen} onOpenChange={handleCreateDialogOpen}>
         <DialogTrigger asChild>
-          <Button className='w-fit'>+ Nuevo organizador</Button>
+          <Button className='w-fit'>
+            <Plus /> Nuevo organizador
+          </Button>
         </DialogTrigger>
         <DialogContent aria-describedby={undefined} title='Crear organizador'>
           <DialogHeader>

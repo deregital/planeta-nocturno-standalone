@@ -30,15 +30,9 @@ interface TagModalProps {
   type: 'CREATE' | 'EDIT';
   tag?: Tag;
   userId?: string;
-  size?: 'default' | 'badge';
 }
 
-export function TagModal({
-  type,
-  tag,
-  userId,
-  size = 'default',
-}: TagModalProps) {
+export function TagModal({ type, tag, userId }: TagModalProps) {
   const [open, setOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [name, setName] = useState('');
@@ -172,18 +166,9 @@ export function TagModal({
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          {size === 'default' ? (
-            <Button variant='ghost' onClick={(e) => e.stopPropagation()}>
-              <Plus />
-            </Button>
-          ) : (
-            <Badge
-              variant='outline'
-              className='cursor-pointer hover:bg-accent-light/50 transition-all'
-            >
-              <Plus />
-            </Badge>
-          )}
+          <Button variant='outline' onClick={(e) => e.stopPropagation()}>
+            <Plus /> Crear grupo
+          </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
