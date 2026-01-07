@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
@@ -12,6 +13,7 @@ import { roleTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export function EventOrganizers({ type }: { type: InviteCondition }) {
   const { maxNumber, maxCapacity, minNumber } = useOrganizerTickets(type);
@@ -21,12 +23,18 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
   const { data: organizersData } = trpc.user.getOrganizers.useQuery();
   const addOrganizer = useCreateEventStore((state) => state.addOrganizer);
   const organizers = useCreateEventStore((state) => state.organizers);
+  const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const event = useCreateEventStore((state) => state.event);
   const updateAllOrganizerNumber = useCreateEventStore(
     (state) => state.updateAllOrganizerNumber,
   );
   const updateOrganizerNumber = useCreateEventStore(
     (state) => state.updateOrganizerNumber,
   );
+
+  const { data: location } = trpc.location.getById.useQuery(event.locationId, {
+    enabled: !!event.locationId && type === 'TRADITIONAL',
+  });
 
   const prevMaxNumberRef = useRef(maxNumber);
   const prevDefaultNumberRef = useRef(defaultNumber);
@@ -255,6 +263,30 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
     }
   }, [organizers, organizersData, selectedComboboxOption]);
 
+  // Calcular el total de tickets sin el ticket type de organizador
+  const totalTicketsWithoutOrganizer = useMemo(() => {
+    return ticketTypes
+      .filter((t) => t.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim())
+      .reduce((acc, t) => acc + t.maxAvailable, 0);
+  }, [ticketTypes]);
+
+  // Función para verificar si hay capacidad disponible
+  const checkCapacity = useCallback(
+    (organizersToAdd: number): boolean => {
+      if (type !== 'TRADITIONAL' || !location) return true;
+
+      const totalOrganizersAfter = organizers.length + organizersToAdd;
+
+      const totalTicketsAfter =
+        totalTicketsWithoutOrganizer + totalOrganizersAfter;
+
+      const availableCapacity = location.capacity - totalTicketsAfter;
+
+      return availableCapacity >= 0;
+    },
+    [type, location, organizers.length, totalTicketsWithoutOrganizer],
+  );
+
   return (
     <div>
       <div>
@@ -283,6 +315,11 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
               if (tagOption && 'tagData' in tagOption) {
                 const organizersToAdd = tagOption.tagData.organizers;
                 const totalToAdd = organizersToAdd.length;
+
+                if (type === 'TRADITIONAL' && !checkCapacity(totalToAdd)) {
+                  toast.error('Se alcanzó la capacidad máxima en la locación');
+                  return;
+                }
 
                 // Calcular el máximo permitido una vez, considerando todos los organizadores que se agregarán
                 const maxAllowed =
@@ -342,6 +379,12 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
                 // Calcular total de organizadores a agregar (CHIEF + sus relacionados)
                 const totalToAdd = 1 + relatedOrganizers.length;
 
+                // Verificar capacidad en modo TRADITIONAL
+                if (type === 'TRADITIONAL' && !checkCapacity(totalToAdd)) {
+                  toast.error('Se alcanzó la capacidad máxima en la locación');
+                  return;
+                }
+
                 // Calcular el máximo permitido una vez, considerando todos los organizadores que se agregarán
                 const maxAllowed =
                   type === 'INVITATION'
@@ -381,6 +424,12 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
               const id = organizersData?.find((org) => org.dni === dni)?.id;
               const organizer = organizersData?.find((org) => org.id === id);
               if (!organizer) return;
+
+              if (type === 'TRADITIONAL' && !checkCapacity(1)) {
+                toast.error('Se alcanzó la capacidad máxima en la locación');
+                return;
+              }
+
               if (type === 'TRADITIONAL') {
                 addOrganizer(organizer, defaultNumber, type);
               } else {
