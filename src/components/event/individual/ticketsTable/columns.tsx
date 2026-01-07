@@ -257,7 +257,7 @@ export function generateTicketColumns(isAdmin: boolean) {
       accessorKey: 'scanned',
       meta: {
         exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
-        exportHeader: 'Usado',
+        exportHeader: 'Ingresó',
       },
       header: ({ column }) => {
         return (
@@ -266,7 +266,7 @@ export function generateTicketColumns(isAdmin: boolean) {
             className='pl-0 text-center w-full font-bold text-sm'
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           >
-            Usado
+            Ingresó
             <ArrowDownAZ
               className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
             />
