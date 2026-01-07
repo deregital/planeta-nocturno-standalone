@@ -78,7 +78,6 @@ export function EmitTicketModal({
       paidOnLocation: formData.get('paidOnLocation') === 'on',
       ticketTypeId: selectedTicketTypeId,
       instagram: (formData.get('instagram') as string) || undefined,
-      invitedBy: formData.get('invitedBy') as string,
     };
 
     const validation = createTicketSchema.safeParse(ticketData);
@@ -283,14 +282,6 @@ export function EmitTicketModal({
                 disabled={selectedTicketType?.category === 'FREE'}
                 defaultChecked={true}
                 error={error.paidOnLocation}
-              />
-            </FormRow>
-            <FormRow>
-              <InputWithLabel
-                label='Invita:'
-                id='invitedBy'
-                name='invitedBy'
-                error={error.invitedBy}
               />
             </FormRow>
             <Button type='submit' disabled={emitTicketLoading}>
