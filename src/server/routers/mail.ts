@@ -161,7 +161,7 @@ export const mailRouter = router({
             `${ticketType.amount} tickets de ${ticketType.ticketType.name}`,
         )
         .join(', ');
-      const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${formatCurrency(totalPrice)}. Para más información, ingresá a la plataforma.`;
+      const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de ${formatCurrency(totalPrice)}. Para más información, ingresá a la plataforma.`;
 
       try {
         const result = await retryWithBackoff(
