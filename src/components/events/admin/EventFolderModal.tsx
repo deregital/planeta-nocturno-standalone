@@ -98,6 +98,7 @@ export default function EventFolderModal({
       setErrors({});
       setOpen(false);
       utils.events.getAll.invalidate();
+      utils.eventFolder.getAll.invalidate();
     },
   });
   const updateFolder = trpc.eventFolder.update.useMutation({
@@ -110,6 +111,7 @@ export default function EventFolderModal({
       setErrors({});
       setOpen(false);
       utils.events.getAll.invalidate();
+      utils.eventFolder.getAll.invalidate();
     },
   });
   const deleteFolder = trpc.eventFolder.delete.useMutation({

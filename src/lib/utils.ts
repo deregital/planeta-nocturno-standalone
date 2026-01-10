@@ -64,3 +64,14 @@ export function calculateTotalPriceFromData({
 
   return subtotalWithDiscount + serviceFeePrice;
 }
+
+export function formatCurrency(price: number): string {
+  return price
+    .toLocaleString('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })
+    .replace(/\s/g, '');
+}

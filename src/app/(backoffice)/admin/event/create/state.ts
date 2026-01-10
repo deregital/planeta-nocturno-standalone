@@ -46,6 +46,7 @@ type EventActions = {
     type: InviteCondition,
   ) => void;
   addOrganizerTicketType: () => void;
+  updateOrganizerTicketType: () => void;
 };
 
 export type CreateEventStore = EventState & EventActions;
@@ -72,6 +73,38 @@ const initialState: EventState = {
   organizers: [],
 };
 
+function calculateOrganizerMaxAvailable(
+  organizers: OrganizerSchema[],
+  inviteCondition: InviteCondition,
+): number {
+  if (inviteCondition === 'INVITATION') {
+    return organizers.reduce((acc, organizer) => {
+      if ('ticketAmount' in organizer && organizer.ticketAmount !== null) {
+        return acc + organizer.ticketAmount;
+      }
+      return acc;
+    }, 0);
+  }
+  return organizers.length;
+}
+
+function updateOrganizerTicketTypeMaxAvailable(
+  ticketTypes: EventState['ticketTypes'],
+  maxAvailable: number,
+): EventState['ticketTypes'] {
+  const organizerTicketType = ticketTypes.find(
+    (t) => t.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
+  );
+
+  if (!organizerTicketType?.id) {
+    return ticketTypes;
+  }
+
+  return ticketTypes.map((t) =>
+    t.id === organizerTicketType.id ? { ...t, maxAvailable } : t,
+  );
+}
+
 export const createEventStore = (initState: EventState = initialState) => {
   return createStore<CreateEventStore>((set) => ({
     ...initState,
@@ -84,60 +117,177 @@ export const createEventStore = (initState: EventState = initialState) => {
       }));
     },
     setOrganizers: (organizers) => {
-      set(() => ({
-        organizers,
-      }));
+      set((state) => {
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          organizers,
+          state.event.inviteCondition,
+        );
+
+        const organizerTicketType = state.ticketTypes.find(
+          (t) => t.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim(),
+        );
+
+        // Si no existe el ticket type de organizador y hay organizadores, crearlo
+        if (!organizerTicketType && organizers.length > 0) {
+          return {
+            organizers,
+            ticketTypes: [
+              ...state.ticketTypes,
+              {
+                id: crypto.randomUUID(),
+                name: ORGANIZER_TICKET_TYPE_NAME,
+                description: 'Tickets para los organizadores',
+                price: 0,
+                maxAvailable,
+                maxPerPurchase: 1,
+                category: 'FREE',
+                lowStockThreshold: null,
+                maxSellDate: null,
+                scanLimit: null,
+                visibleInWeb: false,
+              },
+            ],
+          };
+        }
+
+        // Si existe, actualizarlo
+        return {
+          organizers,
+          ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+            state.ticketTypes,
+            maxAvailable,
+          ),
+        };
+      });
     },
     resetOrganizers: () => {
-      set(() => ({
+      set((state) => ({
         organizers: [],
+        ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+          state.ticketTypes,
+          0,
+        ),
       }));
     },
     addOrganizer: (organizer, number, type) => {
-      set((state) => ({
-        organizers: [
-          ...state.organizers,
+      set((state) => {
+        const newOrganizer =
           type === 'TRADITIONAL'
-            ? { ...organizer, type: 'TRADITIONAL', discountPercentage: number }
-            : { ...organizer, type: 'INVITATION', ticketAmount: number },
-        ],
-      }));
+            ? ({
+                ...organizer,
+                type: 'TRADITIONAL' as const,
+                discountPercentage: number,
+              } as const)
+            : ({
+                ...organizer,
+                type: 'INVITATION' as const,
+                ticketAmount: number,
+              } as const);
+
+        const newOrganizers = [...state.organizers, newOrganizer];
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          newOrganizers,
+          state.event.inviteCondition,
+        );
+
+        return {
+          organizers: newOrganizers,
+          ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+            state.ticketTypes,
+            maxAvailable,
+          ),
+        };
+      });
     },
     editOrganizer: (organizer, number, type) => {
-      set((state) => ({
-        organizers: state.organizers.map((o) =>
+      set((state) => {
+        const newOrganizers = state.organizers.map((o) =>
           o.id === organizer.id
             ? type === 'TRADITIONAL'
               ? { ...o, discountPercentage: number }
               : { ...o, ticketAmount: number }
             : o,
-        ),
-      }));
+        );
+
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          newOrganizers,
+          state.event.inviteCondition,
+        );
+
+        return {
+          organizers: newOrganizers,
+          ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+            state.ticketTypes,
+            maxAvailable,
+          ),
+        };
+      });
     },
     deleteOrganizer: (organizer: OrganizerBaseSchema) => {
-      set((state) => ({
-        organizers: state.organizers.filter((o) => o.id !== organizer.id),
-      }));
+      set((state) => {
+        const newOrganizers = state.organizers.filter(
+          (o) => o.id !== organizer.id,
+        );
+
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          newOrganizers,
+          state.event.inviteCondition,
+        );
+
+        return {
+          organizers: newOrganizers,
+          ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+            state.ticketTypes,
+            maxAvailable,
+          ),
+        };
+      });
     },
     updateAllOrganizerNumber: (number: number, type: InviteCondition) => {
-      set((state) => ({
-        organizers: state.organizers.map((o) =>
+      set((state) => {
+        const newOrganizers = state.organizers.map((o) =>
           type === 'TRADITIONAL'
             ? { ...o, discountPercentage: number }
             : { ...o, ticketAmount: number },
-        ),
-      }));
+        );
+
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          newOrganizers,
+          state.event.inviteCondition,
+        );
+
+        return {
+          organizers: newOrganizers,
+          ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+            state.ticketTypes,
+            maxAvailable,
+          ),
+        };
+      });
     },
     updateOrganizerNumber: (organizer, number, type) => {
-      set((state) => ({
-        organizers: state.organizers.map((o) =>
+      set((state) => {
+        const newOrganizers = state.organizers.map((o) =>
           o.id === organizer.id
             ? type === 'TRADITIONAL'
               ? { ...o, discountPercentage: number }
               : { ...o, ticketAmount: number }
             : o,
-        ),
-      }));
+        );
+
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          newOrganizers,
+          state.event.inviteCondition,
+        );
+
+        return {
+          organizers: newOrganizers,
+          ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+            state.ticketTypes,
+            maxAvailable,
+          ),
+        };
+      });
     },
     addTicketType: (ticketType) => {
       const newID = crypto.randomUUID();
@@ -161,24 +311,46 @@ export const createEventStore = (initState: EventState = initialState) => {
       }));
     },
     addOrganizerTicketType: () => {
-      set((state) => ({
-        ticketTypes: [
-          ...state.ticketTypes,
-          {
-            id: crypto.randomUUID(),
-            name: ORGANIZER_TICKET_TYPE_NAME,
-            description: 'Tickets para los organizadores',
-            price: 0,
-            maxAvailable: state.organizers.length,
-            maxPerPurchase: 1,
-            category: 'FREE',
-            lowStockThreshold: null,
-            maxSellDate: null,
-            scanLimit: null,
-            visibleInWeb: false,
-          },
-        ],
-      }));
+      set((state) => {
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          state.organizers,
+          state.event.inviteCondition,
+        );
+
+        return {
+          ticketTypes: [
+            ...state.ticketTypes,
+            {
+              id: crypto.randomUUID(),
+              name: ORGANIZER_TICKET_TYPE_NAME,
+              description: 'Tickets para los organizadores',
+              price: 0,
+              maxAvailable,
+              maxPerPurchase: 1,
+              category: 'FREE',
+              lowStockThreshold: null,
+              maxSellDate: null,
+              scanLimit: null,
+              visibleInWeb: false,
+            },
+          ],
+        };
+      });
+    },
+    updateOrganizerTicketType: () => {
+      set((state) => {
+        const maxAvailable = calculateOrganizerMaxAvailable(
+          state.organizers,
+          state.event.inviteCondition,
+        );
+
+        return {
+          ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+            state.ticketTypes,
+            maxAvailable,
+          ),
+        };
+      });
     },
   }));
 };

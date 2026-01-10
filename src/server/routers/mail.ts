@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import z from 'zod';
 
 import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
+import { formatCurrency } from '@/lib/utils';
 import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
 import { publicProcedure, router } from '@/server/trpc';
@@ -160,7 +161,7 @@ export const mailRouter = router({
             `${ticketType.amount} tickets de ${ticketType.ticketType.name}`,
         )
         .join(', ');
-      const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de $${totalPrice}. Para más información, ingresá a la plataforma.`;
+      const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de ${formatCurrency(totalPrice)}. Para más información, ingresá a la plataforma.`;
 
       try {
         const result = await retryWithBackoff(

@@ -1645,7 +1645,7 @@ export const eventsRouter = router({
           'Género',
           'Fecha de Nacimiento',
           'Fecha de Emisión',
-          'Usado',
+          'Ingresó',
           'Invitado por',
         ];
         const aoa = [

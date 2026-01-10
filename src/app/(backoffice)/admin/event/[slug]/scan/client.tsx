@@ -1,14 +1,14 @@
 'use client';
 
-import { type ExternalToast, toast } from 'sonner';
 import { X } from 'lucide-react';
 import { useState } from 'react';
+import { type ExternalToast, toast } from 'sonner';
 
+import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
+import { LastScansHistory } from '@/components/event/individual/scan/LastScansHistory';
 import { QRCodeScanner } from '@/components/event/individual/scan/QRCodeScanner';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
-import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
-import { LastScansHistory } from '@/components/event/individual/scan/LastScansHistory';
 
 const errorOptions: ExternalToast = {
   dismissible: true,
@@ -49,7 +49,7 @@ export default function ScanClient({
               barcode: raw,
             })
             .then((result) => {
-              setLastScans((prev) => [result, ...prev]);
+              setLastScans((prev) => [result, ...prev].slice(0, 20));
             });
         }}
       />
