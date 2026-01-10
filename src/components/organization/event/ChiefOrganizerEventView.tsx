@@ -29,6 +29,7 @@ export function ChiefOrganizerEventView({
       <TicketTableWithTabs
         ticketTypes={event.ticketTypes}
         externalSearchValue={searchValue}
+        userId={chiefOrganizerId}
       />
     </>
   );

@@ -12,7 +12,6 @@ export function QRCodeScanner({
   return (
     <div className='bg-accent-dark transition-opacity'>
       <Scanner
-        // paused={isLoading}
         classNames={{
           container: 'w-full h-fit my-auto',
           video: 'w-full h-fit my-auto',
@@ -23,9 +22,11 @@ export function QRCodeScanner({
             opacity: isLoading ? 0.2 : 1,
           },
         }}
-        scanDelay={100}
+        scanDelay={1000}
         formats={['qr_code']}
-        onScan={(result) => onScanSuccessAction(result[0].rawValue)}
+        onScan={(result) =>
+          !isLoading ? onScanSuccessAction(result[0].rawValue) : undefined
+        }
       />
     </div>
   );

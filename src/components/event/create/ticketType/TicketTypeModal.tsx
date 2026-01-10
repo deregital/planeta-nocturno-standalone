@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Pencil } from 'lucide-react';
+import { Loader2, Pencil } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { validateTicketType } from '@/app/(backoffice)/admin/event/create/actions';
@@ -40,6 +40,7 @@ export default function TicketTypeModal({
   const [error, setError] = useState<{
     [key: string]: string;
   }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [open, setOpen] = useState(false);
   const maxAvailableLeftReal = useMemo(() => {
@@ -147,6 +148,7 @@ export default function TicketTypeModal({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setIsSubmitting(true);
 
     const validation = await validateTicketType(
       editingTicketType,
@@ -163,6 +165,7 @@ export default function TicketTypeModal({
         }
       });
       setError(formattedErrors);
+      setIsSubmitting(false);
       return;
     }
 
@@ -171,6 +174,7 @@ export default function TicketTypeModal({
     } else if (action === 'EDIT' && ticketType?.id) {
       updateTicketType(ticketType.id, validation.data);
     }
+    setIsSubmitting(false);
 
     setOpen(false);
     setError({});
@@ -453,8 +457,12 @@ export default function TicketTypeModal({
               <b>{editingTicketType.maxPerPurchase}</b>.
             </p>
             {action === 'CREATE' ? (
-              <Button type='submit' className='w-full'>
-                Crear
+              <Button type='submit' className='w-full' disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <Loader2 className='animate-spin size-5' />
+                ) : (
+                  'Crear'
+                )}
               </Button>
             ) : (
               <>
@@ -479,8 +487,13 @@ export default function TicketTypeModal({
                   <Button
                     type='submit'
                     className='rounded-md order-1 md:order-2 flex-1'
+                    disabled={isSubmitting}
                   >
-                    Editar
+                    {isSubmitting ? (
+                      <Loader2 className='animate-spin size-5' />
+                    ) : (
+                      'Editar'
+                    )}
                   </Button>
                 </div>
               </>

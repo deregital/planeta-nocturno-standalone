@@ -1,23 +1,28 @@
 'use client';
 import { Loader2, LogOut } from 'lucide-react';
+import { type Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
-import { type Session } from 'next-auth';
 
+import { navRoutes } from '@/components/admin/SideBar';
+import SideBarTile from '@/components/admin/SideBarTile';
+import InstanceLogo from '@/components/header/InstanceLogo';
+import GoogleDrive from '@/components/icons/GoogleDrive';
+import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import InstanceLogo from '@/components/header/InstanceLogo';
-import { navRoutes } from '@/components/admin/SideBar';
-import SideBarTile from '@/components/admin/SideBarTile';
 import { roleTranslation } from '@/lib/translations';
+import { trpc } from '@/server/trpc/client';
 
 export default function TopBar({ auth }: { auth: Session | null }) {
   const pathname = usePathname();
+  const { data: user } = trpc.user.getUnsensitiveInfoById.useQuery(
+    auth?.user.id as string,
+  );
 
   return (
     <div className='w-full h-16 flex items-center justify-between px-8 bg-accent-dark'>
@@ -25,9 +30,22 @@ export default function TopBar({ auth }: { auth: Session | null }) {
       {auth && (
         <>
           <div className='hidden md:flex flex-row gap-16 items-center text-white'>
-            <span className='text-brand'>
-              {auth.user.fullName} ({roleTranslation[auth.user.role]})
-            </span>
+            <div className='flex flex-row gap-4 items-center'>
+              {user?.googleDriveUrl && (
+                <a
+                  href={user.googleDriveUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  aria-label='Google Drive'
+                  className='bg-white hover:bg-gray-200 w-8 h-8 inline-flex items-center justify-center border border-black rounded-sm transition'
+                >
+                  <GoogleDrive />
+                </a>
+              )}
+              <span className='text-brand'>
+                {auth.user.fullName} ({roleTranslation[auth.user.role]})
+              </span>
+            </div>
             <Button variant={'accent'} onClick={() => signOut()}>
               Cerrar Sesión
             </Button>
@@ -46,6 +64,17 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                         <InstanceLogo size='sm' />
                       </div>
                     </SheetTitle>
+                    {user?.googleDriveUrl && (
+                      <a
+                        href={user.googleDriveUrl}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        aria-label='Google Drive'
+                        className='bg-white hover:bg-gray-200 w-8 h-8 inline-flex items-center justify-center border border-black rounded-sm transition mx-2'
+                      >
+                        <GoogleDrive />
+                      </a>
+                    )}
                     <span className='text-brand'>
                       {auth.user.fullName} ({roleTranslation[auth.user.role]})
                     </span>

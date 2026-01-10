@@ -13,13 +13,16 @@ import { type TicketType } from '@/server/types';
 export function TicketTableWithTabs({
   ticketTypes,
   externalSearchValue,
+  userId,
 }: {
   ticketTypes: TicketType[];
   externalSearchValue?: string;
+  userId?: string;
 }) {
   const { data: tickets } = trpc.emittedTickets.getByEventId.useQuery(
     {
       eventId: ticketTypes[0].eventId,
+      userId,
     },
     {
       enabled: !!ticketTypes,

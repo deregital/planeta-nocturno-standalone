@@ -14,6 +14,7 @@ import GoBack from '@/components/common/GoBack';
 import BuyerLinks from '@/components/database/BuyerLinks';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { roleTranslation } from '@/lib/translations';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
@@ -117,6 +118,9 @@ export default function Client({ organizerId }: { organizerId: string }) {
         <h1 className='text-4xl font-bold text-accent'>
           {info?.organizer.fullName}
         </h1>
+        <span className='flex items-center text-xl ml-2 text-accent'>
+          ({info ? roleTranslation[info.organizer.role] : null})
+        </span>
         <BuyerLinks
           instagram={normalizedInstagram}
           phoneNumber={info?.organizer.phoneNumber}
