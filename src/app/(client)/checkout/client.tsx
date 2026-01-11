@@ -531,7 +531,11 @@ export default function CheckoutClient({
                 ? (state.errors as Record<string, string>)['invitedBy']
                 : undefined)
             }
-            label='Ingrese el código de organizador'
+            label={
+              organizerCodeFromTicketGroup
+                ? 'Código del organizador'
+                : 'Ingrese el código del organizador'
+            }
             id='organizerCode'
             required={false}
           />
