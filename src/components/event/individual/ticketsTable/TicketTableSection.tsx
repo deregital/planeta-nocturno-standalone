@@ -7,9 +7,11 @@ import { type RouterOutputs } from '@/server/routers/app';
 export function TicketTableSection({
   tickets,
   isAdmin = false,
+  headerActions,
 }: {
   tickets: RouterOutputs['emittedTickets']['getByEventId'];
   isAdmin?: boolean;
+  headerActions?: React.ReactNode;
 }) {
   return (
     <DataTable
@@ -17,6 +19,7 @@ export function TicketTableSection({
       data={tickets}
       exportExcludeColumnIds={['actions']}
       exportFileName={'Tickets'}
+      headerActions={headerActions}
     />
   );
 }

@@ -306,7 +306,7 @@ function VirtualizedCommand({
 }
 
 interface VirtualizedComboboxProps {
-  options: string[];
+  options: { value: string; label: string }[];
   groupedOptions?: GroupedOption[];
   searchPlaceholder?: string;
   notFoundPlaceholder?: string;
@@ -351,7 +351,7 @@ export function VirtualizedCombobox({
           }}
         >
           {showSelectedOptions && selectedOption
-            ? options.find((option) => option === selectedOption)
+            ? options.find((option) => option.value === selectedOption)?.label
             : searchPlaceholder}
           <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
         </Button>
@@ -360,7 +360,7 @@ export function VirtualizedCombobox({
         <VirtualizedCommand
           height={height}
           notFoundPlaceholder={notFoundPlaceholder}
-          options={options.map((option) => ({ value: option, label: option }))}
+          options={options}
           groupedOptions={groupedOptions}
           placeholder={searchPlaceholder}
           selectedOption={selectedOption}

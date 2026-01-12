@@ -1,23 +1,32 @@
 'use client';
 
+import { ClipboardIcon } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { SearchTickets } from '@/components/event/individual/SearchTickets';
 import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
 import { TicketTableSectionChief } from '@/components/event/individual/ticketsTable/TicketTableSectionChief';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/server/trpc/client';
+import {
+  ORGANIZER_TICKET_TYPE_NAME,
+  TICKET_TYPE_SLUG_QUERY_PARAM,
+} from '@/server/utils/constants';
 import { type TicketType } from '@/server/types';
 
 export function TicketTableWithTabs({
   ticketTypes,
   externalSearchValue,
   userId,
+  eventSlug,
 }: {
   ticketTypes: TicketType[];
   externalSearchValue?: string;
   userId?: string;
+  eventSlug: string;
 }) {
   const { data: tickets } = trpc.emittedTickets.getByEventId.useQuery(
     {
@@ -59,6 +68,16 @@ export function TicketTableWithTabs({
 
   const [tab, setTab] = useState(ticketTypes[0].name);
 
+  const copyTicketTypeUrl = (ticketTypeSlug: string) => {
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || '';
+    const url = `${origin}/event/${eventSlug}?${TICKET_TYPE_SLUG_QUERY_PARAM}=${ticketTypeSlug}`;
+    navigator.clipboard.writeText(url);
+    toast.success('URL copiada al portapapeles');
+  };
+
   return (
     <>
       <SearchTickets
@@ -79,18 +98,40 @@ export function TicketTableWithTabs({
             </TabsTrigger>
           ))}
         </TabsList>
-        {Object.keys(ticketsByType).map((type) => (
-          <TabsContent key={type} value={type}>
-            {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
-              <TicketTableSectionChief tickets={ticketsByType[type]} />
-            ) : (
-              <TicketTableSection
-                tickets={ticketsByType[type]}
-                isAdmin={isAdmin}
-              />
-            )}
-          </TabsContent>
-        ))}
+        {Object.keys(ticketsByType).map((type) => {
+          const currentTicketType = ticketTypes.find((tt) => tt.name === type);
+          const isOrganizerTicket =
+            currentTicketType?.name.trim() ===
+            ORGANIZER_TICKET_TYPE_NAME.trim();
+          const copyButton =
+            currentTicketType?.slug && !isOrganizerTicket ? (
+              <Button
+                variant='accent'
+                className='w-fit'
+                onClick={() => copyTicketTypeUrl(currentTicketType.slug)}
+              >
+                <ClipboardIcon className='w-4 h-4 mr-2' />
+                Copiar URL de este tipo de ticket
+              </Button>
+            ) : null;
+
+          return (
+            <TabsContent key={type} value={type}>
+              {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
+                <TicketTableSectionChief
+                  tickets={ticketsByType[type]}
+                  headerActions={copyButton}
+                />
+              ) : (
+                <TicketTableSection
+                  tickets={ticketsByType[type]}
+                  isAdmin={isAdmin}
+                  headerActions={copyButton}
+                />
+              )}
+            </TabsContent>
+          );
+        })}
       </Tabs>
     </>
   );

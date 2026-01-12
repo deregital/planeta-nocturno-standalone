@@ -51,7 +51,10 @@ async function EventDetails({ slug }: { slug: string }) {
           </div>
         </div>
       </div>
-      <TicketTableWithTabs ticketTypes={event.ticketTypes} />
+      <TicketTableWithTabs
+        ticketTypes={event.ticketTypes}
+        eventSlug={event.slug}
+      />
     </div>
   );
 }
