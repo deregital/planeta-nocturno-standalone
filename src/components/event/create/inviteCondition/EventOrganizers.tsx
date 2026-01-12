@@ -149,9 +149,10 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
         !selectedOrganizers?.some((org) => org.id === organizer.id),
     );
 
-    return selectableOrganizers.map(
-      (organizer) => `${organizer.fullName} - ${organizer.dni}`,
-    );
+    return selectableOrganizers.map((organizer) => ({
+      value: `${organizer.id}`,
+      label: `${organizer.fullName} - ${organizer.dni}`,
+    }));
   }, [organizersData, selectedOrganizers]);
 
   const groupedOptions = useMemo(() => {
@@ -419,10 +420,11 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
                 });
               }
             } else {
-              const dni = option.split(' - ').pop();
-              if (!dni) return;
-              const id = organizersData?.find((org) => org.dni === dni)?.id;
-              const organizer = organizersData?.find((org) => org.id === id);
+              // El option es el ID del organizador (value del objeto)
+              const organizerId = option;
+              const organizer = organizersData?.find(
+                (org) => org.id === organizerId,
+              );
               if (!organizer) return;
 
               if (type === 'TRADITIONAL' && !checkCapacity(1)) {

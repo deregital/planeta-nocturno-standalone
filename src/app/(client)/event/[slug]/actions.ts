@@ -22,9 +22,11 @@ export const handlePurchase = async (
   if (invitedBy && invitedBy.trim() !== '') {
     const code = invitedBy.toUpperCase().trim();
     if (code.length === 6) {
+      const ticketTypeIds = ticketsPerType.map((t) => t.ticketTypeId);
       const validation = await trpc.events.validateOrganizerCode({
         eventId,
         code,
+        ticketTypeIds,
       });
 
       if (validation.valid && validation.organizerId) {

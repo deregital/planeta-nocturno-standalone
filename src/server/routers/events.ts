@@ -261,6 +261,8 @@ export const eventsRouter = router({
             maxAvailable: true,
             name: true,
             price: true,
+            organizerId: true,
+            slug: true,
           },
         },
         location: {
@@ -360,27 +362,20 @@ export const eventsRouter = router({
             /^[0-9A-Fa-f]{6}$/,
             'El código debe ser de 6 dígitos hexadecimales',
           ),
+        ticketTypeIds: z.array(z.string().uuid()).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Buscar directamente eventXOrganizer usando el código del usuario y el eventId con join
-      const result = await ctx.db
-        .select({
-          organizerId: eventXorganizer.organizerId,
-          discountPercentage: eventXorganizer.discountPercentage,
-          fullName: user.fullName,
-        })
-        .from(eventXorganizer)
-        .innerJoin(user, eq(eventXorganizer.organizerId, user.id))
-        .where(
-          and(
-            eq(eventXorganizer.eventId, input.eventId),
-            eq(user.code, input.code.toUpperCase()),
-          ),
-        )
-        .limit(1);
+      // Primero buscar el usuario por código
+      const userByCode = await ctx.db.query.user.findFirst({
+        where: eq(user.code, input.code.toUpperCase()),
+        columns: {
+          id: true,
+          fullName: true,
+        },
+      });
 
-      if (!result.length) {
+      if (!userByCode) {
         return {
           valid: false,
           organizerName: null,
@@ -389,13 +384,58 @@ export const eventsRouter = router({
         };
       }
 
-      const eventOrganizer = result[0];
+      // Buscar si el organizador está asociado al evento
+      const eventOrganizer = await ctx.db.query.eventXorganizer.findFirst({
+        where: and(
+          eq(eventXorganizer.eventId, input.eventId),
+          eq(eventXorganizer.organizerId, userByCode.id),
+        ),
+        columns: {
+          discountPercentage: true,
+        },
+      });
 
+      // Si está asociado al evento, retornar válido
+      if (eventOrganizer) {
+        return {
+          valid: true,
+          organizerName: userByCode.fullName,
+          organizerId: userByCode.id,
+          discountPercentage: eventOrganizer.discountPercentage,
+        };
+      }
+
+      // Si no está asociado al evento, verificar si está asociado a alguno de los ticketTypes
+      if (input.ticketTypeIds && input.ticketTypeIds.length > 0) {
+        const ticketTypeWithOrganizer = await ctx.db.query.ticketType.findFirst(
+          {
+            where: and(
+              inArray(ticketType.id, input.ticketTypeIds),
+              eq(ticketType.organizerId, userByCode.id),
+            ),
+            columns: {
+              id: true,
+            },
+          },
+        );
+
+        if (ticketTypeWithOrganizer) {
+          // Si está asociado a un ticketType, retornar válido pero sin descuento (ya que no está en el evento)
+          return {
+            valid: true,
+            organizerName: userByCode.fullName,
+            organizerId: userByCode.id,
+            discountPercentage: null, // No hay descuento porque no está asociado al evento
+          };
+        }
+      }
+
+      // Si no está asociado ni al evento ni a los ticketTypes, retornar inválido
       return {
-        valid: true,
-        organizerName: eventOrganizer.fullName,
-        organizerId: eventOrganizer.organizerId,
-        discountPercentage: eventOrganizer.discountPercentage,
+        valid: false,
+        organizerName: null,
+        organizerId: null,
+        discountPercentage: null,
       };
     }),
   validateInvitationCode: publicProcedure
@@ -506,12 +546,17 @@ export const eventsRouter = router({
               ticketTypesCreated = await tx
                 .insert(ticketType)
                 .values(
-                  ticketTypes.map((ticketType) => ({
-                    ...ticketType,
-                    maxSellDate: ticketType.maxSellDate?.toISOString(),
-                    scanLimit: ticketType.scanLimit?.toISOString(),
-                    eventId: eventCreated.id,
-                  })),
+                  ticketTypes.map((ticketType) => {
+                    const { slug: _, organizerId, ...rest } = ticketType;
+                    return {
+                      ...rest,
+                      maxSellDate: ticketType.maxSellDate?.toISOString(),
+                      scanLimit: ticketType.scanLimit?.toISOString(),
+                      slug: ticketType.slug || generateSlug(ticketType.name),
+                      organizerId: organizerId ?? null,
+                      eventId: eventCreated.id,
+                    };
+                  }),
                 )
                 .returning();
             }
@@ -962,6 +1007,7 @@ export const eventsRouter = router({
                     maxSellDate: null,
                     scanLimit: null,
                     visibleInWeb: false,
+                    slug: generateSlug(ORGANIZER_TICKET_TYPE_NAME),
                     eventId: eventUpdated.id,
                   })
                   .returning();
@@ -1424,6 +1470,7 @@ export const eventsRouter = router({
                       ...rest,
                       maxSellDate: type.maxSellDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
+                      slug: type.slug || generateSlug(type.name),
                       eventId: eventUpdated.id,
                     })
                     .where(eq(ticketType.id, type.id))
@@ -1437,6 +1484,7 @@ export const eventsRouter = router({
                       ...rest,
                       maxSellDate: type.maxSellDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
+                      slug: type.slug || generateSlug(type.name),
                       eventId: eventUpdated.id,
                     })
                     .returning();

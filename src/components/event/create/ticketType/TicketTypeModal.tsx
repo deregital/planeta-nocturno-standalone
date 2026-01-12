@@ -5,9 +5,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { validateTicketType } from '@/app/(backoffice)/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
+import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
 import { FormRow } from '@/components/common/FormRow';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
+import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { ticketTypesTranslation } from '@/lib/translations';
 import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
+import { trpc } from '@/server/trpc/client';
 import { type TicketTypeCategory } from '@/server/types';
 
 type TicketTypeModalProps = {
@@ -53,6 +56,7 @@ export default function TicketTypeModal({
     (state) => state.updateTicketType,
   );
   const event = useCreateEventStore((state) => state.event);
+  const { data: organizersData } = trpc.user.getOrganizers.useQuery();
 
   // Initialize editing state based on props
   function getInitialState(): CreateTicketTypeSchema {
@@ -69,6 +73,7 @@ export default function TicketTypeModal({
         id: ticketType.id,
         visibleInWeb: ticketType.visibleInWeb,
         lowStockThreshold: ticketType.lowStockThreshold,
+        organizerId: ticketType.organizerId || null,
       };
     }
     return {
@@ -83,11 +88,31 @@ export default function TicketTypeModal({
       id: crypto.randomUUID(),
       visibleInWeb: true,
       lowStockThreshold: null,
+      organizerId: null,
     };
   }
 
   const [editingTicketType, setEditingTicketType] =
     useState<CreateTicketTypeSchema>(getInitialState);
+
+  // Filtrar solo organizadores individuales (no jefes)
+  const individualOrganizers = useMemo(() => {
+    return organizersData?.filter((org) => org.role === 'ORGANIZER') || [];
+  }, [organizersData]);
+
+  // Crear opciones para el combobox: formato "ID:Nombre Completo" para poder extraer el ID
+  const organizerOptions = useMemo(() => {
+    return individualOrganizers.map((org) => ({
+      value: `${org.id}`,
+      label: `${org.fullName} - ${org.dni}`,
+    }));
+  }, [individualOrganizers]);
+
+  // Obtener el valor seleccionado en formato del combobox (solo el ID, que es el value)
+  const selectedOrganizerOption = useMemo(() => {
+    if (!editingTicketType.organizerId) return '';
+    return editingTicketType.organizerId;
+  }, [editingTicketType.organizerId]);
 
   useEffect(() => {
     setEditingTicketType(getInitialState());
@@ -210,7 +235,7 @@ export default function TicketTypeModal({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className='!max-w-xl md:!max-w-3xl w-full lg:!max-w-4xl'>
+      <DialogContent className='max-w-xl! md:max-w-3xl! w-full lg:max-w-4xl!'>
         <DialogHeader>
           <DialogTitle className='text-left'>
             Crear ticket de tipo {text}
@@ -385,54 +410,78 @@ export default function TicketTypeModal({
               />
             </div>
           </FormRow>
-          <div className='flex'>
-            {hasLowStockThreshold ? (
+          <FormRow>
+            <div className='flex'>
+              {hasLowStockThreshold ? (
+                <InputWithLabel
+                  id='lowStockThreshold'
+                  name='lowStockThreshold'
+                  label='Cantidad de tickets para mostrar baja disponibilidad'
+                  type='number'
+                  min={0}
+                  max={editingTicketType.maxAvailable}
+                  error={error.lowStockThreshold}
+                  value={editingTicketType.lowStockThreshold ?? 0}
+                  className='w-full'
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numericValue =
+                      Number(value) === 0 ? null : Number(value);
+                    handleInputChange('lowStockThreshold', numericValue);
+                  }}
+                />
+              ) : (
+                <InputWithLabel
+                  id='lowStockThreshold'
+                  name='lowStockThreshold'
+                  label='Cantidad de tickets para mostrar baja disponibilidad'
+                  type='number'
+                  error={error.lowStockThreshold}
+                  value={
+                    editingTicketType.lowStockThreshold
+                      ? editingTicketType.lowStockThreshold
+                      : 0
+                  }
+                  className='w-full text-accent/50'
+                  readOnly
+                />
+              )}
               <InputWithLabel
-                id='lowStockThreshold'
-                name='lowStockThreshold'
-                label='Cantidad de tickets para mostrar baja disponibilidad'
-                type='number'
-                min={0}
-                max={editingTicketType.maxAvailable}
-                error={error.lowStockThreshold}
-                value={editingTicketType.lowStockThreshold ?? 0}
-                className='w-full'
+                label='¿Tiene?'
+                id='lowStockThresholdEnabled'
+                type='checkbox'
+                className='[&>input]:w-6 items-center'
+                name='lowStockThresholdEnabled'
+                checked={hasLowStockThreshold}
                 onChange={(e) => {
-                  const value = e.target.value;
-                  const numericValue =
-                    Number(value) === 0 ? null : Number(value);
-                  handleInputChange('lowStockThreshold', numericValue);
+                  handleLowStockThresholdToggle(e.target.checked);
                 }}
               />
-            ) : (
-              <InputWithLabel
-                id='lowStockThreshold'
-                name='lowStockThreshold'
-                label='Cantidad de tickets para mostrar baja disponibilidad'
-                type='number'
-                error={error.lowStockThreshold}
-                value={
-                  editingTicketType.lowStockThreshold
-                    ? editingTicketType.lowStockThreshold
-                    : 0
-                }
-                className='w-full text-accent/50'
-                readOnly
+            </div>
+            <GenericInputWithLabel
+              label='Organizador asociado (opcional)'
+              id='organizerId'
+            >
+              <VirtualizedCombobox
+                options={organizerOptions}
+                searchPlaceholder='Buscar organizador...'
+                notFoundPlaceholder='No se encontraron organizadores'
+                width='100%'
+                selectedOption={selectedOrganizerOption}
+                onSelectedOptionChange={(option) => {
+                  if (!option) {
+                    handleInputChange('organizerId', null);
+                    return;
+                  }
+                  // Extraer el ID del formato "ID:Nombre Completo"
+                  const organizerId = option;
+                  handleInputChange('organizerId', organizerId);
+                }}
               />
-            )}
-            <InputWithLabel
-              label='¿Tiene?'
-              id='lowStockThresholdEnabled'
-              type='checkbox'
-              className='[&>input]:w-6 items-center'
-              name='lowStockThresholdEnabled'
-              checked={hasLowStockThreshold}
-              onChange={(e) => {
-                handleLowStockThresholdToggle(e.target.checked);
-              }}
-            />
-          </div>
-          <DialogFooter className='flex !flex-col gap-4'>
+            </GenericInputWithLabel>
+          </FormRow>
+
+          <DialogFooter className='flex flex-col! gap-4'>
             <p className='text-sm text-accent'>
               {`Este ticket de tipo`}{' '}
               <b>{ticketTypesTranslation[category].text}</b>{' '}

@@ -22,6 +22,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
   const pathname = usePathname();
   const { data: user } = trpc.user.getUnsensitiveInfoById.useQuery(
     auth?.user.id as string,
+    { enabled: !!auth?.user.id },
   );
 
   return (
@@ -93,7 +94,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                     <Button
                       onClick={() => signOut()}
                       variant={'ghost'}
-                      className='flex gap-2 justify-baseline items-center py-2 !px-4 m-0 h-fit text-xl font-normal text-brand'
+                      className='flex gap-2 justify-baseline items-center py-2 px-4! m-0 h-fit text-xl font-normal text-brand'
                     >
                       <LogOut />
                       Cerrar Sesión

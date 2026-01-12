@@ -145,6 +145,7 @@ export const createEventStore = (initState: EventState = initialState) => {
                 maxSellDate: null,
                 scanLimit: null,
                 visibleInWeb: false,
+                organizerId: null,
               },
             ],
           };
@@ -332,6 +333,7 @@ export const createEventStore = (initState: EventState = initialState) => {
               maxSellDate: null,
               scanLimit: null,
               visibleInWeb: false,
+              organizerId: null,
             },
           ],
         };
