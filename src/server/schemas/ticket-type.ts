@@ -29,7 +29,6 @@ export const ticketTypeSchema = z.object({
     })
     .nullable(),
   organizerId: z
-    .string()
     .uuid()
     .nullable()
     .optional()
