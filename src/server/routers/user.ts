@@ -101,6 +101,9 @@ export const userRouter = router({
           googleDriveUrl: true,
         },
       });
+
+      if (!user) return null;
+
       return user;
     }),
   getByName: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
