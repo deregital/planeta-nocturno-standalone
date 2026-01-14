@@ -11,11 +11,11 @@ import { TicketTableSectionChief } from '@/components/event/individual/ticketsTa
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/server/trpc/client';
+import { type TicketType } from '@/server/types';
 import {
   ORGANIZER_TICKET_TYPE_NAME,
   TICKET_TYPE_SLUG_QUERY_PARAM,
 } from '@/server/utils/constants';
-import { type TicketType } from '@/server/types';
 
 export function TicketTableWithTabs({
   ticketTypes,
@@ -52,9 +52,24 @@ export function TicketTableWithTabs({
     }
   }, [tickets]);
 
+  // Sort ticket types so organizer types always go to the end
+  const sortedTicketTypes = useMemo(() => {
+    return [...ticketTypes].sort((a, b) => {
+      const aIsOrganizer = a.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim();
+      const bIsOrganizer = b.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim();
+
+      // If one is organizer and the other isn't, organizer goes to the end
+      if (aIsOrganizer && !bIsOrganizer) return 1;
+      if (!aIsOrganizer && bIsOrganizer) return -1;
+
+      // Otherwise maintain original order
+      return 0;
+    });
+  }, [ticketTypes]);
+
   const ticketsByType = useMemo(() => {
     if (!filteredTickets) return {};
-    return ticketTypes?.reduce(
+    return sortedTicketTypes?.reduce(
       (acc, type) => {
         const ticketsByType = filteredTickets.filter(
           (ticket) => ticket.ticketType.id === type.id,
@@ -64,9 +79,20 @@ export function TicketTableWithTabs({
       },
       {} as Record<string, typeof filteredTickets>,
     );
-  }, [filteredTickets, ticketTypes]);
+  }, [filteredTickets, sortedTicketTypes]);
 
-  const [tab, setTab] = useState(ticketTypes[0].name);
+  const initialTab = useMemo(
+    () => sortedTicketTypes[0]?.name || '',
+    [sortedTicketTypes],
+  );
+
+  const [tab, setTab] = useState(() => initialTab);
+
+  // Ensure tab is always valid - use the current tab if it exists, otherwise use the first tab
+  const currentTab = useMemo(() => {
+    const availableTabs = Object.keys(ticketsByType);
+    return availableTabs.includes(tab) ? tab : availableTabs[0] || '';
+  }, [tab, ticketsByType]);
 
   const copyTicketTypeUrl = (ticketTypeSlug: string) => {
     const origin =
@@ -89,7 +115,7 @@ export function TicketTableWithTabs({
       <Tabs
         className='w-[calc(100vw-16px)] md:w-[calc(100vw-16px-var(--sidebar-width))] mt-4 overflow-x-hidden'
         onValueChange={(v) => setTab(v)}
-        value={tab}
+        value={currentTab}
       >
         <TabsList className='flex-1 w-full md:max-w-[98%] max-w-[98%] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
           {Object.keys(ticketsByType).map((type) => (
@@ -99,7 +125,9 @@ export function TicketTableWithTabs({
           ))}
         </TabsList>
         {Object.keys(ticketsByType).map((type) => {
-          const currentTicketType = ticketTypes.find((tt) => tt.name === type);
+          const currentTicketType = sortedTicketTypes.find(
+            (tt) => tt.name === type,
+          );
           const isOrganizerTicket =
             currentTicketType?.name.trim() ===
             ORGANIZER_TICKET_TYPE_NAME.trim();
