@@ -56,17 +56,6 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
   },
   {
-    accessorKey: 'dni',
-    header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
-    cell: ({ row }) => {
-      return <p className='text-sm p-2'>{row.original.dni}</p>;
-    },
-    meta: {
-      exportValue: (row) => row.original.dni,
-      exportHeader: 'DNI/Pasaporte',
-    },
-  },
-  {
     accessorKey: 'fullName',
     header: () => <p className='text-sm p-2'>Nombre</p>,
     cell: ({ row }) => {
@@ -132,6 +121,17 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
   },
   {
+    accessorKey: 'dni',
+    header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
+    cell: ({ row }) => {
+      return <p className='text-sm p-2'>{row.original.dni}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.dni,
+      exportHeader: 'DNI/Pasaporte',
+    },
+  },
+  {
     accessorKey: 'gender',
     header: () => <p className='text-sm p-2'>Género</p>,
     meta: {
@@ -178,6 +178,18 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
   },
   {
+    accessorKey: 'mail',
+    header: () => <p className='text-sm p-2'>Mail</p>,
+    cell: ({ row }) => {
+      const mail = row.original.mail;
+      return <p className='text-sm p-2'>{mail}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.mail,
+      exportHeader: 'Mail',
+    },
+  },
+  {
     accessorKey: 'instagram',
     header: () => <p className='text-sm p-2'>Instagram</p>,
     cell: ({ row }) => {
@@ -188,19 +200,6 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     meta: {
       exportValue: (row) => row.original.instagram || '-',
       exportHeader: 'Instagram',
-    },
-  },
-
-  {
-    accessorKey: 'mail',
-    header: () => <p className='text-sm p-2'>Mail</p>,
-    cell: ({ row }) => {
-      const mail = row.original.mail;
-      return <p className='text-sm p-2'>{mail}</p>;
-    },
-    meta: {
-      exportValue: (row) => row.original.mail,
-      exportHeader: 'Mail',
     },
   },
 ];
