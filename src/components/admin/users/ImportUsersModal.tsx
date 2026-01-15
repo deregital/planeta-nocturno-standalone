@@ -362,21 +362,29 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
           )}
         </div>
         <div className='flex justify-end space-x-2 pt-4 shrink-0'>
-          <DialogClose asChild>
-            <Button
-              variant='outline'
-              onClick={() => setIsOpen(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-          </DialogClose>
-          <Button
-            onClick={handleImport}
-            disabled={!file || !batchName.trim() || isLoading}
-          >
-            {isLoading ? 'Procesando...' : 'Importar usuarios'}
-          </Button>
+          {result?.success ? (
+            <DialogClose asChild>
+              <Button onClick={() => setIsOpen(false)}>Aceptar</Button>
+            </DialogClose>
+          ) : (
+            <>
+              <DialogClose asChild>
+                <Button
+                  variant='outline'
+                  onClick={() => setIsOpen(false)}
+                  disabled={isLoading}
+                >
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button
+                onClick={handleImport}
+                disabled={!file || !batchName.trim() || isLoading}
+              >
+                {isLoading ? 'Procesando...' : 'Importar usuarios'}
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
