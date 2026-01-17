@@ -121,12 +121,11 @@ export function OrganizerForm({
           handleChange('birthDate', date.toISOString());
         }}
       />
-      {isAdmin && type === 'CREATE' ? (
+      {isAdmin && type === 'CREATE' && (
         <SelectWithLabel
           label='Rol'
           required
           id='role'
-          name='role'
           value={internalState?.role}
           className='w-full'
           values={[
@@ -144,9 +143,8 @@ export function OrganizerForm({
             handleChange('role', value as 'ORGANIZER' | 'CHIEF_ORGANIZER');
           }}
         />
-      ) : (
-        <input type='hidden' name='role' value={internalState?.role} />
       )}
+      <input type='hidden' name='role' value={internalState?.role} />
       <div>
         <PhoneInputWithLabel
           label='Número de teléfono'

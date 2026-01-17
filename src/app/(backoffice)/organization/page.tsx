@@ -1,10 +1,12 @@
-import EventList from '@/components/events/admin/EventList';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
+} from '@radix-ui/react-accordion';
+import { ChevronDown } from 'lucide-react';
+
+import EventList from '@/components/events/admin/EventList';
 import { Separator } from '@/components/ui/separator';
 import { trpc } from '@/server/trpc/server';
 
@@ -38,18 +40,13 @@ export default async function OrganizationPage() {
           <Separator className='border rounded-full border-accent-light' />
           <Accordion type='single' collapsible className='w-full'>
             <AccordionItem value='item-1' className='border-none'>
-              <AccordionTrigger
-                chevronClassName='text-accent size-6'
-                className='bg-transparent cursor-pointer hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-start'
-              >
+              <AccordionTrigger className='bg-transparent cursor-pointer hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-start'>
                 <p className='text-2xl font-bold text-accent group-hover:text-accent/80 transition-colors duration-200'>
                   Eventos Pasados
                 </p>
+                <ChevronDown className='h-6 w-6 text-accent transition-transform duration-200 group-data-[state=open]:rotate-180' />
               </AccordionTrigger>
-              <AccordionContent
-                contentClassName='w-full'
-                className='overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'
-              >
+              <AccordionContent className='overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'>
                 <div className='pt-4 pb-2'>
                   <EventList
                     events={{

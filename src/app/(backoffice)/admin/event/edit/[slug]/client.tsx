@@ -167,7 +167,7 @@ export default function Client({
         disabled={isSubmitting}
       >
         {isSubmitting ? (
-          <Loader2 className='size-4 animate-spin' />
+          <Loader2 className='size-6 animate-spin' />
         ) : (
           'Actualizar'
         )}

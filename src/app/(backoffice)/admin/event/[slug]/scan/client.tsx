@@ -43,13 +43,14 @@ export default function ScanClient({
       <QRCodeScanner
         isLoading={scanMutation.isPending}
         onScanSuccessAction={async (raw) => {
-          await scanMutation
+          return await scanMutation
             .mutateAsync({
               eventId: event.id,
               barcode: raw,
             })
             .then((result) => {
               setLastScans((prev) => [result, ...prev].slice(0, 20));
+              return result.success;
             });
         }}
       />

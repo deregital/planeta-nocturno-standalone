@@ -65,6 +65,7 @@ interface DataTableProps<
   disableExport?: TDisableExport;
   noResultsPlaceholder?: string;
   requirePasswordForExport?: boolean;
+  headerActions?: React.ReactNode;
 }
 
 export function DataTable<
@@ -85,6 +86,7 @@ export function DataTable<
   disableExport = false as TDisableExport,
   noResultsPlaceholder = 'No se encontraron resultados',
   requirePasswordForExport = false,
+  headerActions,
 }: DataTableProps<TData, TValue, TDisableExport>) {
   const { data: session } = useSession();
   const isTicketing = session?.user.role === 'TICKETING';
@@ -211,49 +213,56 @@ export function DataTable<
         divClassName,
       )}
     >
-      {!disableExport && !isTicketing && (
-        <div className='flex justify-end p-2'>
-          {requirePasswordForExport ? (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant='outline' size='sm'>
+      {((!disableExport && !isTicketing) || headerActions) && (
+        <div className='flex justify-between items-center p-2'>
+          {headerActions && (
+            <div className='flex items-center gap-2'>{headerActions}</div>
+          )}
+          {!disableExport && !isTicketing && (
+            <div>
+              {requirePasswordForExport ? (
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant='outline' size='sm'>
+                      <Download className='size-4 mr-2' /> Exportar a Excel
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <form action={action}>
+                      <DialogHeader>
+                        <DialogTitle>Introducí tu contraseña</DialogTitle>
+                        <DialogDescription>
+                          Para exportar la tabla, introducí la contraseña de tu
+                          cuenta.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className='mt-2 mb-4'>
+                        <Input
+                          type='password'
+                          id='password'
+                          name='password'
+                          placeholder='******'
+                        />
+                        {state.error && (
+                          <p className='text-sm pl-1 font-bold text-red-500'>
+                            {state.error}
+                          </p>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button size='sm' type='submit' disabled={isPending}>
+                          Verificar y exportar
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                <Button variant='outline' size='sm' onClick={handleExportClick}>
                   <Download className='size-4 mr-2' /> Exportar a Excel
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form action={action}>
-                  <DialogHeader>
-                    <DialogTitle>Introducí tu contraseña</DialogTitle>
-                    <DialogDescription>
-                      Para exportar la tabla, introducí la contraseña de tu
-                      cuenta.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className='mt-2 mb-4'>
-                    <Input
-                      type='password'
-                      id='password'
-                      name='password'
-                      placeholder='******'
-                    />
-                    {state.error && (
-                      <p className='text-sm pl-1 font-bold text-red-500'>
-                        {state.error}
-                      </p>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <Button size='sm' type='submit' disabled={isPending}>
-                      Verificar y exportar
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          ) : (
-            <Button variant='outline' size='sm' onClick={handleExportClick}>
-              <Download className='size-4 mr-2' /> Exportar a Excel
-            </Button>
+              )}
+            </div>
           )}
         </div>
       )}

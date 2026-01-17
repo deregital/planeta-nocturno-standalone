@@ -59,10 +59,16 @@ export default function CheckoutClient({
   >();
   const [isValidatingCode, setIsValidatingCode] = useState(false);
 
+  // Obtener los IDs de los ticketTypes que se están comprando
+  const ticketTypeIds = ticketGroup.ticketTypePerGroups.map(
+    (tpg) => tpg.ticketType.id,
+  );
+
   const validateOrganizerCode = trpc.events.validateOrganizerCode.useQuery(
     {
       eventId: ticketGroup.eventId,
       code: debouncedOrganizerCode,
+      ticketTypeIds,
     },
     {
       enabled: debouncedOrganizerCode.length === 6,
@@ -102,7 +108,7 @@ export default function CheckoutClient({
         setOrganizerId(null);
         if (debouncedOrganizerCode.length === 6) {
           setOrganizerCodeError(
-            'El código de organizador no es válido o no está asignado a este evento',
+            'El código de organizador no es válido o no está asociado a este evento o a los tipos de tickets seleccionados',
           );
         }
       }
@@ -506,7 +512,7 @@ export default function CheckoutClient({
           </div>
         )}
 
-        <Separator className='mt-12 mb-6 bg-accent-dark/70' />
+        <Separator className='my-4' />
         {ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
         (ticketGroup.event.inviteCondition === 'INVITATION' &&
           organizerCodeFromTicketGroup) ? (
@@ -531,7 +537,11 @@ export default function CheckoutClient({
                 ? (state.errors as Record<string, string>)['invitedBy']
                 : undefined)
             }
-            label='Ingrese el código de organizador'
+            label={
+              organizerCodeFromTicketGroup
+                ? 'Código del organizador'
+                : 'Ingrese el código del organizador'
+            }
             id='organizerCode'
             required={false}
           />

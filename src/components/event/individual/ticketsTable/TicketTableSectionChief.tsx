@@ -242,14 +242,17 @@ const ticketChiefColumns: StrictColumnDef<
 
 export function TicketTableSectionChief({
   tickets,
+  headerActions,
 }: {
   tickets: RouterOutputs['emittedTickets']['getByEventId'];
+  headerActions?: React.ReactNode;
 }) {
   return (
     <DataTable
       columns={ticketChiefColumns}
       data={tickets}
       exportFileName={'Tickets'}
+      headerActions={headerActions}
     />
   );
 }

@@ -21,18 +21,24 @@ export const organizerColumns: StrictColumnDef<
   RouterOutputs['user']['getAll'][number]
 >[] = [
   {
-    id: 'autoId',
-    accessorKey: 'autoId',
+    id: 'shortId',
+    accessorKey: 'shortId',
     header: ({ column }) => {
+      const sorted = column.getIsSorted();
       return (
-        <div
-          className='mx-auto w-full'
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
           style={{
             width: `${column.getSize()}px`,
           }}
         >
           ID
-        </div>
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
       );
     },
     minSize: 50,
@@ -50,22 +56,29 @@ export const organizerColumns: StrictColumnDef<
       exportValue: (row) => row.original.id,
       exportHeader: 'ID',
     },
-  },
-  {
-    id: 'dni',
-    accessorKey: 'dni',
-    header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
-    cell: ({ row }) => {
-      return <p className='text-sm p-2'>{row.original.dni}</p>;
-    },
-    meta: {
-      exportValue: (row) => row.original.dni,
-      exportHeader: 'DNI/Pasaporte',
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = Number(rowA.getValue(columnId)) || 0;
+      const b = Number(rowB.getValue(columnId)) || 0;
+      return a - b;
     },
   },
   {
     accessorKey: 'fullName',
-    header: () => <p className='text-sm p-2'>Nombre</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Nombre
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const fullName = row.original.fullName;
       return <p className='text-sm p-2'>{fullName}</p>;
@@ -73,6 +86,11 @@ export const organizerColumns: StrictColumnDef<
     meta: {
       exportValue: (row) => row.original.fullName,
       exportHeader: 'Nombre',
+    },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
     },
   },
   {
@@ -123,7 +141,21 @@ export const organizerColumns: StrictColumnDef<
   },
   {
     accessorKey: 'age',
-    header: () => <p className='text-sm p-2'>Edad</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Edad
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       return (
         <p className='text-sm p-2'>
@@ -136,11 +168,67 @@ export const organizerColumns: StrictColumnDef<
         String(differenceInYears(new Date(), new Date(row.original.birthDate))),
       exportHeader: 'Edad',
     },
+    sortingFn: (rowA, rowB) => {
+      const ageA = differenceInYears(
+        new Date(),
+        new Date(rowA.original.birthDate),
+      );
+      const ageB = differenceInYears(
+        new Date(),
+        new Date(rowB.original.birthDate),
+      );
+      return ageA - ageB;
+    },
+  },
+  {
+    id: 'dni',
+    accessorKey: 'dni',
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          DNI/Pasaporte
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      return <p className='text-sm p-2'>{row.original.dni}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.dni,
+      exportHeader: 'DNI/Pasaporte',
+    },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
+    },
   },
   {
     id: 'gender',
     accessorKey: 'gender',
-    header: () => <p className='text-sm p-2'>Género</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Género
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     meta: {
       exportValue: (row) => {
         const gender = row.original.gender;
@@ -149,6 +237,17 @@ export const organizerColumns: StrictColumnDef<
           : '-';
       },
       exportHeader: 'Género',
+    },
+    sortingFn: (rowA, rowB) => {
+      const genderA = rowA.original.gender;
+      const genderB = rowB.original.gender;
+      const a = genderA
+        ? genderTranslation[genderA as keyof typeof genderTranslation]
+        : '-';
+      const b = genderB
+        ? genderTranslation[genderB as keyof typeof genderTranslation]
+        : '-';
+      return a.localeCompare(b);
     },
     cell: ({ row }) => {
       const gender = row.original.gender;
@@ -162,31 +261,22 @@ export const organizerColumns: StrictColumnDef<
     },
   },
   {
-    accessorKey: 'instagram',
-    header: () => <p className='text-sm p-2'>Instagram</p>,
-    cell: ({ row }) => {
-      const instagram = row.original.instagram;
-      return instagram ? (
-        <a
-          href={`https://instagram.com/${instagram}`}
-          target='_blank'
-          rel='noopener noreferrer'
-          className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
+    accessorKey: 'phoneNumber',
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
         >
-          @{instagram}
-        </a>
-      ) : (
-        <p className='text-sm p-2'>-</p>
+          Teléfono
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
       );
     },
-    meta: {
-      exportValue: (row) => row.original.instagram || '-',
-      exportHeader: 'Instagram',
-    },
-  },
-  {
-    accessorKey: 'phoneNumber',
-    header: () => <p className='text-sm p-2'>Teléfono</p>,
     cell: ({ row }) => {
       const phoneNumber = row.original.phoneNumber;
       if (!phoneNumber) return '-';
@@ -206,11 +296,30 @@ export const organizerColumns: StrictColumnDef<
         formatPhoneNumber(row.original.phoneNumber, 'INTERNATIONAL') || '-',
       exportHeader: 'Teléfono',
     },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
+    },
   },
   {
     id: 'email',
     accessorKey: 'email',
-    header: () => <p className='text-sm p-2'>Mail</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Mail
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row, column }) => {
       const mail = row.original.email;
       return (
@@ -231,10 +340,72 @@ export const organizerColumns: StrictColumnDef<
       exportValue: (row) => row.original.email,
       exportHeader: 'Mail',
     },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
+    },
   },
   {
+    accessorKey: 'instagram',
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Instagram
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      const instagram = row.original.instagram;
+      return instagram ? (
+        <a
+          href={`https://instagram.com/${instagram}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
+        >
+          @{instagram}
+        </a>
+      ) : (
+        <p className='text-sm p-2'>-</p>
+      );
+    },
+    meta: {
+      exportValue: (row) => row.original.instagram || '-',
+      exportHeader: 'Instagram',
+    },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
+    },
+  },
+
+  {
     accessorKey: 'chiefOrganizerFullName',
-    header: () => <p className='text-sm p-2'>Jefe del Organizador</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Jefe del Organizador
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const chiefFullName = row.original.user?.fullName;
       return <p className='text-sm p-2'>{chiefFullName ?? '-'}</p>;
@@ -242,6 +413,11 @@ export const organizerColumns: StrictColumnDef<
     meta: {
       exportValue: (row) => row.original.user?.fullName ?? '-',
       exportHeader: 'Jefe del Organizador',
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = String(rowA.original.user?.fullName || '-').toLowerCase();
+      const b = String(rowB.original.user?.fullName || '-').toLowerCase();
+      return a.localeCompare(b);
     },
   },
   {

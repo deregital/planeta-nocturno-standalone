@@ -53,7 +53,7 @@ export function UserForm({
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
-  initialState?: UserData;
+  initialState?: Omit<UserData, 'password'> | UserData;
   errors?: Partial<Record<keyof UserData | 'general', string>>;
   formAction: (formData: FormData) => void;
   isPending: boolean;
@@ -63,6 +63,8 @@ export function UserForm({
   const [internalState, setInternalState] = useState<UserData>({
     ...defaultState,
     ...initialState,
+    password:
+      type === 'EDIT' ? '' : ((initialState as UserData)?.password ?? ''),
     role: lockedRole ?? initialState?.role ?? defaultState.role,
   });
 
@@ -128,7 +130,6 @@ export function UserForm({
       />
       {lockedRole ? (
         <>
-          <input type='hidden' name='role' value={lockedRole} />
           <p className='text-sm text-accent-dark'>
             Rol asignado: {roleTranslation[lockedRole]}
           </p>
@@ -138,7 +139,6 @@ export function UserForm({
           label='Rol'
           required
           id='role'
-          name='role'
           value={internalState?.role}
           className='w-full'
           values={role.enumValues
@@ -156,6 +156,11 @@ export function UserForm({
           }}
         />
       )}
+      <input
+        type='hidden'
+        name='role'
+        value={lockedRole ?? internalState?.role}
+      />
       <div>
         <PhoneInputWithLabel
           label='Número de teléfono'

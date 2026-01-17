@@ -1,5 +1,5 @@
 'use client';
-import { ClipboardIcon } from 'lucide-react';
+import { Link } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,8 @@ export function CopyUrl({ url }: { url: string }) {
   }
   return (
     <Button variant='accent' className='w-fit' onClick={copyToClipboard}>
-      <ClipboardIcon className='w-4 h-4' />
-      Copiar mi código de descuento
+      <Link className='w-4 h-4' />
+      Copiar mi ticket
     </Button>
   );
 }

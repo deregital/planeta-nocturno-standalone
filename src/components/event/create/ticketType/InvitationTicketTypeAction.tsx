@@ -129,6 +129,7 @@ export function InvitationTicketTypeAction({
           }, 0),
           maxPerPurchase: 1,
           maxSellDate: null,
+          organizerId: null,
         });
       }
 

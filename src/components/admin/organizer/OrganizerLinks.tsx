@@ -39,7 +39,7 @@ export default function OrganizerLinks({
           target='_blank'
           rel='noopener noreferrer'
           aria-label='Google Drive'
-          className='bg-white hover:bg-gray-200'
+          className='bg-white hover:bg-gray-200 overflow-hidden'
         >
           <GoogleDrive />
         </a>
