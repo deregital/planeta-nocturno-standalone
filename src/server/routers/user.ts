@@ -401,6 +401,12 @@ export const userRouter = router({
         uniqueUsernames.set(user.email, finalUsername);
       }
 
+      // Determinar chiefOrganizerId si el usuario actual es CHIEF_ORGANIZER
+      const chiefOrganizerId =
+        ctx.session.user.role === 'CHIEF_ORGANIZER'
+          ? ctx.session.user.id
+          : null;
+
       for (const user of input.users) {
         const fullName = `${user.nombre} ${user.apellido}`.trim();
         const username = uniqueUsernames.get(user.email)!;
@@ -424,6 +430,7 @@ export const userRouter = router({
             dni: user.dni,
             birthDate: user.fechaNacimiento,
             instagram: instagram || null,
+            chiefOrganizerId: chiefOrganizerId,
           })
           .returning();
 
