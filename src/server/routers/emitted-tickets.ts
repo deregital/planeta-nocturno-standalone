@@ -287,11 +287,15 @@ export const emittedTicketsRouter = router({
 
           // Location
           locationName: location.name,
+
+          // Invited by
+          invitedBy: user.fullName,
         })
         .from(emittedTicket)
         .leftJoin(ticketGroup, eq(emittedTicket.ticketGroupId, ticketGroup.id))
         .leftJoin(event, eq(ticketGroup.eventId, event.id))
         .leftJoin(location, eq(event.locationId, location.id))
+        .leftJoin(user, eq(ticketGroup.invitedById, user.id))
         .where(
           and(eq(emittedTicket.dni, input), eq(emittedTicket.scanned, true)),
         );
