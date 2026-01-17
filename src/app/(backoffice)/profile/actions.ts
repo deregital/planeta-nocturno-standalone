@@ -1,11 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import z from 'zod';
 
 import { type UserData } from '@/components/admin/config/UserForm';
-import { auth } from '@/server/auth';
 import { userSchema } from '@/server/schemas/user';
 import { trpc } from '@/server/trpc/server';
 
@@ -21,12 +19,6 @@ export async function updateProfile(
   prevState: UpdateProfileActionState,
   formData: FormData,
 ): Promise<UpdateProfileActionState> {
-  const session = await auth();
-
-  if (!session) {
-    redirect('/login');
-  }
-
   const fullName = formData.get('fullName') as string;
   const name = formData.get('username') as string;
   const email = formData.get('email') as string;
@@ -89,7 +81,6 @@ export async function updateProfile(
   try {
     await trpc.user.updateOwnProfile({
       ...validation.data,
-      id: session.user.id,
       birthDate: birthDate,
     });
   } catch (error) {
