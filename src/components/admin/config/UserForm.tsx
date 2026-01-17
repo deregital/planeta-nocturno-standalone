@@ -53,7 +53,7 @@ export function UserForm({
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
-  initialState?: UserData;
+  initialState?: Omit<UserData, 'password'> | UserData;
   errors?: Partial<Record<keyof UserData | 'general', string>>;
   formAction: (formData: FormData) => void;
   isPending: boolean;
@@ -63,6 +63,8 @@ export function UserForm({
   const [internalState, setInternalState] = useState<UserData>({
     ...defaultState,
     ...initialState,
+    password:
+      type === 'EDIT' ? '' : ((initialState as UserData)?.password ?? ''),
     role: lockedRole ?? initialState?.role ?? defaultState.role,
   });
 
