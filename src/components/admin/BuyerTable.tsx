@@ -39,6 +39,15 @@ const columns: StrictColumnDef<AttendedEvent>[] = [
       exportHeader: 'Ubicación',
     },
   },
+  {
+    accessorKey: 'invitedBy',
+    header: 'Invitado por',
+    accessorFn: (row) => row.invitedBy || '-',
+    meta: {
+      exportValue: (row) => row.original.invitedBy || '-',
+      exportHeader: 'Invitado por',
+    },
+  },
 ];
 
 export default function AttendedEventsTable({

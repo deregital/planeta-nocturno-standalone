@@ -1,7 +1,7 @@
 'use client';
+import { isAfter } from 'date-fns';
 import { type Route } from 'next';
 import { useSearchParams } from 'next/navigation';
-import { isAfter } from 'date-fns';
 
 import ErrorCard from '@/components/common/ErrorCard';
 import GoBack from '@/components/common/GoBack';
@@ -71,7 +71,7 @@ export default function Client({
   return (
     <div>
       <div className='flex my-4 mx-4'>
-        <GoBack />
+        <GoBack route='/' />
       </div>
       <div className='flex justify-center px-1 sm:px-4 my-6'>
         <main className='w-full max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-5rem)] lg:max-w-6xl rounded-3xl border-2 border-stroke overflow-hidden h-fit'>

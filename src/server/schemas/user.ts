@@ -45,7 +45,12 @@ export const userSchema = z.object({
       // Convert to UTC string
       return date.toISOString();
     }),
-  instagram: z.string().nullable(),
+  instagram: z
+    .string()
+    .max(30, {
+      error: 'El Instagram debe ser menor o igual a 30 caracteres',
+    })
+    .nullable(),
   chiefOrganizerId: z.uuid().nullable(),
   mercadopago: z
     .string()

@@ -54,21 +54,29 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
       exportValue: (row) => row.original.buyerCode,
       exportHeader: 'ID',
     },
-  },
-  {
-    accessorKey: 'dni',
-    header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
-    cell: ({ row }) => {
-      return <p className='text-sm p-2'>{row.original.dni}</p>;
-    },
-    meta: {
-      exportValue: (row) => row.original.dni,
-      exportHeader: 'DNI/Pasaporte',
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = Number(rowA.getValue(columnId)) || 0;
+      const b = Number(rowB.getValue(columnId)) || 0;
+      return a - b;
     },
   },
   {
     accessorKey: 'fullName',
-    header: () => <p className='text-sm p-2'>Nombre</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Nombre
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const fullName = row.original.fullName;
       return <p className='text-sm p-2'>{fullName}</p>;
@@ -76,6 +84,11 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     meta: {
       exportValue: (row) => row.original.fullName,
       exportHeader: 'Nombre',
+    },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
     },
   },
   {
@@ -121,7 +134,21 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'age',
-    header: () => <p className='text-sm p-2'>Edad</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Edad
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const age = row.original.age;
       return <p className='text-sm p-2'>{age}</p>;
@@ -130,10 +157,59 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
       exportValue: (row) => String(row.original.age),
       exportHeader: 'Edad',
     },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = Number(rowA.getValue(columnId)) || 0;
+      const b = Number(rowB.getValue(columnId)) || 0;
+      return a - b;
+    },
+  },
+  {
+    accessorKey: 'dni',
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          DNI/Pasaporte
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      return <p className='text-sm p-2'>{row.original.dni}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.dni,
+      exportHeader: 'DNI/Pasaporte',
+    },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
+    },
   },
   {
     accessorKey: 'gender',
-    header: () => <p className='text-sm p-2'>Género</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Género
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     meta: {
       exportValue: (row) => {
         const gender = row.original.gender;
@@ -142,6 +218,17 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
           : '-';
       },
       exportHeader: 'Género',
+    },
+    sortingFn: (rowA, rowB) => {
+      const genderA = rowA.original.gender;
+      const genderB = rowB.original.gender;
+      const a = genderA
+        ? genderTranslation[genderA as keyof typeof genderTranslation]
+        : '-';
+      const b = genderB
+        ? genderTranslation[genderB as keyof typeof genderTranslation]
+        : '-';
+      return a.localeCompare(b);
     },
     cell: ({ row }) => {
       const gender = row.original.gender;
@@ -156,7 +243,21 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
   },
   {
     accessorKey: 'phoneNumber',
-    header: () => <p className='text-sm p-2'>Teléfono</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Teléfono
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const phoneNumber = row.original.phoneNumber;
       if (!phoneNumber) return '-';
@@ -176,10 +277,60 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
         formatPhoneNumber(row.original.phoneNumber, 'INTERNATIONAL') || '-',
       exportHeader: 'Teléfono',
     },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
+    },
+  },
+  {
+    accessorKey: 'mail',
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Mail
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      const mail = row.original.mail;
+      return <p className='text-sm p-2'>{mail}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.mail,
+      exportHeader: 'Mail',
+    },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
+    },
   },
   {
     accessorKey: 'instagram',
-    header: () => <p className='text-sm p-2'>Instagram</p>,
+    header: ({ column }) => {
+      const sorted = column.getIsSorted();
+      return (
+        <Button
+          variant='ghost'
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className='flex items-center gap-2 font-bold'
+        >
+          Instagram
+          {sorted === 'asc' && <ArrowUp className='h-4 w-4' />}
+          {sorted === 'desc' && <ArrowDown className='h-4 w-4' />}
+          {!sorted && <ArrowUpDown className='h-4 w-4' />}
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const instagram = row.original.instagram;
       if (!instagram) return '-';
@@ -189,18 +340,10 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
       exportValue: (row) => row.original.instagram || '-',
       exportHeader: 'Instagram',
     },
-  },
-
-  {
-    accessorKey: 'mail',
-    header: () => <p className='text-sm p-2'>Mail</p>,
-    cell: ({ row }) => {
-      const mail = row.original.mail;
-      return <p className='text-sm p-2'>{mail}</p>;
-    },
-    meta: {
-      exportValue: (row) => row.original.mail,
-      exportHeader: 'Mail',
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = String(rowA.getValue(columnId) || '').toLowerCase();
+      const b = String(rowB.getValue(columnId) || '').toLowerCase();
+      return a.localeCompare(b);
     },
   },
 ];

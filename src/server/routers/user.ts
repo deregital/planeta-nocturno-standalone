@@ -20,6 +20,7 @@ import {
 import {
   adminProcedure,
   chiefOrganizerProcedure,
+  organizerProcedure,
   publicProcedure,
   router,
 } from '@/server/trpc';
@@ -86,12 +87,14 @@ export const userRouter = router({
     });
     return users;
   }),
-  getById: adminProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    const user = await ctx.db.query.user.findFirst({
-      where: eq(userTable.id, input),
-    });
-    return user;
-  }),
+  getById: organizerProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.db.query.user.findFirst({
+        where: eq(userTable.id, input),
+      });
+      return user;
+    }),
   getUnsensitiveInfoById: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
@@ -101,6 +104,9 @@ export const userRouter = router({
           googleDriveUrl: true,
         },
       });
+
+      if (!user) return null;
+
       return user;
     }),
   getByName: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
@@ -180,6 +186,30 @@ export const userRouter = router({
         .where(eq(userTable.id, input.id));
 
       revalidatePath('/admin/users');
+      return user;
+    }),
+  updateOwnProfile: organizerProcedure
+    .input(
+      userSchema.omit({ password: true, role: true, chiefOrganizerId: true }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertUniqueUser(ctx.db, input, ctx.session.user.id);
+
+      const instagram = input.instagram?.startsWith('@')
+        ? input.instagram.slice(1)
+        : input.instagram;
+
+      const user = await ctx.db
+        .update(userTable)
+        .set({
+          ...input,
+          name: input.name.trim(),
+          birthDate: input.birthDate,
+          instagram,
+        })
+        .where(eq(userTable.id, ctx.session.user.id));
+
+      revalidatePath('/profile');
       return user;
     }),
   partialUpdate: chiefOrganizerProcedure
@@ -398,6 +428,12 @@ export const userRouter = router({
         uniqueUsernames.set(user.email, finalUsername);
       }
 
+      // Determinar chiefOrganizerId si el usuario actual es CHIEF_ORGANIZER
+      const chiefOrganizerId =
+        ctx.session.user.role === 'CHIEF_ORGANIZER'
+          ? ctx.session.user.id
+          : null;
+
       for (const user of input.users) {
         const fullName = `${user.nombre} ${user.apellido}`.trim();
         const username = uniqueUsernames.get(user.email)!;
@@ -421,6 +457,7 @@ export const userRouter = router({
             dni: user.dni,
             birthDate: user.fechaNacimiento,
             instagram: instagram || null,
+            chiefOrganizerId: chiefOrganizerId,
           })
           .returning();
 

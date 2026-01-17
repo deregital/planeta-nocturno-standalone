@@ -1,3 +1,5 @@
+import { formatInTimeZone } from 'date-fns-tz';
+
 import { type RouterOutputs } from '@/server/routers/app';
 
 export function LastScanCard({
@@ -6,7 +8,16 @@ export function LastScanCard({
   lastScan: RouterOutputs['emittedTickets']['scan'];
 }) {
   return (
-    <div className='w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
+    <div className='relative w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
+      {lastScan.ticket?.scannedAt && (
+        <div className='absolute top-0 right-0 text-xs text-accent-dark/60 font-bold bg-background/80 p-2 rounded'>
+          {formatInTimeZone(
+            new Date(lastScan.ticket.scannedAt),
+            'America/Argentina/Buenos_Aires',
+            'HH:mm:ss',
+          )}
+        </div>
+      )}
       {lastScan.success ? (
         <>
           <div className='bg-green-500 border-b border-stroke'>

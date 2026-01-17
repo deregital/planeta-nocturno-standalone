@@ -1,6 +1,13 @@
 'use client';
 
-import { Calendar, Database, Home, Settings, Users } from 'lucide-react';
+import {
+  Calendar,
+  Database,
+  Home,
+  Settings,
+  UserPen,
+  Users,
+} from 'lucide-react';
 import { type Route } from 'next';
 import { usePathname } from 'next/navigation';
 
@@ -66,6 +73,12 @@ export const navRoutes: {
     icon: <Users />,
     title: 'Organizadores',
     roles: ['ADMIN'],
+  },
+  {
+    href: '/profile',
+    icon: <UserPen />,
+    title: 'Mis Datos',
+    roles: ['ADMIN', 'ORGANIZER', 'CHIEF_ORGANIZER'],
   },
   {
     href: '/admin/settings',

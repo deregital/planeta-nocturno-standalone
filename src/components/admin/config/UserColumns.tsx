@@ -51,40 +51,6 @@ export const userColumns: StrictColumnDef<
     },
   },
   {
-    accessorKey: 'role',
-    header: () => <p className='text-sm p-2'>Rol</p>,
-    cell: ({ row }) => {
-      return (
-        <p className='text-sm p-2'>
-          {
-            roleTranslation[
-              row.original.role as (typeof roleEnum.enumValues)[number]
-            ]
-          }
-        </p>
-      );
-    },
-    meta: {
-      exportValue: (row) =>
-        roleTranslation[
-          row.original.role as (typeof roleEnum.enumValues)[number]
-        ],
-      exportHeader: 'Rol',
-    },
-  },
-  {
-    id: 'dni',
-    accessorKey: 'dni',
-    header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
-    cell: ({ row }) => {
-      return <p className='text-sm p-2'>{row.original.dni}</p>;
-    },
-    meta: {
-      exportValue: (row) => row.original.dni,
-      exportHeader: 'DNI/Pasaporte',
-    },
-  },
-  {
     accessorKey: 'fullName',
     header: () => <p className='text-sm p-2'>Nombre</p>,
     cell: ({ row }) => {
@@ -159,6 +125,18 @@ export const userColumns: StrictColumnDef<
     },
   },
   {
+    id: 'dni',
+    accessorKey: 'dni',
+    header: () => <p className='text-sm p-2'>DNI/Pasaporte</p>,
+    cell: ({ row }) => {
+      return <p className='text-sm p-2'>{row.original.dni}</p>;
+    },
+    meta: {
+      exportValue: (row) => row.original.dni,
+      exportHeader: 'DNI/Pasaporte',
+    },
+  },
+  {
     id: 'gender',
     accessorKey: 'gender',
     header: () => <p className='text-sm p-2'>Género</p>,
@@ -180,29 +158,6 @@ export const userColumns: StrictColumnDef<
             : '-'}
         </p>
       );
-    },
-  },
-  {
-    accessorKey: 'instagram',
-    header: () => <p className='text-sm p-2'>Instagram</p>,
-    cell: ({ row }) => {
-      const instagram = row.original.instagram;
-      return instagram ? (
-        <a
-          href={`https://instagram.com/${instagram}`}
-          target='_blank'
-          rel='noopener noreferrer'
-          className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
-        >
-          @{instagram}
-        </a>
-      ) : (
-        <p className='text-sm p-2'>-</p>
-      );
-    },
-    meta: {
-      exportValue: (row) => row.original.instagram || '-',
-      exportHeader: 'Instagram',
     },
   },
   {
@@ -251,6 +206,52 @@ export const userColumns: StrictColumnDef<
     meta: {
       exportValue: (row) => row.original.email,
       exportHeader: 'Mail',
+    },
+  },
+  {
+    accessorKey: 'instagram',
+    header: () => <p className='text-sm p-2'>Instagram</p>,
+    cell: ({ row }) => {
+      const instagram = row.original.instagram;
+      return instagram ? (
+        <a
+          href={`https://instagram.com/${instagram}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
+        >
+          @{instagram}
+        </a>
+      ) : (
+        <p className='text-sm p-2'>-</p>
+      );
+    },
+    meta: {
+      exportValue: (row) => row.original.instagram || '-',
+      exportHeader: 'Instagram',
+    },
+  },
+
+  {
+    accessorKey: 'role',
+    header: () => <p className='text-sm p-2'>Rol</p>,
+    cell: ({ row }) => {
+      return (
+        <p className='text-sm p-2'>
+          {
+            roleTranslation[
+              row.original.role as (typeof roleEnum.enumValues)[number]
+            ]
+          }
+        </p>
+      );
+    },
+    meta: {
+      exportValue: (row) =>
+        roleTranslation[
+          row.original.role as (typeof roleEnum.enumValues)[number]
+        ],
+      exportHeader: 'Rol',
     },
   },
   {

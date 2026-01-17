@@ -49,7 +49,7 @@ export function TicketGroupTable({
         </div>
         {ticketGroup.ticketTypePerGroups.map((type, index) => (
           <React.Fragment key={index}>
-            <div className='text-black py-4 border-b border-stroke/50'>
+            <div className='text-black py-4 border-b border-stroke/50 wrap-break-word'>
               {type.ticketType.name}
             </div>
             <div className='text-black text-center py-4 border-b border-stroke/50'>

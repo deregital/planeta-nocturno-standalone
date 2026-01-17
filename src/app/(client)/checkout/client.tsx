@@ -512,7 +512,7 @@ export default function CheckoutClient({
           </div>
         )}
 
-        <Separator className='mt-12 mb-6 bg-accent-dark/70' />
+        <Separator className='my-4' />
         {ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
         (ticketGroup.event.inviteCondition === 'INVITATION' &&
           organizerCodeFromTicketGroup) ? (
