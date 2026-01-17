@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
 interface OrganizerCardsProps {
@@ -45,12 +46,14 @@ export function OrganizerCards({
       ticketCountsByOrganizer.set(tg.invitedById, currentCount + ticketCount);
     });
 
-    // Map organizers with their counts
-    return chiefOrganizers.map((eo) => ({
+    // Map organizers with their counts and sort by ticket count
+    const organizersWithCounts = chiefOrganizers.map((eo) => ({
       id: eo.user.id,
       fullName: eo.user.fullName,
       ticketCount: ticketCountsByOrganizer.get(eo.user.id) || 0,
     }));
+
+    return organizersWithCounts.sort((a, b) => b.ticketCount - a.ticketCount);
   }, [event, chiefOrganizerId]);
 
   return (
@@ -60,7 +63,12 @@ export function OrganizerCards({
           {organizers.map((organizer) => (
             <Card
               key={organizer.id}
-              className='min-w-[200px] border-accent cursor-pointer hover:bg-accent-ultra-light transition-all hover:shadow-md'
+              className={cn(
+                'min-w-[200px] cursor-pointer hover:bg-accent-ultra-light transition-all hover:shadow-md',
+                organizer.ticketCount > 0
+                  ? 'border-green-500'
+                  : 'border-red-500',
+              )}
               onClick={() => onOrganizerClick(organizer.fullName)}
             >
               <CardContent>
