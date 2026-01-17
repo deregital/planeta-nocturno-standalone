@@ -122,28 +122,30 @@ export function OrganizerForm({
         }}
       />
       {isAdmin && type === 'CREATE' ? (
-        <SelectWithLabel
-          label='Rol'
-          required
-          id='role'
-          name='role'
-          value={internalState?.role}
-          className='w-full'
-          values={[
-            {
-              label: roleTranslation['ORGANIZER'],
-              value: 'ORGANIZER',
-            },
-            {
-              label: roleTranslation['CHIEF_ORGANIZER'],
-              value: 'CHIEF_ORGANIZER',
-            },
-          ]}
-          error={errors?.role}
-          onValueChange={(value) => {
-            handleChange('role', value as 'ORGANIZER' | 'CHIEF_ORGANIZER');
-          }}
-        />
+        <>
+          <SelectWithLabel
+            label='Rol'
+            required
+            id='role'
+            value={internalState?.role}
+            className='w-full'
+            values={[
+              {
+                label: roleTranslation['ORGANIZER'],
+                value: 'ORGANIZER',
+              },
+              {
+                label: roleTranslation['CHIEF_ORGANIZER'],
+                value: 'CHIEF_ORGANIZER',
+              },
+            ]}
+            error={errors?.role}
+            onValueChange={(value) => {
+              handleChange('role', value as 'ORGANIZER' | 'CHIEF_ORGANIZER');
+            }}
+          />
+          <input type='hidden' name='role' value={internalState?.role} />
+        </>
       ) : (
         <input type='hidden' name='role' value={internalState?.role} />
       )}
