@@ -42,7 +42,7 @@ export default function EventFolder({
         </div>
         <AccordionContent
           contentClassName='mt-0 border-none rounded-none w-full ml-2'
-          className='p-2 bg-transparent'
+          className='p-2 bg-transparent space-y-2'
         >
           {folder.events.map((event, index) =>
             href ? (
