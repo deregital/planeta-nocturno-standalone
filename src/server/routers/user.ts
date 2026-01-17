@@ -87,12 +87,14 @@ export const userRouter = router({
     });
     return users;
   }),
-  getById: adminProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    const user = await ctx.db.query.user.findFirst({
-      where: eq(userTable.id, input),
-    });
-    return user;
-  }),
+  getById: organizerProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.db.query.user.findFirst({
+        where: eq(userTable.id, input),
+      });
+      return user;
+    }),
   getUnsensitiveInfoById: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
@@ -188,19 +190,10 @@ export const userRouter = router({
     }),
   updateOwnProfile: organizerProcedure
     .input(
-      userSchema
-        .omit({ password: true, role: true, chiefOrganizerId: true })
-        .extend({ id: z.string() }),
+      userSchema.omit({ password: true, role: true, chiefOrganizerId: true }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.id !== ctx.session.user.id) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'No puedes actualizar el perfil de otro usuario',
-        });
-      }
-
-      await assertUniqueUser(ctx.db, input, input.id);
+      await assertUniqueUser(ctx.db, input, ctx.session.user.id);
 
       const instagram = input.instagram?.startsWith('@')
         ? input.instagram.slice(1)
@@ -214,7 +207,7 @@ export const userRouter = router({
           birthDate: input.birthDate,
           instagram,
         })
-        .where(eq(userTable.id, input.id));
+        .where(eq(userTable.id, ctx.session.user.id));
 
       revalidatePath('/profile');
       return user;
