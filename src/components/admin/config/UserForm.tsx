@@ -128,7 +128,6 @@ export function UserForm({
       />
       {lockedRole ? (
         <>
-          <input type='hidden' name='role' value={lockedRole} />
           <p className='text-sm text-accent-dark'>
             Rol asignado: {roleTranslation[lockedRole]}
           </p>
@@ -138,7 +137,6 @@ export function UserForm({
           label='Rol'
           required
           id='role'
-          name='role'
           value={internalState?.role}
           className='w-full'
           values={role.enumValues
@@ -156,6 +154,11 @@ export function UserForm({
           }}
         />
       )}
+      <input
+        type='hidden'
+        name='role'
+        value={lockedRole ?? internalState?.role}
+      />
       <div>
         <PhoneInputWithLabel
           label='Número de teléfono'
