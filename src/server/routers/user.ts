@@ -20,6 +20,7 @@ import {
 import {
   adminProcedure,
   chiefOrganizerProcedure,
+  organizerProcedure,
   publicProcedure,
   router,
 } from '@/server/trpc';
@@ -183,6 +184,39 @@ export const userRouter = router({
         .where(eq(userTable.id, input.id));
 
       revalidatePath('/admin/users');
+      return user;
+    }),
+  updateOwnProfile: organizerProcedure
+    .input(
+      userSchema
+        .omit({ password: true, role: true, chiefOrganizerId: true })
+        .extend({ id: z.string() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.id !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'No puedes actualizar el perfil de otro usuario',
+        });
+      }
+
+      await assertUniqueUser(ctx.db, input, input.id);
+
+      const instagram = input.instagram?.startsWith('@')
+        ? input.instagram.slice(1)
+        : input.instagram;
+
+      const user = await ctx.db
+        .update(userTable)
+        .set({
+          ...input,
+          name: input.name.trim(),
+          birthDate: input.birthDate,
+          instagram,
+        })
+        .where(eq(userTable.id, input.id));
+
+      revalidatePath('/profile');
       return user;
     }),
   partialUpdate: chiefOrganizerProcedure
