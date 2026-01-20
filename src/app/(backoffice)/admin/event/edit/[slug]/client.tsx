@@ -93,6 +93,10 @@ export default function Client({
           ...t,
           maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : new Date(),
           scanLimit: t.scanLimit ? new Date(t.scanLimit) : new Date(),
+          organizers:
+            'ticketTypeXOrganizers' in t && t.ticketTypeXOrganizers
+              ? t.ticketTypeXOrganizers.map((rel) => rel.b)
+              : null,
         })),
       );
     }
