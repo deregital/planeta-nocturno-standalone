@@ -42,7 +42,7 @@ model User {
   eventsOrganized      EventXOrganizer[]  @relation("ORGANIZER_X_EVENT")
   ticketXOrganizer     TicketXOrganizer[] @relation("ORGANIZER_X_TICKET")
   ticketGroups         TicketGroup[]      @relation("ORGANIZER_X_TICKET_GROUP")
-  ticketTypesOrganized TicketType[]       @relation("TICKET_TYPE_X_ORGANIZER")
+  ticketTypesOrganized TicketType[]       @relation("TICKET_TYPE_X_ORGANIZERS")
   // Optional for WebAuthn support
   Authenticator        Authenticator[]
 
@@ -207,9 +207,9 @@ model TicketType {
 
   scanLimit DateTime? @db.Timestamptz
 
-  organizerId String? @db.Uuid
-  organizer   User?   @relation("TICKET_TYPE_X_ORGANIZER", fields: [organizerId], references: [id], onDelete: SetNull)
-  slug        String  @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+  organizers User[] @relation("TICKET_TYPE_X_ORGANIZERS")
+
+  slug String @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
 
   event   Event  @relation("EVENT_X_TICKET_TYPE", fields: [eventId], references: [id], onDelete: Cascade)
   eventId String @db.Uuid

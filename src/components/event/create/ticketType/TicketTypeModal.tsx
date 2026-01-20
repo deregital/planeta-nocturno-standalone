@@ -5,11 +5,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { validateTicketType } from '@/app/(backoffice)/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
-import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
 import { FormRow } from '@/components/common/FormRow';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
-import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -73,7 +71,7 @@ export default function TicketTypeModal({
         id: ticketType.id,
         visibleInWeb: ticketType.visibleInWeb,
         lowStockThreshold: ticketType.lowStockThreshold,
-        organizerId: ticketType.organizerId || null,
+        organizers: ticketType.organizers || [],
       };
     }
     return {
@@ -88,31 +86,12 @@ export default function TicketTypeModal({
       id: crypto.randomUUID(),
       visibleInWeb: true,
       lowStockThreshold: null,
-      organizerId: null,
+      organizers: [],
     };
   }
 
   const [editingTicketType, setEditingTicketType] =
     useState<CreateTicketTypeSchema>(getInitialState);
-
-  // Filtrar solo organizadores individuales (no jefes)
-  const individualOrganizers = useMemo(() => {
-    return organizersData?.filter((org) => org.role === 'ORGANIZER') || [];
-  }, [organizersData]);
-
-  // Crear opciones para el combobox: formato "ID:Nombre Completo" para poder extraer el ID
-  const organizerOptions = useMemo(() => {
-    return individualOrganizers.map((org) => ({
-      value: `${org.id}`,
-      label: `${org.fullName} - ${org.dni}`,
-    }));
-  }, [individualOrganizers]);
-
-  // Obtener el valor seleccionado en formato del combobox (solo el ID, que es el value)
-  const selectedOrganizerOption = useMemo(() => {
-    if (!editingTicketType.organizerId) return '';
-    return editingTicketType.organizerId;
-  }, [editingTicketType.organizerId]);
 
   useEffect(() => {
     setEditingTicketType(getInitialState());
@@ -458,27 +437,6 @@ export default function TicketTypeModal({
                 }}
               />
             </div>
-            <GenericInputWithLabel
-              label='Organizador asociado (opcional)'
-              id='organizerId'
-            >
-              <VirtualizedCombobox
-                options={organizerOptions}
-                searchPlaceholder='Buscar organizador...'
-                notFoundPlaceholder='No se encontraron organizadores'
-                width='100%'
-                selectedOption={selectedOrganizerOption}
-                onSelectedOptionChange={(option) => {
-                  if (!option) {
-                    handleInputChange('organizerId', null);
-                    return;
-                  }
-                  // Extraer el ID del formato "ID:Nombre Completo"
-                  const organizerId = option;
-                  handleInputChange('organizerId', organizerId);
-                }}
-              />
-            </GenericInputWithLabel>
           </FormRow>
 
           <DialogFooter className='flex flex-col! gap-4'>

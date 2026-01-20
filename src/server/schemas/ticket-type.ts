@@ -28,8 +28,8 @@ export const ticketTypeSchema = z.object({
         'La cantidad de tickets para mostrar baja disponibilidad debe ser mayor o igual a 0',
     })
     .nullable(),
-  organizerId: z
-    .uuid()
+  organizers: z
+    .array(z.uuid())
     .nullable()
     .optional()
     .transform((val) => val ?? null), // Convierte undefined a null
