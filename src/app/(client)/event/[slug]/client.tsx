@@ -38,16 +38,22 @@ export default function Client({
   // Filtrar ticketTypes según el parámetro de query
   let filteredTicketTypes = event.ticketTypes;
   if (ticketTypeSlug) {
-    // Si hay un slug de ticketType, mostrar SOLO ese tipo (ignorando visibleInWeb)
-    const matchedTicketType = event.ticketTypes.find(
-      (ticketType) => ticketType.slug === ticketTypeSlug,
+    // Parsear slugs separados por coma
+    const ticketSlugs = ticketTypeSlug.split(',').map((s) => s.trim());
+
+    // Filtrar los ticket types que coincidan con alguno de los slugs
+    const matchedTicketTypes = event.ticketTypes.filter((ticketType) =>
+      ticketSlugs.includes(ticketType.slug),
     );
 
-    // Si el ticketType es de organizador, mostrar error
-    if (
-      matchedTicketType &&
-      matchedTicketType.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim()
-    ) {
+    // Si alguno de los ticketTypes es de organizador, excluirlo
+    filteredTicketTypes = matchedTicketTypes.filter(
+      (ticketType) =>
+        ticketType.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
+    );
+
+    // Si no se encontraron tickets válidos, mostrar error
+    if (filteredTicketTypes.length === 0 && matchedTicketTypes.length > 0) {
       return (
         <ErrorCard
           title='Tipo de ticket no disponible'
@@ -56,8 +62,6 @@ export default function Client({
         />
       );
     }
-
-    filteredTicketTypes = matchedTicketType ? [matchedTicketType] : [];
   } else {
     // Si no hay slug, mantener el filtro normal
     filteredTicketTypes = event.ticketTypes.filter(

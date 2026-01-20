@@ -41,6 +41,19 @@ export default async function EventPage({
   // Construct the origin
   const origin = proto && host ? `${proto}://${host}` : '';
 
+  // Obtener los slugs de los ticket types donde el organizador está incluido
+  const myTicketTypeSlugs = event.ticketTypes
+    .filter((tt) =>
+      tt.ticketTypeXOrganizers?.some((tto) => tto.b === session?.user.id),
+    )
+    .map((tt) => tt.slug);
+
+  // Construir la URL con los ticket types
+  const ticketParam =
+    myTicketTypeSlugs.length > 0
+      ? `&ticket=${myTicketTypeSlugs.join(',')}`
+      : '';
+
   return (
     <div className='w-full py-4'>
       <GoBack route='/organization' className='ml-4' />
@@ -48,7 +61,7 @@ export default async function EventPage({
       {event.inviteCondition === 'TRADITIONAL' && (
         <div className='w-full text-center'>
           <CopyUrl
-            url={`${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}`}
+            url={`${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}${ticketParam}`}
           />
         </div>
       )}
