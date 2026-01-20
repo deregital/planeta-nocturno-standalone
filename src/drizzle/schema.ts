@@ -80,8 +80,9 @@ export const ticketType = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     lowStockThreshold: integer(),
-    slug: text().notNull(),
-    organizerId: uuid(),
+    slug: text()
+      .default(sql`upper(substr(md5((random())::text), 1, 6))`)
+      .notNull(),
   },
   (table) => [
     uniqueIndex('ticketType_eventId_slug_key').using(
@@ -89,13 +90,6 @@ export const ticketType = pgTable(
       table.eventId.asc().nullsLast().op('text_ops'),
       table.slug.asc().nullsLast().op('text_ops'),
     ),
-    foreignKey({
-      columns: [table.organizerId],
-      foreignColumns: [user.id],
-      name: 'ticketType_organizerId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
     foreignKey({
       columns: [table.eventId],
       foreignColumns: [event.id],
@@ -372,6 +366,35 @@ export const tag = pgTable('tag', {
   id: uuid().defaultRandom().primaryKey().notNull(),
   name: text().notNull(),
 });
+
+export const ticketTypeXOrganizers = pgTable(
+  '_TICKET_TYPE_X_ORGANIZERS',
+  {
+    a: uuid('A').notNull(),
+    b: uuid('B').notNull(),
+  },
+  (table) => [
+    index().using('btree', table.b.asc().nullsLast().op('uuid_ops')),
+    foreignKey({
+      columns: [table.a],
+      foreignColumns: [ticketType.id],
+      name: '_TICKET_TYPE_X_ORGANIZERS_A_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.b],
+      foreignColumns: [user.id],
+      name: '_TICKET_TYPE_X_ORGANIZERS_B_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    primaryKey({
+      columns: [table.a, table.b],
+      name: '_TICKET_TYPE_X_ORGANIZERS_AB_pkey',
+    }),
+  ],
+);
 
 export const eventXUser = pgTable(
   '_EVENT_X_USER',
