@@ -135,6 +135,23 @@ export const eventsRouter = router({
 
     return { pastEvents, upcomingEvents };
   }),
+  getAllWithoutFolders: publicProcedure.query(async ({ ctx }) => {
+    const events = await ctx.db.query.event.findMany({
+      where: eq(eventSchema.isDeleted, false),
+      with: {
+        ticketTypes: true,
+        location: {
+          columns: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+      orderBy: desc(eventSchema.endingDate),
+    });
+    return events;
+  }),
   getAuthorized: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
