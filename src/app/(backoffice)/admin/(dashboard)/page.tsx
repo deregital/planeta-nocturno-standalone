@@ -1,5 +1,5 @@
 'use client';
-import { addDays, subMonths } from 'date-fns';
+import { addDays, isBefore, subMonths } from 'date-fns';
 import {
   parseAsIsoDate,
   parseAsString,
@@ -76,6 +76,16 @@ export default function Dashboard() {
                   value={filterMode}
                   onValueChange={(value) => {
                     setFilterMode(value as FilterMode);
+                    if (value === 'event' && allEvents.length > 0) {
+                      const lastOccurredEvent = allEvents.find((event) =>
+                        isBefore(event.endingDate, today),
+                      );
+                      if (lastOccurredEvent) {
+                        setEventId(lastOccurredEvent.id);
+                      } else {
+                        setEventId(allEvents[0].id);
+                      }
+                    }
                     refetch();
                     utils.statistics.getLocationsStats.invalidate();
                     utils.statistics.getEventsStats.invalidate();
