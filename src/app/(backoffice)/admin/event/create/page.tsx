@@ -6,7 +6,7 @@ export default function CreateEventPage() {
   return (
     <div className='flex flex-col gap-2 items-center'>
       <GoBack
-        title='Volver a eventos'
+        title='Volver al gestor de eventos'
         className='self-baseline mx-4 mt-4'
         route='/admin/event'
       />
