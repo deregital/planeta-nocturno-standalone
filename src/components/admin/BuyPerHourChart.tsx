@@ -24,10 +24,12 @@ export default function BuyPerHourChart() {
   const to = searchParams.get('to')
     ? new Date(searchParams.get('to') as string)
     : today;
+  const eventId = searchParams.get('eventId') ?? undefined;
 
   const { data } = trpc.statistics.getEmittedTicketsPerHour.useQuery({
     from,
     to,
+    eventId,
   });
 
   const eventColors = useMemo(() => {
