@@ -62,7 +62,7 @@ export default function Dashboard() {
   const utils = trpc.useUtils();
 
   return (
-    <div className='flex gap-8 flex-col p-4'>
+    <div className='flex gap-8 flex-col p-4 min-w-0'>
       <BaseCard className='border-2'>
         <BaseCard className='flex flex-col sm:grid sm:grid-rows-7 sm:grid-cols-2 md:1/6 lg:h-96 lg:grid-cols-4 p-3 border-0'>
           {/* TImestamp */}
@@ -216,7 +216,7 @@ export default function Dashboard() {
       </BaseCard>
       {/* Comparative table */}
       <h2 className='text-3xl font-medium'>Tabla comparativa</h2>
-      <BaseCard className='flex flex-col gap-4 border-2 p-3 py-6 max-w-[calc(100vw-3rem)] md:max-w-[calc(100vw-14rem)]'>
+      <BaseCard className='flex flex-col gap-4 border-2 p-3 py-6 w-full min-w-0'>
         <ComparativeTable />
       </BaseCard>
     </div>
