@@ -210,7 +210,6 @@ export function EmitTicketModal({
                 className='w-full'
                 label='Género'
                 id='gender'
-                name='gender'
                 defaultValue='male'
                 values={[
                   { label: 'Masculino', value: 'male' },
@@ -228,6 +227,7 @@ export function EmitTicketModal({
                 required={true}
                 error={error.gender}
               />
+              <input type='hidden' name='gender' value={gender} />
               <InputDateWithLabel
                 label='Fecha de nacimiento'
                 id='birthDate'
