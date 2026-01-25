@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { type genderTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { createTicketSchema } from '@/server/schemas/emitted-tickets';
@@ -38,6 +39,7 @@ export function EmitTicketModal({
   const [error, setError] = useState<Record<string, string>>({});
   const [emitTicketLoading, setEmitTicketLoading] = useState(false);
   const [birthDate, setBirthDate] = useState(new Date());
+  const [gender, setGender] = useState<keyof typeof genderTranslation>('male');
   const [phoneNumber, setPhoneNumber] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedTicketTypeId, setSelectedTicketTypeId] = useState('');
@@ -73,7 +75,7 @@ export function EmitTicketModal({
       dni: formData.get('dni') as string,
       eventId: event!.id,
       fullName: formData.get('fullName') as string,
-      gender: formData.get('gender') as 'male' | 'female' | 'other',
+      gender: gender,
       phoneNumber: phoneNumber,
       paidOnLocation: formData.get('paidOnLocation') === 'on',
       ticketTypeId: selectedTicketTypeId,
@@ -217,12 +219,7 @@ export function EmitTicketModal({
                   { label: 'Otro', value: 'other' },
                 ]}
                 onValueChange={(value) => {
-                  const select = formRef.current?.querySelector(
-                    '[name="gender"]',
-                  ) as HTMLSelectElement;
-                  if (select) {
-                    select.value = value;
-                  }
+                  setGender(value as keyof typeof genderTranslation);
                 }}
                 required={true}
                 error={error.gender}
