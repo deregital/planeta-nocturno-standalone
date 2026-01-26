@@ -10,6 +10,7 @@ import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { roleTranslation } from '@/lib/translations';
+import { parseDateOnly } from '@/lib/utils-client';
 import { type User } from '@/server/types';
 import 'react-phone-number-input/style.css';
 
@@ -112,11 +113,7 @@ export function OrganizerForm({
         id='birthDate'
         name='birthDate'
         error={errors?.birthDate}
-        selected={
-          internalState?.birthDate
-            ? new Date(internalState.birthDate)
-            : undefined
-        }
+        selected={parseDateOnly(internalState?.birthDate ?? '') ?? undefined}
         onChange={(date) => {
           handleChange('birthDate', date.toISOString());
         }}
