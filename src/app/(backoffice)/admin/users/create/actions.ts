@@ -13,6 +13,7 @@ export type UserFirstTimeCredentials = {
   username: string;
   password: string;
   fullName: string;
+  email: string;
   instagram: string | null;
   phoneNumber: string;
 };
@@ -113,6 +114,7 @@ export async function createUser(
       username: validation.data.name,
       password: validation.data.password,
       fullName: validation.data.fullName,
+      email: validation.data.email,
       instagram: validation.data.instagram,
       phoneNumber: validation.data.phoneNumber,
     },
@@ -195,6 +197,7 @@ export async function createOrganizer(
       username: validation.data.name,
       password: validation.data.password,
       fullName: validation.data.fullName,
+      email: validation.data.email,
       instagram: validation.data.instagram,
       phoneNumber: validation.data.phoneNumber,
     },
