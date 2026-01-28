@@ -1,6 +1,6 @@
-import { notFound, redirect } from 'next/navigation';
 import { isAfter } from 'date-fns';
 import { type Route } from 'next';
+import { notFound, redirect } from 'next/navigation';
 
 import Client from '@/app/(client)/event/[slug]/client';
 import ServerErrorCard from '@/components/common/ServerErrorCard';
@@ -132,11 +132,14 @@ async function EventPage({ params, searchParams }: EventPageProps) {
           />
         );
       }
+    } else {
+      filteredTicketTypes = filteredTicketTypes.filter(
+        (ticketType) => ticketType.visibleInWeb,
+      );
     }
 
     filteredTicketTypes = filteredTicketTypes.filter(
       (ticketType) =>
-        ticketType.visibleInWeb &&
         ticketType.maxSellDate &&
         isAfter(new Date(ticketType.maxSellDate), new Date()),
     );
