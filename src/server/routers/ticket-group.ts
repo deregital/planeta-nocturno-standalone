@@ -4,7 +4,6 @@ import { z } from 'zod';
 
 import {
   ticketGroup,
-  ticketType,
   ticketTypePerGroup,
   ticketXorganizer,
 } from '@/drizzle/schema';
@@ -41,21 +40,7 @@ export const ticketGroupRouter = router({
 
       const result = await ctx.db.transaction(async (tx) => {
         // Si hay un invitedBy explícito, usarlo
-        // Si no, verificar si todos los tickets son del mismo ticketType con organizador
-        let finalInvitedById: string | null = input.invitedBy || null;
-
-        if (!finalInvitedById && input.ticketsPerType.length === 1) {
-          const ticketTypeData = await tx.query.ticketType.findFirst({
-            where: eq(ticketType.id, input.ticketsPerType[0].ticketTypeId),
-            columns: {
-              organizerId: true,
-            },
-          });
-
-          if (ticketTypeData?.organizerId) {
-            finalInvitedById = ticketTypeData.organizerId;
-          }
-        }
+        const invitedById = input.invitedBy ?? null;
 
         const ticketGroupData = {
           eventId: input.eventId,
@@ -64,7 +49,7 @@ export const ticketGroupRouter = router({
             (sum, ticket) => sum + ticket.amount,
             0,
           ),
-          invitedById: finalInvitedById,
+          invitedById,
         };
 
         const result = await tx
@@ -127,7 +112,6 @@ export const ticketGroupRouter = router({
                   description: true,
                   price: true,
                   category: true,
-                  organizerId: true,
                 },
               },
             },

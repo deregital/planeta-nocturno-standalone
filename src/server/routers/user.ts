@@ -155,11 +155,11 @@ export const userRouter = router({
           instagram,
         })
         .returning();
-      await sendMailWithoutAttachments({
-        to: user.email,
-        subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
-        html: generateWelcomeEmail(user.name, input.password),
-      });
+      // await sendMailWithoutAttachments({
+      //   to: user.email,
+      //   subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
+      //   html: generateWelcomeEmail(user.name, input.password),
+      // });
       return user;
     }),
   update: chiefOrganizerProcedure
@@ -269,6 +269,7 @@ export const userRouter = router({
         fullName: user.fullName,
         instagram: user.instagram,
         phoneNumber: user.phoneNumber,
+        email: user.email,
       };
     }),
   delete: chiefOrganizerProcedure

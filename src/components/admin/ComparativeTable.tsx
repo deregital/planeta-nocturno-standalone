@@ -2,7 +2,6 @@
 
 import {
   type StrictColumnDef,
-  flexRender,
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
@@ -13,15 +12,8 @@ import { useMemo, useState } from 'react';
 
 import { ComparativeTableSkeleton } from '@/components/admin/DatabaseSkeleton';
 import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
+import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
@@ -135,7 +127,7 @@ export default function ComparativeTable() {
     () => [
       {
         accessorKey: 'label',
-        header: () => <span className='font-medium text-2xl'>Información</span>,
+        header: () => <span className='font-medium text-xl'>Información</span>,
         meta: {
           exportValue: (row) => row.original.label,
           exportHeader: 'Información',
@@ -145,7 +137,7 @@ export default function ComparativeTable() {
         accessorKey: col.id,
         header: () => (
           <div className='flex items-center gap-2'>
-            <span className='font-medium text-2xl'>{col.name}</span>
+            <span className='font-medium text-xl'>{col.name}</span>
             <Button
               variant={'ghost'}
               onClick={() => removeComparative({ id: col.id, type: col.type })}
@@ -181,7 +173,7 @@ export default function ComparativeTable() {
 
   return (
     <>
-      <div className='flex gap-4 px-12'>
+      <div className='flex gap-4'>
         <SelectableComboBox
           title='Agregar evento'
           listOf='evento'
@@ -199,38 +191,14 @@ export default function ComparativeTable() {
           }}
         />
       </div>
-      <Table className='border rounded-xl'>
-        <TableHeader className='border-2 rounded-2xl border-stroke'>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className='px-3 py-2 text-left border-2 border-stroke '
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className='px-3 py-2 text-lg'>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className='w-full overflow-x-auto'>
+        <DataTable
+          fullWidth={false}
+          divClassName='w-full min-w-0'
+          columns={columns as StrictColumnDef<{ id: string }, string>[]}
+          data={rows.map((row) => ({ id: row.label, ...row }))}
+        />
+      </div>
     </>
   );
 }

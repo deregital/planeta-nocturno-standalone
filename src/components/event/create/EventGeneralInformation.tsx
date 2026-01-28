@@ -426,6 +426,7 @@ export function EventGeneralInformation({
             readOnly={action === 'PREVIEW'}
             disabled={action === 'PREVIEW'}
           />
+          <input type='hidden' name='locationId' value={event.locationId} />
           <SelectWithLabel
             label='Categoría'
             id='categoryId'
@@ -462,6 +463,7 @@ export function EventGeneralInformation({
             readOnly={action === 'PREVIEW'}
             disabled={action === 'PREVIEW'}
           />
+          <input type='hidden' name='categoryId' value={event.categoryId} />
           <p className='text-sm'>
             La categoría del evento ayuda a organizar y filtrar eventos en el
             sistema.

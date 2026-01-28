@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Mail } from 'lucide-react';
 import { useState } from 'react';
 
 import { type UserFirstTimeCredentials } from '@/app/(backoffice)/admin/users/create/actions';
@@ -90,6 +90,14 @@ export function CredentialsModal({
               >
                 <div className='flex items-center justify-center p-4 rounded-full bg-[#00C500] hover:brightness-110 transition-all cursor-pointer'>
                   <WhatsApp />
+                </div>
+              </a>
+              <a
+                href={`mailto:${credentials.email}?subject=Credenciales de acceso&body=${shareMessage}`}
+                target='_blank'
+              >
+                <div className='flex items-center justify-center p-4 rounded-full bg-[#DA0004] hover:brightness-110 transition-all cursor-pointer text-white'>
+                  <Mail />
                 </div>
               </a>
               {credentials.instagram && (

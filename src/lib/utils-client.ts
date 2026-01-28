@@ -100,3 +100,11 @@ export function lightenColor(color: string, percent: number): string {
   );
   return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
+
+/** Parsea YYYY-MM-DD o ISO (ej. 2001-07-18T...) como fecha local. */
+export function parseDateOnly(value: string): Date | undefined {
+  if (!value) return undefined;
+  const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return undefined;
+  return new Date(y, m - 1, d);
+}

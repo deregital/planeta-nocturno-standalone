@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Calendar,
-  Database,
-  Home,
-  Settings,
-  UserPen,
-  Users,
-} from 'lucide-react';
+import { Calendar, Database, Settings, UserPen, Users } from 'lucide-react';
 import { type Route } from 'next';
 import { usePathname } from 'next/navigation';
 
@@ -38,12 +31,12 @@ export const navRoutes: {
     title: 'Organizadores',
     roles: ['CHIEF_ORGANIZER'],
   },
-  {
-    href: '/admin',
-    icon: <Home />,
-    title: 'Dashboard',
-    roles: ['ADMIN'],
-  },
+  // {
+  //   href: '/admin',
+  //   icon: <Home />,
+  //   title: 'Dashboard',
+  //   roles: ['ADMIN'],
+  // },
   {
     href: '/admin/database',
     icon: <Database />,

@@ -29,6 +29,7 @@ import {
   location as locationSchema,
   ticketGroup,
   ticketType,
+  ticketTypeXOrganizers,
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
@@ -133,6 +134,23 @@ export const eventsRouter = router({
     };
 
     return { pastEvents, upcomingEvents };
+  }),
+  getAllWithoutFolders: publicProcedure.query(async ({ ctx }) => {
+    const events = await ctx.db.query.event.findMany({
+      where: eq(eventSchema.isDeleted, false),
+      with: {
+        ticketTypes: true,
+        location: {
+          columns: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+      orderBy: desc(eventSchema.endingDate),
+    });
+    return events;
   }),
   getAuthorized: publicProcedure
     .input(z.string())
@@ -261,8 +279,10 @@ export const eventsRouter = router({
             maxAvailable: true,
             name: true,
             price: true,
-            organizerId: true,
             slug: true,
+          },
+          with: {
+            ticketTypeXOrganizers: true,
           },
         },
         location: {
@@ -290,7 +310,11 @@ export const eventsRouter = router({
             },
           },
         },
-        ticketTypes: true,
+        ticketTypes: {
+          with: {
+            ticketTypeXOrganizers: true,
+          },
+        },
         location: {
           columns: {
             id: true,
@@ -411,7 +435,7 @@ export const eventsRouter = router({
           {
             where: and(
               inArray(ticketType.id, input.ticketTypeIds),
-              eq(ticketType.organizerId, userByCode.id),
+              inArray(ticketTypeXOrganizers.b, [userByCode.id]),
             ),
             columns: {
               id: true,
@@ -547,18 +571,36 @@ export const eventsRouter = router({
                 .insert(ticketType)
                 .values(
                   ticketTypes.map((ticketType) => {
-                    const { slug: _, organizerId, ...rest } = ticketType;
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+                    const { slug: _, organizers: __, ...rest } = ticketType;
                     return {
                       ...rest,
                       maxSellDate: ticketType.maxSellDate?.toISOString(),
                       scanLimit: ticketType.scanLimit?.toISOString(),
                       slug: ticketType.slug || generateSlug(ticketType.name),
-                      organizerId: organizerId ?? null,
                       eventId: eventCreated.id,
                     };
                   }),
                 )
                 .returning();
+
+              // Insertar organizadores específicos para cada ticketType
+              for (let i = 0; i < ticketTypes.length; i++) {
+                const inputTicketType = ticketTypes[i];
+                const createdTicketType = ticketTypesCreated[i];
+                if (
+                  inputTicketType.organizers &&
+                  inputTicketType.organizers.length > 0 &&
+                  createdTicketType
+                ) {
+                  await tx.insert(ticketTypeXOrganizers).values(
+                    inputTicketType.organizers.map((organizerId) => ({
+                      a: createdTicketType.id,
+                      b: organizerId,
+                    })),
+                  );
+                }
+              }
             }
 
             // Usuarios boleteria
@@ -1462,7 +1504,7 @@ export const eventsRouter = router({
             const ticketTypesUpdated = await Promise.all(
               ticketTypes.map(async (type) => {
                 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-                const { id, ...rest } = type;
+                const { id, organizers, ...rest } = type;
                 if (ticketTypesDB.find((t) => t.id === type.id)) {
                   const [updated] = await tx
                     .update(ticketType)
@@ -1476,6 +1518,22 @@ export const eventsRouter = router({
                     .where(eq(ticketType.id, type.id))
                     .returning();
 
+                  // Actualizar organizadores específicos del ticketType
+                  // Primero eliminar los existentes
+                  await tx
+                    .delete(ticketTypeXOrganizers)
+                    .where(eq(ticketTypeXOrganizers.a, type.id));
+
+                  // Luego insertar los nuevos
+                  if (organizers && organizers.length > 0) {
+                    await tx.insert(ticketTypeXOrganizers).values(
+                      organizers.map((organizerId) => ({
+                        a: type.id,
+                        b: organizerId,
+                      })),
+                    );
+                  }
+
                   return updated;
                 } else if (type.id) {
                   const [created] = await tx
@@ -1488,6 +1546,16 @@ export const eventsRouter = router({
                       eventId: eventUpdated.id,
                     })
                     .returning();
+
+                  // Insertar organizadores específicos para el nuevo ticketType
+                  if (organizers && organizers.length > 0 && created) {
+                    await tx.insert(ticketTypeXOrganizers).values(
+                      organizers.map((organizerId) => ({
+                        a: created.id,
+                        b: organizerId,
+                      })),
+                    );
+                  }
 
                   return created;
                 }

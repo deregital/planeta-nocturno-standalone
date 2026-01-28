@@ -1,6 +1,7 @@
 import { Folder } from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 import EventCardHorizontal from '@/components/events/admin/EventCardHorizontal';
 import EventFolderModal from '@/components/events/admin/EventFolderModal';
@@ -23,6 +24,9 @@ export default function EventFolder({
   href?: (slug: string) => string;
   showActions?: boolean;
 }) {
+  const session = useSession();
+  const isAdmin = session?.data?.user.role === 'ADMIN';
+
   return (
     <Accordion type='single' collapsible className='w-full'>
       <AccordionItem value='item-1' className='border-none'>
@@ -36,9 +40,11 @@ export default function EventFolder({
               <p className='text-lg font-bold'>{folder.name}</p>
             </div>
           </AccordionTrigger>
-          <div className='absolute right-10 top-1/2 -translate-y-1/2'>
-            <EventFolderModal action='EDIT' folder={folder} />
-          </div>
+          {isAdmin && (
+            <div className='absolute right-10 top-1/2 -translate-y-1/2'>
+              <EventFolderModal action='EDIT' folder={folder} />
+            </div>
+          )}
         </div>
         <AccordionContent
           contentClassName='mt-0 border-none rounded-none w-full ml-2'

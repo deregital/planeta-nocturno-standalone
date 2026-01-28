@@ -40,7 +40,9 @@ export const organizerRouter = router({
         },
       },
     });
-    return myEventsRelation;
+    return myEventsRelation.filter(
+      (relation) => relation.event && !relation.event.isDeleted,
+    );
   }),
   getMyTicketsSold: organizerProcedure
     .input(eventSchema.shape.id)
