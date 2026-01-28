@@ -1,6 +1,7 @@
 import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
 import DeleteTicketTypeModal from '@/components/event/create/ticketType/DeleteTicketTypeModal';
 import TicketTypeModal from '@/components/event/create/ticketType/TicketTypeModal';
+import TicketTypeOrganizersModal from '@/components/event/create/ticketType/TicketTypeOrganizersModal';
 import { ticketTypesTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
@@ -50,6 +51,7 @@ export default function TicketTypeList({
               <div className='justify-self-end'>
                 {!isOrganizerTicketType && (
                   <>
+                    <TicketTypeOrganizersModal ticketType={type} />
                     <TicketTypeModal
                       action='EDIT'
                       maxAvailableLeft={maxAvailableLeft}

@@ -1,5 +1,5 @@
 import { format, getHours, parseISO } from 'date-fns';
-import { and, between, gte, lte, ne } from 'drizzle-orm';
+import { and, between, eq, gte, lte, ne } from 'drizzle-orm';
 import z from 'zod';
 
 import { emittedTicket, event, ticketGroup } from '@/drizzle/schema';
@@ -11,18 +11,24 @@ export const statisticsRouter = router({
       z.object({
         from: z.date(),
         to: z.date(),
+        eventId: z.string().uuid().optional(),
       }),
     )
     .query(async ({ input, ctx }) => {
       const data = await ctx.db.query.ticketGroup.findMany({
-        where: and(
-          between(
-            ticketGroup.createdAt,
-            input.from.toISOString(),
-            input.to.toISOString(),
-          ),
-          ne(ticketGroup.status, 'BOOKED'),
-        ),
+        where: input.eventId
+          ? and(
+              ne(ticketGroup.status, 'BOOKED'),
+              eq(ticketGroup.eventId, input.eventId),
+            )
+          : and(
+              between(
+                ticketGroup.createdAt,
+                input.from.toISOString(),
+                input.to.toISOString(),
+              ),
+              ne(ticketGroup.status, 'BOOKED'),
+            ),
         with: {
           ticketTypePerGroups: {
             columns: {
@@ -266,14 +272,17 @@ export const statisticsRouter = router({
       z.object({
         from: z.date(),
         to: z.date(),
+        eventId: z.string().uuid().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const data = await ctx.db.query.event.findMany({
-        where: and(
-          gte(event.createdAt, input.from.toISOString()),
-          lte(event.endingDate, input.to.toISOString()),
-        ),
+        where: input.eventId
+          ? eq(event.id, input.eventId)
+          : and(
+              gte(event.createdAt, input.from.toISOString()),
+              lte(event.endingDate, input.to.toISOString()),
+            ),
         columns: {
           id: true,
           name: true,

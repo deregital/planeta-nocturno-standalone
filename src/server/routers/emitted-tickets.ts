@@ -26,6 +26,7 @@ import {
   router,
   ticketingProcedure,
 } from '@/server/trpc';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { generatePdf } from '@/server/utils/ticket-template';
 import {
   decryptString,
@@ -529,6 +530,23 @@ export const emittedTicketsRouter = router({
             );
           ticketGroupIds = groups.map((g) => g.id);
         }
+        // Se agregan los tickets de los organizadores del jefe
+        const organizerTicketType = await ctx.db.query.ticketType.findFirst({
+          where: and(
+            eq(ticketTypeTable.eventId, input.eventId),
+            eq(ticketTypeTable.name, ORGANIZER_TICKET_TYPE_NAME),
+          ),
+          columns: { id: true },
+        });
+        if (organizerTicketType) {
+          const organizersTickets = await ctx.db.query.emittedTicket.findMany({
+            where: and(
+              eq(emittedTicket.eventId, input.eventId),
+              eq(emittedTicket.ticketTypeId, organizerTicketType?.id ?? ''),
+            ),
+          });
+          ticketGroupIds = organizersTickets.map((t) => t.ticketGroupId);
+        }
       }
 
       const tickets = await ctx.db.query.emittedTicket.findMany({
@@ -575,7 +593,6 @@ export const emittedTicketsRouter = router({
         },
       }));
     }),
-
   send: ticketingProcedure
     .input(
       z.object({

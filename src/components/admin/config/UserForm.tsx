@@ -193,7 +193,6 @@ export function UserForm({
       <SelectWithLabel
         label='Género'
         id='gender'
-        name='gender'
         value={internalState?.gender}
         className='w-full'
         values={[
@@ -207,6 +206,7 @@ export function UserForm({
         }}
         required
       />
+      <input type='hidden' name='gender' value={internalState?.gender} />
       <InputWithLabel
         label='Instagram'
         id='instagram'

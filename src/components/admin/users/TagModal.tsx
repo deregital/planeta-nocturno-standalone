@@ -129,10 +129,12 @@ export function TagModal({ type, tag, userId }: TagModalProps) {
       return;
     }
 
+    const trimmedName = name.trim();
+
     if (type === 'CREATE') {
-      createTag.mutate(name.trim());
+      createTag.mutate(trimmedName);
     } else if (type === 'EDIT' && tag) {
-      updateTag.mutate({ id: tag.id, name: name.trim() });
+      updateTag.mutate({ id: tag.id, name: trimmedName });
     }
   }
 
