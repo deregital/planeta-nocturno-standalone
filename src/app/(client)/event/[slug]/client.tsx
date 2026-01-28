@@ -1,6 +1,5 @@
 'use client';
 import { isAfter } from 'date-fns';
-import { type Route } from 'next';
 import { useSearchParams } from 'next/navigation';
 
 import ErrorCard from '@/components/common/ErrorCard';
@@ -9,11 +8,7 @@ import HeaderTickets from '@/components/event/buyPage/HeaderTickets';
 import InformationEvent from '@/components/event/buyPage/InformationEvent';
 import TicketPurchase from '@/components/event/buyPage/TicketPurchase';
 import { type RouterOutputs } from '@/server/routers/app';
-import {
-  ORGANIZER_CODE_QUERY_PARAM,
-  ORGANIZER_TICKET_TYPE_NAME,
-  TICKET_TYPE_SLUG_QUERY_PARAM,
-} from '@/server/utils/constants';
+import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 export default function Client({
   event,
@@ -23,7 +18,6 @@ export default function Client({
   const searchParams = useSearchParams();
 
   const organizerCode = searchParams.get(ORGANIZER_CODE_QUERY_PARAM);
-  const ticketTypeSlug = searchParams.get(TICKET_TYPE_SLUG_QUERY_PARAM);
 
   if (!isAfter(new Date(event.endingDate), new Date())) {
     return (
@@ -32,43 +26,6 @@ export default function Client({
         description='El evento que buscas ya finalizó. Podés ver todos nuestros eventos en la página principal.'
         route='/'
       />
-    );
-  }
-
-  // Filtrar ticketTypes según el parámetro de query
-  let filteredTicketTypes = event.ticketTypes;
-  if (ticketTypeSlug) {
-    // Parsear slugs separados por coma
-    const ticketSlugs = ticketTypeSlug.split(',').map((s) => s.trim());
-
-    // Filtrar los ticket types que coincidan con alguno de los slugs
-    const matchedTicketTypes = event.ticketTypes.filter((ticketType) =>
-      ticketSlugs.includes(ticketType.slug),
-    );
-
-    // Si alguno de los ticketTypes es de organizador, excluirlo
-    filteredTicketTypes = matchedTicketTypes.filter(
-      (ticketType) =>
-        ticketType.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
-    );
-
-    // Si no se encontraron tickets válidos, mostrar error
-    if (filteredTicketTypes.length === 0 && matchedTicketTypes.length > 0) {
-      return (
-        <ErrorCard
-          title='Tipo de ticket no disponible'
-          description='El tipo de ticket que intentas acceder no está disponible para compra pública.'
-          route={`/event/${event.slug}` as Route}
-        />
-      );
-    }
-  } else {
-    // Si no hay slug, mantener el filtro normal
-    filteredTicketTypes = event.ticketTypes.filter(
-      (ticketType) =>
-        ticketType.visibleInWeb &&
-        ticketType.maxSellDate &&
-        isAfter(new Date(ticketType.maxSellDate), new Date()),
     );
   }
 
@@ -88,7 +45,7 @@ export default function Client({
             <div className='px-4 md:px-6 pb-4 md:col-span-12 overflow-hidden'>
               <TicketPurchase
                 eventId={event.id}
-                ticketTypes={filteredTicketTypes}
+                ticketTypes={event.ticketTypes}
                 invitedBy={organizerCode}
               />
             </div>
