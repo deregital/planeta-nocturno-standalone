@@ -510,7 +510,10 @@ export const emittedTicketsRouter = router({
           },
         });
 
-        let organizerIds = organizers.map((o) => o.id);
+        let organizerIds = [
+          ctx.session.user.id,
+          ...organizers.map((o) => o.id),
+        ];
         if (input.userId) {
           organizerIds = [...organizerIds, input.userId];
         }
@@ -545,7 +548,10 @@ export const emittedTicketsRouter = router({
               eq(emittedTicket.ticketTypeId, organizerTicketType?.id ?? ''),
             ),
           });
-          ticketGroupIds = organizersTickets.map((t) => t.ticketGroupId);
+          ticketGroupIds = [
+            ...ticketGroupIds,
+            ...organizersTickets.map((t) => t.ticketGroupId),
+          ];
         }
       }
 
