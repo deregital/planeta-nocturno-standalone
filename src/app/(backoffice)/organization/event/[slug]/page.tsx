@@ -10,7 +10,10 @@ import { CopyUrl } from '@/components/organization/event/CopyUrl';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
 import { auth } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
-import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
+import {
+  ORGANIZER_CODE_QUERY_PARAM,
+  ORGANIZER_TICKET_TYPE_NAME,
+} from '@/server/utils/constants';
 
 export default async function EventPage({
   params,
@@ -41,6 +44,7 @@ export default async function EventPage({
   // Construct the origin
   const origin = proto && host ? `${proto}://${host}` : '';
 
+  // TODO: Refactorizar esto con el nuevo TicketType.organizers
   // Obtener los slugs de los ticket types donde el organizador está incluido
   const myTicketTypeSlugs = event.ticketTypes
     .filter((tt) =>
@@ -79,7 +83,9 @@ export default async function EventPage({
           />
         ) : (
           <TicketTableWithTabs
-            ticketTypes={event.ticketTypes}
+            ticketTypes={event.ticketTypes.filter(
+              (tt) => tt.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
+            )}
             userId={session?.user.id}
             eventSlug={event.slug}
           />
