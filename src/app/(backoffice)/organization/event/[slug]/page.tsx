@@ -4,10 +4,10 @@ import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
+import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
-import { TraditionalTicketTableWrapper } from '@/components/organization/event/TraditionalTicketTableWrapper';
 import { auth } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
 import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
@@ -78,7 +78,11 @@ export default async function EventPage({
             chiefOrganizerId={session.user.id}
           />
         ) : (
-          <TraditionalTicketTableWrapper eventId={event.id} />
+          <TicketTableWithTabs
+            ticketTypes={event.ticketTypes}
+            userId={session?.user.id}
+            eventSlug={event.slug}
+          />
         )}
       </Suspense>
 

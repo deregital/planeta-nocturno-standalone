@@ -7,11 +7,10 @@ import { toast } from 'sonner';
 
 import { SearchTickets } from '@/components/event/individual/SearchTickets';
 import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
-import { TicketTableSectionChief } from '@/components/event/individual/ticketsTable/TicketTableSectionChief';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/server/trpc/client';
-import { type TicketType } from '@/server/types';
+import { type Role, type TicketType } from '@/server/types';
 import {
   ORGANIZER_TICKET_TYPE_NAME,
   TICKET_TYPE_SLUG_QUERY_PARAM,
@@ -39,8 +38,6 @@ export function TicketTableWithTabs({
   );
 
   const session = useSession();
-  const isAdmin = session.data?.user.role === 'ADMIN';
-
   const [filteredTickets, setFilteredTickets] = useState<
     typeof tickets | undefined
   >(tickets);
@@ -146,14 +143,15 @@ export function TicketTableWithTabs({
           return (
             <TabsContent key={type} value={type}>
               {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
-                <TicketTableSectionChief
+                <TicketTableSection
                   tickets={ticketsByType[type]}
+                  role={session.data?.user.role}
                   headerActions={copyButton}
                 />
               ) : (
                 <TicketTableSection
                   tickets={ticketsByType[type]}
-                  isAdmin={isAdmin}
+                  role={session.data?.user.role as Role}
                   headerActions={copyButton}
                 />
               )}

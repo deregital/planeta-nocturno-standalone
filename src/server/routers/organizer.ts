@@ -11,7 +11,6 @@ import {
 import { z } from 'zod';
 
 import {
-  emittedTicket,
   eventXorganizer,
   ticketGroup,
   ticketXorganizer,
@@ -44,24 +43,6 @@ export const organizerRouter = router({
       (relation) => relation.event && !relation.event.isDeleted,
     );
   }),
-  getMyTicketsSold: organizerProcedure
-    .input(eventSchema.shape.id)
-    .query(async ({ ctx, input }) => {
-      const tickets = await ctx.db
-        .select()
-        .from(emittedTicket)
-        .innerJoin(
-          ticketGroup,
-          and(
-            not(eq(ticketGroup.status, 'BOOKED')),
-            eq(ticketGroup.invitedById, ctx.session.user.id),
-            eq(emittedTicket.ticketGroupId, ticketGroup.id),
-          ),
-        )
-        .where(eq(ticketGroup.eventId, input))
-        .orderBy(desc(emittedTicket.createdAt));
-      return tickets.map((ticket) => ticket.emittedTicket);
-    }),
   getMyCodesNotUsed: organizerProcedure
     .input(eventSchema.shape.id)
     .query(async ({ ctx, input }) => {
