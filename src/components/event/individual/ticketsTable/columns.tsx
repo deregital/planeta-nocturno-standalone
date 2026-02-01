@@ -64,6 +64,45 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
     },
     {
+      id: 'scanned',
+      accessorKey: 'scanned',
+      meta: {
+        exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
+        exportHeader: 'Ingresó',
+      },
+      header: ({ column }) => {
+        return (
+          <Button
+            variant='ghost'
+            className='pl-0 text-center w-full font-bold text-sm'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Ingresó
+            <ArrowDownAZ
+              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
+            />
+          </Button>
+        );
+      },
+      minSize: 50,
+      size: 50,
+      maxSize: 50,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return (
+          <div className='flex items-center justify-center'>
+            <Input
+              /* disabled */
+              type='checkbox'
+              className='size-6'
+              readOnly
+              checked={row.original.scanned}
+            />
+          </div>
+        );
+      },
+    },
+    {
       id: 'fullName',
       accessorKey: 'fullName',
       sortingFn: 'text',
@@ -250,45 +289,6 @@ export function generateTicketColumns(isAdmin: boolean) {
         exportValue: (row) =>
           row.original.ticketGroup.user?.user?.fullName || '-',
         exportHeader: 'Jefe del Organizador',
-      },
-    },
-    {
-      id: 'scanned',
-      accessorKey: 'scanned',
-      meta: {
-        exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
-        exportHeader: 'Ingresó',
-      },
-      header: ({ column }) => {
-        return (
-          <Button
-            variant='ghost'
-            className='pl-0 text-center w-full font-bold text-sm'
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Ingresó
-            <ArrowDownAZ
-              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
-            />
-          </Button>
-        );
-      },
-      minSize: 50,
-      size: 50,
-      maxSize: 50,
-      enableResizing: false,
-      cell: ({ row }) => {
-        return (
-          <div className='flex items-center justify-center'>
-            <Input
-              /* disabled */
-              type='checkbox'
-              className='size-6'
-              readOnly
-              checked={row.original.scanned}
-            />
-          </div>
-        );
       },
     },
     {
