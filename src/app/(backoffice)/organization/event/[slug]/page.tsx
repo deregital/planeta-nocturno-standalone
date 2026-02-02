@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
+import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
@@ -58,10 +59,30 @@ export default async function EventPage({
       ? `&ticket=${myTicketTypeSlugs.join(',')}`
       : '';
 
+  // Para chief organizer: obtener IDs de sus organizadores
+  const myOrganizerIds =
+    session?.user.role === 'CHIEF_ORGANIZER'
+      ? event.eventXorganizers
+          .filter((eo) => eo.user.chiefOrganizerId === session?.user.id)
+          .map((eo) => eo.user.id)
+      : [];
+
+  // Filtrar tickets: chief organizer ve los de sus organizadores, organizador ve solo los suyos
+  const myTickets = event.ticketGroups
+    .filter((tg) =>
+      session?.user.role === 'CHIEF_ORGANIZER'
+        ? myOrganizerIds.includes(tg.invitedById ?? '')
+        : tg.invitedById === session?.user.id,
+    )
+    .flatMap((tg) => tg.emittedTickets);
+
   return (
     <div className='w-full py-4'>
       <GoBack route='/organization' className='ml-4' />
-      <EventBasicInformation event={event} />
+      <div className='flex flex-col items-center my-4'>
+        <EventBasicInformation event={event} />
+        <QuantityTicketsEmitted tickets={myTickets} />
+      </div>
       {event.inviteCondition === 'TRADITIONAL' && (
         <div className='w-full text-center'>
           <CopyUrl
