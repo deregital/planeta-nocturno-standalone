@@ -43,7 +43,7 @@ export default function Client({ session }: { session: Session }) {
   }
   return (
     <div className='flex w-full p-4 flex-col gap-6'>
-      <h1 className='text-4xl font-bold text-accent'>Gestor de Eventos</h1>
+      <h1 className='text-3xl font-bold text-accent'>Gestor de Eventos</h1>
       <div className='flex gap-2'>
         <Button
           className='w-fit py-4 px-8'
