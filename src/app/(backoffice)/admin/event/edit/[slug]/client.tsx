@@ -156,13 +156,13 @@ export default function Client({
         <h1 className='text-4xl font-bold'>Editar Evento</h1>
       </div>
       <EventGeneralInformation action='EDIT' externalErrors={error} />
-      <section className='my-6' id='ticket-types'>
-        <h3 className='text-2xl text-accent font-bold'>Tickets</h3>
-        <TicketTypeAction action='EDIT' />
-      </section>
-      <section className='mb-4'>
+      <section className='my-4'>
         <h3 className='text-2xl text-accent font-bold'>Organizadores</h3>
         <EventOrganizers type={event.inviteCondition} />
+      </section>
+      <section className='mb-4' id='ticket-types'>
+        <h3 className='text-2xl text-accent font-bold'>Tickets</h3>
+        <TicketTypeAction action='EDIT' />
       </section>
       {error.general && (
         <p className='text-red-500 font-bold'>{error.general}</p>
