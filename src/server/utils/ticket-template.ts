@@ -178,7 +178,7 @@ export async function generateTicketTemplate(
     {
       name: 'fullName_title',
       type: 'text',
-      content: 'Nombre completo del titular:',
+      content: 'Nombre y apellido del titular:',
       position: { x: 47, y: 185 },
       width: 201.08,
       height: 10.05,
