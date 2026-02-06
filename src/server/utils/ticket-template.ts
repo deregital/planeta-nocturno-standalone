@@ -556,14 +556,15 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     'America/Argentina/Buenos_Aires',
     'HH:mm',
   );
-  const formattedDate = formatInTimeZone(
+  const formattedDateRaw = formatInTimeZone(
     ticket.eventDate,
     'America/Argentina/Buenos_Aires',
-    'PPPP',
-    {
-      locale: es,
-    },
+    "EEEE d 'de' MMMM 'de' yyyy",
+    { locale: es },
   );
+  const formattedDate =
+    formattedDateRaw.charAt(0).toUpperCase() + formattedDateRaw.slice(1);
+
   const { fontBold, fontSemiBold, fontLight } = await getDMSansFonts();
 
   const normalizedDni = Number.isNaN(Number(ticket.dni))
@@ -581,7 +582,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
   const inputs = [
     {
       eventName: ticket.eventName,
-      eventDate: `${formattedDate} - ${formattedTime}`,
+      eventDate: `${formattedDate} - ${formattedTime} hs`,
       eventLocation: ticket.eventLocation,
       fullName: ticket.fullName,
       dni: normalizedDni,
