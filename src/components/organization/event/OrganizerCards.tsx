@@ -77,7 +77,7 @@ export function OrganizerCards({
                     {organizer.fullName}
                   </h3>
                   <p className='text-sm text-muted-foreground'>
-                    {organizer.ticketCount} entradas vendidas
+                    {organizer.ticketCount} entradas emitidas
                   </p>
                 </div>
               </CardContent>

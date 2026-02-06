@@ -152,7 +152,7 @@ export const mailRouter = router({
       const totalPrice = await calculateTotalPrice({
         ticketGroupId: input.ticketGroupId,
         discountPercentage:
-          ticketGroup?.event.eventXorganizers[0].discountPercentage ?? null,
+          ticketGroup?.event.eventXorganizers[0]?.discountPercentage ?? null,
       });
 
       const ticketTypeText = ticketGroup?.ticketTypePerGroups

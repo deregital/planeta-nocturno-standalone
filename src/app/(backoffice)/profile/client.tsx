@@ -27,7 +27,7 @@ export default function ProfileClient({
 
   return (
     <div className='flex flex-col gap-4 p-4'>
-      <h1 className='text-4xl font-bold text-accent'>Mis Datos</h1>
+      <h1 className='text-3xl font-bold text-accent'>Mis Datos</h1>
       <div className='max-w-2xl mx-auto w-full'>
         <UserForm
           type='EDIT'

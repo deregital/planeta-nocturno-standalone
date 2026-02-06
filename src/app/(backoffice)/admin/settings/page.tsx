@@ -13,7 +13,7 @@ export default async function Page() {
       <UpdateFeatures />
       <section className='mb-4'>
         <div className='flex justify-between items-center px-4'>
-          <h2 className='text-2xl font-bold'>Usuarios</h2>
+          <h2 className='text-3xl font-bold text-accent'>Usuarios</h2>
           <CreateUserForm />
         </div>
         <UsersTable

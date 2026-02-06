@@ -553,6 +553,17 @@ export const emittedTicketsRouter = router({
             ...organizersTickets.map((t) => t.ticketGroupId),
           ];
         }
+      } else if (ctx.session?.user.role === 'ORGANIZER') {
+        const groups = await ctx.db.query.ticketGroup.findMany({
+          where: and(
+            eq(ticketGroup.eventId, input.eventId),
+            eq(ticketGroup.invitedById, ctx.session.user.id),
+          ),
+          columns: {
+            id: true,
+          },
+        });
+        ticketGroupIds = groups.map((g) => g.id);
       }
 
       const tickets = await ctx.db.query.emittedTicket.findMany({
