@@ -142,7 +142,7 @@ export function EmitTicketModal({
           >
             <FormRow>
               <InputWithLabel
-                label='Nombre completo'
+                label='Nombre y apellido'
                 id='name'
                 name='fullName'
                 defaultValue=''
