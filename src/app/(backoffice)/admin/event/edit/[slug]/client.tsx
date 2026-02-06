@@ -120,6 +120,7 @@ export default function Client({
       toast.error(
         'Error al actualizar el evento. Asegúrese de que los campos no contengan errores.',
       );
+      setIsSubmitting(false);
       return;
     }
 
@@ -127,6 +128,7 @@ export default function Client({
       setError({
         general: 'Hubo un error al actualizar el evento. Intente nuevamente.',
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -134,6 +136,7 @@ export default function Client({
       setError({
         general: 'Debe agregar al menos un organizador para el evento.',
       });
+      setIsSubmitting(false);
       return;
     }
 

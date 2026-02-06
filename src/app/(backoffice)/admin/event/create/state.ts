@@ -100,6 +100,10 @@ function updateOrganizerTicketTypeMaxAvailable(
     return ticketTypes;
   }
 
+  if (maxAvailable === 0) {
+    return ticketTypes.filter((t) => t.id !== organizerTicketType.id);
+  }
+
   return ticketTypes.map((t) =>
     t.id === organizerTicketType.id ? { ...t, maxAvailable } : t,
   );
