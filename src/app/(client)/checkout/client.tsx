@@ -243,7 +243,7 @@ export default function CheckoutClient({
                     <InputWithLabel
                       name={`fullName_${ticket.ticketType.id}-${indexAmount}`}
                       id={`fullName_${ticket.ticketType.id}-${indexAmount}`}
-                      label='Nombre completo'
+                      label='Nombre y apellido'
                       required
                       defaultValue={
                         state.formData?.[
@@ -397,7 +397,7 @@ export default function CheckoutClient({
             <InputWithLabel
               name={`fullName_all-tickets`}
               id={`fullName_all-tickets`}
-              label='Nombre completo'
+              label='Nombre y apellido'
               required
               defaultValue={
                 state.formData?.[`fullName_all-tickets`] ??
@@ -540,7 +540,7 @@ export default function CheckoutClient({
             label={
               organizerCodeFromTicketGroup
                 ? 'Código del organizador'
-                : 'Ingrese el código del organizador'
+                : 'Ingrese el código del organizador (opcional)'
             }
             id='organizerCode'
             required={false}

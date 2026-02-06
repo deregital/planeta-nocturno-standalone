@@ -11,8 +11,8 @@ export default function Client({
   buyers: RouterOutputs['emittedTickets']['getAllUniqueBuyer'];
 }) {
   return (
-    <div className='flex flex-col gap-4'>
-      <h1 className='text-4xl font-bold p-4 text-accent'>Base de Datos</h1>
+    <div className='flex flex-col gap-4 py-4'>
+      <h1 className='text-3xl font-bold px-4 text-accent'>Base de Datos</h1>
       <DatabaseTable columns={emittedBuyerColumns} data={buyers} />
     </div>
   );

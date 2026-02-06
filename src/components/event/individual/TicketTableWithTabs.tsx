@@ -1,18 +1,18 @@
 'use client';
 
-import { ClipboardIcon } from 'lucide-react';
+import { Link } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { SearchTickets } from '@/components/event/individual/SearchTickets';
 import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
-import { TicketTableSectionChief } from '@/components/event/individual/ticketsTable/TicketTableSectionChief';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/server/trpc/client';
-import { type TicketType } from '@/server/types';
+import { type Role, type TicketType } from '@/server/types';
 import {
+  ORGANIZER_CODE_QUERY_PARAM,
   ORGANIZER_TICKET_TYPE_NAME,
   TICKET_TYPE_SLUG_QUERY_PARAM,
 } from '@/server/utils/constants';
@@ -37,10 +37,13 @@ export function TicketTableWithTabs({
       enabled: !!ticketTypes,
     },
   );
-
   const session = useSession();
-  const isAdmin = session.data?.user.role === 'ADMIN';
 
+  const { data: myCode } = trpc.organizer.getMyCode.useQuery(undefined, {
+    enabled:
+      session.data?.user.role === 'ORGANIZER' ||
+      session.data?.user.role === 'CHIEF_ORGANIZER',
+  });
   const [filteredTickets, setFilteredTickets] = useState<
     typeof tickets | undefined
   >(tickets);
@@ -99,7 +102,7 @@ export function TicketTableWithTabs({
       typeof window !== 'undefined'
         ? window.location.origin
         : process.env.NEXT_PUBLIC_SITE_URL || '';
-    const url = `${origin}/event/${eventSlug}?${TICKET_TYPE_SLUG_QUERY_PARAM}=${ticketTypeSlug}`;
+    const url = `${origin}/event/${eventSlug}?${myCode ? `${ORGANIZER_CODE_QUERY_PARAM}=${myCode}&` : ''}${TICKET_TYPE_SLUG_QUERY_PARAM}=${ticketTypeSlug}`;
     navigator.clipboard.writeText(url);
     toast.success('URL copiada al portapapeles');
   };
@@ -134,26 +137,27 @@ export function TicketTableWithTabs({
           const copyButton =
             currentTicketType?.slug && !isOrganizerTicket ? (
               <Button
-                variant='accent'
+                variant='ghost'
                 className='w-fit'
                 onClick={() => copyTicketTypeUrl(currentTicketType.slug)}
               >
-                <ClipboardIcon className='w-4 h-4 mr-2' />
-                Copiar URL de este tipo de ticket
+                <Link className='w-4 h-4 mr-2' />
+                Copiar tipo de ticket
               </Button>
             ) : null;
 
           return (
             <TabsContent key={type} value={type}>
               {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
-                <TicketTableSectionChief
+                <TicketTableSection
                   tickets={ticketsByType[type]}
+                  role={session.data?.user.role}
                   headerActions={copyButton}
                 />
               ) : (
                 <TicketTableSection
                   tickets={ticketsByType[type]}
-                  isAdmin={isAdmin}
+                  role={session.data?.user.role as Role}
                   headerActions={copyButton}
                 />
               )}

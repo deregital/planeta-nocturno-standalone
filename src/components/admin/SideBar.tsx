@@ -38,16 +38,16 @@ export const navRoutes: {
   //   roles: ['ADMIN'],
   // },
   {
-    href: '/admin/database',
-    icon: <Database />,
-    title: 'Base de Datos',
-    roles: ['ADMIN'],
-  },
-  {
     href: '/admin/event',
     icon: <Calendar />,
     title: 'Eventos',
     roles: ['ADMIN', 'TICKETING'],
+  },
+  {
+    href: '/admin/database',
+    icon: <Database />,
+    title: 'Base de Datos',
+    roles: ['ADMIN'],
   },
   // {
   //   href: '/admin/locations',

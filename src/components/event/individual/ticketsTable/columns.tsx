@@ -27,9 +27,10 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
+import { type Role } from '@/server/types';
 
-export function generateTicketColumns(isAdmin: boolean) {
-  const columns: StrictColumnDef<
+export function generateTicketColumns(role: Role) {
+  let columns: StrictColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
     {
@@ -61,6 +62,45 @@ export function generateTicketColumns(isAdmin: boolean) {
       meta: {
         exportValue: (row) => row.original.buyerCode,
         exportHeader: 'ID',
+      },
+    },
+    {
+      id: 'scanned',
+      accessorKey: 'scanned',
+      meta: {
+        exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
+        exportHeader: 'Ingresó',
+      },
+      header: ({ column }) => {
+        return (
+          <Button
+            variant='ghost'
+            className='pl-0 text-center w-full font-bold text-sm'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Ingresó
+            <ArrowDownAZ
+              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
+            />
+          </Button>
+        );
+      },
+      minSize: 50,
+      size: 50,
+      maxSize: 50,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return (
+          <div className='flex items-center justify-center'>
+            <Input
+              /* disabled */
+              type='checkbox'
+              className='size-6'
+              readOnly
+              checked={row.original.scanned}
+            />
+          </div>
+        );
       },
     },
     {
@@ -186,6 +226,47 @@ export function generateTicketColumns(isAdmin: boolean) {
       },
     },
     {
+      id: 'instagram',
+      accessorKey: 'instagram',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant='ghost'
+            className='pl-0 text-center w-full font-bold text-sm'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Instagram
+            <ArrowDownAZ
+              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
+            />
+          </Button>
+        );
+      },
+      minSize: 30,
+      size: 30,
+      maxSize: 30,
+      enableResizing: false,
+      cell: ({ row }) => {
+        const instagram = row.original.instagram;
+        return instagram ? (
+          <a
+            href={`https://instagram.com/${instagram}`}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
+          >
+            @{instagram}
+          </a>
+        ) : (
+          <p className='w-full text-center'>-</p>
+        );
+      },
+      meta: {
+        exportValue: (row) => row.original.instagram || '-',
+        exportHeader: 'Instagram',
+      },
+    },
+    {
       id: 'invitedBy',
       header: ({ column }) => {
         return (
@@ -250,45 +331,6 @@ export function generateTicketColumns(isAdmin: boolean) {
         exportValue: (row) =>
           row.original.ticketGroup.user?.user?.fullName || '-',
         exportHeader: 'Jefe del Organizador',
-      },
-    },
-    {
-      id: 'scanned',
-      accessorKey: 'scanned',
-      meta: {
-        exportValue: (row) => (row.original.scanned ? 'Sí' : 'No'),
-        exportHeader: 'Ingresó',
-      },
-      header: ({ column }) => {
-        return (
-          <Button
-            variant='ghost'
-            className='pl-0 text-center w-full font-bold text-sm'
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Ingresó
-            <ArrowDownAZ
-              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
-            />
-          </Button>
-        );
-      },
-      minSize: 50,
-      size: 50,
-      maxSize: 50,
-      enableResizing: false,
-      cell: ({ row }) => {
-        return (
-          <div className='flex items-center justify-center'>
-            <Input
-              /* disabled */
-              type='checkbox'
-              className='size-6'
-              readOnly
-              checked={row.original.scanned}
-            />
-          </div>
-        );
       },
     },
     {
@@ -363,9 +405,17 @@ export function generateTicketColumns(isAdmin: boolean) {
                   toast.loading('Descargando ticket...', {
                     id: `downloading-ticket-${ticket.id}`,
                   });
-                  const pdf = await downloadTicket(ticket.id);
-                  if (pdf) {
-                    const url = URL.createObjectURL(pdf);
+                  const result = await downloadTicket(ticket.id);
+                  if (result?.base64) {
+                    const byteCharacters = atob(result.base64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                      byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const blob = new Blob([new Uint8Array(byteNumbers)], {
+                      type: 'application/pdf',
+                    });
+                    const url = URL.createObjectURL(blob);
 
                     const a = document.createElement('a');
                     a.href = url;
@@ -385,56 +435,68 @@ export function generateTicketColumns(isAdmin: boolean) {
                 Descargar
                 <DownloadIcon className='size-4' />
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className='flex cursor-pointer items-center justify-between'
-                onClick={() => {
-                  if (ticket.scanned) {
-                    toast.error('Ticket ya escaneado');
-                    return;
-                  }
-                  manualScanTicketMutation.mutate({
-                    ticketId: ticket.id,
-                  });
-                  utils.emittedTickets.getByEventId.invalidate({
-                    eventId: ticket.eventId ?? '',
-                  });
-                  utils.events.getById.invalidate(ticket.eventId ?? '');
-                }}
-                disabled={row.original.scanned}
-              >
-                Escaneo manual
-                <ScanBarcode className='size-5' />
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={async (e) => {
-                  e.preventDefault();
-                  if (sure) {
-                    await deleteTicketMutation.mutateAsync({
+              {(role === 'ADMIN' || role === 'TICKETING') && (
+                <DropdownMenuItem
+                  className='flex cursor-pointer items-center justify-between'
+                  onClick={() => {
+                    if (ticket.scanned) {
+                      toast.error('Ticket ya escaneado');
+                      return;
+                    }
+                    manualScanTicketMutation.mutate({
                       ticketId: ticket.id,
                     });
-                    setSure(false);
-                    setOpen(false);
                     utils.emittedTickets.getByEventId.invalidate({
                       eventId: ticket.eventId ?? '',
                     });
                     utils.events.getById.invalidate(ticket.eventId ?? '');
-                    return;
-                  }
-                  setSure(true);
-                }}
-                data-sure={sure}
-                disabled={deleteTicketMutation.isPending || !isAdmin}
-                className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
-              >
-                {sure ? 'Estás seguro?' : 'Eliminar ticket'}
-                <TrashIcon className='text-white' />
-              </DropdownMenuItem>
+                  }}
+                  disabled={row.original.scanned}
+                >
+                  Escaneo manual
+                  <ScanBarcode className='size-5' />
+                </DropdownMenuItem>
+              )}
+              {role === 'ADMIN' && (
+                <DropdownMenuItem
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (sure) {
+                      await deleteTicketMutation.mutateAsync({
+                        ticketId: ticket.id,
+                      });
+                      setSure(false);
+                      setOpen(false);
+                      utils.emittedTickets.getByEventId.invalidate({
+                        eventId: ticket.eventId ?? '',
+                      });
+                      utils.events.getById.invalidate(ticket.eventId ?? '');
+                      return;
+                    }
+                    setSure(true);
+                  }}
+                  data-sure={sure}
+                  disabled={deleteTicketMutation.isPending || role !== 'ADMIN'}
+                  className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
+                >
+                  {sure ? 'Estás seguro?' : 'Eliminar ticket'}
+                  <TrashIcon className='text-white' />
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         );
       },
     },
   ];
+
+  if (role === 'ORGANIZER' || role === 'CHIEF_ORGANIZER') {
+    columns = columns.filter((col) => col.id !== 'chiefOrganizer');
+  }
+
+  if (role === 'ORGANIZER') {
+    columns = columns.filter((col) => col.id !== 'invitedBy');
+  }
 
   return columns;
 }

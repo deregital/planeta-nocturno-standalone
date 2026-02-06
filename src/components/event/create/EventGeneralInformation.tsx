@@ -4,6 +4,7 @@ import { addDays, format } from 'date-fns';
 import { toDate } from 'date-fns-tz';
 import Image from 'next/image';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
@@ -81,14 +82,18 @@ export function EventGeneralInformation({
 
     if (!validatedEvent.success) {
       const keyAndError = Object.entries(validatedEvent.error ?? {});
-      setError(
-        keyAndError.reduce(
-          (acc, [key, value]) => {
-            acc[key] = value.errors[0];
-            return acc;
-          },
-          {} as { [key: string]: string },
-        ),
+      const errors = keyAndError.reduce(
+        (acc, [key, value]) => {
+          acc[key] = value.errors[0];
+          return acc;
+        },
+        {} as { [key: string]: string },
+      );
+      setError(errors);
+      const firstMessage = Object.values(errors)[0];
+      toast.error(
+        firstMessage ??
+          'Hay errores en el formulario. Revisa los campos marcados.',
       );
       return;
     }

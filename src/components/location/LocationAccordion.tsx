@@ -21,17 +21,17 @@ export default function LocationAccordion({
       </AccordionTrigger>
       <AccordionContent
         contentClassName='w-full mt-2'
-        className='text-lg relative'
+        className='text-lg relative flex flex-col max-w-full'
       >
         <p className='font-medium'>
           Ubicación: <span className='font-light'>{location.address}</span>
         </p>
-        <p className='font-medium'>
+        <p className='font-medium my-2'>
           Link a Maps:{' '}
           <span className='font-light'>
             <a
               href={location.googleMapsUrl}
-              className='underline'
+              className='underline break-all'
               target='_blank'
             >
               {location.googleMapsUrl}

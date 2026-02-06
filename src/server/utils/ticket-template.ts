@@ -9,35 +9,18 @@ import {
   encryptString,
   getDMSansFonts,
   measureTextWidth,
-  truncateText,
 } from '@/server/utils/utils';
 
-function calculateOptimalFontSize(
-  text: string,
-  minFontSize: number = 12,
-): number {
-  const textLength = text.length;
-
-  let fontSize: number;
-
-  if (textLength <= 20) {
-    // Texto corto: tamaño grande fijo
-    fontSize = 52;
-  } else {
-    // A partir de 23 caracteres, reducir progresivamente
-    // Por cada carácter adicional, reducir 0.5px
-    const extraChars = textLength - 20;
-    fontSize = Math.max(minFontSize, 52 - extraChars * 0.5);
-  }
-
-  return fontSize;
-}
+const DYNAMIC_FONT_SIZE = {
+  min: 12,
+  max: 52,
+  fit: 'horizontal' as const,
+};
 
 export async function generateTicketTemplate(
   first_word: string,
   fontBold: Buffer<ArrayBufferLike>,
   showSlug: boolean = true,
-  eventName?: string,
 ): Promise<Template> {
   const { accentColor, textOnAccent: accentText } = getColorsAsHex();
 
@@ -99,7 +82,7 @@ export async function generateTicketTemplate(
     {
       name: 'eventName',
       type: 'text',
-      content: eventName || 'Nombre del evento',
+      content: 'Nombre del evento',
       position: { x: 47, y: 82.64 },
       width: 217.81,
       height: 17.2,
@@ -117,6 +100,7 @@ export async function generateTicketTemplate(
       underline: false,
       required: true,
       readOnly: false,
+      dynamicFontSize: DYNAMIC_FONT_SIZE,
     },
     {
       name: 'eventDate',
@@ -178,7 +162,7 @@ export async function generateTicketTemplate(
     {
       name: 'fullName_title',
       type: 'text',
-      content: 'Nombre completo del titular:',
+      content: 'Nombre y apellido del titular:',
       position: { x: 47, y: 185 },
       width: 201.08,
       height: 10.05,
@@ -218,6 +202,7 @@ export async function generateTicketTemplate(
       underline: false,
       required: true,
       readOnly: false,
+      dynamicFontSize: DYNAMIC_FONT_SIZE,
     },
     {
       name: 'dni_title',
@@ -306,6 +291,7 @@ export async function generateTicketTemplate(
       underline: false,
       required: true,
       readOnly: false,
+      dynamicFontSize: DYNAMIC_FONT_SIZE,
     },
     {
       name: 'invitedBy_title',
@@ -350,6 +336,7 @@ export async function generateTicketTemplate(
       underline: false,
       required: true,
       readOnly: false,
+      dynamicFontSize: DYNAMIC_FONT_SIZE,
     },
   ];
 
@@ -399,6 +386,7 @@ export async function generateTicketTemplate(
           underline: false,
           required: true,
           readOnly: false,
+          dynamicFontSize: DYNAMIC_FONT_SIZE,
         },
       ]
     : [];
@@ -536,46 +524,6 @@ export async function generateTicketTemplate(
   // Combinar todos los campos
   const allFields = [...baseFields, ...slugFields, ...remainingFields];
 
-  // Si se proporciona eventName, calcular el fontSize óptimo y actualizar el campo
-  if (eventName) {
-    const eventNameFieldIndex = allFields.findIndex(
-      (field) => field.name === 'eventName',
-    );
-    if (eventNameFieldIndex !== -1) {
-      const eventNameField = allFields[eventNameFieldIndex] as {
-        name: string;
-        type: string;
-        content: string;
-        position: { x: number; y: number };
-        width: number;
-        height: number;
-        rotate: number;
-        alignment: string;
-        verticalAlignment: string;
-        fontSize: number;
-        lineHeight: number;
-        characterSpacing: number;
-        fontColor: string;
-        fontName: string;
-        backgroundColor: string;
-        opacity: number;
-        strikethrough: boolean;
-        underline: boolean;
-        required: boolean;
-        readOnly: boolean;
-      };
-      const optimalFontSize = calculateOptimalFontSize(
-        eventName,
-        36, // minFontSize - aumentado para que nombres largos (~30 caracteres) se vean más grandes
-      );
-      // Actualizar el fontSize en el campo
-      allFields[eventNameFieldIndex] = {
-        ...eventNameField,
-        fontSize: optimalFontSize,
-      };
-    }
-  }
-
   return {
     schemas: [allFields],
     basePdf:
@@ -608,14 +556,15 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     'America/Argentina/Buenos_Aires',
     'HH:mm',
   );
-  const formattedDate = formatInTimeZone(
+  const formattedDateRaw = formatInTimeZone(
     ticket.eventDate,
     'America/Argentina/Buenos_Aires',
-    'PPPP',
-    {
-      locale: es,
-    },
+    "EEEE d 'de' MMMM 'de' yyyy",
+    { locale: es },
   );
+  const formattedDate =
+    formattedDateRaw.charAt(0).toUpperCase() + formattedDateRaw.slice(1);
+
   const { fontBold, fontSemiBold, fontLight } = await getDMSansFonts();
 
   const normalizedDni = Number.isNaN(Number(ticket.dni))
@@ -628,19 +577,14 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     firstWord,
     fontBold,
     ticket.ticketSlugVisibleInPdf,
-    ticket.eventName,
   );
-
-  const eventName = ticket.eventName;
-  const ticketType = truncateText(ticket.ticketType, 26);
-  const fullName = truncateText(ticket.fullName, 26);
 
   const inputs = [
     {
-      eventName: eventName,
-      eventDate: `${formattedDate} - ${formattedTime}`,
+      eventName: ticket.eventName,
+      eventDate: `${formattedDate} - ${formattedTime} hs`,
       eventLocation: ticket.eventLocation,
-      fullName: fullName,
+      fullName: ticket.fullName,
       dni: normalizedDni,
       barcode: encryptString(ticket.id),
       footer: `Para cualquier duda, reclamo o consulta comunicarse vía mail a ${process.env.INSTANCE_CONTACT_EMAIL}.\nMás información en ${process.env.INSTANCE_WEB_URL}.`,
@@ -649,7 +593,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
         'America/Argentina/Buenos_Aires',
         'dd/MM/yyyy HH:mm',
       ),
-      ticketType: ticketType,
+      ticketType: ticket.ticketType,
       name_first_word: firstWord,
       name_second_word: rest.join(' '),
       invitedBy: ticket.invitedBy || '-',
