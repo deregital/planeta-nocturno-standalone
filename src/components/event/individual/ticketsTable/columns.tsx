@@ -405,9 +405,17 @@ export function generateTicketColumns(role: Role) {
                   toast.loading('Descargando ticket...', {
                     id: `downloading-ticket-${ticket.id}`,
                   });
-                  const pdf = await downloadTicket(ticket.id);
-                  if (pdf) {
-                    const url = URL.createObjectURL(pdf);
+                  const result = await downloadTicket(ticket.id);
+                  if (result?.base64) {
+                    const byteCharacters = atob(result.base64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                      byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const blob = new Blob([new Uint8Array(byteNumbers)], {
+                      type: 'application/pdf',
+                    });
+                    const url = URL.createObjectURL(blob);
 
                     const a = document.createElement('a');
                     a.href = url;

@@ -351,10 +351,10 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      const pdf = await generatePdf({
+      const blob = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
         eventDate: ticket.ticketGroup.event.startingDate,
-        eventLocation: ticket.ticketGroup.event.location.address,
+        eventLocation: ticket.ticketGroup.event.location?.address ?? '',
         ticketType: ticket.ticketType.name,
         createdAt: ticket.createdAt,
         dni: ticket.dni,
@@ -365,7 +365,8 @@ export const emittedTicketsRouter = router({
         ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
       });
 
-      return pdf;
+      const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      return { base64 };
     }),
 
   scan: ticketingProcedure
@@ -648,7 +649,7 @@ export const emittedTicketsRouter = router({
       const pdf = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
         eventDate: ticket.ticketGroup.event.startingDate,
-        eventLocation: ticket.ticketGroup.event.location.address,
+        eventLocation: ticket.ticketGroup.event.location?.address ?? '',
         ticketType: ticket.ticketType.name,
         createdAt: ticket.createdAt,
         dni: ticket.dni,
