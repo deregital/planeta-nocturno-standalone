@@ -433,4 +433,83 @@ export const ticketGroupRouter = router({
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
     }),
+  generatePdfsByTicketGroupId: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        columns: { status: true, invitedById: true },
+        with: {
+          user: { columns: { fullName: true } },
+          emittedTickets: {
+            columns: {
+              id: true,
+              fullName: true,
+              mail: true,
+              dni: true,
+              createdAt: true,
+              slug: true,
+            },
+            with: {
+              ticketType: { columns: { id: true, name: true } },
+            },
+          },
+          event: {
+            columns: {
+              name: true,
+              startingDate: true,
+              ticketSlugVisibleInPdf: true,
+            },
+            with: { location: { columns: { address: true } } },
+          },
+        },
+      });
+
+      if (!group) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'TicketGroup no encontrado',
+        });
+      }
+
+      if (!group.emittedTickets?.length) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No hay tickets emitidos',
+        });
+      }
+
+      const results = await Promise.all(
+        group.emittedTickets.map(async (ticket) => {
+          const blob = await generatePdf({
+            eventName: group.event.name,
+            eventDate: group.event.startingDate,
+            eventLocation: group.event.location?.address ?? '',
+            createdAt: ticket.createdAt,
+            dni: ticket.dni,
+            fullName: ticket.fullName,
+            id: ticket.id,
+            ticketType: ticket.ticketType.name,
+            invitedBy: group.user?.fullName ?? '-',
+            slug: ticket.slug,
+            ticketSlugVisibleInPdf: group.event.ticketSlugVisibleInPdf,
+          });
+          return {
+            ticket: {
+              id: ticket.id,
+              fullName: ticket.fullName,
+              slug: ticket.slug,
+              mail: ticket.mail,
+              ticketType: {
+                id: ticket.ticketType.id,
+                name: ticket.ticketType.name,
+              },
+            },
+            pdf: { blob },
+          };
+        }),
+      );
+
+      return results;
+    }),
 });
