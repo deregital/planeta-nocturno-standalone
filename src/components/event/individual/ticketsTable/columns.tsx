@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { formatInTimeZone } from 'date-fns-tz';
 
 import { downloadTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
@@ -100,6 +101,52 @@ export function generateTicketColumns(role: Role) {
               checked={row.original.scanned}
             />
           </div>
+        );
+      },
+    },
+    {
+      id: 'scannedAt',
+      accessorKey: 'scannedAt',
+      meta: {
+        exportValue: (row) =>
+          row.original.scannedAt
+            ? formatInTimeZone(
+                new Date(row.original.scannedAt),
+                'America/Argentina/Buenos_Aires',
+                'HH:mm:ss',
+              )
+            : '-',
+        exportHeader: 'Hora de ingreso',
+      },
+      header: ({ column }) => {
+        return (
+          <Button
+            variant='ghost'
+            className='pl-0 text-center w-full font-bold text-sm'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Hora de ingreso
+            <ArrowDownAZ
+              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
+            />
+          </Button>
+        );
+      },
+      minSize: 50,
+      size: 50,
+      maxSize: 50,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return (
+          <p className='w-full text-center'>
+            {row.original.scannedAt
+              ? formatInTimeZone(
+                  new Date(row.original.scannedAt),
+                  'America/Argentina/Buenos_Aires',
+                  'HH:mm:ss',
+                )
+              : '-'}
+          </p>
         );
       },
     },
@@ -331,6 +378,52 @@ export function generateTicketColumns(role: Role) {
         exportValue: (row) =>
           row.original.ticketGroup.user?.user?.fullName || '-',
         exportHeader: 'Jefe del Organizador',
+      },
+    },
+    {
+      id: 'createdAt',
+      accessorKey: 'createdAt',
+      meta: {
+        exportValue: (row) =>
+          row.original.createdAt
+            ? formatInTimeZone(
+                new Date(row.original.createdAt),
+                'America/Argentina/Buenos_Aires',
+                'dd/MM/yyyy HH:mm:ss',
+              )
+            : '-',
+        exportHeader: 'Fecha de emisión',
+      },
+      header: ({ column }) => {
+        return (
+          <Button
+            variant='ghost'
+            className='pl-0 text-center w-full font-bold text-sm'
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Fecha de emisión
+            <ArrowDownAZ
+              className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
+            />
+          </Button>
+        );
+      },
+      minSize: 50,
+      size: 50,
+      maxSize: 50,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return (
+          <p className='w-full text-center'>
+            {row.original.createdAt
+              ? formatInTimeZone(
+                  new Date(row.original.createdAt),
+                  'America/Argentina/Buenos_Aires',
+                  'dd/MM/yyyy HH:mm:ss',
+                )
+              : '-'}
+          </p>
+        );
       },
     },
     {
