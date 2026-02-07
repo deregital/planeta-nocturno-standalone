@@ -85,8 +85,7 @@ export default function TicketsClient({
         </CardHeader>
         <CardContent>
           <p className='text-muted-foreground'>
-            Ya podés descargar tus tickets. También fueron enviadas a el/los
-            email/s que proporcionaste.
+            Ya podés descargar tus tickets. También fueron enviados a tu email.
           </p>
         </CardContent>
         <CardFooter className='justify-center'>

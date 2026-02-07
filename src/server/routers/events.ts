@@ -829,6 +829,10 @@ export const eventsRouter = router({
             });
             const deletedTicketTypesIds = ticketTypesDB
               .filter((type) => !ticketTypes.some((t) => t.id === type.id))
+              .filter(
+                (type) =>
+                  type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
+              )
               .map((type) => type.id);
             if (deletedTicketTypesIds.length > 0) {
               await tx
