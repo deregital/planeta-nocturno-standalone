@@ -6,6 +6,6 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  redirect('/admin/database');
+  redirect('/admin/event');
   return <NuqsAdapter>{children}</NuqsAdapter>;
 }

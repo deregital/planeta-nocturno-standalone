@@ -84,7 +84,7 @@ export default function TicketTypeModal({
       scanLimit: event.endingDate,
       category,
       id: crypto.randomUUID(),
-      visibleInWeb: true,
+      visibleInWeb: false,
       lowStockThreshold: null,
       organizers: [],
     };

@@ -7,9 +7,10 @@ export async function emitTicket(
   ticket: RouterInputs['emittedTickets']['create'],
 ) {
   const ticketCreated = await trpc.emittedTickets.create(ticket);
-  const [pdf] = await trpc.ticketGroup.generatePdfsByTicketGroupId(
+  const pdfs = await trpc.ticketGroup.generatePdfsByTicketGroupId(
     ticketCreated.ticketGroupId,
   );
+  const pdf = pdfs.find((p) => p.ticket.id === ticketCreated.id) ?? pdfs[0];
 
   const event = await trpc.events.getById(ticket.eventId);
 
@@ -27,6 +28,6 @@ export async function emitTicket(
 }
 
 export async function downloadTicket(ticketId: string) {
-  const pdf = await trpc.emittedTickets.getPdf({ ticketId });
-  return pdf;
+  const result = await trpc.emittedTickets.getPdf({ ticketId });
+  return result;
 }

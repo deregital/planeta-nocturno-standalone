@@ -1,6 +1,9 @@
 'use client';
 
-import { Download } from 'lucide-react';
+import type { RouterOutputs } from '@/server/routers/app';
+
+import { Download, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 import GoBack from '@/components/common/GoBack';
 import { Button } from '@/components/ui/button';
@@ -11,31 +14,35 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/client';
+
+type TicketsForDownload =
+  RouterOutputs['ticketGroup']['getTicketsForDownloadPage'];
 
 export default function TicketsClient({
-  pdfs,
+  ticketGroupId,
+  tickets,
 }: {
-  pdfs: RouterOutputs['ticketGroup']['generatePdfsByTicketGroupId'];
+  ticketGroupId: string;
+  tickets: TicketsForDownload['tickets'];
 }) {
-  function downloadPdf(pdfBase64: string, ticketId: string) {
+  const utils = trpc.useUtils();
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  function downloadPdf(pdfBase64: string, fileName: string) {
     try {
       const byteCharacters = atob(pdfBase64);
       const byteNumbers = new Array(byteCharacters.length);
-
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
-
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'application/pdf' });
-
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `ticket-${ticketId}.pdf`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
-
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
     } catch (error) {
@@ -43,11 +50,23 @@ export default function TicketsClient({
     }
   }
 
-  function downloadAllPdfs() {
-    if (pdfs && pdfs.length > 0) {
-      pdfs.forEach(async (pdf, index) => {
-        downloadPdf(pdf.pdf.base64, `ticket-${index + 1}`);
-      });
+  async function downloadAllPdfs() {
+    if (!tickets?.length) return;
+    setIsDownloading(true);
+    try {
+      for (let i = 0; i < tickets.length; i++) {
+        const ticket = tickets[i];
+        const result = await utils.ticketGroup.getPdfByEmittedTicketId.fetch({
+          ticketGroupId,
+          emittedTicketId: ticket.id,
+        });
+        downloadPdf(
+          result.base64,
+          `ticket-${i + 1}-${ticket.slug ?? ticket.id}.pdf`,
+        );
+      }
+    } finally {
+      setIsDownloading(false);
     }
   }
 
@@ -66,14 +85,21 @@ export default function TicketsClient({
         </CardHeader>
         <CardContent>
           <p className='text-muted-foreground'>
-            Ya podés descargar tus tickets. También fueron enviadas a el/los
-            email/s que proporcionaste.
+            Ya podés descargar tus tickets. También fueron enviados a tu email.
           </p>
         </CardContent>
         <CardFooter className='justify-center'>
-          <Button variant='accent' onClick={() => downloadAllPdfs()}>
-            <Download className='mr-2 h-4 w-4' />
-            Descargar Tickets
+          <Button
+            variant='accent'
+            onClick={() => downloadAllPdfs()}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+            ) : (
+              <Download className='mr-2 h-4 w-4' />
+            )}
+            {isDownloading ? 'Descargando...' : 'Descargar Tickets'}
           </Button>
         </CardFooter>
       </Card>

@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
+  emittedTicket,
   ticketGroup,
   ticketTypePerGroup,
   ticketXorganizer,
@@ -328,66 +329,15 @@ export const ticketGroupRouter = router({
 
       return totalPrice;
     }),
-  generatePdfsByTicketGroupId: publicProcedure
+  getTicketsForDownloadPage: publicProcedure
     .input(ticketGroupSchema.shape.id)
     .query(async ({ ctx, input }) => {
-      // Traerme todos los datos
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input),
-        columns: {
-          status: true,
-          invitedById: true,
-        },
+        columns: { id: true, status: true },
         with: {
-          user: {
-            columns: {
-              fullName: true,
-            },
-          },
           emittedTickets: {
-            columns: {
-              id: true,
-              fullName: true,
-              mail: true,
-              dni: true,
-              createdAt: true,
-              slug: true,
-            },
-            with: {
-              ticketType: {
-                columns: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-          ticketTypePerGroups: {
-            columns: {
-              amount: true,
-            },
-            with: {
-              ticketType: {
-                columns: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-          event: {
-            columns: {
-              name: true,
-              startingDate: true,
-              ticketSlugVisibleInPdf: true,
-            },
-            with: {
-              location: {
-                columns: {
-                  address: true,
-                },
-              },
-            },
+            columns: { id: true, slug: true },
           },
         },
       });
@@ -400,42 +350,166 @@ export const ticketGroupRouter = router({
       }
 
       // Verificar que este paid/free
-      if (group?.status === 'BOOKED') {
+      if (group.status === 'BOOKED') {
         throw new TRPCError({
           code: 'CONFLICT',
           message: 'El ticketGroup no está concretado',
         });
       }
 
-      // Generar los PDFs
-      if (!group?.emittedTickets) {
-        throw new Error('No hay tickets emitidos');
+      // Verificar que hay tickets emitidos
+      if (!group.emittedTickets?.length) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No hay tickets emitidos',
+        });
       }
 
-      const pdfPromises = group.emittedTickets.map(async (ticket) => {
-        const blob = await generatePdf({
-          eventName: group.event.name,
-          eventDate: group.event.startingDate,
-          eventLocation: group.event.location.address,
-          createdAt: ticket.createdAt,
-          dni: ticket.dni,
-          fullName: ticket.fullName,
-          id: ticket.id,
-          ticketType: ticket.ticketType.name,
-          invitedBy: group.user?.fullName ?? '-',
-          slug: ticket.slug,
-          ticketSlugVisibleInPdf: group.event.ticketSlugVisibleInPdf,
-        });
-        return {
-          ticket,
-          pdf: {
-            blob,
-            base64: Buffer.from(await blob.arrayBuffer()).toString('base64'),
+      return {
+        ticketGroupId: group.id,
+        tickets: group.emittedTickets.map((t) => ({ id: t.id, slug: t.slug })),
+      };
+    }),
+  getPdfByEmittedTicketId: publicProcedure
+    .input(
+      z.object({
+        ticketGroupId: ticketGroupSchema.shape.id,
+        emittedTicketId: z.uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const ticket = await ctx.db.query.emittedTicket.findFirst({
+        where: and(
+          eq(emittedTicket.id, input.emittedTicketId),
+          eq(emittedTicket.ticketGroupId, input.ticketGroupId),
+        ),
+        columns: {
+          id: true,
+          fullName: true,
+          dni: true,
+          slug: true,
+          createdAt: true,
+        },
+        with: {
+          ticketType: { columns: { name: true } },
+          ticketGroup: {
+            columns: { id: true },
+            with: {
+              user: { columns: { fullName: true } },
+              event: {
+                columns: {
+                  name: true,
+                  startingDate: true,
+                  ticketSlugVisibleInPdf: true,
+                },
+                with: { location: { columns: { address: true } } },
+              },
+            },
           },
-        };
+        },
       });
 
-      const pdfs = await Promise.all(pdfPromises);
-      return pdfs;
+      if (!ticket?.ticketGroup?.event) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Ticket no encontrado',
+        });
+      }
+
+      const blob = await generatePdf({
+        eventName: ticket.ticketGroup.event.name,
+        eventDate: ticket.ticketGroup.event.startingDate,
+        eventLocation: ticket.ticketGroup.event.location.address,
+        createdAt: ticket.createdAt,
+        dni: ticket.dni,
+        fullName: ticket.fullName,
+        id: ticket.id,
+        ticketType: ticket.ticketType.name,
+        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
+        slug: ticket.slug,
+        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
+      });
+
+      const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      return { base64 };
+    }),
+  generatePdfsByTicketGroupId: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        columns: { status: true, invitedById: true },
+        with: {
+          user: { columns: { fullName: true } },
+          emittedTickets: {
+            columns: {
+              id: true,
+              fullName: true,
+              mail: true,
+              dni: true,
+              createdAt: true,
+              slug: true,
+            },
+            with: {
+              ticketType: { columns: { id: true, name: true } },
+            },
+          },
+          event: {
+            columns: {
+              name: true,
+              startingDate: true,
+              ticketSlugVisibleInPdf: true,
+            },
+            with: { location: { columns: { address: true } } },
+          },
+        },
+      });
+
+      if (!group) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'TicketGroup no encontrado',
+        });
+      }
+
+      if (!group.emittedTickets?.length) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'No hay tickets emitidos',
+        });
+      }
+
+      const results = await Promise.all(
+        group.emittedTickets.map(async (ticket) => {
+          const blob = await generatePdf({
+            eventName: group.event.name,
+            eventDate: group.event.startingDate,
+            eventLocation: group.event.location?.address ?? '',
+            createdAt: ticket.createdAt,
+            dni: ticket.dni,
+            fullName: ticket.fullName,
+            id: ticket.id,
+            ticketType: ticket.ticketType.name,
+            invitedBy: group.user?.fullName ?? '-',
+            slug: ticket.slug,
+            ticketSlugVisibleInPdf: group.event.ticketSlugVisibleInPdf,
+          });
+          return {
+            ticket: {
+              id: ticket.id,
+              fullName: ticket.fullName,
+              slug: ticket.slug,
+              mail: ticket.mail,
+              ticketType: {
+                id: ticket.ticketType.id,
+                name: ticket.ticketType.name,
+              },
+            },
+            pdf: { blob },
+          };
+        }),
+      );
+
+      return results;
     }),
 });
