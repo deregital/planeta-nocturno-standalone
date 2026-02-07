@@ -46,6 +46,9 @@ export default function Client({
   const ticketTypesState = useCreateEventStore((state) => state.ticketTypes);
   const eventState = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers);
+  const sendOrganizerTicketEmail = useCreateEventStore(
+    (state) => state.sendOrganizerTicketEmail,
+  );
   const setEvent = useCreateEventStore((state) => state.setEvent);
   const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const setOrganizers = useCreateEventStore((state) => state.setOrganizers);
@@ -144,6 +147,7 @@ export default function Client({
       event: { ...eventState, id: event.id, slug: event.slug },
       ticketTypes: ticketTypesState,
       organizersInput: organizers,
+      sendOrganizerTicketEmail,
     });
   }
 

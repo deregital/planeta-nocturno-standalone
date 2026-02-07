@@ -512,10 +512,12 @@ export const eventsRouter = router({
         event: createEventSchema,
         ticketTypes: createTicketTypeSchema.array(),
         organizersInput: organizerSchema.array(),
+        sendOrganizerTicketEmail: z.boolean().optional().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes, organizersInput } = input;
+      const { event, ticketTypes, organizersInput, sendOrganizerTicketEmail } =
+        input;
       const slug = generateSlug(event.name);
 
       const organizers = await ctx.db.query.user.findMany({
@@ -709,29 +711,32 @@ export const eventsRouter = router({
                   throw new Error('Ticket no encontrado');
                 }
 
-                const pdf = await generatePdf({
-                  id: organizerEmittedTicket.id,
-                  invitedBy:
-                    organizerEmittedTicket.ticketGroup.user?.fullName ?? '-',
-                  slug: organizerEmittedTicket.slug,
-                  eventName: organizerEmittedTicket.event.name,
-                  eventDate: organizerEmittedTicket.event.startingDate,
-                  eventLocation: organizerEmittedTicket.event.location.address,
-                  fullName: organizerEmittedTicket.fullName,
-                  dni: organizerEmittedTicket.dni,
-                  createdAt: organizerEmittedTicket.createdAt,
-                  ticketType: organizerEmittedTicket.ticketType.name,
-                  ticketSlugVisibleInPdf:
-                    organizerEmittedTicket.event.ticketSlugVisibleInPdf,
-                });
+                if (sendOrganizerTicketEmail) {
+                  const pdf = await generatePdf({
+                    id: organizerEmittedTicket.id,
+                    invitedBy:
+                      organizerEmittedTicket.ticketGroup.user?.fullName ?? '-',
+                    slug: organizerEmittedTicket.slug,
+                    eventName: organizerEmittedTicket.event.name,
+                    eventDate: organizerEmittedTicket.event.startingDate,
+                    eventLocation:
+                      organizerEmittedTicket.event.location.address,
+                    fullName: organizerEmittedTicket.fullName,
+                    dni: organizerEmittedTicket.dni,
+                    createdAt: organizerEmittedTicket.createdAt,
+                    ticketType: organizerEmittedTicket.ticketType.name,
+                    ticketSlugVisibleInPdf:
+                      organizerEmittedTicket.event.ticketSlugVisibleInPdf,
+                  });
 
-                await sendMail({
-                  to: org.email,
-                  subject: `Ticket de ${organizerEmittedTicket.event.name}`,
-                  body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Organizador para ${organizerEmittedTicket.event.name}`,
-                  attachments: [Buffer.from(await pdf.arrayBuffer())],
-                  eventName: organizerEmittedTicket.event.name,
-                });
+                  await sendMail({
+                    to: org.email,
+                    subject: `Ticket de ${organizerEmittedTicket.event.name}`,
+                    body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Organizador para ${organizerEmittedTicket.event.name}`,
+                    attachments: [Buffer.from(await pdf.arrayBuffer())],
+                    eventName: organizerEmittedTicket.event.name,
+                  });
+                }
 
                 if (
                   event.inviteCondition === 'INVITATION' &&
@@ -778,10 +783,12 @@ export const eventsRouter = router({
         event: eventSchemaZod,
         ticketTypes: ticketTypeSchema.array(),
         organizersInput: organizerSchema.array(),
+        sendOrganizerTicketEmail: z.boolean().optional().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes, organizersInput } = input;
+      const { event, ticketTypes, organizersInput, sendOrganizerTicketEmail } =
+        input;
 
       if (
         event.inviteCondition === 'INVITATION' &&
@@ -1109,40 +1116,43 @@ export const eventsRouter = router({
                   )
                   .returning();
 
-                // Enviar emails con PDFs
-                const eventLocation = await tx.query.location.findFirst({
-                  where: eq(locationSchema.id, eventUpdated.locationId),
-                  columns: {
-                    address: true,
-                  },
-                });
-                for (const org of addedOrganizers) {
-                  const emittedTicket = emittedTickets.find(
-                    (et) => et.dni === org.dni,
-                  );
-                  if (!emittedTicket) {
-                    throw new Error('Ticket no encontrado');
+                // Enviar emails con PDFs (solo si sendOrganizerTicketEmail)
+                if (sendOrganizerTicketEmail) {
+                  const eventLocation = await tx.query.location.findFirst({
+                    where: eq(locationSchema.id, eventUpdated.locationId),
+                    columns: {
+                      address: true,
+                    },
+                  });
+                  for (const org of addedOrganizers) {
+                    const emittedTicket = emittedTickets.find(
+                      (et) => et.dni === org.dni,
+                    );
+                    if (!emittedTicket) {
+                      throw new Error('Ticket no encontrado');
+                    }
+                    const pdf = await generatePdf({
+                      id: emittedTicket.id,
+                      invitedBy: '-',
+                      slug: emittedTicket.slug,
+                      eventName: eventUpdated.name,
+                      eventDate: eventUpdated.startingDate,
+                      fullName: org.fullName,
+                      dni: org.dni,
+                      createdAt: emittedTicket.createdAt,
+                      ticketType: organizerTicketType.name,
+                      eventLocation: eventLocation?.address ?? '-',
+                      ticketSlugVisibleInPdf:
+                        eventUpdated.ticketSlugVisibleInPdf,
+                    });
+                    await sendMail({
+                      to: org.email,
+                      subject: `Ticket de ${eventUpdated.name}`,
+                      body: `Hola ${org.fullName}, te enviamos tu ticket de Organizador para ${eventUpdated.name}`,
+                      attachments: [Buffer.from(await pdf.arrayBuffer())],
+                      eventName: eventUpdated.name,
+                    });
                   }
-                  const pdf = await generatePdf({
-                    id: emittedTicket.id,
-                    invitedBy: '-',
-                    slug: emittedTicket.slug,
-                    eventName: eventUpdated.name,
-                    eventDate: eventUpdated.startingDate,
-                    fullName: org.fullName,
-                    dni: org.dni,
-                    createdAt: emittedTicket.createdAt,
-                    ticketType: organizerTicketType.name,
-                    eventLocation: eventLocation?.address ?? '-',
-                    ticketSlugVisibleInPdf: eventUpdated.ticketSlugVisibleInPdf,
-                  });
-                  await sendMail({
-                    to: org.email,
-                    subject: `Ticket de ${eventUpdated.name}`,
-                    body: `Hola ${org.fullName}, te enviamos tu ticket de Organizador para ${eventUpdated.name}`,
-                    attachments: [Buffer.from(await pdf.arrayBuffer())],
-                    eventName: eventUpdated.name,
-                  });
                 }
               } else if (event.inviteCondition === 'INVITATION') {
                 // Modo INVITATION: crear EventXOrganizer, TicketsXOrganizer y entrada de organizador
@@ -1220,7 +1230,7 @@ export const eventsRouter = router({
                       },
                     });
 
-                  if (organizerEmittedTicketFull) {
+                  if (sendOrganizerTicketEmail && organizerEmittedTicketFull) {
                     const pdf = await generatePdf({
                       id: organizerEmittedTicketFull.id,
                       invitedBy: '-',
