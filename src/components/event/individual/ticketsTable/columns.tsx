@@ -247,7 +247,7 @@ export function generateTicketColumns(role: Role) {
       maxSize: 30,
       enableResizing: false,
       cell: ({ row }) => {
-        const instagram = row.original.instagram;
+        const instagram = row.original.instagram?.replace(/^@/, '') ?? null;
         return instagram ? (
           <a
             href={`https://instagram.com/${instagram}`}
