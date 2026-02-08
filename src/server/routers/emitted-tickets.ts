@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { and, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -503,38 +503,34 @@ export const emittedTicketsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       let ticketGroupIds: string[] = [];
+      let organizersEmittedTicketsIds: string[] = [];
+      const canSeeAllTickets =
+        ctx.session?.user.role === 'ADMIN' ||
+        ctx.session?.user.role === 'TICKETING';
+
       if (ctx.session?.user.role === 'CHIEF_ORGANIZER') {
         const organizers = await ctx.db.query.user.findMany({
           where: eq(user.chiefOrganizerId, ctx.session.user.id),
-          columns: {
-            id: true,
-          },
         });
 
-        let organizerIds = [
+        const organizerIds = [
           ctx.session.user.id,
           ...organizers.map((o) => o.id),
         ];
-        if (input.userId) {
-          organizerIds = [...organizerIds, input.userId];
-        }
 
-        if (organizerIds.length > 0) {
-          // Obtener los IDs de los ticketGroups que corresponden a los organizadores del jefe
-          const groups = await ctx.db
-            .select({
-              id: ticketGroup.id,
-            })
-            .from(ticketGroup)
-            .where(
-              and(
-                eq(ticketGroup.eventId, input.eventId),
-                inArray(ticketGroup.invitedById, organizerIds),
-              ),
-            );
-          ticketGroupIds = groups.map((g) => g.id);
-        }
-        // Se agregan los tickets de los organizadores del jefe
+        // Ticket groups del evento cuyo invitedById es el jefe o uno de sus organizadores
+        const groups = await ctx.db
+          .select({ id: ticketGroup.id })
+          .from(ticketGroup)
+          .where(
+            and(
+              eq(ticketGroup.eventId, input.eventId),
+              inArray(ticketGroup.invitedById, organizerIds),
+            ),
+          );
+        ticketGroupIds = groups.map((g) => g.id);
+
+        // Incluir también tickets de tipo "organizador" solo de los organizadores del chief
         const organizerTicketType = await ctx.db.query.ticketType.findFirst({
           where: and(
             eq(ticketTypeTable.eventId, input.eventId),
@@ -543,16 +539,18 @@ export const emittedTicketsRouter = router({
           columns: { id: true },
         });
         if (organizerTicketType) {
-          const organizersTickets = await ctx.db.query.emittedTicket.findMany({
-            where: and(
-              eq(emittedTicket.eventId, input.eventId),
-              eq(emittedTicket.ticketTypeId, organizerTicketType?.id ?? ''),
-            ),
-          });
-          ticketGroupIds = [
-            ...ticketGroupIds,
-            ...organizersTickets.map((t) => t.ticketGroupId),
-          ];
+          const allOrganizersTickets =
+            await ctx.db.query.emittedTicket.findMany({
+              where: and(
+                eq(emittedTicket.eventId, input.eventId),
+                eq(emittedTicket.ticketTypeId, organizerTicketType.id),
+              ),
+            });
+
+          // IDs de emittedTicket cuyo ticket organizador pertenece a un organizador del chief (por email)
+          organizersEmittedTicketsIds = allOrganizersTickets
+            .filter((t) => organizers.some((o) => o.email === t.mail))
+            .map((t) => t.id);
         }
       } else if (ctx.session?.user.role === 'ORGANIZER') {
         const groups = await ctx.db.query.ticketGroup.findMany({
@@ -567,13 +565,27 @@ export const emittedTicketsRouter = router({
         ticketGroupIds = groups.map((g) => g.id);
       }
 
+      // Admin ve todo; resto: si no hay grupos ni IDs de tickets organizador, no hay tickets que traer
+      const hasGroups = ticketGroupIds.length > 0;
+      const hasOrganizerTickets = organizersEmittedTicketsIds.length > 0;
+      if (!canSeeAllTickets && !hasGroups && !hasOrganizerTickets) {
+        return [];
+      }
+
       const tickets = await ctx.db.query.emittedTicket.findMany({
-        where: and(
-          eq(emittedTicket.eventId, input.eventId),
-          ticketGroupIds.length > 0
-            ? inArray(emittedTicket.ticketGroupId, ticketGroupIds)
-            : undefined,
-        ),
+        where: canSeeAllTickets
+          ? eq(emittedTicket.eventId, input.eventId)
+          : and(
+              eq(emittedTicket.eventId, input.eventId),
+              hasGroups && hasOrganizerTickets
+                ? or(
+                    inArray(emittedTicket.ticketGroupId, ticketGroupIds),
+                    inArray(emittedTicket.id, organizersEmittedTicketsIds),
+                  )
+                : hasGroups
+                  ? inArray(emittedTicket.ticketGroupId, ticketGroupIds)
+                  : inArray(emittedTicket.id, organizersEmittedTicketsIds),
+            ),
         with: {
           ticketType: true,
           ticketGroup: {
