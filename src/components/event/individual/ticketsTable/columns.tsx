@@ -1,6 +1,7 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
+import { formatInTimeZone } from 'date-fns-tz';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import {
   ArrowDownAZ,
@@ -10,10 +11,8 @@ import {
   SendIcon,
   TrashIcon,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { formatInTimeZone } from 'date-fns-tz';
 
 import { downloadTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
@@ -113,7 +112,7 @@ export function generateTicketColumns(role: Role) {
             ? formatInTimeZone(
                 new Date(row.original.scannedAt),
                 'America/Argentina/Buenos_Aires',
-                'HH:mm:ss',
+                'dd/MM/yyyy HH:mm:ss',
               )
             : '-',
         exportHeader: 'Hora de ingreso',
@@ -440,11 +439,12 @@ export function generateTicketColumns(role: Role) {
         const [sure, setSure] = useState(false);
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const [open, setOpen] = useState(false);
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const router = useRouter();
+         
+        const utils = trpc.useUtils();
         const deleteTicketMutation = trpc.emittedTickets.delete.useMutation({
           onSuccess: () => {
-            router.refresh();
+            utils.emittedTickets.getByEventId.invalidate();
+            toast.success('Ticket eliminado con éxito');
           },
         });
         const sendTicketMutation = trpc.emittedTickets.send.useMutation({
@@ -461,10 +461,10 @@ export function generateTicketColumns(role: Role) {
               toast.error(error.message);
             },
             onSuccess: () => {
-              router.refresh();
+              utils.emittedTickets.getByEventId.invalidate();
+              toast.success('Ticket escaneado manualmente con éxito');
             },
           });
-        const utils = trpc.useUtils();
 
         return (
           <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -483,7 +483,9 @@ export function generateTicketColumns(role: Role) {
                 className='flex cursor-pointer items-center justify-between'
                 onClick={async (e) => {
                   e.preventDefault();
-                  await sendTicketMutation.mutateAsync({ ticketId: ticket.id });
+                  await sendTicketMutation.mutateAsync({
+                    ticketId: ticket.id,
+                  });
                   setOpen(false);
                 }}
               >
