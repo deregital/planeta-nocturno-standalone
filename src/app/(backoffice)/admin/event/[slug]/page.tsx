@@ -13,6 +13,7 @@ import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWi
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { auth } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
@@ -23,11 +24,12 @@ async function EventDetails({ slug }: { slug: string }) {
     notFound();
   }
 
-  const tickets = event.ticketGroups.flatMap((tg) => tg.emittedTickets);
-  const maxAvailable = event.ticketTypes.reduce(
-    (acc, tt) => acc + tt.maxAvailable,
-    0,
-  );
+  const tickets = event.ticketGroups
+    .filter((tg) => !tg.isOrganizerGroup)
+    .flatMap((tg) => tg.emittedTickets);
+  const maxAvailable = event.ticketTypes
+    .filter((tt) => tt.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim())
+    .reduce((acc, tt) => acc + tt.maxAvailable, 0);
 
   return (
     <div className='flex flex-col items-center mt-4 relative'>

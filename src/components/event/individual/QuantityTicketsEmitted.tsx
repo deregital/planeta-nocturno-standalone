@@ -23,7 +23,7 @@ export function QuantityTicketsEmitted({
     tickets.length > 0 ? (scannedTickets.length / tickets.length) * 100 : 0;
 
   return (
-    <div className='flex gap-4'>
+    <div className='flex gap-4 mx-4'>
       <div className='flex flex-row gap-x-2 items-center'>
         <Ticket />
         <p className='flex items-center gap-x-0.5'>
