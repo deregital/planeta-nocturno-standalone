@@ -674,6 +674,7 @@ export const eventsRouter = router({
                     gender: org.gender,
                     phoneNumber: org.phoneNumber,
                     birthDate: org.birthDate,
+                    instagram: org.instagram,
                     slug: generateSlug(`${ORGANIZER_TICKET_TYPE_NAME} ${idx}`),
                     ticketTypeId: organizerTicketType.id,
                     ticketGroupId: organizerTicketGroup.id,
@@ -1200,6 +1201,7 @@ export const eventsRouter = router({
                       gender: org.gender,
                       phoneNumber: org.phoneNumber,
                       birthDate: org.birthDate,
+                      instagram: org.instagram,
                       slug: generateSlug(
                         `${ORGANIZER_TICKET_TYPE_NAME} ${organizersDB.length + addedOrganizersIds.indexOf(addedOrganizerId)}`,
                       ),
