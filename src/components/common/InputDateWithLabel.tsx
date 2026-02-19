@@ -20,7 +20,10 @@ function formatDateForInput(date: Date | undefined, dateType: string): string {
   if (dateType === 'datetime-local') {
     return format(date, "yyyy-MM-dd'T'HH:mm");
   }
-  return format(date, 'yyyy-MM-dd');
+  const y = String(date.getUTCFullYear()).padStart(4, '0');
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export default function InputDateWithLabel({
@@ -36,9 +39,13 @@ export default function InputDateWithLabel({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value) {
-      const fmt =
-        dateType === 'datetime-local' ? "yyyy-MM-dd'T'HH:mm" : 'yyyy-MM-dd';
-      const date = parse(value, fmt, new Date());
+      let date: Date;
+      if (dateType === 'datetime-local') {
+        date = parse(value, "yyyy-MM-dd'T'HH:mm", new Date());
+      } else {
+        const [y, m, d] = value.split('-').map(Number);
+        date = new Date(Date.UTC(y!, m! - 1, d!));
+      }
 
       if (isValid(date)) {
         onChange(date);
