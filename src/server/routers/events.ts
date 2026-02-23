@@ -290,6 +290,21 @@ export const eventsRouter = router({
             address: true,
           },
         },
+        eventXorganizers: {
+          columns: {
+            organizerId: true,
+          },
+          with: {
+            user: {
+              columns: {
+                id: true,
+                fullName: true,
+                dni: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
 

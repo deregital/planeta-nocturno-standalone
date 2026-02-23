@@ -268,7 +268,7 @@ function VirtualizedCommand({
                   className={cn(
                     'absolute left-0 top-0 w-full bg-transparent',
                     focusedIndex === virtualOption.index &&
-                      'bg-accent text-accent-foreground',
+                      'bg-accent text-on-accent',
                     isKeyboardNavActive &&
                       focusedIndex !== virtualOption.index &&
                       'aria-selected:bg-transparent aria-selected:text-primary',
