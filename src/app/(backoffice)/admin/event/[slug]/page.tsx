@@ -30,6 +30,9 @@ async function EventDetails({ slug }: { slug: string }) {
   const maxAvailable = event.ticketTypes
     .filter((tt) => tt.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim())
     .reduce((acc, tt) => acc + tt.maxAvailable, 0);
+  const organizerTickets = event.ticketGroups
+    .filter((tg) => tg.isOrganizerGroup)
+    .flatMap((tg) => tg.emittedTickets);
 
   return (
     <div className='flex flex-col items-center mt-4 relative'>
@@ -38,7 +41,11 @@ async function EventDetails({ slug }: { slug: string }) {
       </div>
       <div className='flex flex-col items-center mt-4'>
         <EventBasicInformation event={event} />
-        <QuantityTicketsEmitted tickets={tickets} maxAvailable={maxAvailable} />
+        <QuantityTicketsEmitted
+          tickets={tickets}
+          organizerTickets={organizerTickets}
+          maxAvailable={maxAvailable}
+        />
       </div>
       <div className='flex justify-between w-full px-4 mt-2'>
         <div className='flex-1 flex justify-center items-center'>
