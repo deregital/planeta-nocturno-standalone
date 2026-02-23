@@ -1,6 +1,7 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
+import { format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import {
@@ -15,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 
 import { downloadTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 import { type Role } from '@/server/types';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export function generateTicketColumns(role: Role) {
   let columns: StrictColumnDef<
@@ -744,8 +745,9 @@ export function generateTicketColumns(role: Role) {
                     <ScanBarcode className='size-5' />
                   </DropdownMenuItem>
                 )}
-                {role === 'ADMIN' && (
-                  <>
+                {role === 'ADMIN' &&
+                  ticket.ticketType.name.trim() !==
+                    ORGANIZER_TICKET_TYPE_NAME && (
                     <DropdownMenuItem
                       className='flex cursor-pointer items-center justify-between'
                       onClick={(e) => {
@@ -760,33 +762,34 @@ export function generateTicketColumns(role: Role) {
                       <span>Cambiar organizador</span>
                       <UserCircle className='size-4' />
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        if (sure) {
-                          await deleteTicketMutation.mutateAsync({
-                            ticketId: ticket.id,
-                          });
-                          setSure(false);
-                          setOpen(false);
-                          utils.emittedTickets.getByEventId.invalidate({
-                            eventId: ticket.eventId ?? '',
-                          });
-                          utils.events.getById.invalidate(ticket.eventId ?? '');
-                          return;
-                        }
-                        setSure(true);
-                      }}
-                      data-sure={sure}
-                      disabled={
-                        deleteTicketMutation.isPending || role !== 'ADMIN'
+                  )}
+                {role === 'ADMIN' && (
+                  <DropdownMenuItem
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (sure) {
+                        await deleteTicketMutation.mutateAsync({
+                          ticketId: ticket.id,
+                        });
+                        setSure(false);
+                        setOpen(false);
+                        utils.emittedTickets.getByEventId.invalidate({
+                          eventId: ticket.eventId ?? '',
+                        });
+                        utils.events.getById.invalidate(ticket.eventId ?? '');
+                        return;
                       }
-                      className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
-                    >
-                      {sure ? 'Estás seguro?' : 'Eliminar ticket'}
-                      <TrashIcon className='text-white' />
-                    </DropdownMenuItem>
-                  </>
+                      setSure(true);
+                    }}
+                    data-sure={sure}
+                    disabled={
+                      deleteTicketMutation.isPending || role !== 'ADMIN'
+                    }
+                    className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
+                  >
+                    {sure ? 'Estás seguro?' : 'Eliminar ticket'}
+                    <TrashIcon className='text-white' />
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
