@@ -312,7 +312,7 @@ export function EventGeneralInformation({
               id='minAgeEnabled'
               disabled={action === 'PREVIEW'}
               type='checkbox'
-              className='[&>input]:w-6 [&>input]:ml-4'
+              className='[&>input]:w-6 [&>input]:ml-4 [&>input]:cursor-pointer'
               placeholder='Edad mínima'
               name='minAgeEnabled'
               checked={event.minAge !== null}
@@ -352,7 +352,7 @@ export function EventGeneralInformation({
             id='extraTicketData'
             disabled={action === 'PREVIEW'}
             type='checkbox'
-            className='[&>input]:w-6 [&>input]:ml-4'
+            className='[&>input]:w-6 [&>input]:ml-4 [&>input]:cursor-pointer'
             placeholder='Datos extra de ticket'
             name='extraTicketData'
             checked={event.extraTicketData}
@@ -581,7 +581,7 @@ export function EventGeneralInformation({
               id='serviceFeeEnabled'
               disabled={action === 'PREVIEW'}
               type='checkbox'
-              className='[&>input]:w-6 [&>input]:ml-4'
+              className='[&>input]:w-6 [&>input]:ml-4 [&>input]:cursor-pointer'
               placeholder='Cargo por servicio'
               name='serviceFeeEnabled'
               checked={event.serviceFee !== null}
@@ -623,7 +623,7 @@ export function EventGeneralInformation({
             id='ticketSlugVisibleInPdf'
             disabled={action === 'PREVIEW'}
             type='checkbox'
-            className='[&>input]:w-6 [&>input]:ml-4'
+            className='[&>input]:w-6 [&>input]:ml-4 [&>input]:cursor-pointer'
             placeholder='Datos extra de ticket'
             name='ticketSlugVisibleInPdf'
             checked={event.ticketSlugVisibleInPdf}

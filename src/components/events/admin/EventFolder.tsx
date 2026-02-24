@@ -1,7 +1,7 @@
 import { Folder } from 'lucide-react';
 import { type Route } from 'next';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
 import EventCardHorizontal from '@/components/events/admin/EventCardHorizontal';
 import EventFolderModal from '@/components/events/admin/EventFolderModal';
@@ -11,6 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
 export default function EventFolder({
@@ -27,17 +28,27 @@ export default function EventFolder({
   const session = useSession();
   const isAdmin = session?.data?.user.role === 'ADMIN';
 
+  const isEmpty = folder.events.length === 0;
+
   return (
     <Accordion type='single' collapsible className='w-full'>
-      <AccordionItem value='item-1' className='border-none'>
+      <AccordionItem value='item-1' className='border-none' disabled={isEmpty}>
         <div className='relative'>
           <AccordionTrigger
-            className='cursor-pointer hover:no-underline py-3 px-4 gap-2 transition-all duration-200 ease-in-out rounded-lg flex items-center justify-between'
+            className={cn(
+              'hover:no-underline py-3 px-4 gap-2 transition-all duration-200 ease-in-out rounded-lg flex items-center justify-between',
+              isEmpty
+                ? 'cursor-default disabled:opacity-100'
+                : 'cursor-pointer',
+            )}
             style={{ backgroundColor: folder.color }}
           >
             <div className='flex items-center gap-2'>
               <Folder size={20} />
-              <p className='text-lg font-bold'>{folder.name}</p>
+              <p className='text-lg font-bold'>
+                {folder.name}{' '}
+                {isEmpty && <span className='text-xs'>(sin eventos)</span>}
+              </p>
             </div>
           </AccordionTrigger>
           {isAdmin && (

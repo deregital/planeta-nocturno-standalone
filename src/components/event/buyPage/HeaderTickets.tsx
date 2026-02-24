@@ -8,7 +8,7 @@ import { type RouterOutputs } from '@/server/routers/app';
 function HeaderTickets({
   event,
 }: {
-  event: RouterOutputs['events']['getById'];
+  event: NonNullable<RouterOutputs['events']['getBySlug']>;
 }) {
   // Formatear la fecha
   const formatDate = (dateString: string) => {

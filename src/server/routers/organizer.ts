@@ -11,6 +11,7 @@ import {
 import { z } from 'zod';
 
 import {
+  event,
   eventXorganizer,
   ticketGroup,
   ticketXorganizer,
@@ -72,72 +73,11 @@ export const organizerRouter = router({
   getInfoById: chiefOrganizerProcedure
     .input(organizerBaseSchema.shape.id)
     .query(async ({ ctx, input: organizerId }) => {
-      // Get the user to check if they are a CHIEF_ORGANIZER
-      const targetUser = await ctx.db.query.user.findFirst({
-        where: eq(user.id, organizerId),
-        columns: {
-          id: true,
-          role: true,
-        },
-      });
-
-      if (!targetUser) {
-        throw new Error('User not found');
-      }
-
-      // Get all organizer IDs to include in events (chief + their organizers if chief)
-      let organizerIds = [organizerId];
-      if (targetUser.role === 'CHIEF_ORGANIZER') {
-        const relatedOrganizers = await ctx.db.query.user.findMany({
-          where: eq(user.chiefOrganizerId, organizerId),
-          columns: {
-            id: true,
-          },
-        });
-        organizerIds = [organizerId, ...relatedOrganizers.map((o) => o.id)];
-      }
-
-      // Get last 20 organizer groups (we'll later filter to those with scanned tickets)
-      const recentEvents = await ctx.db.query.ticketGroup.findMany({
-        where: and(
-          eq(ticketGroup.isOrganizerGroup, true),
-          not(eq(ticketGroup.status, 'BOOKED')),
-          inArray(ticketGroup.invitedById, organizerIds),
-        ),
-        with: {
-          emittedTickets: {
-            columns: {
-              scanned: true,
-            },
-          },
-          event: {
-            columns: {
-              id: true,
-              name: true,
-              startingDate: true,
-              endingDate: true,
-            },
-            with: {
-              location: {
-                columns: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: desc(ticketGroup.createdAt),
-        limit: 20,
-      });
-
-      // Keep only ticketGroups where at least one emittedTicket was scanned
-      const recentEventsWithScan = recentEvents.filter((tg) =>
-        tg.emittedTickets.some((et) => et.scanned),
-      );
-
+      // Check if user exists
       const organizer = await ctx.db.query.user.findFirst({
         where: eq(user.id, organizerId),
         columns: {
+          id: true,
           fullName: true,
           email: true,
           phoneNumber: true,
@@ -152,24 +92,45 @@ export const organizerRouter = router({
         throw new Error('Organizer not found');
       }
 
-      return {
-        recentEvents: recentEventsWithScan.map((rel) => ({
-          id: rel.event.id,
-          name: rel.event.name,
-          startingDate: rel.event.startingDate,
-          endingDate: rel.event.endingDate,
-          location: rel.event.location,
-        })),
-        organizer: {
-          id: organizerId,
-          fullName: organizer.fullName,
-          email: organizer.email,
-          phoneNumber: organizer.phoneNumber,
-          instagram: organizer.instagram,
-          mercadopago: organizer.mercadopago,
-          googleDriveUrl: organizer.googleDriveUrl,
-          role: organizer.role,
+      // Get last 20 events
+      const events = await ctx.db.query.event.findMany({
+        where: and(eq(event.isDeleted, false), eq(event.isActive, true)),
+        with: {
+          ticketGroups: {
+            columns: {
+              isOrganizerGroup: true,
+            },
+            with: {
+              emittedTickets: true,
+            },
+          },
+          location: {
+            columns: {
+              name: true,
+            },
+          },
         },
+        orderBy: desc(event.endingDate),
+        limit: 20,
+      });
+
+      const assistedEvents = events.filter((e) =>
+        e.ticketGroups.some((tg) =>
+          tg.emittedTickets.some(
+            (et) => et.scanned && et.mail === organizer.email,
+          ),
+        ),
+      );
+
+      return {
+        recentEvents: assistedEvents.map((e) => ({
+          id: e.id,
+          name: e.name,
+          startingDate: e.startingDate,
+          endingDate: e.endingDate,
+          location: e.location,
+        })),
+        organizer,
       };
     }),
   getStatsById: chiefOrganizerProcedure

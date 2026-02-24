@@ -70,6 +70,12 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
 
   const noData = table.getPageCount() === 0;
 
+  const totalRows = table.getRowCount();
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const firstRow = noData ? 0 : pageIndex * pageSize + 1;
+  const lastRow = noData ? 0 : Math.min((pageIndex + 1) * pageSize, totalRows);
+
   return (
     <>
       <div className='border-t border-accent-dark/10 bg-transparent px-3 py-3 text-black sm:px-6'>
@@ -120,6 +126,11 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
             >
               <ChevronsRight className='w-6' />
             </Button>
+            <span className='flex items-center gap-1 text-sm sm:text-base'>
+              {noData
+                ? '0-0 de 0'
+                : `${firstRow.toLocaleString()}-${lastRow.toLocaleString()} de ${totalRows.toLocaleString()}`}
+            </span>
           </div>
           <span className='hidden items-center gap-1 lg:flex'>
             Ir a la página:

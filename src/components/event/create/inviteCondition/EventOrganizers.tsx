@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
+import { SendOrganizerTicketEmailOption } from '@/components/event/create/inviteCondition/SendOrganizerTicketEmailOption';
 import { Slider } from '@/components/ui/slider';
 import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
 import {
@@ -30,6 +31,12 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
   );
   const updateOrganizerNumber = useCreateEventStore(
     (state) => state.updateOrganizerNumber,
+  );
+  const sendOrganizerTicketEmail = useCreateEventStore(
+    (state) => state.sendOrganizerTicketEmail,
+  );
+  const setSendOrganizerTicketEmail = useCreateEventStore(
+    (state) => state.setSendOrganizerTicketEmail,
   );
 
   const { data: location } = trpc.location.getById.useQuery(event.locationId, {
@@ -491,6 +498,13 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
           </div>
         </div>
       </OrganizerTableWithAction>
+      {organizers.length > 0 && (
+        <SendOrganizerTicketEmailOption
+          checked={sendOrganizerTicketEmail}
+          onCheckedChange={setSendOrganizerTicketEmail}
+          className='rounded-md border border-stroke bg-accent-ultra-light px-4 py-3'
+        />
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import { OrganizerTableWithAction } from '@/components/event/create/inviteCondition/OrganizerTableWithAction';
+import { SendOrganizerTicketEmailOption } from '@/components/event/create/inviteCondition/SendOrganizerTicketEmailOption';
 import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
@@ -13,6 +14,9 @@ import { trpc } from '@/server/trpc/client';
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
   const event = useCreateEventStore((state) => state.event);
+  const sendOrganizerTicketEmail = useCreateEventStore(
+    (state) => state.sendOrganizerTicketEmail,
+  );
   const organizers = useCreateEventStore((state) => state.organizers).map(
     (organizer) => ({
       id: organizer.id,
@@ -51,6 +55,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
         event: { ...event, isActive },
         ticketTypes,
         organizersInput: organizers,
+        sendOrganizerTicketEmail,
       });
       toast('¡Evento creado con éxito!');
       router.push('/admin/event');
@@ -87,6 +92,11 @@ export default function PreviewEvent({ back }: { back: () => void }) {
           >
             <></>
           </OrganizerTableWithAction>
+          <SendOrganizerTicketEmailOption
+            checked={sendOrganizerTicketEmail}
+            onCheckedChange={() => {}}
+            disabled
+          />
         </section>
       )}
       <section>

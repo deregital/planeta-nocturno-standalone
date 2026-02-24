@@ -3,7 +3,6 @@ import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -27,8 +26,6 @@ export default function DeleteEventModal({
   if (!event) throw new Error('Event requerido');
 
   const router = useRouter();
-  const session = useSession();
-  const isAdmin = session.data?.user.role === 'ADMIN';
 
   const deleteEvent = trpc.events.delete.useMutation({
     onSuccess: () => {
@@ -58,7 +55,7 @@ export default function DeleteEventModal({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant={'destructive'} disabled={!isAdmin}>
+        <Button variant={'destructive'}>
           <Trash2 />
           Eliminar evento
         </Button>

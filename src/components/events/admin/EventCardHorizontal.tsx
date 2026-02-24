@@ -60,7 +60,7 @@ export default function EventCardHorizontal({
     <Card
       variant={'accent'}
       className={cn(
-        'flex flex-row py-2 rounded-lg',
+        'flex flex-row py-2 rounded-lg min-h-14',
         !showActions && 'border-accent-light py-4',
       )}
       style={{
@@ -93,17 +93,16 @@ export default function EventCardHorizontal({
                 <Calendar className='w-4 h-4 text-on-accent' />
               </Link>
             </Button>
-
-            <Button
-              variant={'ghost'}
-              className='text-on-accent'
-              disabled={!isAdmin}
-              onClick={() => router.push(`/admin/event/edit/${event.slug}`)}
-            >
-              <Pencil />
-            </Button>
             {isAdmin && (
               <>
+                <Button
+                  variant={'ghost'}
+                  className='text-on-accent'
+                  disabled={!isAdmin}
+                  onClick={() => router.push(`/admin/event/edit/${event.slug}`)}
+                >
+                  <Pencil />
+                </Button>
                 <ChangeEventFolder
                   eventId={event.id}
                   folderId={event.folderId ?? undefined}

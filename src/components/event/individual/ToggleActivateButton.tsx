@@ -1,7 +1,6 @@
 'use client';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -14,8 +13,6 @@ export function ToggleActivateButton({
 }) {
   const [sure, setSure] = useState(false);
   const router = useRouter();
-  const session = useSession();
-  const isAdmin = session.data?.user.role === 'ADMIN';
 
   const { mutateAsync, isPending } = trpc.events.toggleActivate.useMutation();
   const handleToggle = () => {
@@ -37,7 +34,7 @@ export function ToggleActivateButton({
     <div>
       <Button
         variant={event.isActive ? 'destructive' : 'success'}
-        disabled={isPending || !isAdmin}
+        disabled={isPending}
         onClick={handleToggle}
         className='w-full'
       >

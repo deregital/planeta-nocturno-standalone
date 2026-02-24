@@ -19,6 +19,7 @@ export type EventState = {
     | TicketTypeSchema
   )[];
   organizers: OrganizerSchema[];
+  sendOrganizerTicketEmail: boolean;
 };
 type EventActions = {
   addTicketType: (ticketType: CreateTicketTypeSchema) => void;
@@ -26,6 +27,7 @@ type EventActions = {
   deleteTicketType: (id: string) => void;
   setTicketTypes: (ticketTypes: TicketTypeSchema[]) => void;
   setEvent: (event: Partial<CreateEventSchema>) => void;
+  setSendOrganizerTicketEmail: (value: boolean) => void;
   resetOrganizers: () => void;
   addOrganizer: (
     organizer: OrganizerBaseSchema,
@@ -71,6 +73,7 @@ const initialState: EventState = {
   },
   ticketTypes: [],
   organizers: [],
+  sendOrganizerTicketEmail: false,
 };
 
 function calculateOrganizerMaxAvailable(
@@ -114,6 +117,9 @@ export const createEventStore = (initState: EventState = initialState) => {
     ...initState,
     setEvent: (event) => {
       set((state) => ({ event: { ...state.event, ...event } }));
+    },
+    setSendOrganizerTicketEmail: (sendOrganizerTicketEmail) => {
+      set(() => ({ sendOrganizerTicketEmail }));
     },
     setTicketTypes: (ticketTypes) => {
       set(() => ({

@@ -78,10 +78,11 @@ export function SearchTickets({
       <div className='relative max-w-md mx-auto'>
         <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
         <Input
-          placeholder='Buscar por nombre, DNI, email, teléfono o organizador...'
+          placeholder='Buscar por nombre, DNI, email, teléfono u organizador...'
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
           className='pl-10'
+          autoFocus={true}
         />
       </div>
     </div>
