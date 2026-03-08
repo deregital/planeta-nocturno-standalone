@@ -10,6 +10,7 @@ import {
   location,
   ticketGroup,
   ticketType as ticketTypeTable,
+  ticketTypePerGroup,
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
@@ -58,6 +59,12 @@ export const emittedTicketsRouter = router({
               invitedById: input.invitedBy,
             })
             .returning();
+
+          await tx.insert(ticketTypePerGroup).values({
+            ticketTypeId: input.ticketTypeId,
+            ticketGroupId: ticketGroupCreated.id,
+            amount: 1,
+          });
 
           const lastEmitted = await tx.query.emittedTicket.findFirst({
             where: eq(emittedTicket.ticketGroupId, ticketGroupCreated.id),
