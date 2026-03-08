@@ -6,8 +6,8 @@ import {
   AccordionTrigger,
 } from '@radix-ui/react-accordion';
 import { Calendar, ChevronDown } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { type Session } from 'next-auth';
+import { useRouter } from 'next/navigation';
 
 import EventFolderModal from '@/components/events/admin/EventFolderModal';
 import EventList from '@/components/events/admin/EventList';
@@ -44,19 +44,21 @@ export default function Client({ session }: { session: Session }) {
   return (
     <div className='flex w-full p-4 flex-col gap-6'>
       <h1 className='text-3xl font-bold text-accent'>Gestor de Eventos</h1>
-      <div className='flex gap-2'>
-        <Button
-          className='w-fit py-4 px-8'
-          onClick={() => router.push('/admin/event/create')}
-          disabled={session.user.role !== 'ADMIN'}
-        >
-          <Calendar /> Crear evento
-        </Button>
-        <EventFolderModal
-          disabled={session.user.role !== 'ADMIN'}
-          action='CREATE'
-        />
-      </div>
+      {session.user.role === 'ADMIN' && (
+        <div className='flex gap-2'>
+          <Button
+            className='w-fit py-4 px-8'
+            onClick={() => router.push('/admin/event/create')}
+            disabled={session.user.role !== 'ADMIN'}
+          >
+            <Calendar /> Crear evento
+          </Button>
+          <EventFolderModal
+            disabled={session.user.role !== 'ADMIN'}
+            action='CREATE'
+          />
+        </div>
+      )}
 
       <p className='text-2xl font-bold text-accent'>Próximos Eventos</p>
       <EventList events={events.upcomingEvents} />

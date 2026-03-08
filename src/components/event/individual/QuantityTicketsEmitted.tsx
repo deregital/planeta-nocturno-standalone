@@ -1,4 +1,4 @@
-import { ScanQrCode, Ticket } from 'lucide-react';
+import { ScanHeart, ScanQrCode, Ticket } from 'lucide-react';
 
 import { Separator } from '@/components/ui/separator';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -6,8 +6,12 @@ import { type RouterOutputs } from '@/server/routers/app';
 export function QuantityTicketsEmitted({
   tickets,
   maxAvailable,
+  organizerTickets,
 }: {
   tickets: NonNullable<
+    RouterOutputs['events']['getBySlug']
+  >['ticketGroups'][number]['emittedTickets'];
+  organizerTickets?: NonNullable<
     RouterOutputs['events']['getBySlug']
   >['ticketGroups'][number]['emittedTickets'];
   maxAvailable?: number;
@@ -23,7 +27,7 @@ export function QuantityTicketsEmitted({
     tickets.length > 0 ? (scannedTickets.length / tickets.length) * 100 : 0;
 
   return (
-    <div className='flex gap-4'>
+    <div className='flex gap-4 mx-4'>
       <div className='flex flex-row gap-x-2 items-center'>
         <Ticket />
         <p className='flex items-center gap-x-0.5'>
@@ -45,6 +49,23 @@ export function QuantityTicketsEmitted({
           {scannedPercentage.toFixed(2)}%)
         </p>
       </div>
+      {organizerTickets && (
+        <>
+          <div className='flex items-center justify-center'>
+            <Separator
+              orientation='vertical'
+              className='border-accent-ultra-light border'
+            />
+          </div>
+          <div className='flex flex-row gap-x-2 items-center'>
+            <ScanHeart />
+            <p className='flex items-center gap-x-0.5'>
+              Organizadores escaneados: {scannedTickets.length} de{' '}
+              {tickets.length} ({scannedPercentage.toFixed(2)}%)
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

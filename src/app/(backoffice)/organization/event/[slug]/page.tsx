@@ -69,6 +69,7 @@ export default async function EventPage({
 
   // Filtrar tickets: chief organizer ve los de sus organizadores, organizador ve solo los suyos
   const myTickets = event.ticketGroups
+    .filter((tg) => !tg.isOrganizerGroup)
     .filter((tg) =>
       session?.user.role === 'CHIEF_ORGANIZER'
         ? myOrganizerIds.includes(tg.invitedById ?? '')
