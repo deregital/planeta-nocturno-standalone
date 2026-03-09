@@ -6,7 +6,7 @@ import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 import { formatCurrency } from '@/lib/utils';
 import { sendMail, sendMailWithoutAttachments } from '@/server/services/mail';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
-import { publicProcedure, router } from '@/server/trpc';
+import { adminProcedure, router, ticketingProcedure } from '@/server/trpc';
 
 // Función de retry para manejar rate limits
 export async function retryWithBackoff<T>(
@@ -52,7 +52,7 @@ export async function retryWithBackoff<T>(
 }
 
 export const mailRouter = router({
-  send: publicProcedure
+  send: ticketingProcedure
     .input(
       z.object({
         eventName: z.string(),
@@ -102,7 +102,7 @@ export const mailRouter = router({
         });
       }
     }),
-  sendNotification: publicProcedure
+  sendNotification: adminProcedure
     .input(
       z.object({
         eventName: z.string(),
