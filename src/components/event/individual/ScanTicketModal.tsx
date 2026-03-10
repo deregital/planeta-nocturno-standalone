@@ -83,7 +83,9 @@ export function ScanTicketModal({
             <p
               className={cn(
                 'font-semibold',
-                scanMutation.data.success ? 'text-green-500' : 'text-red-500',
+                scanMutation.data?.status === 'success'
+                  ? 'text-green-500'
+                  : 'text-red-500',
               )}
             >
               {scanMutation.data.text}{' '}

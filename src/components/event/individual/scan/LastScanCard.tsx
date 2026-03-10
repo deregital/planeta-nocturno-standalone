@@ -18,7 +18,7 @@ export function LastScanCard({
           )}
         </div>
       )}
-      {lastScan.success ? (
+      {lastScan.status === 'success' ? (
         <>
           <div className='bg-green-500 border-b border-stroke'>
             <p className='text-on-accent text-lg font-bold p-2 truncate'>
@@ -41,6 +41,17 @@ export function LastScanCard({
         <>
           <div className='bg-red-500 p-2 font-bold'>{lastScan.text}</div>
           <div className='text-accent-dark p-2 text-sm'>
+            {lastScan.ticket && (
+              <>
+                <p className='text-accent-dark p-2 text-sm'>
+                  <span className='font-bold'>Nombre:</span>{' '}
+                  {lastScan.ticket?.fullName}
+                </p>
+                <p className='text-accent-dark p-2 text-sm'>
+                  <span className='font-bold'>DNI:</span> {lastScan.ticket?.dni}
+                </p>
+              </>
+            )}
             {lastScan.extraInfo}
           </div>
         </>
