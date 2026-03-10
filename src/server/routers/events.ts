@@ -326,6 +326,7 @@ export const eventsRouter = router({
           },
         },
         ticketTypes: {
+          orderBy: [asc(ticketType.name)],
           with: {
             ticketTypeXOrganizers: true,
           },

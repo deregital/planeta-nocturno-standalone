@@ -1,5 +1,5 @@
 'use client';
-import React, { startTransition, useActionState } from 'react';
+import { startTransition, useActionState } from 'react';
 
 import { handlePurchase as handlePurchaseAction } from '@/app/(client)/event/[slug]/actions';
 import { Button } from '@/components/ui/button';
@@ -36,51 +36,62 @@ function TicketPurchase({
 
   return (
     <div className='rounded-[20px] border border-stroke p-6 bg-accent-ultra-light h-full flex flex-col font-sans'>
-      {/* Encabezado de la tabla */}
-      <div className='grid grid-cols-3 pb-2 border-b border-stroke'>
-        <div className='text-accent-dark md:text-[16px] text-[12px] sm:text-[16px] font-normal leading-[100%]'>
-          Tipo de Ticket
+      {/* Encabezado */}
+      <div className='hidden sm:flex items-center pb-2 border-b border-stroke'>
+        <div className='flex-1 text-accent-dark text-base font-normal'>
+          Tipo de ticket
         </div>
-        <div className='text-accent-dark md:text-[16px] text-[12px] sm:text-[16px] font-normal leading-[100%] text-center'>
+        <div className='text-accent-dark text-base font-normal text-center w-24'>
           Valor
         </div>
-        <div className='text-accent-dark md:text-[16px] text-[12px] sm:text-[16px] font-normal leading-[100%] text-right'>
+        <div className='text-accent-dark text-base font-normal text-right w-24'>
           Cantidad
         </div>
       </div>
 
-      {/* Fila de ticket */}
       {ticketTypes.length === 0 ? (
         <div className='text-red-500 font-medium my-4'>
           No hay tickets disponibles
         </div>
       ) : (
-        <div className='grid grid-cols-3 py-4 gap-2 items-center'>
-          {ticketsTypeAvailable.map((type, index) => {
-            return (
-              <React.Fragment key={index}>
-                <div
-                  className={`text-[12px] sm:text-[16px] font-normal ${
-                    type.leftAvailable ? 'text-red-500' : 'text-black'
-                  }`}
-                >
+        <div className='flex flex-col gap-4 py-4'>
+          {ticketsTypeAvailable.map((type) => (
+            <div
+              key={type.id}
+              className='flex flex-col gap-2 sm:flex-row sm:items-center border-b border-stroke/50 pb-4 sm:border-none sm:pb-0'
+            >
+              <div className='flex-1 min-w-0'>
+                <div className='text-base sm:text-base font-medium'>
                   {type.name}
                 </div>
-                <div className='text-black text-[12px] sm:text-[16px] font-normal text-center'>
+                {type.description && (
+                  <p className='text-accent-dark/70 text-xs sm:text-sm mt-0.5 leading-snug'>
+                    {type.description}
+                  </p>
+                )}
+                {!type.disabled && type.leftAvailable && (
+                  <span className='text-red-500 font-medium text-xs sm:text-sm'>
+                    ¡Quedan {type.leftAvailable} tickets!
+                  </span>
+                )}
+              </div>
+              <div className='flex items-center justify-between sm:contents'>
+                <div className='text-black font-normal sm:text-center w-auto sm:w-24 sm:shrink-0'>
                   {type.price ? (
-                    <p>${type.price}</p>
+                    <p>
+                      {Intl.NumberFormat('es-AR', {
+                        style: 'currency',
+                        currency: 'ARS',
+                        maximumFractionDigits: 0,
+                      })
+                        .format(type.price)
+                        .replace(/\$\s*/, '$')}
+                    </p>
                   ) : (
-                    <p className='text-accent '>GRATUITO</p>
+                    <p className='text-accent'>GRATUITO</p>
                   )}
                 </div>
-                <div className='flex justify-end'>
-                  {type.leftAvailable && (
-                    <div className='justify-center items-center hidden lg:flex max-w-36'>
-                      <span className='self-center text-red-500 font-medium text-[12px] sm:text-[16px]'>
-                        ¡Quedan {type.leftAvailable} tickets!
-                      </span>
-                    </div>
-                  )}
+                <div className='flex justify-end sm:w-24 sm:shrink-0'>
                   {!type.disabled ? (
                     <Select
                       value={quantity
@@ -97,40 +108,24 @@ function TicketPurchase({
                         <SelectValue placeholder='0' />
                       </SelectTrigger>
                       <SelectContent align='end'>
-                        {[...Array(type.maxPerPurchase + 1).keys()]
-                          .map((i) => i)
-                          .map((num) => (
+                        {[...Array(type.maxPerPurchase + 1).keys()].map(
+                          (num) => (
                             <SelectItem key={num} value={num.toString()}>
                               {num.toString()}
                             </SelectItem>
-                          ))}
+                          ),
+                        )}
                       </SelectContent>
                     </Select>
                   ) : (
-                    <div className='text-red-500 font-medium text-[12px] sm:text-[16px]'>
-                      ¡Tickets agotados!
-                    </div>
+                    <div className='text-red-500 font-medium'>¡Agotados!</div>
                   )}
                 </div>
-              </React.Fragment>
-            );
-          })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
-      <div className='flex flex-col justify-center items-center lg:hidden'>
-        {ticketsTypeAvailable.map(
-          (ticket) =>
-            ticket.leftAvailable !== null && (
-              <span
-                key={ticket.id}
-                className='self-center text-red-500 font-medium text-[12px] sm:text-[16px] lg:hidden'
-              >
-                ¡Quedan {ticket.leftAvailable} tickets para{' '}
-                <span className='font-bold'>{ticket.name}</span>!
-              </span>
-            ),
-        )}
-      </div>
 
       {/* Botón de compra */}
       <div className='mt-4 grid grid-cols-3'>
