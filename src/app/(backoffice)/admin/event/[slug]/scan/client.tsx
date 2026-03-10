@@ -50,7 +50,7 @@ export default function ScanClient({
             })
             .then((result) => {
               setLastScans((prev) => [result, ...prev].slice(0, 20));
-              return result.success;
+              return result.status;
             });
         }}
       />
