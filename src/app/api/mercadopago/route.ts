@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 import { Payment } from 'mercadopago';
 import { NextResponse } from 'next/server';
@@ -18,8 +18,10 @@ function verifySignature(
   const signatureDecrypted = createHmac('sha256', secretKey)
     .update(manifest)
     .digest('hex');
-  const isValid = signatureDecrypted === v1?.trim();
-
+  // comparacion segura de signatures para evitar timing attacks
+  const a = Buffer.from(signatureDecrypted);
+  const b = Buffer.from(v1?.trim() ?? '');
+  const isValid = a.length === b.length && timingSafeEqual(a, b);
   return isValid;
 }
 
