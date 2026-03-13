@@ -9,8 +9,8 @@ import {
   event,
   location,
   ticketGroup,
-  ticketType as ticketTypeTable,
   ticketTypePerGroup,
+  ticketType as ticketTypeTable,
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
@@ -375,12 +375,11 @@ export const emittedTicketsRouter = router({
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
     }),
-
   scan: ticketingProcedure
     .input(
       z.object({
         barcode: z.string(),
-        eventId: z.string(),
+        eventIds: z.array(z.string()),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -399,7 +398,7 @@ export const emittedTicketsRouter = router({
       const ticketReturned = await ctx.db.query.emittedTicket.findFirst({
         where: and(
           eq(emittedTicket.id, decryptedTicketId),
-          eq(emittedTicket.eventId, input.eventId),
+          inArray(emittedTicket.eventId, input.eventIds),
         ),
         with: {
           ticketType: true,
@@ -476,7 +475,6 @@ export const emittedTicketsRouter = router({
         extraInfo: `${extraInfo} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`,
       };
     }),
-
   manualScan: ticketingProcedure
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {

@@ -48,7 +48,7 @@ export function ScanTicketModal({
               e.preventDefault();
               await scanMutation
                 .mutateAsync({
-                  eventId: eventId,
+                  eventIds: [eventId],
                   barcode: inputValue,
                 })
                 .finally(() => {
