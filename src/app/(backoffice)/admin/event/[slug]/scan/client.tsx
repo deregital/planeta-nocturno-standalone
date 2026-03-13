@@ -45,7 +45,7 @@ export default function ScanClient({
         onScanSuccessAction={async (raw) => {
           return await scanMutation
             .mutateAsync({
-              eventId: event.id,
+              eventIds: [event.id],
               barcode: raw,
             })
             .then((result) => {
