@@ -1,4 +1,5 @@
-import { format, isValid, parse } from 'date-fns';
+import { isValid, parse, parseISO } from 'date-fns';
+import { useEffect, useRef, useState } from 'react';
 
 import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
 import { Input } from '@/components/ui/input';
@@ -18,12 +19,17 @@ type InputDateWithLabelProps = Omit<
 function formatDateForInput(date: Date | undefined, dateType: string): string {
   if (!date || !isValid(date)) return '';
   if (dateType === 'datetime-local') {
-    return format(date, "yyyy-MM-dd'T'HH:mm");
+    const y = String(date.getUTCFullYear()).padStart(4, '0');
+    const mo = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    const h = String(date.getUTCHours()).padStart(2, '0');
+    const min = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${y}-${mo}-${d}T${h}:${min}`;
   }
-  const y = String(date.getUTCFullYear()).padStart(4, '0');
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(date.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const y = String(date.getFullYear()).padStart(4, '0');
+  const mo = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${d}`;
 }
 
 export default function InputDateWithLabel({
@@ -34,20 +40,30 @@ export default function InputDateWithLabel({
   dateType = 'date',
   ...inputProps
 }: InputDateWithLabelProps) {
-  const defaultValue = formatDateForInput(selected, dateType);
+  const [inputValue, setInputValue] = useState(
+    formatDateForInput(selected, dateType),
+  );
+  const isUserInput = useRef(false);
+
+  useEffect(() => {
+    if (isUserInput.current) {
+      isUserInput.current = false;
+      return;
+    }
+    setInputValue(formatDateForInput(selected, dateType));
+  }, [selected, dateType]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    setInputValue(value);
     if (value) {
-      let date: Date;
-      if (dateType === 'datetime-local') {
-        date = parse(value, "yyyy-MM-dd'T'HH:mm", new Date());
-      } else {
-        const [y, m, d] = value.split('-').map(Number);
-        date = new Date(Date.UTC(y!, m! - 1, d!));
-      }
+      const date =
+        dateType === 'datetime-local'
+          ? parseISO(`${value}:00.000Z`)
+          : parse(value, 'yyyy-MM-dd', new Date());
 
       if (isValid(date)) {
+        isUserInput.current = true;
         onChange(date);
       }
     }
@@ -64,7 +80,7 @@ export default function InputDateWithLabel({
       <Input
         {...inputProps}
         type={dateType}
-        defaultValue={defaultValue}
+        value={inputValue}
         onChange={handleInputChange}
       />
     </GenericInputWithLabel>
