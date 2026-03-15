@@ -9,6 +9,7 @@ import {
   event,
   location,
   ticketGroup,
+  ticketTypePerGroup,
   ticketType as ticketTypeTable,
   ticketXorganizer,
   user,
@@ -58,6 +59,12 @@ export const emittedTicketsRouter = router({
               invitedById: input.invitedBy,
             })
             .returning();
+
+          await tx.insert(ticketTypePerGroup).values({
+            ticketTypeId: input.ticketTypeId,
+            ticketGroupId: ticketGroupCreated.id,
+            amount: 1,
+          });
 
           const lastEmitted = await tx.query.emittedTicket.findFirst({
             where: eq(emittedTicket.ticketGroupId, ticketGroupCreated.id),
@@ -368,12 +375,11 @@ export const emittedTicketsRouter = router({
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
     }),
-
   scan: ticketingProcedure
     .input(
       z.object({
         barcode: z.string(),
-        eventId: z.string(),
+        eventIds: z.array(z.string()),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -382,17 +388,17 @@ export const emittedTicketsRouter = router({
         decryptedTicketId = decryptString(input.barcode);
       } catch {
         return {
-          success: false,
           ticket: null,
+          status: 'not-found',
           text: 'Ticket no encontrado',
-          extraInfo: '',
+          extraInfo: 'El ticket no pertenece a este evento',
         };
       }
 
       const ticketReturned = await ctx.db.query.emittedTicket.findFirst({
         where: and(
           eq(emittedTicket.id, decryptedTicketId),
-          eq(emittedTicket.eventId, input.eventId),
+          inArray(emittedTicket.eventId, input.eventIds),
         ),
         with: {
           ticketType: true,
@@ -411,10 +417,10 @@ export const emittedTicketsRouter = router({
 
       if (!ticketReturned) {
         return {
-          success: false,
           ticket: null,
+          status: 'not-found',
           text: 'Ticket no encontrado',
-          extraInfo: '',
+          extraInfo: 'El ticket no pertenece a este evento',
         };
       }
       let extraInfo: string = '';
@@ -428,16 +434,16 @@ export const emittedTicketsRouter = router({
 
       if (ticket.scanned) {
         return {
-          success: false,
           ticket,
+          status: 'already-scanned',
           text: 'Ticket ya escaneado',
-          extraInfo: `${
+          extraInfo: `Escaneado a las ${
             ticket.scannedAt
-              ? `A las ${formatInTimeZone(
+              ? `${formatInTimeZone(
                   new Date(ticket.scannedAt),
                   'America/Argentina/Buenos_Aires',
                   'HH:mm',
-                )} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`
+                )}`
               : ''
           }`,
         };
@@ -463,13 +469,12 @@ export const emittedTicketsRouter = router({
       }
 
       return {
-        success: true,
         ticket,
+        status: 'success',
         text: `Escaneado con éxito: ${ticket.fullName}`,
         extraInfo: `${extraInfo} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`,
       };
     }),
-
   manualScan: ticketingProcedure
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {

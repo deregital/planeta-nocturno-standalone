@@ -2,7 +2,7 @@ import { type Font } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
-import { isAfter, isBefore } from 'date-fns';
+import { addDays, endOfDay, isAfter, isBefore, startOfDay } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   and,
@@ -10,10 +10,12 @@ import {
   desc,
   eq,
   gt,
+  gte,
   inArray,
   isNull,
   like,
   lt,
+  lte,
   not,
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -134,6 +136,30 @@ export const eventsRouter = router({
     };
 
     return { pastEvents, upcomingEvents };
+  }),
+  getAllSoon: ticketingProcedure.query(async ({ ctx }) => {
+    return ctx.db.query.event.findMany({
+      where: and(
+        eq(eventSchema.isDeleted, false),
+        gte(eventSchema.endingDate, startOfDay(new Date()).toISOString()),
+        lte(
+          eventSchema.startingDate,
+          endOfDay(addDays(new Date(), 1)).toISOString(),
+        ),
+      ),
+      columns: {
+        id: true,
+        name: true,
+        startingDate: true,
+        endingDate: true,
+      },
+      with: {
+        location: {
+          columns: { name: true },
+        },
+      },
+      orderBy: asc(eventSchema.startingDate),
+    });
   }),
   getAllWithoutFolders: publicProcedure.query(async ({ ctx }) => {
     const events = await ctx.db.query.event.findMany({
@@ -326,6 +352,7 @@ export const eventsRouter = router({
           },
         },
         ticketTypes: {
+          orderBy: [asc(ticketType.name)],
           with: {
             ticketTypeXOrganizers: true,
           },

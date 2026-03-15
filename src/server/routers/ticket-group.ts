@@ -9,7 +9,7 @@ import {
   ticketXorganizer,
 } from '@/drizzle/schema';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
-import { publicProcedure, router } from '@/server/trpc';
+import { adminProcedure, publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 
 export const ticketGroupSchema = z.object({
@@ -283,7 +283,7 @@ export const ticketGroupRouter = router({
 
       return result[0];
     }),
-  delete: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
+  delete: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     const result = await ctx.db
       .delete(ticketGroup)
       .where(eq(ticketGroup.id, input))

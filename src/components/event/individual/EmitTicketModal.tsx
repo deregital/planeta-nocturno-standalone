@@ -240,7 +240,7 @@ export function EmitTicketModal({
             </FormRow>
 
             <FormRow>
-              <div className='flex flex-col'>
+              <div className='flex flex-col min-w-0'>
                 <SelectWithLabel
                   className='w-full'
                   label='Tipo de ticket'

@@ -84,7 +84,7 @@ export default function TicketTypeModal({
       scanLimit: event.endingDate,
       category,
       id: crypto.randomUUID(),
-      visibleInWeb: false,
+      visibleInWeb: true,
       lowStockThreshold: null,
       organizers: [],
     };
@@ -443,9 +443,15 @@ export default function TicketTypeModal({
             <p className='text-sm text-accent'>
               {`Este ticket de tipo`}{' '}
               <b>{ticketTypesTranslation[category].text}</b>{' '}
-              {`(cuesta $${editingTicketType.price ?? '-'}).`}
+              {`(cuesta ${Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS',
+              })
+                .format(editingTicketType.price ?? 0)
+                .replace(/\$\s*/, '$')}).`}
               {editingTicketType.visibleInWeb ? (
                 <>
+                  {' '}
                   Solo se puede vender por la WEB hasta el día{' '}
                   <b>
                     {format(editingTicketType.maxSellDate!, 'dd/MM/yyyy p')}
