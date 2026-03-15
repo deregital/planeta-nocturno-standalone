@@ -215,10 +215,10 @@ export function EventGeneralInformation({
                     : startingDate,
                 );
 
-                startingDate.setUTCHours(event.startingDate.getUTCHours());
-                startingDate.setUTCMinutes(event.startingDate.getUTCMinutes());
-                endingDate.setUTCHours(event.endingDate.getUTCHours());
-                endingDate.setUTCMinutes(event.endingDate.getUTCMinutes());
+                startingDate.setHours(event.startingDate.getHours());
+                startingDate.setMinutes(event.startingDate.getMinutes());
+                endingDate.setHours(event.endingDate.getHours());
+                endingDate.setMinutes(event.endingDate.getMinutes());
 
                 handleChange('startingDate', startingDate);
                 handleChange('endingDate', endingDate);

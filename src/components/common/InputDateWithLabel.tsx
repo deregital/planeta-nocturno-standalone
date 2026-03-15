@@ -18,14 +18,17 @@ type InputDateWithLabelProps = Omit<
 
 function formatDateForInput(date: Date | undefined, dateType: string): string {
   if (!date || !isValid(date)) return '';
-  const y = String(date.getUTCFullYear()).padStart(4, '0');
-  const mo = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(date.getUTCDate()).padStart(2, '0');
   if (dateType === 'datetime-local') {
+    const y = String(date.getUTCFullYear()).padStart(4, '0');
+    const mo = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
     const h = String(date.getUTCHours()).padStart(2, '0');
     const min = String(date.getUTCMinutes()).padStart(2, '0');
     return `${y}-${mo}-${d}T${h}:${min}`;
   }
+  const y = String(date.getFullYear()).padStart(4, '0');
+  const mo = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${mo}-${d}`;
 }
 
