@@ -3,6 +3,7 @@ export async function retryWithBackoff<T>(
   maxRetries: number = 3,
   delayMs: number = 1000,
 ): Promise<T> {
+  // Función de retry para manejar rate limits
   let lastError: unknown;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -12,6 +13,7 @@ export async function retryWithBackoff<T>(
     } catch (error: unknown) {
       lastError = error;
 
+      // Verificar si es un error 429 (rate limit) de diferentes formas posibles
       const isRateLimit =
         (error as { status?: number })?.status === 429 ||
         (error as { response?: { status?: number } })?.response?.status ===
@@ -28,6 +30,7 @@ export async function retryWithBackoff<T>(
         throw error;
       }
 
+      // Si es rate limit pero ya no tenemos más intentos, lanzar el error
       if (attempt >= maxRetries - 1) {
         throw error;
       }

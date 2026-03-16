@@ -5,8 +5,8 @@ import { db } from '@/drizzle';
 import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 import { formatCurrency } from '@/lib/utils';
 import { sendMailWithoutAttachments } from '@/server/services/mail';
-import { retryWithBackoff } from '@/server/utils/retry';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
+import { retryWithBackoff } from '@/server/utils/retry';
 
 export async function sendNotificationService({
   eventName,
@@ -37,6 +37,7 @@ export async function sendNotificationService({
     },
   });
 
+  // Filter eventXorganizers by invitedById after fetching
   if (ticketGroup?.event.eventXorganizers && ticketGroup.invitedById) {
     ticketGroup.event.eventXorganizers =
       ticketGroup.event.eventXorganizers.filter(
@@ -66,8 +67,8 @@ export async function sendNotificationService({
         subject: `Ticket vendido - ${eventName}`,
         body: bodyText,
       }),
-    3,
-    1000,
+    3, // intentos máximos
+    2000, // segundos de delay
   );
 
   if (result.error) {

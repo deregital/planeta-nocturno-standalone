@@ -85,8 +85,8 @@ export async function sendMailService({
         attachments,
         eventName,
       }),
-    3,
-    2000,
+    3, // intentos máximos
+    2000, // segundos de delay
   );
 
   if (result.error) {
