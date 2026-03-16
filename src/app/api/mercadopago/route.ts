@@ -4,6 +4,7 @@ import { Payment } from 'mercadopago';
 import { NextResponse } from 'next/server';
 
 import { mercadoPago } from '@/server/routers/mercado-pago';
+import { sendNotificationService } from '@/server/services/notification';
 import { trpc } from '@/server/trpc/server';
 
 function verifySignature(
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
     }
 
     if (group.event.emailNotification) {
-      await trpc.mail.sendNotification({
+      await sendNotificationService({
         eventName: group.event.name,
         ticketGroupId: group.id,
         email: group.event.emailNotification,
