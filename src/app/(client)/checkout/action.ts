@@ -12,6 +12,8 @@ import {
   createManyTicketSchema,
   invitedBySchema,
 } from '@/server/schemas/emitted-tickets';
+import { sendMailService } from '@/server/services/mail';
+import { sendNotificationService } from '@/server/services/notification';
 import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
@@ -240,7 +242,7 @@ export const handlePurchase = async (
       try {
         // Enviar un solo mail con todas las entradas si extraTicketData = false
         if (!group.event.extraTicketData) {
-          await trpc.mail.send({
+          await sendMailService({
             eventName: group.event.name,
             receiver: entradas[0].mail,
             subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -249,7 +251,7 @@ export const handlePurchase = async (
           });
         } else {
           for (const pdf of pdfs) {
-            await trpc.mail.send({
+            await sendMailService({
               eventName: group.event.name,
               receiver: pdf.ticket.mail,
               subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -268,7 +270,7 @@ export const handlePurchase = async (
       }
 
       if (group.event.emailNotification) {
-        await trpc.mail.sendNotification({
+        await sendNotificationService({
           eventName: group.event.name,
           ticketGroupId,
           email: group.event.emailNotification,

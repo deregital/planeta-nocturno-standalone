@@ -1,5 +1,7 @@
 import { Resend } from 'resend';
 
+import { retryWithBackoff } from '@/server/utils/retry';
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendMail({
@@ -55,6 +57,43 @@ export async function sendMailWithoutAttachments({
     text: body ?? '',
     html: html ?? '',
   });
+}
+
+export async function sendMailService({
+  eventName,
+  receiver,
+  subject,
+  body,
+  attatchments,
+}: {
+  eventName: string;
+  receiver: string;
+  subject: string;
+  body: string;
+  attatchments: Blob[];
+}) {
+  const attachments = await Promise.all(
+    attatchments.map(async (pdf) => Buffer.from(await pdf.arrayBuffer())),
+  );
+
+  const result = await retryWithBackoff(
+    async () =>
+      await sendMail({
+        to: receiver,
+        subject,
+        body,
+        attachments,
+        eventName,
+      }),
+    3, // intentos máximos
+    2000, // segundos de delay
+  );
+
+  if (result.error) {
+    throw new Error(`Error al enviar el mail: ${JSON.stringify(result.error)}`);
+  }
+
+  return result.data;
 }
 
 export function generateWelcomeEmail(name: string, password: string) {
