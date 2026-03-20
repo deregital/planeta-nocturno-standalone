@@ -123,12 +123,15 @@ export function TicketTableWithTabs({
         <TabsList className='flex-1 w-full md:max-w-[98%] max-w-[98%] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
           {Object.keys(ticketsByType).map((type) => (
             <TabsTrigger
-              className='min-w-2xs max-w-xs px-4'
+              className='md:min-w-2xs max-w-xs px-4'
               key={type}
               value={type}
             >
               <span className='truncate' title={type}>
-                {type}
+                <span className='md:hidden'>
+                  {type.length > 16 ? `${type.slice(0, 16)}…` : type}
+                </span>
+                <span className='hidden md:inline'>{type}</span>
               </span>
             </TabsTrigger>
           ))}
