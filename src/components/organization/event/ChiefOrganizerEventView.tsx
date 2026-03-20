@@ -30,7 +30,7 @@ export function ChiefOrganizerEventView({
         ticketTypes={event.ticketTypes}
         externalSearchValue={searchValue}
         userId={chiefOrganizerId}
-        eventSlug={event.slug}
+        event={{ slug: event.slug, inviteCondition: event.inviteCondition }}
       />
     </>
   );

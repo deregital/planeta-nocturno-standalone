@@ -155,7 +155,7 @@ export const ticketGroupRouter = router({
 
       return {
         ...group,
-        invitedBy: group.user?.fullName ?? '-',
+        invitedBy: group.user?.fullName ?? '',
         organizerCode: group.user?.code ?? null,
         organizerId: group.invitedById ?? null,
       };
@@ -237,6 +237,18 @@ export const ticketGroupRouter = router({
         .where(eq(ticketGroup.id, input.id))
         .returning();
 
+      return group[0];
+    }),
+  updateInvitedBySimple: publicProcedure
+    .input(
+      z.object({ id: ticketGroupSchema.shape.id, invitedBySimple: z.string() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const group = await ctx.db
+        .update(ticketGroup)
+        .set({ invitedBySimple: input.invitedBySimple })
+        .where(eq(ticketGroup.id, input.id))
+        .returning();
       return group[0];
     }),
   updateTicketXOrganizerTicketGroupId: publicProcedure

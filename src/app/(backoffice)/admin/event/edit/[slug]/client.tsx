@@ -13,6 +13,7 @@ import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAct
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
+import { type InviteCondition } from '@/server/types';
 
 export default function Client({
   event,
@@ -144,7 +145,12 @@ export default function Client({
     }
 
     updateEvent.mutate({
-      event: { ...eventState, id: event.id, slug: event.slug },
+      event: {
+        ...eventState,
+        id: event.id,
+        slug: event.slug,
+        inviteCondition: event.inviteCondition as InviteCondition,
+      },
       ticketTypes: ticketTypesState,
       organizersInput: organizers,
       sendOrganizerTicketEmail,

@@ -10,7 +10,7 @@ import { TicketTableSection } from '@/components/event/individual/ticketsTable/T
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/server/trpc/client';
-import { type Role, type TicketType } from '@/server/types';
+import { type InviteCondition, type Role, type TicketType } from '@/server/types';
 import {
   ORGANIZER_CODE_QUERY_PARAM,
   ORGANIZER_TICKET_TYPE_NAME,
@@ -21,12 +21,15 @@ export function TicketTableWithTabs({
   ticketTypes,
   externalSearchValue,
   userId,
-  eventSlug,
+  event,
 }: {
   ticketTypes: TicketType[];
   externalSearchValue?: string;
   userId?: string;
-  eventSlug: string;
+  event: {
+    slug: string;
+    inviteCondition: InviteCondition;
+  };
 }) {
   const { data: tickets } = trpc.emittedTickets.getByEventId.useQuery(
     {
@@ -102,7 +105,7 @@ export function TicketTableWithTabs({
       typeof window !== 'undefined'
         ? window.location.origin
         : process.env.NEXT_PUBLIC_SITE_URL || '';
-    const url = `${origin}/event/${eventSlug}?${myCode ? `${ORGANIZER_CODE_QUERY_PARAM}=${myCode}&` : ''}${TICKET_TYPE_SLUG_QUERY_PARAM}=${ticketTypeSlug}`;
+    const url = `${origin}/event/${event.slug}?${myCode ? `${ORGANIZER_CODE_QUERY_PARAM}=${myCode}&` : ''}${TICKET_TYPE_SLUG_QUERY_PARAM}=${ticketTypeSlug}`;
     navigator.clipboard.writeText(url);
     toast.success('URL copiada al portapapeles');
   };
@@ -159,12 +162,14 @@ export function TicketTableWithTabs({
                   tickets={ticketsByType[type]}
                   role={session.data?.user.role}
                   headerActions={copyButton}
+                  inviteCondition={event.inviteCondition}
                 />
               ) : (
                 <TicketTableSection
                   tickets={ticketsByType[type]}
                   role={session.data?.user.role as Role}
                   headerActions={copyButton}
+                  inviteCondition={event.inviteCondition}
                 />
               )}
             </TabsContent>
