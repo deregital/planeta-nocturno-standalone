@@ -547,19 +547,18 @@ export default function CheckoutClient({
           />
         ) : (
           <InputWithLabel
-            name={'invitedBy'}
-            id={'invitedBy'}
+            name={'invitedBySimple'}
+            id={'invitedBySimple'}
             label='Invita...'
             type='text'
-            placeholder='ej. Pablo Perez'
+            placeholder='Ej. Tobias Perel (CAMBIAR ANTES DE MANDAR A PRODUCCION)'
             defaultValue={ticketGroup.invitedBy ?? ''}
             error={
               typeof state.errors === 'object' && state.errors !== null
-                ? (state.errors as Record<string, string>)['invitedBy']
+                ? (state.errors as Record<string, string>)['invitedBySimple']
                 : undefined
             }
             className='[&>input]:border-dashed'
-            disabled={true}
           />
         )}
         <input hidden name='invitedBy' value={organizerId || ''} readOnly />

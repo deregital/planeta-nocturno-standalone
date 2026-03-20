@@ -19,6 +19,7 @@ import { sql } from 'drizzle-orm';
 export const inviteCondition = pgEnum('InviteCondition', [
   'TRADITIONAL',
   'INVITATION',
+  'SIMPLE',
 ]);
 export const role = pgEnum('Role', [
   'ADMIN',
@@ -97,6 +98,38 @@ export const ticketType = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
+  ],
+);
+
+export const ticketGroup = pgTable(
+  'ticketGroup',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    status: ticketGroupStatus().notNull(),
+    amountTickets: integer().default(0).notNull(),
+    eventId: uuid('event_id').notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    invitedById: uuid(),
+    isOrganizerGroup: boolean().default(false).notNull(),
+    invitedBySimple: text(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'ticketGroup_event_id_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.invitedById],
+      foreignColumns: [user.id],
+      name: 'ticketGroup_invitedById_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
   ],
 );
 
@@ -216,37 +249,6 @@ export const feature = pgTable(
       'btree',
       table.key.asc().nullsLast().op('text_ops'),
     ),
-  ],
-);
-
-export const ticketGroup = pgTable(
-  'ticketGroup',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    status: ticketGroupStatus().notNull(),
-    amountTickets: integer().default(0).notNull(),
-    eventId: uuid('event_id').notNull(),
-    createdAt: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    invitedById: uuid(),
-    isOrganizerGroup: boolean().default(false).notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.eventId],
-      foreignColumns: [event.id],
-      name: 'ticketGroup_event_id_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.invitedById],
-      foreignColumns: [user.id],
-      name: 'ticketGroup_invitedById_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
   ],
 );
 

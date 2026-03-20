@@ -13,7 +13,9 @@ import { type InviteCondition } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export type EventState = {
-  event: CreateEventSchema;
+  event: Omit<CreateEventSchema, 'inviteCondition'> & {
+    inviteCondition: InviteCondition | null;
+  };
   ticketTypes: (
     | (CreateTicketTypeSchema & { id: string | null })
     | TicketTypeSchema
@@ -65,7 +67,7 @@ const initialState: EventState = {
     locationId: '',
     minAge: null,
     authorizedUsers: [],
-    inviteCondition: 'TRADITIONAL',
+    inviteCondition: null,
     extraTicketData: false,
     serviceFee: null,
     emailNotification: null,
@@ -78,7 +80,7 @@ const initialState: EventState = {
 
 function calculateOrganizerMaxAvailable(
   organizers: OrganizerSchema[],
-  inviteCondition: InviteCondition,
+  inviteCondition: InviteCondition | null,
 ): number {
   if (inviteCondition === 'INVITATION') {
     return organizers.reduce((acc, organizer) => {

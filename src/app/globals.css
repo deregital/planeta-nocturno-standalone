@@ -20,4 +20,7 @@
   .h-main-screen {
     @apply lg:h-[calc(100dvh-16vh)] md:h-[calc(100dvh-12vh)] h-[calc(100dvh-8vh)];
   }
+  .w-main-screen {
+    @apply w-[calc(100vw-40px)] md:w-[calc(100vw-40px-var(--sidebar-width))]
+  }
 }

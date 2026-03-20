@@ -12,6 +12,8 @@ import {
   createManyTicketSchema,
   invitedBySchema,
 } from '@/server/schemas/emitted-tickets';
+import { sendMailService } from '@/server/services/mail';
+import { sendNotificationService } from '@/server/services/notification';
 import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
@@ -29,7 +31,9 @@ export const handlePurchase = async (
   > = [];
   const eventId = formData.get('eventId');
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
-  const invitedBy = formData.get('invitedBy')?.toString() || '';
+  const invitedBy = formData.get('invitedBy')?.toString().trim() || '';
+  const invitedBySimple =
+    formData.get('invitedBySimple')?.toString().trim() || '';
 
   let url: Route | undefined = undefined;
 
@@ -140,8 +144,7 @@ export const handlePurchase = async (
   }
 
   const validation = createManyTicketSchema.safeParse(entradas);
-  const invitedByValue =
-    invitedBy && invitedBy.trim() !== '' ? invitedBy : null;
+  const invitedByValue = invitedBy !== '' ? invitedBy : null;
   const validationInvitedBy = invitedBySchema.safeParse(invitedByValue);
 
   const errorsArray: Record<string, string> = {};
@@ -208,10 +211,16 @@ export const handlePurchase = async (
     await trpc.emittedTickets.createMany(entradas);
 
     // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
-    if (invitedBy && invitedBy.trim() !== '') {
+    if (invitedBy !== '') {
       await trpc.ticketGroup.updateInvitedBy({
         id: ticketGroupId,
         invitedBy,
+      });
+    }
+    if (invitedBySimple !== '') {
+      await trpc.ticketGroup.updateInvitedBySimple({
+        id: ticketGroupId,
+        invitedBySimple,
       });
     }
 
@@ -240,7 +249,7 @@ export const handlePurchase = async (
       try {
         // Enviar un solo mail con todas las entradas si extraTicketData = false
         if (!group.event.extraTicketData) {
-          await trpc.mail.send({
+          await sendMailService({
             eventName: group.event.name,
             receiver: entradas[0].mail,
             subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -249,7 +258,7 @@ export const handlePurchase = async (
           });
         } else {
           for (const pdf of pdfs) {
-            await trpc.mail.send({
+            await sendMailService({
               eventName: group.event.name,
               receiver: pdf.ticket.mail,
               subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -268,7 +277,7 @@ export const handlePurchase = async (
       }
 
       if (group.event.emailNotification) {
-        await trpc.mail.sendNotification({
+        await sendNotificationService({
           eventName: group.event.name,
           ticketGroupId,
           email: group.event.emailNotification,
