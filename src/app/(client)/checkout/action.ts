@@ -31,7 +31,9 @@ export const handlePurchase = async (
   > = [];
   const eventId = formData.get('eventId');
   const ticketGroupId = formData.get('ticketGroupId')?.toString() || '';
-  const invitedBy = formData.get('invitedBy')?.toString() || '';
+  const invitedBy = formData.get('invitedBy')?.toString().trim() || '';
+  const invitedBySimple =
+    formData.get('invitedBySimple')?.toString().trim() || '';
 
   let url: Route | undefined = undefined;
 
@@ -142,8 +144,7 @@ export const handlePurchase = async (
   }
 
   const validation = createManyTicketSchema.safeParse(entradas);
-  const invitedByValue =
-    invitedBy && invitedBy.trim() !== '' ? invitedBy : null;
+  const invitedByValue = invitedBy !== '' ? invitedBy : null;
   const validationInvitedBy = invitedBySchema.safeParse(invitedByValue);
 
   const errorsArray: Record<string, string> = {};
@@ -210,10 +211,16 @@ export const handlePurchase = async (
     await trpc.emittedTickets.createMany(entradas);
 
     // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
-    if (invitedBy && invitedBy.trim() !== '') {
+    if (invitedBy !== '') {
       await trpc.ticketGroup.updateInvitedBy({
         id: ticketGroupId,
         invitedBy,
+      });
+    }
+    if (invitedBySimple !== '') {
+      await trpc.ticketGroup.updateInvitedBySimple({
+        id: ticketGroupId,
+        invitedBySimple,
       });
     }
 
