@@ -79,7 +79,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
   return (
     <>
       <div className='border-t border-accent-dark/10 bg-transparent px-3 py-3 text-black sm:px-6'>
-        <div className='flex items-center justify-between'>
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
           <div
             id='buttons-pagination'
             className='flex items-center justify-center gap-x-2 px-2'
@@ -105,9 +105,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
               <strong className='text-sm sm:text-base'>
                 {noData
                   ? '0 de 0'
-                  : `${table.getState().pagination.pageIndex + 1} de ${table
-                      .getPageCount()
-                      .toLocaleString()}`}
+                  : `${table.getState().pagination.pageIndex + 1} de ${table.getPageCount().toLocaleString()}`}
               </strong>
             </span>
             <Button
@@ -126,7 +124,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
             >
               <ChevronsRight className='w-6' />
             </Button>
-            <span className='flex items-center gap-1 text-sm sm:text-base'>
+            <span className='hidden items-center gap-1 text-sm sm:flex sm:text-base'>
               {noData
                 ? '0-0 de 0'
                 : `${firstRow.toLocaleString()}-${lastRow.toLocaleString()} de ${totalRows.toLocaleString()}`}
@@ -146,24 +144,31 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
               className='w-14 rounded-md border text-center text-black'
             />
           </span>
-          <select
-            value={table.getState().pagination.pageSize}
-            onChange={(e) => {
-              const size = Number(e.target.value);
-              table.setPageSize(size);
-            }}
-            className='rounded border bg-white/90 p-1 text-sm sm:text-base'
-          >
-            {[2, 5, 10, 15, 20].map((pageSize) => (
-              <option
-                className='text-sm sm:text-base'
-                key={pageSize}
-                value={pageSize}
-              >
-                Mostrar {pageSize}
-              </option>
-            ))}
-          </select>
+          <div className='flex items-center justify-center gap-x-3 sm:justify-end'>
+            <span className='flex items-center gap-1 text-sm sm:hidden'>
+              {noData
+                ? '0-0 de 0'
+                : `${firstRow.toLocaleString()}-${lastRow.toLocaleString()} de ${totalRows.toLocaleString()}`}
+            </span>
+            <select
+              value={table.getState().pagination.pageSize}
+              onChange={(e) => {
+                const size = Number(e.target.value);
+                table.setPageSize(size);
+              }}
+              className='rounded border bg-white/90 p-1 text-sm sm:text-base'
+            >
+              {[2, 5, 10, 15, 20].map((pageSize) => (
+                <option
+                  className='text-sm sm:text-base'
+                  key={pageSize}
+                  value={pageSize}
+                >
+                  Mostrar {pageSize}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </>
