@@ -14,6 +14,7 @@ import {
 } from '@/server/schemas/emitted-tickets';
 import { sendMailService } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
+import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
@@ -235,10 +236,7 @@ export const handlePurchase = async (
     };
 
     if (totalPrice === 0) {
-      await trpc.ticketGroup.updateStatus({
-        id: ticketGroupId,
-        status: 'FREE',
-      });
+      await updateTicketGroupStatus(ticketGroupId, 'FREE');
 
       const group = await trpc.ticketGroup.getById(ticketGroupId);
 

@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { compare, hash } from 'bcrypt';
+import { hash } from 'bcrypt';
 import { eq, inArray, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -108,31 +108,6 @@ export const userRouter = router({
       if (!user) return null;
 
       return user;
-    }),
-  getByName: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    const user = await ctx.db.query.user.findFirst({
-      where: eq(userTable.name, input),
-    });
-    return user;
-  }),
-  isPasswordValid: publicProcedure
-    .input(
-      z.object({
-        username: z.string(),
-        password: z.string(),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      const user = await ctx.db.query.user.findFirst({
-        where: eq(userTable.name, input.username),
-        columns: {
-          password: true,
-        },
-      });
-
-      if (!user) return null;
-
-      return await compare(input.password, user.password);
     }),
   create: chiefOrganizerProcedure
     .input(userSchema)
@@ -265,7 +240,6 @@ export const userRouter = router({
 
       return {
         username: user.name,
-        password: input.password,
         fullName: user.fullName,
         instagram: user.instagram,
         phoneNumber: user.phoneNumber,

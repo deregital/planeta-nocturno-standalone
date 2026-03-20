@@ -1,7 +1,12 @@
 'use server';
 
+import { compare } from 'bcrypt';
+import { eq } from 'drizzle-orm';
+
+import { db } from '@/drizzle';
+
+import { user as userTable } from '@/drizzle/schema';
 import { auth } from '@/server/auth';
-import { trpc } from '@/server/trpc/server';
 
 export type ValidatePasswordState = {
   ok: boolean;
@@ -25,12 +30,12 @@ export async function validatePassword(
     return { ok: false, error: 'Ingrese su contraseña' };
   }
 
-  const isValid = await trpc.user.isPasswordValid({
-    username: session.user.name,
-    password,
+  const user = await db.query.user.findFirst({
+    where: eq(userTable.name, session.user.name),
+    columns: { password: true },
   });
 
-  if (!isValid) {
+  if (!user || !(await compare(password, user.password))) {
     return { ok: false, error: 'La contraseña es incorrecta' };
   }
 

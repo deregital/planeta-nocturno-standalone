@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 
 import { mercadoPago } from '@/server/routers/mercado-pago';
 import { sendNotificationService } from '@/server/services/notification';
+import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { trpc } from '@/server/trpc/server';
 
 function verifySignature(
@@ -50,10 +51,7 @@ export async function POST(req: Request) {
   if (payment.status === 'approved') {
     // cambiar status de ticketGroup a pagado
     if (payment.external_reference) {
-      await trpc.ticketGroup.updateStatus({
-        id: payment.external_reference,
-        status: 'PAID',
-      });
+      await updateTicketGroupStatus(payment.external_reference, 'PAID');
     }
     const group = await trpc.ticketGroup.getById(payment.external_reference);
 
