@@ -144,7 +144,7 @@ export function Pagination<TData>({ table }: PaginationProps<TData>) {
               className='w-14 rounded-md border text-center text-black'
             />
           </span>
-          <div className='flex items-center justify-center gap-x-3 sm:justify-end'>
+          <div className='flex items-center justify-between gap-x-3 px-2 sm:justify-end sm:px-0'>
             <span className='flex items-center gap-1 text-sm sm:hidden'>
               {noData
                 ? '0-0 de 0'
