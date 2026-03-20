@@ -210,24 +210,6 @@ export const ticketGroupRouter = router({
 
     return group;
   }),
-  updateStatus: publicProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        status: z.enum(['FREE', 'PAID']),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .update(ticketGroup)
-        .set({
-          status: input.status,
-        })
-        .where(eq(ticketGroup.id, input.id))
-        .returning();
-
-      return result[0];
-    }),
   updateInvitedBy: publicProcedure
     .input(z.object({ id: ticketGroupSchema.shape.id, invitedBy: z.string() }))
     .mutation(async ({ ctx, input }) => {
