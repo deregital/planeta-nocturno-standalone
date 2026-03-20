@@ -1,17 +1,9 @@
 import { hash } from 'bcrypt';
-import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
-import { type InsertTicketType } from '@/server/types';
 import * as relations from '@/drizzle/relations';
 import * as models from '@/drizzle/schema';
-import {
-  event,
-  eventCategory,
-  location,
-  ticketType,
-  user,
-} from '@/drizzle/schema';
+import { user } from '@/drizzle/schema';
 import 'dotenv/config';
 
 export const db = drizzle(process.env.DATABASE_URL!, {
@@ -23,10 +15,14 @@ export const db = drizzle(process.env.DATABASE_URL!, {
 
 async function main() {
   // Leer parámetros de variables de entorno
-  const userName = process.env.SEED_USER_NAME || 'nico';
-  const userPassword = process.env.SEED_USER_PASSWORD || '123456';
-  const userEmail = process.env.SEED_USER_EMAIL || 'nico@example.com';
-  const userFullName = process.env.SEED_USER_FULLNAME || 'Nico Example';
+  const userName = process.env.SEED_USER_NAME;
+  if (!userName) throw new Error('SEED_USER_NAME is not set');
+  const userPassword = process.env.SEED_USER_PASSWORD;
+  if (!userPassword) throw new Error('SEED_USER_PASSWORD is not set');
+  const userEmail = process.env.SEED_USER_EMAIL;
+  if (!userEmail) throw new Error('SEED_USER_EMAIL is not set');
+  const userFullName = process.env.SEED_USER_FULLNAME;
+  if (!userFullName) throw new Error('SEED_USER_FULLNAME is not set');
 
   // Hash de la contraseña
   const hashedPassword = await hash(userPassword, 10);
@@ -37,8 +33,8 @@ async function main() {
     email: userEmail,
     fullName: userFullName,
     role: 'ADMIN',
-    dni: '46501954',
-    birthDate: '2005-05-12',
+    dni: '99999999',
+    birthDate: '2000-01-01',
     gender: 'male',
     phoneNumber: '+5491138639833',
     // createdAt, id y otros campos usan default
