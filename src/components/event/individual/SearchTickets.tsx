@@ -23,6 +23,13 @@ export function SearchTickets({
 }: SearchTicketsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const prevExternalValue = useRef<string | undefined>(undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) {
+      inputRef.current?.focus();
+    }
+  }, []);
 
   // Filter tickets based on search term
   const filteredTickets = useMemo(() => {
@@ -78,11 +85,11 @@ export function SearchTickets({
       <div className='relative max-w-md mx-auto'>
         <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
         <Input
+          ref={inputRef}
           placeholder='Buscar por nombre, DNI, email, teléfono u organizador...'
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
           className='pl-10'
-          autoFocus={true}
         />
       </div>
     </div>
