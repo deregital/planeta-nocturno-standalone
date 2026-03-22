@@ -30,7 +30,7 @@ export function InvitationTicketTypeAction({
   );
   const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const organizers = useCreateEventStore((state) => state.organizers);
-
+  const event = useCreateEventStore((state) => state.event);
   // Encontrar el ticket único existente (excluyendo el ticket de organizador)
   const existingUniqueTicket = ticketTypes.find(
     (t) => t.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
@@ -112,6 +112,7 @@ export function InvitationTicketTypeAction({
         addTicketType({
           id: crypto.randomUUID(),
           category: 'FREE',
+          startingDate: event.startingDate,
           scanLimit: null,
           visibleInWeb: true,
           lowStockThreshold: null,
