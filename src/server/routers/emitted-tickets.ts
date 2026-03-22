@@ -459,6 +459,16 @@ export const emittedTicketsRouter = router({
         .where(eq(emittedTicket.id, decryptedTicketId));
 
       if (
+        ticket.ticketType.startingDate &&
+        new Date(ticket.ticketType.startingDate) > new Date()
+      ) {
+        extraInfo = `La hora de inicio del ticket es a las ${format(
+          new Date(ticket.ticketType.startingDate),
+          'dd/MM/yyyy HH:mm',
+        )}`;
+      }
+
+      if (
         ticket.ticketType.scanLimit &&
         new Date(ticket.ticketType.scanLimit) < new Date()
       ) {
