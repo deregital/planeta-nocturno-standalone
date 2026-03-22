@@ -205,7 +205,8 @@ model TicketType {
   visibleInWeb      Boolean            @default(true)
   lowStockThreshold Int?
 
-  scanLimit DateTime? @db.Timestamptz
+  startingDate DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  scanLimit    DateTime? @db.Timestamptz
 
   organizers User[] @relation("TICKET_TYPE_X_ORGANIZERS")
 
