@@ -95,6 +95,7 @@ export default function Client({
       setTicketTypes(
         event.ticketTypes.map((t) => ({
           ...t,
+          startingDate: new Date(t.startingDate),
           maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : new Date(),
           scanLimit: t.scanLimit ? new Date(t.scanLimit) : new Date(),
           organizers:
