@@ -551,7 +551,7 @@ export default function CheckoutClient({
             id={'invitedBySimple'}
             label='Invita...'
             type='text'
-            placeholder='Ej. Tobias Perel (CAMBIAR ANTES DE MANDAR A PRODUCCION)'
+            placeholder='Ej. Juan Perez'
             defaultValue={ticketGroup.invitedBy ?? ''}
             error={
               typeof state.errors === 'object' && state.errors !== null

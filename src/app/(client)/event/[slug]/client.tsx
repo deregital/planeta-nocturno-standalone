@@ -47,6 +47,7 @@ export default function Client({
                 eventId={event.id}
                 ticketTypes={event.ticketTypes}
                 invitedBy={organizerCode}
+                eventStartingDate={event.startingDate}
               />
             </div>
             <div className='px-4 md:col-span-4 flex flex-col justify-start items-center overflow-hidden'>

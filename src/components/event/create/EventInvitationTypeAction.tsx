@@ -59,14 +59,6 @@ export function EventInvitationTypeAction({
 
   return (
     <div className='flex w-full flex-col gap-4'>
-      <Button
-        onClick={() => {
-          setTab(null);
-          setEvent({ inviteCondition: undefined });
-        }}
-      >
-        reset (debug)
-      </Button>
       {tab === null && (
         <div className='flex flex-col gap-4 w-full'>
           <Button

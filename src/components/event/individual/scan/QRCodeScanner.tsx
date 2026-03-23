@@ -10,7 +10,8 @@ type ScanFeedback =
   | 'error'
   | 'server-error'
   | 'duplicate'
-  | 'already-scanned';
+  | 'already-scanned'
+  | 'too-early';
 
 export function QRCodeScanner({
   onScanSuccessAction,

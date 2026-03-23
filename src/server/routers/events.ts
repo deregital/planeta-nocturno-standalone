@@ -303,6 +303,7 @@ export const eventsRouter = router({
             description: true,
             maxPerPurchase: true,
             maxAvailable: true,
+            startingDate: true,
             name: true,
             price: true,
             slug: true,
@@ -620,6 +621,7 @@ export const eventsRouter = router({
                     return {
                       ...rest,
                       maxSellDate: ticketType.maxSellDate?.toISOString(),
+                      startingDate: ticketType.startingDate?.toISOString(),
                       scanLimit: ticketType.scanLimit?.toISOString(),
                       slug: ticketType.slug || generateSlug(ticketType.name),
                       eventId: eventCreated.id,
@@ -1570,6 +1572,7 @@ export const eventsRouter = router({
                     .set({
                       ...rest,
                       maxSellDate: type.maxSellDate?.toISOString(),
+                      startingDate: type.startingDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
                       slug: type.slug || generateSlug(type.name),
                       eventId: eventUpdated.id,
@@ -1600,6 +1603,7 @@ export const eventsRouter = router({
                     .values({
                       ...rest,
                       maxSellDate: type.maxSellDate?.toISOString(),
+                      startingDate: type.startingDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
                       slug: type.slug || generateSlug(type.name),
                       eventId: eventUpdated.id,
