@@ -4,12 +4,27 @@ import { SelectGroup } from '@radix-ui/react-select';
 import { type StrictColumnDef } from '@tanstack/react-table';
 import { format } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
-import { ArrowDown, ArrowUp, ArrowUpDown, Cake } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Cake,
+  MoreHorizontal,
+  UserPlusIcon,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
+import { CreateOrganizerForm } from '@/components/admin/users/CreateOrganizerForm';
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -266,6 +281,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
           href={`https://wa.me/${phoneNumber}`}
           target='_blank'
           rel='noopener noreferrer'
+          onClick={(e) => e.stopPropagation()}
           className='text-sm p-2 underline text-blue-500 hover:text-blue-500/75'
         >
           {formatPhoneNumber(phoneNumber, 'INTERNATIONAL')}
@@ -344,6 +360,65 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
       const a = String(rowA.getValue(columnId) || '').toLowerCase();
       const b = String(rowB.getValue(columnId) || '').toLowerCase();
       return a.localeCompare(b);
+    },
+  },
+  {
+    accessorKey: 'actions',
+    header: ({ column }) => {
+      return <p className='text-sm p-2'></p>;
+    },
+     
+    cell: ({ row }) => {
+      const [open, setOpen] = useState(false); // eslint-disable-line react-hooks/rules-of-hooks
+      const [createOrganizerOpen, setCreateOrganizerOpen] = useState(false); // eslint-disable-line react-hooks/rules-of-hooks
+      return (
+        <>
+          <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant='ghost'
+                className='h-8 w-8 p-0 hover:bg-gray-500/20'
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end'>
+              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+              <DropdownMenuItem
+                className='flex cursor-pointer items-center justify-between'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  setCreateOrganizerOpen(true);
+                }}
+              >
+                <div className='flex justify-between gap-2 w-full cursor-pointer'>
+                  <span>Hacer organizador</span>
+                  <UserPlusIcon />
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <CreateOrganizerForm
+            open={createOrganizerOpen}
+            onOpenChange={setCreateOrganizerOpen}
+            initialData={{
+              fullName: row.original.fullName,
+              email: row.original.mail,
+              birthDate: row.original.birthDate,
+              dni: row.original.dni,
+              gender: row.original.gender,
+              phoneNumber: row.original.phoneNumber ?? '',
+              instagram: row.original.instagram ?? '',
+            }}
+          />
+        </>
+      );
+    },
+    meta: {
+      exportValue: (row) => '-',
+      exportHeader: 'Acciones',
     },
   },
 ];
