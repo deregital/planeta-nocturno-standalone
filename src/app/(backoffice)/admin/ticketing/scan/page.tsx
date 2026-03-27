@@ -5,13 +5,11 @@ import ScanMultiClient from '@/app/(backoffice)/admin/ticketing/scan/client';
 export default async function TicketingScanPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ids?: string | string[] }>;
+  searchParams: Promise<{ ids?: string }>;
 }) {
   const { ids } = await searchParams;
 
-  const eventIds = (Array.isArray(ids) ? ids : ids ? [ids] : []).filter(
-    Boolean,
-  );
+  const eventIds = ids ? ids.split(',').filter(Boolean) : [];
 
   if (eventIds.length === 0) {
     redirect('/admin/ticketing');
