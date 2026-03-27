@@ -4,6 +4,7 @@ import { Payment } from 'mercadopago';
 import { NextResponse } from 'next/server';
 
 import { mercadoPago } from '@/server/routers/mercado-pago';
+import { sendMailService } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { trpc } from '@/server/trpc/server';
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
 
     // enviar mail con los pdf de forma secuencial para evitar rate limits
     if (!group.event.extraTicketData) {
-      await trpc.mail.send({
+      await sendMailService({
         eventName: group.event.name,
         receiver: pdfs[0].ticket.mail,
         subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       });
     } else {
       for (const pdf of pdfs) {
-        await trpc.mail.send({
+        await sendMailService({
           eventName: group.event.name,
           receiver: pdf.ticket.mail,
           subject: `¡Llegaron tus tickets para ${group.event.name}!`,
