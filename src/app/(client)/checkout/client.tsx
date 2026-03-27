@@ -511,11 +511,27 @@ export default function CheckoutClient({
             />
           </div>
         )}
-
         <Separator className='my-4' />
-        {ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
-        (ticketGroup.event.inviteCondition === 'INVITATION' &&
-          organizerCodeFromTicketGroup) ? (
+        {ticketGroup.event.hasSimpleInvitation && (
+          <InputWithLabel
+            name={'invitedBySimple'}
+            id={'invitedBySimple'}
+            label='Invita...'
+            type='text'
+            placeholder='Ej. Juan Perez'
+            defaultValue={ticketGroup.invitedBy ?? ''}
+            error={
+              typeof state.errors === 'object' && state.errors !== null
+                ? (state.errors as Record<string, string>)['invitedBySimple']
+                : undefined
+            }
+            className='[&>input]:border-dashed'
+          />
+        )}
+        <Separator className='my-2' />
+        {(ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
+          (ticketGroup.event.inviteCondition === 'INVITATION' &&
+            organizerCodeFromTicketGroup)) && (
           <OrganizerCodeOTP
             value={organizerCode}
             onChange={handleOrganizerCodeChange}
@@ -545,22 +561,8 @@ export default function CheckoutClient({
             id='organizerCode'
             required={false}
           />
-        ) : (
-          <InputWithLabel
-            name={'invitedBySimple'}
-            id={'invitedBySimple'}
-            label='Invita...'
-            type='text'
-            placeholder='Ej. Juan Perez'
-            defaultValue={ticketGroup.invitedBy ?? ''}
-            error={
-              typeof state.errors === 'object' && state.errors !== null
-                ? (state.errors as Record<string, string>)['invitedBySimple']
-                : undefined
-            }
-            className='[&>input]:border-dashed'
-          />
         )}
+
         <input hidden name='invitedBy' value={organizerId || ''} readOnly />
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />

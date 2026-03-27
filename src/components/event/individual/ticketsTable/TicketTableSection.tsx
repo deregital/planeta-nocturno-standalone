@@ -9,16 +9,19 @@ export function TicketTableSection({
   tickets,
   role,
   headerActions,
-  inviteCondition,
+  event,
 }: {
   tickets: RouterOutputs['emittedTickets']['getByEventId'];
   role: Role;
   headerActions?: React.ReactNode;
-  inviteCondition: InviteCondition;
+  event: {
+    inviteCondition: InviteCondition;
+    hasSimpleInvitation: boolean;
+  };
 }) {
   return (
     <DataTable
-      columns={generateTicketColumns({ role, inviteCondition })}
+      columns={generateTicketColumns({ role, event })}
       data={tickets}
       exportExcludeColumnIds={['actions']}
       exportFileName={'Tickets'}

@@ -45,10 +45,13 @@ import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export function generateTicketColumns({
   role,
-  inviteCondition,
+  event,
 }: {
   role: Role;
-  inviteCondition: InviteCondition;
+  event: {
+    inviteCondition: InviteCondition;
+    hasSimpleInvitation: boolean;
+  };
 }) {
   let columns: StrictColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
@@ -444,7 +447,7 @@ export function generateTicketColumns({
       cell: ({ row }) => {
         return (
           <p className='w-full text-center'>
-            {row.original.ticketGroup.invitedBySimple}
+            {row.original.ticketGroup.invitedBySimple || '-'}
           </p>
         );
       },
@@ -946,10 +949,14 @@ export function generateTicketColumns({
     },
   ];
 
-  if (inviteCondition === 'SIMPLE') {
+  if (event.inviteCondition === 'SIMPLE') {
     columns = columns.filter(
       (col) => col.id !== 'invitedBy' && col.id !== 'chiefOrganizer',
     );
+  }
+
+  if (!event.hasSimpleInvitation) {
+    columns = columns.filter((col) => col.id !== 'invitedBySimple');
   }
 
   if (role === 'ORGANIZER' || role === 'CHIEF_ORGANIZER') {
