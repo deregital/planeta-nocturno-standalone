@@ -68,7 +68,7 @@ export function CreateOrganizerForm({
     <>
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         {!isControlled && (
-          <DialogTrigger>
+          <DialogTrigger asChild>
             {children ?? (
               <Button className='w-fit'>
                 <Plus /> Nuevo organizador
