@@ -44,7 +44,11 @@ export function CredentialsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-md' aria-describedby={undefined}>
+      <DialogContent
+        className='max-w-md'
+        aria-describedby={undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>
             {type === 'organizer' ? 'Organizador creado' : 'Usuario creado'}
