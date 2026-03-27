@@ -10,7 +10,11 @@ import { TicketTableSection } from '@/components/event/individual/ticketsTable/T
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/server/trpc/client';
-import { type InviteCondition, type Role, type TicketType } from '@/server/types';
+import {
+  type InviteCondition,
+  type Role,
+  type TicketType,
+} from '@/server/types';
 import {
   ORGANIZER_CODE_QUERY_PARAM,
   ORGANIZER_TICKET_TYPE_NAME,
@@ -29,6 +33,7 @@ export function TicketTableWithTabs({
   event: {
     slug: string;
     inviteCondition: InviteCondition;
+    hasSimpleInvitation: boolean;
   };
 }) {
   const { data: tickets } = trpc.emittedTickets.getByEventId.useQuery(
@@ -165,14 +170,17 @@ export function TicketTableWithTabs({
                   tickets={ticketsByType[type]}
                   role={session.data?.user.role}
                   headerActions={copyButton}
-                  inviteCondition={event.inviteCondition}
+                  event={{
+                    inviteCondition: event.inviteCondition,
+                    hasSimpleInvitation: event.hasSimpleInvitation,
+                  }}
                 />
               ) : (
                 <TicketTableSection
                   tickets={ticketsByType[type]}
                   role={session.data?.user.role as Role}
                   headerActions={copyButton}
-                  inviteCondition={event.inviteCondition}
+                  event={event}
                 />
               )}
             </TabsContent>

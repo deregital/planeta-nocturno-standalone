@@ -129,6 +129,7 @@ export const ticketGroupRouter = router({
               extraTicketData: true,
               emailNotification: true,
               serviceFee: true,
+              hasSimpleInvitation: true,
             },
             with: {
               location: {

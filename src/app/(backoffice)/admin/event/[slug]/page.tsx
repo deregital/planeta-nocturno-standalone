@@ -76,7 +76,11 @@ async function EventDetails({ slug }: { slug: string }) {
       </div>
       <TicketTableWithTabs
         ticketTypes={event.ticketTypes}
-        event={{ slug: event.slug, inviteCondition: event.inviteCondition }}
+        event={{
+          slug: event.slug,
+          inviteCondition: event.inviteCondition,
+          hasSimpleInvitation: event.hasSimpleInvitation,
+        }}
       />
     </div>
   );

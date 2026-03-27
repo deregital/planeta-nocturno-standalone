@@ -155,6 +155,7 @@ model Event {
   serviceFee             Float?
   emailNotification      String?
   ticketSlugVisibleInPdf Boolean @default(false)
+  hasSimpleInvitation    Boolean @default(false)
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
