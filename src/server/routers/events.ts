@@ -2,7 +2,7 @@ import { type Font } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
-import { addDays, endOfDay, isAfter, isBefore, startOfDay } from 'date-fns';
+import { isAfter, isBefore } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   and,
@@ -10,12 +10,10 @@ import {
   desc,
   eq,
   gt,
-  gte,
   inArray,
   isNull,
   like,
   lt,
-  lte,
   not,
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -137,15 +135,24 @@ export const eventsRouter = router({
 
     return { pastEvents, upcomingEvents };
   }),
-  getAllSoon: ticketingProcedure.query(async ({ ctx }) => {
+  getAllForTicketing: ticketingProcedure.query(async ({ ctx }) => {
+    const isTicketing = ctx.session.user.role === 'TICKETING';
+
+    const authorizedEventIds = isTicketing
+      ? (
+          await ctx.db.query.eventXUser.findMany({
+            where: eq(eventXUser.b, ctx.session.user.id),
+            columns: { a: true },
+          })
+        ).map((r) => r.a)
+      : null;
+
     return ctx.db.query.event.findMany({
       where: and(
         eq(eventSchema.isDeleted, false),
-        gte(eventSchema.endingDate, startOfDay(new Date()).toISOString()),
-        lte(
-          eventSchema.startingDate,
-          endOfDay(addDays(new Date(), 1)).toISOString(),
-        ),
+        authorizedEventIds
+          ? inArray(eventSchema.id, authorizedEventIds)
+          : undefined,
       ),
       columns: {
         id: true,

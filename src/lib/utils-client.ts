@@ -1,5 +1,12 @@
 'use client';
 
+import {
+  addDays,
+  endOfDay,
+  isWithinInterval,
+  parseISO,
+  startOfDay,
+} from 'date-fns';
 import * as XLSX from 'xlsx';
 export function generateS3Url(objectKey: string): string {
   const bucketUrl = process.env.NEXT_PUBLIC_S3_BUCKET_URL;
@@ -99,6 +106,13 @@ export function lightenColor(color: string, percent: number): string {
     (num & 0x0000ff) + Math.round((255 - (num & 0x0000ff)) * percent),
   );
   return `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+export function isSoon(event: { startingDate: string; endingDate: string }) {
+  return isWithinInterval(new Date(), {
+    start: startOfDay(parseISO(event.startingDate)),
+    end: endOfDay(addDays(parseISO(event.endingDate), 1)),
+  });
 }
 
 /** Parsea YYYY-MM-DD o ISO (ej. 2001-07-18T...) como fecha local. */
