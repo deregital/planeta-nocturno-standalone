@@ -597,6 +597,7 @@ export const eventsRouter = router({
         serviceFee: event.serviceFee,
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
+        hasSimpleInvitation: event.hasSimpleInvitation,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -861,6 +862,7 @@ export const eventsRouter = router({
         serviceFee: event.serviceFee,
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
+        hasSimpleInvitation: event.hasSimpleInvitation,
       };
 
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(
