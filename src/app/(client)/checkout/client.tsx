@@ -138,7 +138,7 @@ export default function CheckoutClient({
   }, [organizerCodeFromTicketGroup]);
 
   const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>(
-    () => {
+    (): Record<string, string> => {
       if (
         lastPurchase?.phoneNumber &&
         ticketGroup.ticketTypePerGroups.length > 0
@@ -146,7 +146,10 @@ export default function CheckoutClient({
         const firstTicketType =
           ticketGroup.ticketTypePerGroups[0].ticketType.id;
         const firstTicketKey = `phoneNumber_${firstTicketType}-0`;
-        return { [firstTicketKey]: lastPurchase.phoneNumber };
+        return {
+          [firstTicketKey]: lastPurchase.phoneNumber,
+          'phoneNumber_all-tickets': lastPurchase.phoneNumber,
+        };
       }
       return {};
     },
