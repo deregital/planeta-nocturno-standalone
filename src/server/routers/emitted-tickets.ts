@@ -360,7 +360,7 @@ export const emittedTicketsRouter = router({
 
       const blob = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
-        eventDate: ticket.ticketGroup.event.startingDate,
+        startingDate: ticket.ticketType.startingDate,
         eventLocation: ticket.ticketGroup.event.location?.address ?? '',
         ticketType: ticket.ticketType.name,
         createdAt: ticket.createdAt,
@@ -675,7 +675,7 @@ export const emittedTicketsRouter = router({
 
       const pdf = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
-        eventDate: ticket.ticketGroup.event.startingDate,
+        startingDate: ticket.ticketType.startingDate,
         eventLocation: ticket.ticketGroup.event.location?.address ?? '',
         ticketType: ticket.ticketType.name,
         createdAt: ticket.createdAt,

@@ -771,7 +771,8 @@ export const eventsRouter = router({
                       organizerEmittedTicket.ticketGroup.user?.fullName ?? '-',
                     slug: organizerEmittedTicket.slug,
                     eventName: organizerEmittedTicket.event.name,
-                    eventDate: organizerEmittedTicket.event.startingDate,
+                    startingDate:
+                      organizerEmittedTicket.ticketType.startingDate,
                     eventLocation:
                       organizerEmittedTicket.event.location.address,
                     fullName: organizerEmittedTicket.fullName,
@@ -1191,7 +1192,7 @@ export const eventsRouter = router({
                       invitedBy: '-',
                       slug: emittedTicket.slug,
                       eventName: eventUpdated.name,
-                      eventDate: eventUpdated.startingDate,
+                      startingDate: organizerTicketType.startingDate,
                       fullName: org.fullName,
                       dni: org.dni,
                       createdAt: emittedTicket.createdAt,
@@ -1292,7 +1293,8 @@ export const eventsRouter = router({
                       invitedBy: '-',
                       slug: organizerEmittedTicketFull.slug,
                       eventName: organizerEmittedTicketFull.event.name,
-                      eventDate: organizerEmittedTicketFull.event.startingDate,
+                      startingDate:
+                        organizerEmittedTicketFull.ticketType.startingDate,
                       eventLocation:
                         organizerEmittedTicketFull.event.location.address,
                       fullName: organizerEmittedTicketFull.fullName,
