@@ -13,7 +13,9 @@ import { type InviteCondition } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export type EventState = {
-  event: CreateEventSchema;
+  event: Omit<CreateEventSchema, 'inviteCondition'> & {
+    inviteCondition: InviteCondition | null;
+  };
   ticketTypes: (
     | (CreateTicketTypeSchema & { id: string | null })
     | TicketTypeSchema
@@ -65,11 +67,12 @@ const initialState: EventState = {
     locationId: '',
     minAge: null,
     authorizedUsers: [],
-    inviteCondition: 'TRADITIONAL',
+    inviteCondition: null,
     extraTicketData: false,
     serviceFee: null,
     emailNotification: null,
     ticketSlugVisibleInPdf: false,
+    hasSimpleInvitation: false,
   },
   ticketTypes: [],
   organizers: [],
@@ -78,7 +81,7 @@ const initialState: EventState = {
 
 function calculateOrganizerMaxAvailable(
   organizers: OrganizerSchema[],
-  inviteCondition: InviteCondition,
+  inviteCondition: InviteCondition | null,
 ): number {
   if (inviteCondition === 'INVITATION') {
     return organizers.reduce((acc, organizer) => {
@@ -151,6 +154,7 @@ export const createEventStore = (initState: EventState = initialState) => {
                 maxAvailable,
                 maxPerPurchase: 1,
                 category: 'FREE',
+                startingDate: state.event.startingDate,
                 lowStockThreshold: null,
                 maxSellDate: null,
                 scanLimit: null,
@@ -339,6 +343,7 @@ export const createEventStore = (initState: EventState = initialState) => {
               maxAvailable,
               maxPerPurchase: 1,
               category: 'FREE',
+              startingDate: state.event.startingDate,
               lowStockThreshold: null,
               maxSellDate: null,
               scanLimit: null,

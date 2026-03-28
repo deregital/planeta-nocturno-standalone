@@ -67,6 +67,7 @@ export default function TicketTypeModal({
         maxAvailable: ticketType.maxAvailable || 0,
         maxSellDate: ticketType.maxSellDate || event.endingDate,
         scanLimit: ticketType.scanLimit || event.endingDate,
+        startingDate: ticketType.startingDate || event.startingDate,
         category,
         id: ticketType.id,
         visibleInWeb: ticketType.visibleInWeb,
@@ -82,6 +83,7 @@ export default function TicketTypeModal({
       maxAvailable: 0,
       maxSellDate: event.endingDate,
       scanLimit: event.endingDate,
+      startingDate: event.startingDate,
       category,
       id: crypto.randomUUID(),
       visibleInWeb: true,
@@ -103,6 +105,9 @@ export default function TicketTypeModal({
   );
   const [hasMaxSellDate, setHasMaxSellDate] = useState(
     ticketType?.maxSellDate !== event.endingDate,
+  );
+  const [hasStartingDate, setHasStartingDate] = useState(
+    ticketType?.startingDate !== event.startingDate,
   );
 
   const [hasLowStockThreshold, setHasLowStockThreshold] = useState(
@@ -136,6 +141,16 @@ export default function TicketTypeModal({
       setEditingTicketType((prev) => ({
         ...prev,
         maxSellDate: event.endingDate,
+      }));
+    }
+  }
+
+  function handleStartingDateToggle(checked: boolean) {
+    setHasStartingDate(checked);
+    if (!checked) {
+      setEditingTicketType((prev) => ({
+        ...prev,
+        startingDate: event.startingDate,
       }));
     }
   }
@@ -257,19 +272,21 @@ export default function TicketTypeModal({
             value={editingTicketType.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
           />
-          <InputWithLabel
-            id='price'
-            name='price'
-            label='Precio del ticket ($)'
-            type='number'
-            min={0}
-            error={error.price}
-            placeholder='$'
-            disabled={category === 'FREE'}
-            value={editingTicketType.price ?? ''}
-            onChange={(e) => handleInputChange('price', Number(e.target.value))}
-          />
           <FormRow className='md:flex-row flex-col'>
+            <InputWithLabel
+              id='price'
+              name='price'
+              label='Precio del ticket ($)'
+              type='number'
+              min={0}
+              error={error.price}
+              placeholder='$'
+              disabled={category === 'FREE'}
+              value={editingTicketType.price ?? ''}
+              onChange={(e) =>
+                handleInputChange('price', Number(e.target.value))
+              }
+            />
             <InputWithLabel
               id='maxAvailable'
               name='maxAvailable'
@@ -284,20 +301,63 @@ export default function TicketTypeModal({
                 handleInputChange('maxAvailable', Number(e.target.value))
               }
             />
-            <InputWithLabel
-              id='maxPerPurchase'
-              name='maxPerPurchase'
-              className='w-full'
-              label='Cantidad maxima de tickets por venta'
-              type='number'
-              error={error.maxPerPurchase}
-              value={editingTicketType.maxPerPurchase}
-              onChange={(e) =>
-                handleInputChange('maxPerPurchase', Number(e.target.value))
-              }
-            />
           </FormRow>
           <FormRow className='md:flex-row flex-col'>
+            <div className='flex w-full'>
+              {hasStartingDate ? (
+                <InputDateWithLabel
+                  id='startingDate'
+                  name='startingDate'
+                  label='Fecha de inicio del ticket'
+                  error={error.startingDate}
+                  selected={editingTicketType.startingDate ?? undefined}
+                  dateType='datetime-local'
+                  min={
+                    event.startingDate
+                      ? format(event.startingDate, "yyyy-MM-dd'T'HH:mm")
+                      : undefined
+                  }
+                  max={
+                    event.endingDate
+                      ? format(event.endingDate, "yyyy-MM-dd'T'HH:mm")
+                      : undefined
+                  }
+                  onChange={(date) => {
+                    handleInputChange('startingDate', date);
+                  }}
+                  className='w-full '
+                />
+              ) : (
+                <InputWithLabel
+                  id='startingDate'
+                  name='startingDate'
+                  label='Fecha de inicio del ticket'
+                  type='text'
+                  error={error.startingDate}
+                  value={
+                    editingTicketType.startingDate
+                      ? `${format(
+                          editingTicketType.startingDate,
+                          'dd/MM/yyyy HH:mm b',
+                        )} (Inicio del evento)`
+                      : ''
+                  }
+                  className='w-full text-accent/50'
+                  readOnly
+                />
+              )}
+              <InputWithLabel
+                label='¿Tiene?'
+                id='startingDateEnabled'
+                type='checkbox'
+                className='[&>input]:w-6 items-center'
+                name='startingDateEnabled'
+                checked={hasStartingDate}
+                onChange={(e) => {
+                  handleStartingDateToggle(e.target.checked);
+                }}
+              />
+            </div>
             <div className='flex w-full'>
               {hasScanLimit ? (
                 <InputDateWithLabel
@@ -343,6 +403,8 @@ export default function TicketTypeModal({
                 }}
               />
             </div>
+          </FormRow>
+          <FormRow className='md:flex-row flex-col'>
             <div className='flex w-full'>
               {hasMaxSellDate ? (
                 <InputDateWithLabel
@@ -390,6 +452,18 @@ export default function TicketTypeModal({
             </div>
           </FormRow>
           <FormRow>
+            <InputWithLabel
+              id='maxPerPurchase'
+              name='maxPerPurchase'
+              className='w-full'
+              label='Cantidad maxima de tickets por venta'
+              type='number'
+              error={error.maxPerPurchase}
+              value={editingTicketType.maxPerPurchase}
+              onChange={(e) =>
+                handleInputChange('maxPerPurchase', Number(e.target.value))
+              }
+            />
             <div className='flex'>
               {hasLowStockThreshold ? (
                 <InputWithLabel

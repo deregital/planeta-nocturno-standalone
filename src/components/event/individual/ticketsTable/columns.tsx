@@ -40,10 +40,19 @@ import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
-import { type Role } from '@/server/types';
+import { type InviteCondition, type Role } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
-export function generateTicketColumns(role: Role) {
+export function generateTicketColumns({
+  role,
+  event,
+}: {
+  role: Role;
+  event: {
+    inviteCondition: InviteCondition;
+    hasSimpleInvitation: boolean;
+  };
+}) {
   let columns: StrictColumnDef<
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
@@ -404,6 +413,47 @@ export function generateTicketColumns(role: Role) {
       meta: {
         exportValue: (row) => row.original.instagram || '-',
         exportHeader: 'Instagram',
+      },
+    },
+    {
+      id: 'invitedBySimple',
+      accessorKey: 'invitedBySimple',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant='ghost'
+            className='pl-0 text-center w-full font-bold text-sm'
+            onClick={() =>
+              column.getIsSorted() === 'desc'
+                ? column.clearSorting()
+                : column.toggleSorting(column.getIsSorted() === 'asc')
+            }
+          >
+            Invita
+            {column.getIsSorted() ? (
+              <ArrowDownAZ
+                className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
+              />
+            ) : (
+              <ArrowUpDown />
+            )}
+          </Button>
+        );
+      },
+      minSize: 30,
+      size: 30,
+      maxSize: 30,
+      enableResizing: true,
+      cell: ({ row }) => {
+        return (
+          <p className='w-full text-center'>
+            {row.original.ticketGroup.invitedBySimple || '-'}
+          </p>
+        );
+      },
+      meta: {
+        exportValue: (row) => row.original.ticketGroup.invitedBySimple || '-',
+        exportHeader: 'Invita',
       },
     },
     {
@@ -898,6 +948,16 @@ export function generateTicketColumns(role: Role) {
       },
     },
   ];
+
+  if (event.inviteCondition === 'SIMPLE') {
+    columns = columns.filter(
+      (col) => col.id !== 'invitedBy' && col.id !== 'chiefOrganizer',
+    );
+  }
+
+  if (!event.hasSimpleInvitation) {
+    columns = columns.filter((col) => col.id !== 'invitedBySimple');
+  }
 
   if (role === 'ORGANIZER' || role === 'CHIEF_ORGANIZER') {
     columns = columns.filter((col) => col.id !== 'chiefOrganizer');

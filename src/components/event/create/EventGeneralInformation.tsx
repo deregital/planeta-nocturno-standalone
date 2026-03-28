@@ -639,6 +639,29 @@ export function EventGeneralInformation({
             mostrará.
           </p>
         </section>
+        <section className='flex gap-2'>
+          <h3 className='text-accent-dark text-lg font-semibold'>
+            Campo de invitación simple
+          </h3>
+          <InputWithLabel
+            label='¿Invitación simple?'
+            id='hasSimpleInvitation'
+            disabled={action === 'PREVIEW'}
+            type='checkbox'
+            className='[&>input]:w-6 [&>input]:ml-4 [&>input]:cursor-pointer'
+            placeholder='Invitación simple'
+            name='hasSimpleInvitation'
+            checked={event.hasSimpleInvitation}
+            onChange={(e) => {
+              if (action === 'PREVIEW') return;
+              handleChange('hasSimpleInvitation', e.target.checked);
+            }}
+          />
+          <p className='text-sm'>
+            Al seleccionar esta opción, se mostrará un campo de texto para
+            ingresar al organizador/a que lo invitó al evento.
+          </p>
+        </section>
         {action === 'CREATE' && (
           <Button type='submit' variant={'accent'}>
             Continuar

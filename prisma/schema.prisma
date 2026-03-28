@@ -155,6 +155,7 @@ model Event {
   serviceFee             Float?
   emailNotification      String?
   ticketSlugVisibleInPdf Boolean @default(false)
+  hasSimpleInvitation    Boolean @default(false)
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
@@ -205,7 +206,8 @@ model TicketType {
   visibleInWeb      Boolean            @default(true)
   lowStockThreshold Int?
 
-  scanLimit DateTime? @db.Timestamptz
+  startingDate DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  scanLimit    DateTime? @db.Timestamptz
 
   organizers User[] @relation("TICKET_TYPE_X_ORGANIZERS")
 
@@ -233,6 +235,7 @@ model TicketGroup {
   event            Event             @relation("EVENT_X_TICKET_GROUP", fields: [eventId], references: [id], onDelete: Cascade)
   invitedById      String?           @db.Uuid
   invitedBy        User?             @relation("ORGANIZER_X_TICKET_GROUP", fields: [invitedById], references: [id], onDelete: SetNull)
+  invitedBySimple  String?
   isOrganizerGroup Boolean           @default(false)
 
   tickets            EmittedTicket[]      @relation("TICKET_X_TICKET_GROUP")
@@ -375,4 +378,5 @@ enum TicketTypeCategory {
 enum InviteCondition {
   TRADITIONAL
   INVITATION
+  SIMPLE
 }

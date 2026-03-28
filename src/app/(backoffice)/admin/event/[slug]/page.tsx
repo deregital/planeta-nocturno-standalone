@@ -58,22 +58,29 @@ async function EventDetails({ slug }: { slug: string }) {
             <div className='md:order-2 order-1'>
               <ScanTicket eventId={event.id} eventSlug={event.slug} />
             </div>
-            {event.inviteCondition === 'TRADITIONAL' && (
+            {(event.inviteCondition === 'TRADITIONAL' ||
+              event.inviteCondition === 'SIMPLE') && (
               <div className='md:order-3 order-2'>
                 <EmitTicketModal event={event} />
               </div>
             )}
-            {isAdmin && event.inviteCondition === 'TRADITIONAL' && (
-              <div className='md:order-4 order-4'>
-                <ToggleActivateButton event={event} />
-              </div>
-            )}
+            {isAdmin &&
+              (event.inviteCondition === 'TRADITIONAL' ||
+                event.inviteCondition === 'SIMPLE') && (
+                <div className='md:order-4 order-4'>
+                  <ToggleActivateButton event={event} />
+                </div>
+              )}
           </div>
         </div>
       </div>
       <TicketTableWithTabs
         ticketTypes={event.ticketTypes}
-        eventSlug={event.slug}
+        event={{
+          slug: event.slug,
+          inviteCondition: event.inviteCondition,
+          hasSimpleInvitation: event.hasSimpleInvitation,
+        }}
       />
     </div>
   );

@@ -109,7 +109,11 @@ export default async function EventPage({
               (tt) => tt.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
             )}
             userId={session?.user.id}
-            eventSlug={event.slug}
+            event={{
+              slug: event.slug,
+              inviteCondition: event.inviteCondition,
+              hasSimpleInvitation: event.hasSimpleInvitation,
+            }}
           />
         )}
       </Suspense>

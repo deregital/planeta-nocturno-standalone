@@ -3,7 +3,25 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/drizzle';
 
 import { ticketGroup } from '@/drizzle/schema';
+import { type TicketGroupStatus } from '@/server/types';
 import { calculateTotalPriceFromData } from '@/lib/utils';
+
+export async function updateTicketGroupStatus(
+  id: string,
+  status: TicketGroupStatus,
+) {
+  const result = await db
+    .update(ticketGroup)
+    .set({ status })
+    .where(eq(ticketGroup.id, id))
+    .returning();
+
+  if (!result[0]) {
+    throw new Error('ticketGroup no encontrado');
+  }
+
+  return result[0];
+}
 
 export async function calculateTotalPrice({
   ticketGroupId,

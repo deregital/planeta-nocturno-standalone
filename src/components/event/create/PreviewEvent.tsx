@@ -10,6 +10,7 @@ import { SendOrganizerTicketEmailOption } from '@/components/event/create/invite
 import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
+import { type InviteCondition } from '@/server/types';
 
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
@@ -52,7 +53,11 @@ export default function PreviewEvent({ back }: { back: () => void }) {
     setActiveButton(buttonType);
     try {
       await createEvent.mutateAsync({
-        event: { ...event, isActive },
+        event: {
+          ...event,
+          isActive,
+          inviteCondition: event.inviteCondition as InviteCondition,
+        },
         ticketTypes,
         organizersInput: organizers,
         sendOrganizerTicketEmail,
@@ -123,7 +128,8 @@ export default function PreviewEvent({ back }: { back: () => void }) {
             'Crear sin publicar'
           )}
         </Button>
-        {event.inviteCondition === 'TRADITIONAL' && (
+        {(event.inviteCondition === 'TRADITIONAL' ||
+          event.inviteCondition === 'SIMPLE') && (
           <Button
             variant={'accent'}
             onClick={() =>
