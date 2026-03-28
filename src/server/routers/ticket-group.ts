@@ -386,7 +386,7 @@ export const ticketGroupRouter = router({
           createdAt: true,
         },
         with: {
-          ticketType: { columns: { name: true } },
+          ticketType: { columns: { name: true, startingDate: true } },
           ticketGroup: {
             columns: { id: true },
             with: {
@@ -413,7 +413,7 @@ export const ticketGroupRouter = router({
 
       const blob = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
-        eventDate: ticket.ticketGroup.event.startingDate,
+        startingDate: ticket.ticketType.startingDate,
         eventLocation: ticket.ticketGroup.event.location.address,
         createdAt: ticket.createdAt,
         dni: ticket.dni,
@@ -446,7 +446,9 @@ export const ticketGroupRouter = router({
               slug: true,
             },
             with: {
-              ticketType: { columns: { id: true, name: true } },
+              ticketType: {
+                columns: { id: true, name: true, startingDate: true },
+              },
             },
           },
           event: {
@@ -478,7 +480,7 @@ export const ticketGroupRouter = router({
         group.emittedTickets.map(async (ticket) => {
           const blob = await generatePdf({
             eventName: group.event.name,
-            eventDate: group.event.startingDate,
+            startingDate: ticket.ticketType.startingDate,
             eventLocation: group.event.location?.address ?? '',
             createdAt: ticket.createdAt,
             dni: ticket.dni,
