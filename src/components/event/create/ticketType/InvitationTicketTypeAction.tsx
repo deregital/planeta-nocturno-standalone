@@ -28,7 +28,6 @@ export function InvitationTicketTypeAction({
   const updateTicketType = useCreateEventStore(
     (state) => state.updateTicketType,
   );
-  const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const organizers = useCreateEventStore((state) => state.organizers);
   const event = useCreateEventStore((state) => state.event);
   // Encontrar el ticket único existente (excluyendo el ticket de organizador)
@@ -104,11 +103,6 @@ export function InvitationTicketTypeAction({
           description: ticketTypeInfo.description,
         });
       } else {
-        // Si no existe, limpiar todos los tickets y crear uno nuevo
-        if (ticketTypes.length > 0) {
-          setTicketTypes([]);
-        }
-
         addTicketType({
           id: crypto.randomUUID(),
           category: 'FREE',
