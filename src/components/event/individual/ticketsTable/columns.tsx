@@ -955,7 +955,7 @@ export function generateTicketColumns({
     );
   }
 
-  if (!event.hasSimpleInvitation) {
+  if (event.inviteCondition !== 'SIMPLE' && !event.hasSimpleInvitation) {
     columns = columns.filter((col) => col.id !== 'invitedBySimple');
   }
 
