@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import EventCheckboxRow from '@/components/admin/ticketing/EventCheckboxRow';
 import { Button } from '@/components/ui/button';
-import { isSoon } from '@/lib/utils-client';
+import { isWithin24Hours } from '@/lib/utils-client';
 import { trpc } from '@/server/trpc/client';
 
 export default function TicketingPage() {
@@ -16,7 +16,7 @@ export default function TicketingPage() {
   const { data: events = [], isLoading } =
     trpc.events.getAllForTicketing.useQuery();
 
-  const filtered = showAll ? events : events.filter(isSoon);
+  const filtered = showAll ? events : events.filter(isWithin24Hours);
 
   function handleCheckedChange(id: string, checked: boolean) {
     setSelectedIds((prev) => {
