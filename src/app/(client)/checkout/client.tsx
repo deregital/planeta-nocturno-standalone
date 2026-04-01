@@ -523,7 +523,6 @@ export default function CheckoutClient({
             label='Invita...'
             type='text'
             placeholder='Ej. Juan Perez'
-            defaultValue={ticketGroup.invitedBy ?? ''}
             error={
               typeof state.errors === 'object' && state.errors !== null
                 ? (state.errors as Record<string, string>)['invitedBySimple']

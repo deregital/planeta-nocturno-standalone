@@ -288,9 +288,7 @@ export const ticketType = pgTable(
     slug: text()
       .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),
-    startingDate: timestamp({ withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
   },
   (table) => [
     uniqueIndex('ticketType_eventId_slug_key').using(

@@ -17,9 +17,7 @@ export const ticketTypeSchema = z.object({
   category: z.enum(ticketTypeCategory.enumValues, {
     error: 'La categoría es requerida',
   }),
-  startingDate: z.coerce
-    .date({ error: 'La fecha de inicio no es válida' })
-    .nullable(),
+  startingDate: z.coerce.date({ error: 'La fecha de inicio no es válida' }),
   scanLimit: z.coerce
     .date({ error: 'La fecha de escaneo no es válida' })
     .nullable(),

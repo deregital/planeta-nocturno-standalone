@@ -134,7 +134,7 @@ export function EventInvitationTypeAction({
           <TabsContent value={inviteCondition.enumValues[2]}>
             <div className='flex justify-center items-center h-44'>
               Seleccionando esta opción se agregará un atributo
-              &quot;Invita:&quot; en la ticketera. En el cual se debe incresar
+              &quot;Invita:&quot; en la ticketera. En el cual se debe ingresar
               el nombre del organizador que invita.
             </div>
           </TabsContent>
