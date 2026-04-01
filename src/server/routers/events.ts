@@ -1117,6 +1117,7 @@ export const eventsRouter = router({
                     visibleInWeb: false,
                     slug: generateSlug(ORGANIZER_TICKET_TYPE_NAME),
                     eventId: eventUpdated.id,
+                    startingDate: eventUpdated.startingDate,
                   })
                   .returning();
 
