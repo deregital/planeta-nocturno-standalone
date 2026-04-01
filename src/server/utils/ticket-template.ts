@@ -103,7 +103,7 @@ export async function generateTicketTemplate(
       dynamicFontSize: DYNAMIC_FONT_SIZE,
     },
     {
-      name: 'eventDate',
+      name: 'startingDate',
       type: 'text',
       content: 'Domingo 15 de junio 2025 - 12:00 hrs.',
       position: { x: 47, y: 119.75 },
@@ -534,7 +534,7 @@ export async function generateTicketTemplate(
 
 interface GenerateTicketProps {
   eventName: string;
-  eventDate: string;
+  startingDate: string;
   eventLocation: string;
   fullName: string;
   dni: string;
@@ -552,12 +552,12 @@ export async function generatePdf(ticket: GenerateTicketProps) {
   }
 
   const formattedTime = formatInTimeZone(
-    ticket.eventDate,
+    ticket.startingDate,
     'America/Argentina/Buenos_Aires',
     'HH:mm',
   );
   const formattedDateRaw = formatInTimeZone(
-    ticket.eventDate,
+    ticket.startingDate,
     'America/Argentina/Buenos_Aires',
     "EEEE d 'de' MMMM 'de' yyyy",
     { locale: es },
@@ -582,7 +582,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
   const inputs = [
     {
       eventName: ticket.eventName,
-      eventDate: `${formattedDate} - ${formattedTime} hs`,
+      startingDate: `${formattedDate} - ${formattedTime} hs`,
       eventLocation: ticket.eventLocation,
       fullName: ticket.fullName,
       dni: normalizedDni,

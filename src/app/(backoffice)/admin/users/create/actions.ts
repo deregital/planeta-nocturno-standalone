@@ -234,13 +234,16 @@ export async function resetPassword(
   }
 
   try {
-    const credentials = await trpc.user.resetPassword({
+    const userInfo = await trpc.user.resetPassword({
       id: userId,
       password,
     });
 
     return {
-      credentials,
+      credentials: {
+        ...userInfo,
+        password,
+      },
     };
   } catch (error) {
     const errorMessage =

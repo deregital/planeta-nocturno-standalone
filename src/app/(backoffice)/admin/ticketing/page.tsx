@@ -1,28 +1,72 @@
+'use client';
+
 import { QrCode } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import EventCheckboxRow from '@/components/admin/ticketing/EventCheckboxRow';
 import { Button } from '@/components/ui/button';
-import { trpc } from '@/server/trpc/server';
+import { isWithin24Hours } from '@/lib/utils-client';
+import { trpc } from '@/server/trpc/client';
 
-export default async function TicketingPage() {
-  const events = await trpc.events.getAllSoon();
+export default function TicketingPage() {
+  const router = useRouter();
+  const [showAll, setShowAll] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { data: events = [], isLoading } =
+    trpc.events.getAllForTicketing.useQuery();
+
+  const filtered = showAll ? events : events.filter(isWithin24Hours);
+
+  function handleCheckedChange(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    router.push(`/admin/ticketing/scan?ids=${[...selectedIds].join(',')}`);
+  }
 
   return (
     <form
-      action='/admin/ticketing/scan'
-      method='get'
+      onSubmit={handleSubmit}
       className='flex flex-col gap-6 p-4 max-w-lg mx-auto w-full'
     >
-      <h1 className='text-2xl font-bold text-accent'>Escanear Tickets</h1>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-2xl font-bold text-accent'>Escanear Tickets</h1>
+        <button
+          type='button'
+          onClick={() => setShowAll((prev) => !prev)}
+          className='text-sm text-accent-dark/60 hover:text-accent transition-colors underline underline-offset-2 cursor-pointer'
+        >
+          {showAll ? 'Mostrar próximos' : 'Mostrar todos'}
+        </button>
+      </div>
 
       <div className='flex flex-col gap-2'>
-        {events.length === 0 ? (
+        {isLoading ? (
+          <p className='text-accent-dark/50 text-sm'>Cargando eventos...</p>
+        ) : filtered.length === 0 ? (
           <p className='text-accent-dark/50 text-sm'>
-            No hay eventos para hoy ni mañana.
+            {showAll ? 'No hay eventos.' : 'No hay eventos para hoy ni mañana.'}
           </p>
         ) : (
-          events.map((event) => (
-            <EventCheckboxRow key={event.id} event={event} />
+          filtered.map((event) => (
+            <EventCheckboxRow
+              key={event.id}
+              event={event}
+              onCheckedChange={(checked) =>
+                handleCheckedChange(event.id, checked as boolean)
+              }
+            />
           ))
         )}
       </div>
@@ -32,7 +76,7 @@ export default async function TicketingPage() {
           type='submit'
           variant='accent'
           className='w-full py-6 text-base gap-2'
-          disabled={events.length === 0}
+          disabled={isLoading || selectedIds.size === 0}
         >
           <QrCode className='size-5' />
           Iniciar escaneo

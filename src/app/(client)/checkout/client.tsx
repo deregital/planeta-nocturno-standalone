@@ -138,7 +138,7 @@ export default function CheckoutClient({
   }, [organizerCodeFromTicketGroup]);
 
   const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>(
-    () => {
+    (): Record<string, string> => {
       if (
         lastPurchase?.phoneNumber &&
         ticketGroup.ticketTypePerGroups.length > 0
@@ -146,7 +146,10 @@ export default function CheckoutClient({
         const firstTicketType =
           ticketGroup.ticketTypePerGroups[0].ticketType.id;
         const firstTicketKey = `phoneNumber_${firstTicketType}-0`;
-        return { [firstTicketKey]: lastPurchase.phoneNumber };
+        return {
+          [firstTicketKey]: lastPurchase.phoneNumber,
+          'phoneNumber_all-tickets': lastPurchase.phoneNumber,
+        };
       }
       return {};
     },
@@ -511,11 +514,27 @@ export default function CheckoutClient({
             />
           </div>
         )}
-
         <Separator className='my-4' />
-        {ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
-        (ticketGroup.event.inviteCondition === 'INVITATION' &&
-          organizerCodeFromTicketGroup) ? (
+        {(ticketGroup.event.hasSimpleInvitation ||
+          ticketGroup.event.inviteCondition === 'SIMPLE') && (
+          <InputWithLabel
+            name={'invitedBySimple'}
+            id={'invitedBySimple'}
+            label='Invita...'
+            type='text'
+            placeholder='Ej. Juan Perez'
+            error={
+              typeof state.errors === 'object' && state.errors !== null
+                ? (state.errors as Record<string, string>)['invitedBySimple']
+                : undefined
+            }
+            className='[&>input]:border-dashed'
+          />
+        )}
+        <Separator className='my-2' />
+        {(ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
+          (ticketGroup.event.inviteCondition === 'INVITATION' &&
+            organizerCodeFromTicketGroup)) && (
           <OrganizerCodeOTP
             value={organizerCode}
             onChange={handleOrganizerCodeChange}
@@ -545,23 +564,8 @@ export default function CheckoutClient({
             id='organizerCode'
             required={false}
           />
-        ) : (
-          <InputWithLabel
-            name={'invitedBy'}
-            id={'invitedBy'}
-            label='Invita...'
-            type='text'
-            placeholder='ej. Pablo Perez'
-            defaultValue={ticketGroup.invitedBy ?? ''}
-            error={
-              typeof state.errors === 'object' && state.errors !== null
-                ? (state.errors as Record<string, string>)['invitedBy']
-                : undefined
-            }
-            className='[&>input]:border-dashed'
-            disabled={true}
-          />
         )}
+
         <input hidden name='invitedBy' value={organizerId || ''} readOnly />
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />

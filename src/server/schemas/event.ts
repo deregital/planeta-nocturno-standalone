@@ -51,6 +51,7 @@ export const eventSchema = z.object({
     })
     .nullable(),
   ticketSlugVisibleInPdf: z.boolean(),
+  hasSimpleInvitation: z.boolean(),
 });
 
 export const createEventSchema = eventSchema.omit({

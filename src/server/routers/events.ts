@@ -2,7 +2,7 @@ import { type Font } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
-import { addDays, endOfDay, isAfter, isBefore, startOfDay } from 'date-fns';
+import { isAfter, isBefore } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   and,
@@ -10,12 +10,10 @@ import {
   desc,
   eq,
   gt,
-  gte,
   inArray,
   isNull,
   like,
   lt,
-  lte,
   not,
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -137,15 +135,24 @@ export const eventsRouter = router({
 
     return { pastEvents, upcomingEvents };
   }),
-  getAllSoon: ticketingProcedure.query(async ({ ctx }) => {
+  getAllForTicketing: ticketingProcedure.query(async ({ ctx }) => {
+    const isTicketing = ctx.session.user.role === 'TICKETING';
+
+    const authorizedEventIds = isTicketing
+      ? (
+          await ctx.db.query.eventXUser.findMany({
+            where: eq(eventXUser.b, ctx.session.user.id),
+            columns: { a: true },
+          })
+        ).map((r) => r.a)
+      : null;
+
     return ctx.db.query.event.findMany({
       where: and(
         eq(eventSchema.isDeleted, false),
-        gte(eventSchema.endingDate, startOfDay(new Date()).toISOString()),
-        lte(
-          eventSchema.startingDate,
-          endOfDay(addDays(new Date(), 1)).toISOString(),
-        ),
+        authorizedEventIds
+          ? inArray(eventSchema.id, authorizedEventIds)
+          : undefined,
       ),
       columns: {
         id: true,
@@ -303,6 +310,7 @@ export const eventsRouter = router({
             description: true,
             maxPerPurchase: true,
             maxAvailable: true,
+            startingDate: true,
             name: true,
             price: true,
             slug: true,
@@ -596,6 +604,7 @@ export const eventsRouter = router({
         serviceFee: event.serviceFee,
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
+        hasSimpleInvitation: event.hasSimpleInvitation,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -620,6 +629,7 @@ export const eventsRouter = router({
                     return {
                       ...rest,
                       maxSellDate: ticketType.maxSellDate?.toISOString(),
+                      startingDate: ticketType.startingDate?.toISOString(),
                       scanLimit: ticketType.scanLimit?.toISOString(),
                       slug: ticketType.slug || generateSlug(ticketType.name),
                       eventId: eventCreated.id,
@@ -761,7 +771,8 @@ export const eventsRouter = router({
                       organizerEmittedTicket.ticketGroup.user?.fullName ?? '-',
                     slug: organizerEmittedTicket.slug,
                     eventName: organizerEmittedTicket.event.name,
-                    eventDate: organizerEmittedTicket.event.startingDate,
+                    startingDate:
+                      organizerEmittedTicket.ticketType.startingDate,
                     eventLocation:
                       organizerEmittedTicket.event.location.address,
                     fullName: organizerEmittedTicket.fullName,
@@ -859,6 +870,7 @@ export const eventsRouter = router({
         serviceFee: event.serviceFee,
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
+        hasSimpleInvitation: event.hasSimpleInvitation,
       };
 
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(
@@ -1105,6 +1117,7 @@ export const eventsRouter = router({
                     visibleInWeb: false,
                     slug: generateSlug(ORGANIZER_TICKET_TYPE_NAME),
                     eventId: eventUpdated.id,
+                    startingDate: eventUpdated.startingDate,
                   })
                   .returning();
 
@@ -1180,7 +1193,7 @@ export const eventsRouter = router({
                       invitedBy: '-',
                       slug: emittedTicket.slug,
                       eventName: eventUpdated.name,
-                      eventDate: eventUpdated.startingDate,
+                      startingDate: organizerTicketType.startingDate,
                       fullName: org.fullName,
                       dni: org.dni,
                       createdAt: emittedTicket.createdAt,
@@ -1281,7 +1294,8 @@ export const eventsRouter = router({
                       invitedBy: '-',
                       slug: organizerEmittedTicketFull.slug,
                       eventName: organizerEmittedTicketFull.event.name,
-                      eventDate: organizerEmittedTicketFull.event.startingDate,
+                      startingDate:
+                        organizerEmittedTicketFull.ticketType.startingDate,
                       eventLocation:
                         organizerEmittedTicketFull.event.location.address,
                       fullName: organizerEmittedTicketFull.fullName,
@@ -1570,6 +1584,7 @@ export const eventsRouter = router({
                     .set({
                       ...rest,
                       maxSellDate: type.maxSellDate?.toISOString(),
+                      startingDate: type.startingDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
                       slug: type.slug || generateSlug(type.name),
                       eventId: eventUpdated.id,
@@ -1600,6 +1615,7 @@ export const eventsRouter = router({
                     .values({
                       ...rest,
                       maxSellDate: type.maxSellDate?.toISOString(),
+                      startingDate: type.startingDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
                       slug: type.slug || generateSlug(type.name),
                       eventId: eventUpdated.id,

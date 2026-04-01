@@ -29,7 +29,7 @@ export type OrganizerData = Pick<
   | 'chiefOrganizerId'
 >;
 
-const defaultState: OrganizerData = {
+export const defaultOrganizerState: OrganizerData = {
   fullName: '',
   name: '',
   email: '',
@@ -63,7 +63,7 @@ export function OrganizerForm({
   isAdmin?: boolean;
 }) {
   const [internalState, setInternalState] = useState<OrganizerData>(
-    initialState ?? defaultState,
+    initialState ?? defaultOrganizerState,
   );
 
   useEffect(() => {

@@ -3,9 +3,8 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-import { signIn } from '@/server/auth';
+import { auth, signIn } from '@/server/auth';
 import { userSchema } from '@/server/schemas/user';
-import { trpc } from '@/server/trpc/server';
 
 const loginSchema = userSchema.pick({ name: true, password: true });
 type LoginActionState = {
@@ -55,11 +54,12 @@ export async function authenticate(
     };
   }
 
-  const user = await trpc.user.getByName(rawData.name);
+  const session = await auth();
+  const role = session?.user?.role;
 
-  if (user?.role === 'TICKETING') {
+  if (role === 'TICKETING') {
     redirect('/admin/event');
-  } else if (user?.role === 'ORGANIZER' || user?.role === 'CHIEF_ORGANIZER') {
+  } else if (role === 'ORGANIZER' || role === 'CHIEF_ORGANIZER') {
     redirect('/organization');
   } else {
     redirect('/admin');

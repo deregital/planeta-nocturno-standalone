@@ -360,7 +360,7 @@ export const emittedTicketsRouter = router({
 
       const blob = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
-        eventDate: ticket.ticketGroup.event.startingDate,
+        startingDate: ticket.ticketType.startingDate,
         eventLocation: ticket.ticketGroup.event.location?.address ?? '',
         ticketType: ticket.ticketType.name,
         createdAt: ticket.createdAt,
@@ -457,6 +457,16 @@ export const emittedTicketsRouter = router({
           scannedByUserId: ctx.session.user.id,
         })
         .where(eq(emittedTicket.id, decryptedTicketId));
+
+      if (
+        ticket.ticketType.startingDate &&
+        new Date(ticket.ticketType.startingDate) > new Date()
+      ) {
+        extraInfo = `La hora de inicio del ticket es a las ${format(
+          new Date(ticket.ticketType.startingDate),
+          'dd/MM/yyyy HH:mm',
+        )}`;
+      }
 
       if (
         ticket.ticketType.scanLimit &&
@@ -665,7 +675,7 @@ export const emittedTicketsRouter = router({
 
       const pdf = await generatePdf({
         eventName: ticket.ticketGroup.event.name,
-        eventDate: ticket.ticketGroup.event.startingDate,
+        startingDate: ticket.ticketType.startingDate,
         eventLocation: ticket.ticketGroup.event.location?.address ?? '',
         ticketType: ticket.ticketType.name,
         createdAt: ticket.createdAt,

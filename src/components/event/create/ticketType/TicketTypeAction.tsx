@@ -20,7 +20,10 @@ export default function TicketTypeAction({
   next,
 }: TicketTypeActionProps) {
   const event = useCreateEventStore((state) => state.event);
-  if (event.inviteCondition === 'TRADITIONAL') {
+  if (
+    event.inviteCondition === 'TRADITIONAL' ||
+    event.inviteCondition === 'SIMPLE'
+  ) {
     return <TraditionalTicketTypeAction back={back} next={next} />;
   } else {
     if (action === 'CREATE') {
