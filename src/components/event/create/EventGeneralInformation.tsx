@@ -75,10 +75,7 @@ export function EventGeneralInformation({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const validatedEvent = await validateGeneralInformation({
-      ...event,
-      emailNotification: event.emailNotification ?? null,
-    });
+    const validatedEvent = await validateGeneralInformation(event);
 
     if (!validatedEvent.success) {
       const keyAndError = Object.entries(validatedEvent.error ?? {});

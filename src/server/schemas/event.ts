@@ -46,10 +46,14 @@ export const eventSchema = z.object({
   extraTicketData: z.boolean(),
   serviceFee: z.number().min(0).nullable(),
   emailNotification: z
-    .email({
-      error: 'El email no es válido',
-    })
-    .nullable(),
+    .union([
+      z.null(),
+      z.literal(''),
+      z.email({
+        error: 'El email no es válido',
+      }),
+    ])
+    .transform((v) => (v === '' ? null : v)),
   ticketSlugVisibleInPdf: z.boolean(),
   hasSimpleInvitation: z.boolean(),
 });
