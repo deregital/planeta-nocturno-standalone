@@ -324,6 +324,23 @@ export const ticketGroupRouter = router({
 
       return totalPrice;
     }),
+  getStatus: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        columns: { id: true, status: true },
+      });
+
+      if (!group) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'TicketGroup no encontrado',
+        });
+      }
+
+      return { status: group.status };
+    }),
   getTicketsForDownloadPage: publicProcedure
     .input(ticketGroupSchema.shape.id)
     .query(async ({ ctx, input }) => {

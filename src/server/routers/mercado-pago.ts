@@ -110,9 +110,10 @@ export const mercadoPagoRouter = router({
           auto_return: 'approved',
           back_urls: {
             success: `${process.env.INSTANCE_WEB_URL}/tickets/${group.id}`,
-            pending: `${process.env.INSTANCE_WEB_URL}/tickets/error`,
+            pending: `${process.env.INSTANCE_WEB_URL}/tickets/${group.id}`,
             failure: `${process.env.INSTANCE_WEB_URL}/tickets/error`,
           },
+          notification_url: `${process.env.INSTANCE_WEB_URL}/api/mercadopago`,
         },
       });
       return preference.init_point!;
