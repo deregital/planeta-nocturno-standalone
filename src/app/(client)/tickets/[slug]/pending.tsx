@@ -1,21 +1,34 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 import GoBack from '@/components/common/GoBack';
 import DotsLoader from '@/components/icons/DotsLoader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { trpc } from '@/server/trpc/client';
+
+const POLL_INTERVAL_MS = 3000;
 
 function deleteCookie(name: string) {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
 
 export default function TicketsPendingClient({
+  ticketGroupId,
   paymentUrl,
 }: {
+  ticketGroupId: string;
   paymentUrl?: string;
 }) {
+  const router = useRouter();
+
+  const { data } = trpc.ticketGroup.findById.useQuery(ticketGroupId, {
+    refetchInterval: paymentUrl ? false : POLL_INTERVAL_MS,
+    refetchIntervalInBackground: true,
+  });
+
   useEffect(() => {
     if (paymentUrl) {
       deleteCookie('pendingPaymentUrl');
@@ -23,7 +36,13 @@ export default function TicketsPendingClient({
     }
   }, [paymentUrl]);
 
-  if (paymentUrl)
+  useEffect(() => {
+    if (data && data.status !== 'BOOKED') {
+      router.refresh();
+    }
+  }, [data, router]);
+
+  if (paymentUrl) {
     return (
       <div className='flex justify-center items-center h-full'>
         <Card className='w-full max-w-md mx-auto text-center shadow-lg m-4'>
@@ -41,6 +60,7 @@ export default function TicketsPendingClient({
         </Card>
       </div>
     );
+  }
 
   return (
     <div className='flex justify-center items-center h-full'>
