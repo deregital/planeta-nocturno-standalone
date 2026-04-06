@@ -1,10 +1,10 @@
-import z from 'zod';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { and, eq } from 'drizzle-orm';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
+import z from 'zod';
 
-import { publicProcedure, router } from '@/server/trpc';
 import { eventXorganizer, ticketGroup } from '@/drizzle/schema';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
+import { publicProcedure, router } from '@/server/trpc';
 
 export const createPreferenceSchema = z.object({
   ticketGroupId: z.string(),
@@ -110,7 +110,7 @@ export const mercadoPagoRouter = router({
           auto_return: 'approved',
           back_urls: {
             success: `${process.env.INSTANCE_WEB_URL}/tickets/${group.id}`,
-            pending: `${process.env.INSTANCE_WEB_URL}/tickets/error`,
+            pending: `${process.env.INSTANCE_WEB_URL}/tickets/${group.id}`,
             failure: `${process.env.INSTANCE_WEB_URL}/tickets/error`,
           },
         },
