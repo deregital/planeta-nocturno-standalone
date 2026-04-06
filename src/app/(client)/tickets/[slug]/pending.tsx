@@ -6,8 +6,6 @@ import { useEffect } from 'react';
 import GoBack from '@/components/common/GoBack';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const RELOAD_INTERVAL_MS = 4000;
-
 function deleteCookie(name: string) {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
@@ -23,12 +21,6 @@ export default function TicketsPendingClient({
       window.location.href = paymentUrl;
       return;
     }
-
-    const timer = setInterval(
-      () => window.location.reload(),
-      RELOAD_INTERVAL_MS,
-    );
-    return () => clearInterval(timer);
   }, [paymentUrl]);
 
   if (paymentUrl) return null;
