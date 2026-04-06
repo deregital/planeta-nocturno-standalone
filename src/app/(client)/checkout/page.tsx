@@ -19,9 +19,5 @@ export default async function CheckoutPage() {
 
   const data = await trpc.ticketGroup.getById(ticketGroupId.value);
 
-  if (data.status === 'PAID') {
-    redirect(`/tickets/${data.id}`);
-  }
-
   return <CheckoutClient ticketGroup={data} lastPurchase={lastPurchase} />;
 }
