@@ -302,6 +302,7 @@ export const handlePurchase = async (
       }
 
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
+      (await cookies()).delete('carrito');
       (await cookies()).set('pendingPaymentUrl', mercadoPagoUrl);
 
       url = `/tickets/${ticketGroupId}` as Route;
