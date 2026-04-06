@@ -32,7 +32,9 @@ export default async function TicketsPage({ params }: PaymentPageProps) {
   if (!data) {
     const cookieStore = await cookies();
     const paymentUrl = cookieStore.get('pendingPaymentUrl')?.value;
-    return <TicketsPendingClient paymentUrl={paymentUrl} />;
+    return (
+      <TicketsPendingClient ticketGroupId={slug} paymentUrl={paymentUrl} />
+    );
   }
 
   return (
