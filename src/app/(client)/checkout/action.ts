@@ -21,6 +21,7 @@ export type PurchaseActionState = {
   ticketsInput: CreateManyTicket[];
   errors?: string[] | Record<string, string>;
   formData?: Record<string, string>;
+  redirectUrl?: string;
 };
 
 export const handlePurchase = async (
@@ -37,6 +38,7 @@ export const handlePurchase = async (
     formData.get('invitedBySimple')?.toString().trim() || '';
 
   let url: Route | undefined = undefined;
+  let externalRedirectUrl: string | undefined = undefined;
 
   if (!eventId) {
     return {
@@ -303,7 +305,7 @@ export const handlePurchase = async (
 
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
 
-      url = mercadoPagoUrl as Route;
+      externalRedirectUrl = mercadoPagoUrl;
     }
   } catch (error) {
     console.error(error);
@@ -315,6 +317,13 @@ export const handlePurchase = async (
   } finally {
     if (url) {
       redirect(url);
+    }
+
+    if (externalRedirectUrl) {
+      return {
+        ticketsInput: prevState.ticketsInput,
+        redirectUrl: externalRedirectUrl,
+      };
     }
 
     return {
