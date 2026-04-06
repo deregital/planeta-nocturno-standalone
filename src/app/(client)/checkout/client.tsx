@@ -41,12 +41,6 @@ export default function CheckoutClient({
     ticketsInput: [],
   });
 
-  useEffect(() => {
-    if (state.redirectUrl) {
-      window.location.href = state.redirectUrl;
-    }
-  }, [state.redirectUrl]);
-
   // Leer el código del organizador del ticketGroup si existe
   const organizerCodeFromTicketGroup = ticketGroup.organizerCode;
   const organizerIdFromTicketGroup = ticketGroup.organizerId;
