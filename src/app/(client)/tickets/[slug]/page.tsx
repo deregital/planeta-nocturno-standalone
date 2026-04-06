@@ -1,6 +1,7 @@
 'use server';
 import { TRPCError } from '@trpc/server';
 import { notFound, redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 import TicketsClient from '@/app/(client)/tickets/[slug]/client';
 import TicketsWaitingClient from '@/app/(client)/tickets/[slug]/waiting';
@@ -35,6 +36,8 @@ export default async function TicketsPage({ params }: PaymentPageProps) {
       }
       redirect('/tickets/error');
     });
+
+  (await cookies()).delete('carrito');
 
   return (
     <TicketsClient ticketGroupId={data.ticketGroupId} tickets={data.tickets} />
