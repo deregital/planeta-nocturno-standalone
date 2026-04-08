@@ -5,8 +5,8 @@ import { ShareIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DataTable } from '@/components/common/DataTable';
-import { type RouterOutputs } from '@/server/routers/app';
 import { Button } from '@/components/ui/button';
+import { type RouterOutputs } from '@/server/routers/app';
 import { INVITE_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 function columns({
@@ -29,16 +29,6 @@ function columns({
       },
     },
     {
-      id: 'code',
-      accessorKey: 'code',
-      header: 'Código',
-      accessorFn: (row) => row.code,
-      meta: {
-        exportValue: (row) => row.original.code,
-        exportHeader: 'Código',
-      },
-    },
-    {
       id: 'share',
       accessorFn: (row) => row.code,
       meta: {
@@ -55,8 +45,8 @@ function columns({
           toast.success('URL copiada al portapapeles');
         }
         return (
-          <Button variant='ghost' size='icon' onClick={copyToClipboard}>
-            <ShareIcon className='w-4 h-4' />
+          <Button variant='ghost' onClick={copyToClipboard}>
+            Copiar ticket <ShareIcon className='w-4 h-4' />
           </Button>
         );
       },
