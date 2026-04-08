@@ -363,11 +363,11 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
   },
   {
+    id: 'actions',
     accessorKey: 'actions',
     header: ({ column }) => {
       return <p className='text-sm p-2'></p>;
     },
-     
     cell: ({ row }) => {
       const [open, setOpen] = useState(false); // eslint-disable-line react-hooks/rules-of-hooks
       const [createOrganizerOpen, setCreateOrganizerOpen] = useState(false); // eslint-disable-line react-hooks/rules-of-hooks
