@@ -16,7 +16,7 @@ function HeaderTickets({
     return formatInTimeZone(
       date,
       'America/Argentina/Buenos_Aires',
-      "EEEE d 'de' MMMM yyyy - HH:mm 'hrs.'",
+      "EEEE d 'de' MMMM yyyy - 'apertura' HH:mm 'hs'",
       {
         locale: es,
       },

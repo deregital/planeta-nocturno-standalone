@@ -75,7 +75,7 @@ function TicketPurchase({
                     ) {
                       return (
                         <span className='text-accent-dark/60 text-xs font-normal'>
-                          {`(desde las ${format(new Date(original.startingDate), 'HH:mm')})`}
+                          {`(Inicio ${format(new Date(original.startingDate), 'HH:mm')} hs)`}
                         </span>
                       );
                     }
