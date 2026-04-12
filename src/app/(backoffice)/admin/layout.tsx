@@ -11,7 +11,11 @@ export default async function AdminLayout({
 
   if (!session) redirect('/login');
 
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'TICKETING')
+  if (
+    session.user.role !== 'ADMIN' &&
+    session.user.role !== 'TICKETING' &&
+    session.user.role !== 'CONTROL_TICKETING'
+  )
     redirect('/organization');
   return <div>{children}</div>;
 }

@@ -63,7 +63,7 @@ export function TicketingUserModal({
           <UserForm
             key={formKey}
             type='CREATE'
-            lockedRole='TICKETING'
+            allowedRoles={['TICKETING', 'CONTROL_TICKETING']}
             initialState={state.data ?? undefined}
             formAction={formAction}
             isPending={isPending}

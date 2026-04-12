@@ -83,7 +83,7 @@ export const userRouter = router({
   ),
   getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
     const users = await ctx.db.query.user.findMany({
-      where: eq(userTable.role, 'TICKETING'),
+      where: inArray(userTable.role, ['TICKETING', 'CONTROL_TICKETING']),
     });
     return users;
   }),
