@@ -47,6 +47,7 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
+  controlTicketingProcedure,
   publicProcedure,
   router,
   ticketingProcedure,
@@ -140,8 +141,10 @@ export const eventsRouter = router({
 
     return { pastEvents, upcomingEvents };
   }),
-  getAllForTicketing: ticketingProcedure.query(async ({ ctx }) => {
-    const isTicketing = ctx.session.user.role === 'TICKETING';
+  getAllForTicketing: controlTicketingProcedure.query(async ({ ctx }) => {
+    const isTicketing =
+      ctx.session.user.role === 'TICKETING' ||
+      ctx.session.user.role === 'CONTROL_TICKETING';
 
     const authorizedEventIds = isTicketing
       ? (
@@ -191,7 +194,7 @@ export const eventsRouter = router({
     });
     return events;
   }),
-  getAuthorized: publicProcedure
+  getAuthorized: ticketingProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
       const userFound = await ctx.db.query.user.findFirst({

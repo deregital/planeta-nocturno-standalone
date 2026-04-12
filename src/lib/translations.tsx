@@ -30,6 +30,7 @@ export const roleTranslation: Record<
 > = {
   ADMIN: 'Administrador',
   TICKETING: 'Acceso',
+  CONTROL_TICKETING: 'Control',
   ORGANIZER: 'Organizador',
   CHIEF_ORGANIZER: 'Jefe de Organizadores',
 };

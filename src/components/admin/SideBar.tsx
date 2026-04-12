@@ -66,7 +66,7 @@ export const navRoutes: {
     href: '/admin/ticketing',
     icon: <Ticket />,
     title: 'Escanear',
-    roles: ['ADMIN', 'TICKETING'],
+    roles: ['ADMIN', 'TICKETING', 'CONTROL_TICKETING'],
   },
   {
     href: '/profile',
