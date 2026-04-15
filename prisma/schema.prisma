@@ -206,7 +206,7 @@ model TicketType {
   visibleInWeb      Boolean            @default(true)
   lowStockThreshold Int?
 
-  startingDate DateTime @db.Timestamptz
+  startingDate DateTime  @db.Timestamptz
   scanLimit    DateTime? @db.Timestamptz
 
   organizers User[] @relation("TICKET_TYPE_X_ORGANIZERS")
@@ -361,6 +361,7 @@ enum Role {
   TICKETING
   ORGANIZER
   CHIEF_ORGANIZER
+  CONTROL_TICKETING
 }
 
 enum TicketGroupStatus {

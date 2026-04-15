@@ -75,10 +75,7 @@ export function EventGeneralInformation({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const validatedEvent = await validateGeneralInformation({
-      ...event,
-      emailNotification: event.emailNotification ?? null,
-    });
+    const validatedEvent = await validateGeneralInformation(event);
 
     if (!validatedEvent.success) {
       const keyAndError = Object.entries(validatedEvent.error ?? {});
@@ -641,10 +638,10 @@ export function EventGeneralInformation({
         </section>
         <section className='flex gap-2'>
           <h3 className='text-accent-dark text-lg font-semibold'>
-            Campo de invitación simple
+            Campo &quot;Invita&quot;
           </h3>
           <InputWithLabel
-            label='¿Invitación simple?'
+            label='¿Invita?'
             id='hasSimpleInvitation'
             disabled={action === 'PREVIEW'}
             type='checkbox'
@@ -659,7 +656,7 @@ export function EventGeneralInformation({
           />
           <p className='text-sm'>
             Al seleccionar esta opción, se mostrará un campo de texto para
-            ingresar al organizador/a que lo invitó al evento.
+            ingresar quien lo invitó al evento.
           </p>
         </section>
         {action === 'CREATE' && (

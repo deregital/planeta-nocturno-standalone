@@ -108,6 +108,7 @@ const levelsOfAccess: (typeof roleEnum.enumValues)[number][] = [
   'CHIEF_ORGANIZER',
   'ORGANIZER',
   'TICKETING',
+  'CONTROL_TICKETING',
 ];
 
 function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
@@ -141,6 +142,8 @@ export const chiefOrganizerProcedure = genericProcedure('CHIEF_ORGANIZER');
 export const organizerProcedure = genericProcedure('ORGANIZER');
 
 export const ticketingProcedure = genericProcedure('TICKETING');
+
+export const controlTicketingProcedure = genericProcedure('CONTROL_TICKETING');
 
 export const router = t.router;
 export const publicProcedure = t.procedure.use(({ next }) => {

@@ -152,7 +152,9 @@ export function TicketTableWithTabs({
             currentTicketType?.name.trim() ===
             ORGANIZER_TICKET_TYPE_NAME.trim();
           const copyButton =
-            currentTicketType?.slug && !isOrganizerTicket ? (
+            currentTicketType?.slug &&
+            !isOrganizerTicket &&
+            event.inviteCondition !== 'INVITATION' ? (
               <Button
                 variant='ghost'
                 className='w-fit'

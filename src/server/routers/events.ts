@@ -2,7 +2,7 @@ import { type Font } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
-import { isAfter, isBefore } from 'date-fns';
+import { isAfter, isBefore, startOfYesterday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   and,
@@ -10,6 +10,7 @@ import {
   desc,
   eq,
   gt,
+  gte,
   inArray,
   isNull,
   like,
@@ -46,6 +47,7 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
+  controlTicketingProcedure,
   publicProcedure,
   router,
   ticketingProcedure,
@@ -59,7 +61,11 @@ import {
   presentismoPDFSchemaGroupedTicketType,
 } from '@/server/utils/presentismo-pdf';
 import { generatePdf } from '@/server/utils/ticket-template';
-import { generateSlug, getDMSansFonts } from '@/server/utils/utils';
+import {
+  generateSlug,
+  getDMSansFonts,
+  nextAvailableSlugInFamily,
+} from '@/server/utils/utils';
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -135,8 +141,10 @@ export const eventsRouter = router({
 
     return { pastEvents, upcomingEvents };
   }),
-  getAllForTicketing: ticketingProcedure.query(async ({ ctx }) => {
-    const isTicketing = ctx.session.user.role === 'TICKETING';
+  getAllForTicketing: controlTicketingProcedure.query(async ({ ctx }) => {
+    const isTicketing =
+      ctx.session.user.role === 'TICKETING' ||
+      ctx.session.user.role === 'CONTROL_TICKETING';
 
     const authorizedEventIds = isTicketing
       ? (
@@ -153,6 +161,7 @@ export const eventsRouter = router({
         authorizedEventIds
           ? inArray(eventSchema.id, authorizedEventIds)
           : undefined,
+        gte(eventSchema.startingDate, startOfYesterday().toISOString()),
       ),
       columns: {
         id: true,
@@ -185,7 +194,7 @@ export const eventsRouter = router({
     });
     return events;
   }),
-  getAuthorized: publicProcedure
+  getAuthorized: ticketingProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
       const userFound = await ctx.db.query.user.findFirst({
@@ -620,18 +629,28 @@ export const eventsRouter = router({
             let ticketTypesCreated: TicketType[] = [];
 
             if (ticketTypes.length !== 0) {
+              const assignedTicketSlugs: string[] = [];
+
               ticketTypesCreated = await tx
                 .insert(ticketType)
                 .values(
                   ticketTypes.map((ticketType) => {
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
                     const { slug: _, organizers: __, ...rest } = ticketType;
+
+                    const baseSlug = generateSlug(ticketType.name);
+                    const ticketTypeSlug = nextAvailableSlugInFamily(
+                      baseSlug,
+                      assignedTicketSlugs,
+                    );
+                    assignedTicketSlugs.push(ticketTypeSlug);
+
                     return {
                       ...rest,
                       maxSellDate: ticketType.maxSellDate?.toISOString(),
                       startingDate: ticketType.startingDate?.toISOString(),
                       scanLimit: ticketType.scanLimit?.toISOString(),
-                      slug: ticketType.slug || generateSlug(ticketType.name),
+                      slug: ticketTypeSlug,
                       eventId: eventCreated.id,
                     };
                   }),
@@ -1574,10 +1593,37 @@ export const eventsRouter = router({
                 .where(eq(ticketType.id, organizerTicketType.id));
             }
 
+            const uniqueSlugsById: Map<string, string> = new Map();
+
+            for (const ticketType of ticketTypes) {
+              const slug = ticketType.slug ?? generateSlug(ticketType.name);
+              const baseSlug = generateSlug(ticketType.name);
+
+              const pool: string[] = [
+                ...uniqueSlugsById.values(),
+                ...ticketTypes
+                  .filter(
+                    (t) => t.id !== ticketType.id && !uniqueSlugsById.has(t.id),
+                  )
+                  .map((t) => t.slug ?? generateSlug(t.name)),
+              ];
+
+              if (pool.includes(slug)) {
+                uniqueSlugsById.set(
+                  ticketType.id,
+                  nextAvailableSlugInFamily(baseSlug, pool),
+                );
+              } else {
+                uniqueSlugsById.set(ticketType.id, slug);
+              }
+            }
+
             const ticketTypesUpdated = await Promise.all(
               ticketTypes.map(async (type) => {
                 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
                 const { id, organizers, ...rest } = type;
+                const ticketTypeSlug = uniqueSlugsById.get(type.id)!;
+
                 if (ticketTypesDB.find((t) => t.id === type.id)) {
                   const [updated] = await tx
                     .update(ticketType)
@@ -1586,7 +1632,7 @@ export const eventsRouter = router({
                       maxSellDate: type.maxSellDate?.toISOString(),
                       startingDate: type.startingDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
-                      slug: type.slug || generateSlug(type.name),
+                      slug: ticketTypeSlug,
                       eventId: eventUpdated.id,
                     })
                     .where(eq(ticketType.id, type.id))
@@ -1617,7 +1663,7 @@ export const eventsRouter = router({
                       maxSellDate: type.maxSellDate?.toISOString(),
                       startingDate: type.startingDate?.toISOString(),
                       scanLimit: type.scanLimit?.toISOString(),
-                      slug: type.slug || generateSlug(type.name),
+                      slug: ticketTypeSlug,
                       eventId: eventUpdated.id,
                     })
                     .returning();

@@ -69,7 +69,7 @@ export function EventInvitationTypeAction({
             }
           >
             <span className='flex flex-col items-center justify-between gap-4'>
-              Invitación simplificada
+              Simple
               <span className='text-sm'>
                 ¡Recomendado si es tu primera vez!
               </span>

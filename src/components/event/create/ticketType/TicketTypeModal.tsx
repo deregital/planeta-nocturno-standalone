@@ -308,7 +308,7 @@ export default function TicketTypeModal({
                 <InputDateWithLabel
                   id='startingDate'
                   name='startingDate'
-                  label='Fecha de inicio del ticket'
+                  label='Inicio de escaneo de tickets'
                   error={error.startingDate}
                   selected={editingTicketType.startingDate ?? undefined}
                   dateType='datetime-local'
@@ -331,7 +331,7 @@ export default function TicketTypeModal({
                 <InputWithLabel
                   id='startingDate'
                   name='startingDate'
-                  label='Fecha de inicio del ticket'
+                  label='Inicio de escaneo de tickets'
                   type='text'
                   error={error.startingDate}
                   value={

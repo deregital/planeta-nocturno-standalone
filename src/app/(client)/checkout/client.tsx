@@ -177,7 +177,7 @@ export default function CheckoutClient({
 
   const formattedDate = format(
     new Date(ticketGroup.event.startingDate),
-    "EEEE d 'de' MMMM 'de' yyyy - HH:mm 'hrs.'",
+    "EEEE d 'de' MMMM 'de' yyyy - 'Apertura' HH:mm 'hs'",
     { locale: es },
   );
 
@@ -520,7 +520,7 @@ export default function CheckoutClient({
           <InputWithLabel
             name={'invitedBySimple'}
             id={'invitedBySimple'}
-            label='Invita...'
+            label='Invita'
             type='text'
             placeholder='Ej. Juan Perez'
             error={

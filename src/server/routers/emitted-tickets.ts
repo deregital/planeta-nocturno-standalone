@@ -22,6 +22,7 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
+  controlTicketingProcedure,
   organizerProcedure,
   publicProcedure,
   router,
@@ -375,7 +376,7 @@ export const emittedTicketsRouter = router({
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
     }),
-  scan: ticketingProcedure
+  scan: controlTicketingProcedure
     .input(
       z.object({
         barcode: z.string(),

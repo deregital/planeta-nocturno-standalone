@@ -49,6 +49,20 @@ export function generateSlug(text: string): string {
     .replace(/[\s-]+/g, '-');
 }
 
+/** First free slug in the family `base`, `base-2`, `base-3`, … among occupied slugs. */
+export function nextAvailableSlugInFamily(
+  base: string,
+  occupied: Iterable<string>,
+): string {
+  const taken = new Set(occupied);
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) {
+    n += 1;
+  }
+  return `${base}-${n}`;
+}
+
 function getKeyFromSecret(secret: string): Buffer {
   // Convierte un string cualquiera en una clave de 32 bytes mediante hash SHA-256
   return createHash('sha256').update(secret).digest();
