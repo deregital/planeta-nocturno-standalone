@@ -1720,6 +1720,59 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
+  duplicate: adminProcedure
+    .input(eventSchemaZod.shape.id)
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+        columns: {
+          id: false,
+        },
+      });
+
+      if (!event) throw 'Evento no encontrado';
+
+      // Generacion de nuevo slug unico
+      const slug = generateSlug(event.name);
+      const existingEvent = await ctx.db.query.event.findMany({
+        where: like(eventSchema.slug, `${slug}%`),
+      });
+
+      const sameSlugAmount = existingEvent.filter((event) =>
+        event.slug.match(new RegExp(`^${slug}(-\\d+)?$`)),
+      ).length;
+      const finalSlug =
+        sameSlugAmount > 0 ? `${slug}-${sameSlugAmount + 1}` : slug;
+
+      console.log(finalSlug);
+
+      const newEvent = await ctx.db.transaction(async (tx) => {
+        try {
+          const [newEvent] = await tx
+            .insert(eventSchema)
+            .values({
+              ...event,
+              slug: finalSlug,
+              name: `${event.name} (copia)`,
+            })
+            .returning();
+
+          if (!newEvent) throw 'Error al duplicar evento';
+
+          return newEvent;
+        } catch (error) {
+          console.error(error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Error al duplicar evento',
+          });
+        }
+      });
+
+      revalidatePath(`/admin/event`);
+
+      return newEvent;
+    }),
   generatePresentismoOrderNamePDF: ticketingProcedure
     .input(
       z.object({
