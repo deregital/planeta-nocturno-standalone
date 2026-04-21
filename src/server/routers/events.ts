@@ -13,7 +13,6 @@ import {
   gte,
   inArray,
   isNull,
-  like,
   lt,
   not,
 } from 'drizzle-orm';
@@ -54,6 +53,10 @@ import {
 } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
+import {
+  getUniqueEventSlug,
+  getUniqueTicketTypeSlugsById,
+} from '@/server/utils/db/utils';
 import {
   type PDFDataGroupedTicketType,
   type PDFDataOrderName,
@@ -577,7 +580,7 @@ export const eventsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { event, ticketTypes, organizersInput, sendOrganizerTicketEmail } =
         input;
-      const slug = generateSlug(event.name);
+      const uniqueEventSlug = await getUniqueEventSlug(ctx.db, event.name);
 
       const organizers = await ctx.db.query.user.findMany({
         where: inArray(
@@ -585,17 +588,6 @@ export const eventsRouter = router({
           organizersInput.map((org) => org.id),
         ),
       });
-
-      const existingEvent = await ctx.db.query.event.findMany({
-        where: like(eventSchema.slug, `${slug}%`),
-      });
-
-      // same slug is slug or slug-1, slug-2, etc
-      const sameSlugAmount = existingEvent.filter((event) =>
-        event.slug.match(new RegExp(`^${slug}(-\\d+)?$`)),
-      ).length;
-      const sameSlug =
-        sameSlugAmount > 0 ? `${slug}-${sameSlugAmount + 1}` : slug;
 
       const eventData = {
         name: event.name,
@@ -605,7 +597,7 @@ export const eventsRouter = router({
         endingDate: event.endingDate.toISOString(),
         minAge: event.minAge,
         isActive: event.isActive,
-        slug: sameSlug,
+        slug: uniqueEventSlug,
         locationId: event.locationId,
         categoryId: event.categoryId,
         inviteCondition: event.inviteCondition,
@@ -1593,30 +1585,7 @@ export const eventsRouter = router({
                 .where(eq(ticketType.id, organizerTicketType.id));
             }
 
-            const uniqueSlugsById: Map<string, string> = new Map();
-
-            for (const ticketType of ticketTypes) {
-              const slug = ticketType.slug ?? generateSlug(ticketType.name);
-              const baseSlug = generateSlug(ticketType.name);
-
-              const pool: string[] = [
-                ...uniqueSlugsById.values(),
-                ...ticketTypes
-                  .filter(
-                    (t) => t.id !== ticketType.id && !uniqueSlugsById.has(t.id),
-                  )
-                  .map((t) => t.slug ?? generateSlug(t.name)),
-              ];
-
-              if (pool.includes(slug)) {
-                uniqueSlugsById.set(
-                  ticketType.id,
-                  nextAvailableSlugInFamily(baseSlug, pool),
-                );
-              } else {
-                uniqueSlugsById.set(ticketType.id, slug);
-              }
-            }
+            const uniqueSlugsById = getUniqueTicketTypeSlugsById(ticketTypes);
 
             const ticketTypesUpdated = await Promise.all(
               ticketTypes.map(async (type) => {
@@ -1719,6 +1688,63 @@ export const eventsRouter = router({
       revalidatePath('/admin/event');
 
       return { eventUpdated, ticketTypesUpdated };
+    }),
+  duplicate: adminProcedure
+    .input(eventSchemaZod.shape.id)
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+        columns: {
+          id: false,
+        },
+        with: {
+          ticketTypes: true,
+        },
+      });
+
+      if (!event) throw 'Evento no encontrado';
+
+      const eventSlug = await getUniqueEventSlug(ctx.db, event.name);
+
+      const newEvent = await ctx.db.transaction(async (tx) => {
+        try {
+          const [newEvent] = await tx
+            .insert(eventSchema)
+            .values({
+              ...event,
+              slug: eventSlug,
+              name: `${event.name} (copia)`,
+            })
+            .returning();
+
+          const uniqueTicketTypeSlugsById = getUniqueTicketTypeSlugsById(
+            event.ticketTypes,
+          );
+
+          const ticketTypesDuplicated = await Promise.all(
+            event.ticketTypes.map(async ({ id, ...type }) => {
+              const ticketTypeSlug = uniqueTicketTypeSlugsById.get(id)!;
+              return {
+                ...type,
+                slug: ticketTypeSlug,
+                eventId: newEvent.id,
+              };
+            }),
+          );
+
+          await tx.insert(ticketType).values(ticketTypesDuplicated);
+        } catch (error) {
+          console.error(error);
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Error al duplicar evento',
+          });
+        }
+      });
+
+      revalidatePath(`/admin/event`);
+
+      return newEvent;
     }),
   generatePresentismoOrderNamePDF: ticketingProcedure
     .input(

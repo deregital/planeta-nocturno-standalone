@@ -29,12 +29,9 @@ import {
   ticketingProcedure,
 } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
+import { getBuyersCodeByDni } from '@/server/utils/db/utils';
 import { generatePdf } from '@/server/utils/ticket-template';
-import {
-  decryptString,
-  generateSlug,
-  getBuyersCodeByDni,
-} from '@/server/utils/utils';
+import { decryptString, generateSlug } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
   create: ticketingProcedure

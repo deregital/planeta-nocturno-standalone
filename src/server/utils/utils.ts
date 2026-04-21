@@ -8,13 +8,8 @@ import fs from 'fs';
 import path from 'path';
 
 import fontkit from '@pdf-lib/fontkit';
-import { inArray, min, sql } from 'drizzle-orm';
 import { PDFDocument } from 'pdf-lib';
 import { type Fontkit } from 'pdf-lib/cjs/types/fontkit';
-
-import { type db as database } from '@/drizzle';
-
-import { emittedTicket } from '@/drizzle/schema';
 
 export async function getDMSansFonts(): Promise<{
   fontBold: Buffer<ArrayBufferLike>;
@@ -150,46 +145,4 @@ export function endOfDayUTC(date: Date): Date {
     ),
   );
   return utcDate;
-}
-
-export async function getBuyersCodeByDni(
-  db: typeof database,
-  dnis: string[],
-): Promise<{ dni: string; id: number }[] | null> {
-  if (dnis.length === 0) return null;
-
-  const firstPurchaseDate = min(emittedTicket.createdAt).as('firstPurchase');
-
-  // Primera CTE: agrupa por DNI y obtiene la primera fecha de compra
-  const buyersWithDateCte = db
-    .select({
-      dni: emittedTicket.dni,
-      firstPurchase: firstPurchaseDate,
-    })
-    .from(emittedTicket)
-    .groupBy(emittedTicket.dni)
-    .as('buyers_with_date');
-
-  // Segunda CTE: calcula el ID único para TODOS los compradores (ordenados por primera compra)
-  const allBuyersCte = db
-    .select({
-      dni: buyersWithDateCte.dni,
-      id: sql<number>`ROW_NUMBER() OVER (ORDER BY ${buyersWithDateCte.firstPurchase} ASC)`.as(
-        'id',
-      ),
-    })
-    .from(buyersWithDateCte)
-    .as('all_buyers');
-
-  // Filtramos por los DNIs solicitados, manteniendo los IDs únicos globales
-  const filteredBuyers = await db
-    .with(buyersWithDateCte, allBuyersCte)
-    .select({
-      dni: allBuyersCte.dni,
-      id: allBuyersCte.id,
-    })
-    .from(allBuyersCte)
-    .where(inArray(allBuyersCte.dni, dnis));
-
-  return filteredBuyers;
 }
