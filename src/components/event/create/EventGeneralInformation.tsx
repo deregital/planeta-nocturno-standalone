@@ -3,7 +3,8 @@
 import { addDays, format } from 'date-fns';
 import { toDate } from 'date-fns-tz';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import Resizer from 'react-image-file-resizer';
 import { toast } from 'sonner';
 
 import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
@@ -13,6 +14,7 @@ import EventCategoryModal from '@/components/category/EventCategoryModal';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
+import { EventCoverSquareCropDialog } from '@/components/event/create/EventCoverSquareCropDialog';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { TicketingUserModal } from '@/components/event/create/TicketingUserModal';
 import { UserBox } from '@/components/event/create/UserBox';
@@ -21,6 +23,41 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { generateS3Url } from '@/lib/utils-client';
 import { trpc } from '@/server/trpc/client';
+
+/** Lado máximo en px tras el recorte 1:1 (compresión previa a la subida). */
+const COVER_SQUARE_MAX_SIDE = 1200;
+
+function pickCoverResizeFormat(file: File): {
+  format: string;
+  quality: number;
+} {
+  if (file.type === 'image/png') return { format: 'png', quality: 100 };
+  if (file.type === 'image/webp') return { format: 'webp', quality: 92 };
+  return { format: 'jpeg', quality: 88 };
+}
+
+function prepareEventCoverFile(file: File): Promise<File> {
+  const { format, quality } = pickCoverResizeFormat(file);
+  return new Promise((resolve, reject) => {
+    try {
+      Resizer.imageFileResizer(
+        file,
+        COVER_SQUARE_MAX_SIDE,
+        COVER_SQUARE_MAX_SIDE,
+        format,
+        quality,
+        0,
+        (output) => {
+          if (output instanceof File) resolve(output);
+          else reject(new Error('Resize inválido'));
+        },
+        'file',
+      );
+    } catch (e) {
+      reject(e instanceof Error ? e : new Error('Resize falló'));
+    }
+  });
+}
 
 function isBeforeHoursAndMinutes(date1: Date, date2: Date) {
   return (
@@ -63,6 +100,29 @@ export function EventGeneralInformation({
   }>({});
   const [openTicketingUserModal, setOpenTicketingUserModal] = useState(false);
 
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropOriginalName, setCropOriginalName] = useState('portada.jpg');
+  const pendingUploadRef = useRef<((f: File) => void) | null>(null);
+
+  const handleCropDialogOpenChange = useCallback((open: boolean) => {
+    setCropOpen(open);
+    if (!open) {
+      setCropSrc((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    }
+  }, []);
+
+  const handleCoverCropped = useCallback(
+    (file: File) => {
+      pendingUploadRef.current?.(file);
+      handleCropDialogOpenChange(false);
+    },
+    [handleCropDialogOpenChange],
+  );
+
   const error = { ...errorMessages, ...(externalErrors ?? {}) };
 
   function handleChange<T extends keyof typeof event>(
@@ -103,13 +163,22 @@ export function EventGeneralInformation({
   return (
     <>
       {action !== 'PREVIEW' && (
-        <TicketingUserModal
-          open={openTicketingUserModal}
-          onOpenChange={setOpenTicketingUserModal}
-          onSuccess={() => {
-            utils.user.getTicketingUsers.invalidate();
-          }}
-        />
+        <>
+          <EventCoverSquareCropDialog
+            open={cropOpen}
+            onOpenChange={handleCropDialogOpenChange}
+            imageSrc={cropSrc}
+            originalFileName={cropOriginalName}
+            onConfirm={handleCoverCropped}
+          />
+          <TicketingUserModal
+            open={openTicketingUserModal}
+            onOpenChange={setOpenTicketingUserModal}
+            onSuccess={() => {
+              utils.user.getTicketingUsers.invalidate();
+            }}
+          />
+        </>
       )}
       <form
         className='flex flex-col gap-4 justify-center [&>section]:flex [&>section]:flex-col [&>section]:gap-2 [&>section]:p-2 [&>section]:border-2 [&>section]:border-accent [&>section]:bg-accent-ultra-light [&>section]:rounded-md [&>section]:w-full w-full'
@@ -119,23 +188,42 @@ export function EventGeneralInformation({
         event.coverImageUrl === '' ? (
           <ImageUploader
             error={error.coverImageUrl}
+            prepareInteractive={(file, upload) => {
+              pendingUploadRef.current = upload;
+              setCropOriginalName(file.name || 'portada.jpg');
+              setCropSrc((prev) => {
+                if (prev) URL.revokeObjectURL(prev);
+                return URL.createObjectURL(file);
+              });
+              setCropOpen(true);
+            }}
+            prepareFile={prepareEventCoverFile}
+            description={{
+              maxFiles: undefined,
+              fileTypes: 'JPG, JPEG, PNG',
+              extra:
+                'La portada es cuadrada: al elegir la imagen podés recortarla y ajustar el zoom.',
+            }}
             onUploadComplete={(objectKey) => {
               handleChange('coverImageUrl', generateS3Url(objectKey));
             }}
           />
         ) : (
           (action === 'CREATE' || action === 'EDIT') && (
-            <div className='flex flex-col gap-2 w-fit mx-auto'>
-              <Image
-                width={1000}
-                height={1000}
-                quality={100}
-                src={event.coverImageUrl}
-                className='max-h-64 aspect-auto rounded-md w-fit max-w-full'
-                alt='Event cover'
-              />
+            <div className='flex flex-col gap-2 items-center w-full mx-auto'>
+              <div className='relative aspect-square w-full max-w-40 overflow-hidden rounded-md bg-muted/40'>
+                <Image
+                  fill
+                  quality={100}
+                  src={event.coverImageUrl}
+                  className='object-cover'
+                  sizes='160px'
+                  alt='Portada del evento'
+                />
+              </div>
               <Button
-                variant='outline'
+                variant='ghost'
+                className='w-fit mx-auto'
                 onClick={() => handleChange('coverImageUrl', '')}
               >
                 Cambiar imagen
@@ -182,14 +270,16 @@ export function EventGeneralInformation({
             />
           </div>
           {action === 'PREVIEW' && (
-            <Image
-              width={1000}
-              height={1000}
-              quality={100}
-              src={event.coverImageUrl}
-              className='max-h-48 aspect-auto rounded-md w-fit max-w-full'
-              alt='Event cover'
-            />
+            <div className='relative aspect-square w-full max-w-48 shrink-0 overflow-hidden rounded-md bg-muted/40 md:w-48 md:max-w-none'>
+              <Image
+                fill
+                quality={100}
+                src={event.coverImageUrl}
+                className='object-cover'
+                sizes='192px'
+                alt='Portada del evento'
+              />
+            </div>
           )}
         </section>
         <section>
