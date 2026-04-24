@@ -51,9 +51,26 @@ type EventActions = {
   ) => void;
   addOrganizerTicketType: () => void;
   updateOrganizerTicketType: () => void;
+  reorderTicketTypes: (activeId: string, overId: string) => void;
 };
 
 export type CreateEventStore = EventState & EventActions;
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
+  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+    return items;
+  }
+
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+
+  if (!moved) {
+    return items;
+  }
+
+  next.splice(toIndex, 0, moved);
+  return next;
+}
 
 const initialState: EventState = {
   event: {
@@ -366,6 +383,16 @@ export const createEventStore = (initState: EventState = initialState) => {
             state.ticketTypes,
             maxAvailable,
           ),
+        };
+      });
+    },
+    reorderTicketTypes: (activeId, overId) => {
+      set((state) => {
+        const fromIndex = state.ticketTypes.findIndex((t) => t.id === activeId);
+        const toIndex = state.ticketTypes.findIndex((t) => t.id === overId);
+
+        return {
+          ticketTypes: moveItem(state.ticketTypes, fromIndex, toIndex),
         };
       });
     },
