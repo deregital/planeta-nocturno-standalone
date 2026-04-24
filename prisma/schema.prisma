@@ -209,6 +209,8 @@ model TicketType {
   startingDate DateTime  @db.Timestamptz
   scanLimit    DateTime? @db.Timestamptz
 
+  sortOrder Int @default(0)
+
   organizers User[] @relation("TICKET_TYPE_X_ORGANIZERS")
 
   slug String @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
@@ -223,6 +225,8 @@ model TicketType {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@unique([eventId, slug])
+  @@unique([eventId, sortOrder])
+  @@index([eventId, sortOrder])
   @@map("ticketType")
 }
 
