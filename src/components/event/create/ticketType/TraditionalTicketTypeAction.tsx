@@ -19,6 +19,9 @@ export function TraditionalTicketTypeAction({
   const event = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers);
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const reorderTicketTypes = useCreateEventStore(
+    (state) => state.reorderTicketTypes,
+  );
 
   const { data: location } = trpc.location.getById.useQuery(event.locationId, {
     enabled: !!event.locationId,
@@ -64,6 +67,7 @@ export function TraditionalTicketTypeAction({
         action='EDIT'
         ticketTypes={ticketTypes}
         maxAvailableLeft={maxAvailableLeft}
+        onReorder={reorderTicketTypes}
       />
       {next && (
         <Button onClick={handleNext} variant={'accent'} className='w-full mt-8'>

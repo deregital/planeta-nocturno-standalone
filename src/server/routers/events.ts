@@ -15,6 +15,7 @@ import {
   isNull,
   lt,
   not,
+  sql,
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import * as XLSX from 'xlsx';
@@ -326,7 +327,9 @@ export const eventsRouter = router({
             name: true,
             price: true,
             slug: true,
+            sortOrder: true,
           },
+          orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
           with: {
             ticketTypeXOrganizers: true,
           },
@@ -372,7 +375,7 @@ export const eventsRouter = router({
           },
         },
         ticketTypes: {
-          orderBy: [asc(ticketType.name)],
+          orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
           with: {
             ticketTypeXOrganizers: true,
           },
@@ -626,7 +629,7 @@ export const eventsRouter = router({
               ticketTypesCreated = await tx
                 .insert(ticketType)
                 .values(
-                  ticketTypes.map((ticketType) => {
+                  ticketTypes.map((ticketType, index) => {
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
                     const { slug: _, organizers: __, ...rest } = ticketType;
 
@@ -642,6 +645,7 @@ export const eventsRouter = router({
                       maxSellDate: ticketType.maxSellDate?.toISOString(),
                       startingDate: ticketType.startingDate?.toISOString(),
                       scanLimit: ticketType.scanLimit?.toISOString(),
+                      sortOrder: index + 1,
                       slug: ticketTypeSlug,
                       eventId: eventCreated.id,
                     };
@@ -1129,6 +1133,9 @@ export const eventsRouter = router({
                     slug: generateSlug(ORGANIZER_TICKET_TYPE_NAME),
                     eventId: eventUpdated.id,
                     startingDate: eventUpdated.startingDate,
+                    sortOrder:
+                      Math.max(...ticketTypesDB.map((tt) => tt.sortOrder), 0) +
+                      1,
                   })
                   .returning();
 
@@ -1586,71 +1593,107 @@ export const eventsRouter = router({
             }
 
             const uniqueSlugsById = getUniqueTicketTypeSlugsById(ticketTypes);
+            const temporarySortBase =
+              (ticketTypes.length + ticketTypesDB.length + 5) * 1000;
 
-            const ticketTypesUpdated = await Promise.all(
-              ticketTypes.map(async (type) => {
-                // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-                const { id, organizers, ...rest } = type;
-                const ticketTypeSlug = uniqueSlugsById.get(type.id)!;
+            // Avoid transient unique collisions while creating/reordering.
+            await tx
+              .update(ticketType)
+              .set({
+                sortOrder: sql`${ticketType.sortOrder} + ${temporarySortBase}`,
+              })
+              .where(eq(ticketType.eventId, eventUpdated.id));
 
-                if (ticketTypesDB.find((t) => t.id === type.id)) {
-                  const [updated] = await tx
-                    .update(ticketType)
-                    .set({
-                      ...rest,
-                      maxSellDate: type.maxSellDate?.toISOString(),
-                      startingDate: type.startingDate?.toISOString(),
-                      scanLimit: type.scanLimit?.toISOString(),
-                      slug: ticketTypeSlug,
-                      eventId: eventUpdated.id,
-                    })
-                    .where(eq(ticketType.id, type.id))
-                    .returning();
+            const ticketTypesUpdated: TicketType[] = [];
 
-                  // Actualizar organizadores específicos del ticketType
-                  // Primero eliminar los existentes
-                  await tx
-                    .delete(ticketTypeXOrganizers)
-                    .where(eq(ticketTypeXOrganizers.a, type.id));
+            for (const [index, type] of ticketTypes.entries()) {
+              // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
+              const { id, organizers, ...rest } = type;
+              const ticketTypeSlug = uniqueSlugsById.get(type.id)!;
+              const temporarySortOrder = -(temporarySortBase + index + 1);
+              const existsInDb = ticketTypesDB.some((t) => t.id === type.id);
 
-                  // Luego insertar los nuevos
-                  if (organizers && organizers.length > 0) {
-                    await tx.insert(ticketTypeXOrganizers).values(
-                      organizers.map((organizerId) => ({
-                        a: type.id,
-                        b: organizerId,
-                      })),
-                    );
-                  }
+              if (existsInDb) {
+                const [updated] = await tx
+                  .update(ticketType)
+                  .set({
+                    ...rest,
+                    maxSellDate: type.maxSellDate?.toISOString(),
+                    startingDate: type.startingDate?.toISOString(),
+                    scanLimit: type.scanLimit?.toISOString(),
+                    sortOrder: temporarySortOrder,
+                    slug: ticketTypeSlug,
+                    eventId: eventUpdated.id,
+                  })
+                  .where(eq(ticketType.id, type.id))
+                  .returning();
 
-                  return updated;
-                } else if (type.id) {
-                  const [created] = await tx
-                    .insert(ticketType)
-                    .values({
-                      ...rest,
-                      maxSellDate: type.maxSellDate?.toISOString(),
-                      startingDate: type.startingDate?.toISOString(),
-                      scanLimit: type.scanLimit?.toISOString(),
-                      slug: ticketTypeSlug,
-                      eventId: eventUpdated.id,
-                    })
-                    .returning();
+                // Actualizar organizadores específicos del ticketType
+                // Primero eliminar los existentes
+                await tx
+                  .delete(ticketTypeXOrganizers)
+                  .where(eq(ticketTypeXOrganizers.a, type.id));
 
-                  // Insertar organizadores específicos para el nuevo ticketType
-                  if (organizers && organizers.length > 0 && created) {
-                    await tx.insert(ticketTypeXOrganizers).values(
-                      organizers.map((organizerId) => ({
-                        a: created.id,
-                        b: organizerId,
-                      })),
-                    );
-                  }
-
-                  return created;
+                // Luego insertar los nuevos
+                if (organizers && organizers.length > 0) {
+                  await tx.insert(ticketTypeXOrganizers).values(
+                    organizers.map((organizerId) => ({
+                      a: type.id,
+                      b: organizerId,
+                    })),
+                  );
                 }
-              }),
-            );
+
+                if (updated) ticketTypesUpdated.push(updated);
+                continue;
+              }
+
+              const [created] = await tx
+                .insert(ticketType)
+                .values({
+                  ...rest,
+                  maxSellDate: type.maxSellDate?.toISOString(),
+                  startingDate: type.startingDate?.toISOString(),
+                  scanLimit: type.scanLimit?.toISOString(),
+                  sortOrder: temporarySortOrder,
+                  slug: ticketTypeSlug,
+                  eventId: eventUpdated.id,
+                })
+                .returning();
+
+              // Insertar organizadores específicos para el nuevo ticketType
+              if (organizers && organizers.length > 0 && created) {
+                await tx.insert(ticketTypeXOrganizers).values(
+                  organizers.map((organizerId) => ({
+                    a: created.id,
+                    b: organizerId,
+                  })),
+                );
+              }
+
+              if (created) ticketTypesUpdated.push(created);
+            }
+
+            // Normalize to 1..N and include edge-cases not present in payload.
+            const allEventTicketTypes = await tx.query.ticketType.findMany({
+              where: eq(ticketType.eventId, eventUpdated.id),
+            });
+            const updatedIds = new Set(ticketTypesUpdated.map((tt) => tt.id));
+            const remainingIds = allEventTicketTypes
+              .filter((tt) => !updatedIds.has(tt.id))
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((tt) => tt.id);
+            const finalIdsInOrder = [
+              ...ticketTypesUpdated.map((tt) => tt.id),
+              ...remainingIds,
+            ];
+
+            for (const [index, ticketTypeId] of finalIdsInOrder.entries()) {
+              await tx
+                .update(ticketType)
+                .set({ sortOrder: index + 1 })
+                .where(eq(ticketType.id, ticketTypeId));
+            }
 
             await tx
               .delete(eventXUser)
@@ -1667,6 +1710,7 @@ export const eventsRouter = router({
 
             return { eventUpdated, ticketTypesUpdated };
           } catch (error) {
+            console.log(error);
             // Drizzle hace rollback automáticamente cuando se lanza un error
             // Si el error es un TRPCError, lo propagamos tal cual para mantener el mensaje
             if (error instanceof TRPCError) {
