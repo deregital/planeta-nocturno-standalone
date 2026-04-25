@@ -19,7 +19,6 @@ import {
 } from '@/drizzle/schema';
 import { eventSchema } from '@/server/schemas/event';
 import { organizerBaseSchema } from '@/server/schemas/organizer';
-import { calculateTotalPrice } from '@/server/services/ticketGroup';
 import {
   chiefOrganizerProcedure,
   organizerProcedure,
@@ -228,17 +227,10 @@ export const organizerRouter = router({
 
       // Calculate traditional stats
       let ticketsSoldTraditional = 0;
-      let moneyGenerated = 0;
+      let totalGenerated = 0;
       let attendanceCountTraditional = 0;
       for (const tg of ticketGroups) {
-        const totalPrice = await calculateTotalPrice({
-          ticketGroupId: tg.id,
-          discountPercentage:
-            tg.event.eventXorganizers.find(
-              (eo) => eo.organizerId === organizerId,
-            )?.discountPercentage ?? null,
-        });
-        moneyGenerated += totalPrice;
+        totalGenerated += Number(tg.totalAmount);
         ticketsSoldTraditional += tg.amountTickets;
         attendanceCountTraditional += tg.emittedTickets.filter(
           (et) => et.scanned,
@@ -258,7 +250,7 @@ export const organizerRouter = router({
         statistics: {
           ticketsSold,
           attendancePercentage,
-          moneyGenerated: Math.round(moneyGenerated * 100) / 100,
+          totalGenerated: Math.round(totalGenerated * 100) / 100,
         },
       };
     }),

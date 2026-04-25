@@ -10,6 +10,7 @@ import {
   index,
   serial,
   boolean,
+  numeric,
   doublePrecision,
   primaryKey,
   pgEnum,
@@ -249,6 +250,7 @@ export const ticketGroup = pgTable(
     invitedById: uuid(),
     isOrganizerGroup: boolean().default(false).notNull(),
     invitedBySimple: text(),
+    totalAmount: numeric({ precision: 14, scale: 2 }).default('0').notNull(),
   },
   (table) => [
     foreignKey({
@@ -290,7 +292,7 @@ export const ticketType = pgTable(
       .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),
     startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-    sortOrder: integer().notNull(),
+    sortOrder: integer().default(0).notNull(),
   },
   (table) => [
     uniqueIndex('ticketType_eventId_slug_key').using(

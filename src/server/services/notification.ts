@@ -5,7 +5,6 @@ import { db } from '@/drizzle';
 import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 import { formatCurrency } from '@/lib/utils';
 import { sendMailWithoutAttachments } from '@/server/services/mail';
-import { calculateTotalPrice } from '@/server/services/ticketGroup';
 import { retryWithBackoff } from '@/server/utils/retry';
 
 export async function sendNotificationService({
@@ -45,12 +44,6 @@ export async function sendNotificationService({
       );
   }
 
-  const totalPrice = await calculateTotalPrice({
-    ticketGroupId,
-    discountPercentage:
-      ticketGroup?.event.eventXorganizers[0]?.discountPercentage ?? null,
-  });
-
   const ticketTypeText = ticketGroup?.ticketTypePerGroups
     .map(
       (ticketType) =>
@@ -58,7 +51,7 @@ export async function sendNotificationService({
     )
     .join(', ');
 
-  const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de ${formatCurrency(totalPrice)}. Para más información, ingresá a la plataforma.`;
+  const bodyText = `Se han vendido tickets para ${eventName}. ${ticketTypeText}. El monto total recaudado es de ${formatCurrency(Number(ticketGroup?.totalAmount ?? 0))}. Para más información, ingresá a la plataforma.`;
 
   const result = await retryWithBackoff(
     async () =>

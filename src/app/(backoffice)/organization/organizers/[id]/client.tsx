@@ -201,8 +201,8 @@ export default function Client({ organizerId }: { organizerId: string }) {
                 <div className='space-y-1'>
                   <p className='text-muted-foreground'>Dinero Generado</p>
                   <p className='text-2xl font-bold'>
-                    {stats.statistics.moneyGenerated
-                      ? formatCurrency(stats.statistics.moneyGenerated)
+                    {stats.statistics.totalGenerated
+                      ? formatCurrency(stats.statistics.totalGenerated)
                       : '$0'}
                   </p>
                 </div>
