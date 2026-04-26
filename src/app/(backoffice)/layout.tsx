@@ -1,9 +1,10 @@
-import { redirect } from 'next/navigation';
 import { SessionProvider } from 'next-auth/react';
+import { redirect } from 'next/navigation';
 
 import SideBar from '@/components/admin/SideBar';
 import TopBar from '@/components/admin/TopBar';
 import { auth } from '@/server/auth';
+import { hasMercadoPagoCredentials } from '@/server/services/mercadoPagoCredentials';
 
 export default async function AdminLayout({
   children,
@@ -13,6 +14,9 @@ export default async function AdminLayout({
   const session = await auth();
 
   if (!session) redirect('/login');
+  const hasCredentials = await hasMercadoPagoCredentials();
+  if (!hasCredentials && session.user.role === 'ADMIN')
+    redirect('/credentials');
 
   return (
     <SessionProvider>
