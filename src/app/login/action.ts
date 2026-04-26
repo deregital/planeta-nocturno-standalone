@@ -1,10 +1,13 @@
 'use server';
 
+import { type Route } from 'next';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { auth, signIn } from '@/server/auth';
 import { userSchema } from '@/server/schemas/user';
+import { hasMercadoPagoCredentials } from '@/server/services/mercadoPagoCredentials';
+import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
 const loginSchema = userSchema.pick({ name: true, password: true });
 type LoginActionState = {
@@ -56,14 +59,11 @@ export async function authenticate(
 
   const session = await auth();
   const role = session?.user?.role;
+  const hasCredentials = await hasMercadoPagoCredentials();
 
-  if (role === 'TICKETING') {
-    redirect('/admin/event');
-  } else if (role === 'CONTROL_TICKETING') {
-    redirect('/admin/ticketing');
-  } else if (role === 'ORGANIZER' || role === 'CHIEF_ORGANIZER') {
-    redirect('/organization');
-  } else {
-    redirect('/admin');
+  if (!hasCredentials) {
+    redirect('/credentials');
   }
+
+  redirect(getDefaultPathByRole(role) as Route);
 }
