@@ -78,22 +78,26 @@ export function TicketTableWithTabs({
     });
   }, [ticketTypes]);
 
-  const ticketsByType = useMemo(() => {
-    if (!filteredTickets) return {};
-    return sortedTicketTypes?.reduce(
-      (acc, type) => {
-        const ticketsByType = filteredTickets.filter(
-          (ticket) => ticket.ticketType.id === type.id,
-        );
-        acc[type.name] = [...ticketsByType];
-        return acc;
-      },
-      {} as Record<string, typeof filteredTickets>,
-    );
+  const tabItems = useMemo(() => {
+    if (!filteredTickets) return [];
+    return sortedTicketTypes.map((type) => {
+      const ticketsByType = filteredTickets.filter(
+        (ticket) => ticket.ticketType.id === type.id,
+      );
+      const tabValue = type.slug || type.id;
+
+      return {
+        tabValue,
+        id: type.id,
+        name: type.name,
+        slug: type.slug,
+        tickets: [...ticketsByType],
+      };
+    });
   }, [filteredTickets, sortedTicketTypes]);
 
   const initialTab = useMemo(
-    () => sortedTicketTypes[0]?.name || '',
+    () => sortedTicketTypes[0]?.slug || sortedTicketTypes[0]?.id || '',
     [sortedTicketTypes],
   );
 
@@ -101,9 +105,9 @@ export function TicketTableWithTabs({
 
   // Ensure tab is always valid - use the current tab if it exists, otherwise use the first tab
   const currentTab = useMemo(() => {
-    const availableTabs = Object.keys(ticketsByType);
+    const availableTabs = tabItems.map((item) => item.tabValue);
     return availableTabs.includes(tab) ? tab : availableTabs[0] || '';
-  }, [tab, ticketsByType]);
+  }, [tab, tabItems]);
 
   const copyTicketTypeUrl = (ticketTypeSlug: string) => {
     const origin =
@@ -129,34 +133,34 @@ export function TicketTableWithTabs({
         value={currentTab}
       >
         <TabsList className='flex-1 w-full md:max-w-[98%] max-w-[98%] mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
-          {Object.keys(ticketsByType).map((type) => (
+          {tabItems.map((item) => (
             <TabsTrigger
               className='md:min-w-2xs max-w-xs px-4'
-              key={type}
-              value={type}
+              key={item.tabValue}
+              value={item.tabValue}
             >
-              <span className='truncate' title={type}>
+              <span className='truncate' title={item.name}>
                 <span className='md:hidden'>
-                  {type.length > 16 ? `${type.slice(0, 16)}…` : type}
+                  {item.name.length > 16
+                    ? `${item.name.slice(0, 16)}…`
+                    : item.name}
                 </span>
-                <span className='hidden md:inline'>{type}</span>
+                <span className='hidden md:inline'>{item.name}</span>
               </span>
             </TabsTrigger>
           ))}
         </TabsList>
-        {Object.keys(ticketsByType).map((type) => {
-          const currentTicketType = sortedTicketTypes.find(
-            (tt) => tt.name === type,
-          );
+        {tabItems.map((item) => {
           const isOrganizerTicket =
-            currentTicketType?.name.trim() ===
-            ORGANIZER_TICKET_TYPE_NAME.trim();
+            item.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim();
           const copyButton =
-            currentTicketType?.slug && !isOrganizerTicket ? (
+            item.slug &&
+            !isOrganizerTicket &&
+            event.inviteCondition !== 'INVITATION' ? (
               <Button
                 variant='ghost'
                 className='w-fit'
-                onClick={() => copyTicketTypeUrl(currentTicketType.slug)}
+                onClick={() => copyTicketTypeUrl(item.slug)}
               >
                 <Link className='w-4 h-4 mr-2' />
                 Copiar tipo de ticket
@@ -164,10 +168,10 @@ export function TicketTableWithTabs({
             ) : null;
 
           return (
-            <TabsContent key={type} value={type}>
+            <TabsContent key={item.tabValue} value={item.tabValue}>
               {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
                 <TicketTableSection
-                  tickets={ticketsByType[type]}
+                  tickets={item.tickets}
                   role={session.data?.user.role}
                   headerActions={copyButton}
                   event={{
@@ -177,7 +181,7 @@ export function TicketTableWithTabs({
                 />
               ) : (
                 <TicketTableSection
-                  tickets={ticketsByType[type]}
+                  tickets={item.tickets}
                   role={session.data?.user.role as Role}
                   headerActions={copyButton}
                   event={event}

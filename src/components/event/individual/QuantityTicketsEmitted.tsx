@@ -17,6 +17,9 @@ export function QuantityTicketsEmitted({
   maxAvailable?: number;
 }) {
   const scannedTickets = tickets.filter((ticket) => ticket.scannedAt !== null);
+  const scannedOrganizerTickets = organizerTickets?.filter(
+    (ticket) => ticket.scannedAt !== null,
+  );
 
   const emittedPercentage =
     maxAvailable && maxAvailable > 0
@@ -25,6 +28,11 @@ export function QuantityTicketsEmitted({
 
   const scannedPercentage =
     tickets.length > 0 ? (scannedTickets.length / tickets.length) * 100 : 0;
+
+  const scannedOrganizerPercentage =
+    organizerTickets && organizerTickets.length > 0
+      ? ((scannedOrganizerTickets?.length ?? 0) / organizerTickets.length) * 100
+      : 0;
 
   return (
     <div className='flex mx-4 flex-col justify-center sm:gap-4 sm:flex-row '>
@@ -60,8 +68,9 @@ export function QuantityTicketsEmitted({
           <div className='flex flex-row gap-x-2 items-center'>
             <ScanHeart />
             <p className='flex items-center gap-x-0.5'>
-              Organizadores escaneados: {scannedTickets.length} de{' '}
-              {tickets.length} ({scannedPercentage.toFixed(2)}%)
+              Organizadores escaneados: {scannedOrganizerTickets?.length ?? 0}{' '}
+              de {organizerTickets.length} (
+              {scannedOrganizerPercentage.toFixed(2)}%)
             </p>
           </div>
         </>

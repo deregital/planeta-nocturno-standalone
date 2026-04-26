@@ -49,6 +49,7 @@ export function UserForm({
   isPending,
   type,
   lockedRole,
+  allowedRoles,
   onSubmit,
 }: {
   type: 'CREATE' | 'EDIT';
@@ -58,14 +59,27 @@ export function UserForm({
   formAction: (formData: FormData) => void;
   isPending: boolean;
   lockedRole?: (typeof role.enumValues)[number];
+  allowedRoles?: (typeof role.enumValues)[number][];
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
 }) {
+  const resolveInitialRole = (): (typeof role.enumValues)[number] => {
+    if (lockedRole) return lockedRole;
+    const fromInitial = initialState?.role;
+    if (allowedRoles?.length) {
+      if (fromInitial && allowedRoles.includes(fromInitial)) {
+        return fromInitial;
+      }
+      return allowedRoles[0];
+    }
+    return fromInitial ?? defaultState.role;
+  };
+
   const [internalState, setInternalState] = useState<UserData>({
     ...defaultState,
     ...initialState,
     password:
       type === 'EDIT' ? '' : ((initialState as UserData)?.password ?? ''),
-    role: lockedRole ?? initialState?.role ?? defaultState.role,
+    role: resolveInitialRole(),
   });
 
   function handleChange<K extends keyof UserData>(key: K, value: UserData[K]) {
@@ -134,6 +148,22 @@ export function UserForm({
             Rol asignado: {roleTranslation[lockedRole]}
           </p>
         </>
+      ) : allowedRoles && allowedRoles.length > 0 ? (
+        <SelectWithLabel
+          label='Rol'
+          required
+          id='role'
+          value={internalState?.role}
+          className='w-full'
+          values={allowedRoles.map((roleValue) => ({
+            label: roleTranslation[roleValue],
+            value: roleValue,
+          }))}
+          error={errors?.role}
+          onValueChange={(value) => {
+            handleChange('role', value as (typeof role.enumValues)[number]);
+          }}
+        />
       ) : (
         <SelectWithLabel
           label='Rol'
