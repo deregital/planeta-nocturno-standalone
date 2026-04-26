@@ -31,7 +31,7 @@ export function QuantityTicketsEmitted({
 
   const scannedOrganizerPercentage =
     organizerTickets && organizerTickets.length > 0
-      ? (scannedOrganizerTickets?.length ?? 0 / organizerTickets.length) * 100
+      ? ((scannedOrganizerTickets?.length ?? 0) / organizerTickets.length) * 100
       : 0;
 
   return (
