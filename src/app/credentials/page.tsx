@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
 import { type Route } from 'next';
+import { redirect } from 'next/navigation';
 
 import { saveCredentials } from '@/app/credentials/action';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ const errorMessages: Record<string, string> = {
   'missing-access-token': 'Debes completar MP_ACCESS_TOKEN.',
   'missing-secret-key': 'Debes completar MP_SECRET_KEY.',
   'save-failed': 'No se pudieron guardar las credenciales. Intenta nuevamente.',
+  'missing-env-variable':
+    'Faltan variables de entorno en la configuración. Por favor contacta al administrador.',
 };
 
 export default async function CredentialsPage({

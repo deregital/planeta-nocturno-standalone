@@ -9,9 +9,6 @@ import { z } from 'zod';
 import { auth } from '@/server/auth';
 import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
-const CREDENTIALS_API_URL =
-  process.env.CREDENTIALS_VALIDATOR_URL ?? 'https://.../api/credentials'; // remove on prod
-
 const saveCredentialsSchema = z.object({
   accessToken: z.string().min(1, 'El access token es obligatorio'),
   secretKey: z.string().min(1, 'La secret key es obligatoria'),
@@ -50,7 +47,11 @@ export async function saveCredentials(formData: FormData) {
   }
 
   try {
-    const url = new URL(CREDENTIALS_API_URL);
+    if (!process.env.PLUTO_URL) {
+      redirect('/credentials?error=missing-env-variable' as Route);
+    }
+
+    const url = new URL(process.env.PLUTO_URL);
 
     const timestamp = Date.now().toString();
     const rawBody = JSON.stringify({
