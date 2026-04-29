@@ -1,5 +1,6 @@
 import { SessionProvider } from 'next-auth/react';
 import { redirect } from 'next/navigation';
+import { type Route } from 'next';
 
 import SideBar from '@/components/admin/SideBar';
 import TopBar from '@/components/admin/TopBar';
@@ -16,7 +17,7 @@ export default async function AdminLayout({
   if (!session) redirect('/login');
   const hasCredentials = await hasMercadoPagoCredentials();
   if (!hasCredentials && session.user.role === 'ADMIN')
-    redirect('/credentials');
+    redirect('/credentials' as Route);
 
   return (
     <SessionProvider>

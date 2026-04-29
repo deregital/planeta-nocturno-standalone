@@ -62,7 +62,7 @@ export async function authenticate(
   const hasCredentials = await hasMercadoPagoCredentials();
 
   if (!hasCredentials) {
-    redirect('/credentials');
+    redirect('/credentials' as Route);
   }
 
   redirect(getDefaultPathByRole(role) as Route);

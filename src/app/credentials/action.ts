@@ -28,11 +28,11 @@ function signPayload(timestamp: string, rawBody: string) {
 export async function saveCredentials(formData: FormData) {
   const session = await auth();
   if (!session) {
-    redirect('/login');
+    redirect('/login' as Route);
   }
 
   if (!process.env.INSTANCE_WEB_URL) {
-    redirect('/credentials?error=missing-instance-url');
+    redirect('/credentials?error=missing-instance-url' as Route);
   }
   const instanceWebUrl = new URL(`https://${process.env.INSTANCE_WEB_URL}`);
 
@@ -44,9 +44,9 @@ export async function saveCredentials(formData: FormData) {
   if (!parsed.success) {
     const field = z.treeifyError(parsed.error).properties;
     if (field?.accessToken?.errors[0]) {
-      redirect('/credentials?error=missing-access-token');
+      redirect('/credentials?error=missing-access-token' as Route);
     }
-    redirect('/credentials?error=missing-secret-key');
+    redirect('/credentials?error=missing-secret-key' as Route);
   }
 
   try {
@@ -73,10 +73,10 @@ export async function saveCredentials(formData: FormData) {
     });
 
     if (!response.ok) {
-      redirect('/credentials?error=save-failed');
+      redirect('/credentials?error=save-failed' as Route);
     }
   } catch {
-    redirect('/credentials?error=save-failed');
+    redirect('/credentials?error=save-failed' as Route);
   }
 
   redirect(
