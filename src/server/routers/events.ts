@@ -307,6 +307,7 @@ export const eventsRouter = router({
           },
         },
       },
+      orderBy: asc(eventSchema.startingDate),
     });
   }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
