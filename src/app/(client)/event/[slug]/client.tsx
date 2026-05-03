@@ -42,7 +42,7 @@ export default function Client({
           </div>
 
           <div className='mt-6 flex flex-col md:grid md:grid-cols-16 border-stroke overflow-hidden'>
-            <div className='px-4 md:px-6 pb-4 md:col-span-12 overflow-hidden'>
+            <div className='order-2 md:order-0 px-4 md:px-6 pb-4 md:col-span-12 overflow-hidden'>
               <TicketPurchase
                 eventId={event.id}
                 ticketTypes={event.ticketTypes}
@@ -50,7 +50,7 @@ export default function Client({
                 eventStartingDate={event.startingDate}
               />
             </div>
-            <div className='px-4 md:col-span-4 flex flex-col justify-start items-center overflow-hidden'>
+            <div className='order-1 md:order-0 px-3 sm:px-4 md:px-4 md:col-span-4 flex flex-col justify-start items-stretch md:items-center overflow-hidden'>
               <InformationEvent description={event.description} />
             </div>
           </div>
