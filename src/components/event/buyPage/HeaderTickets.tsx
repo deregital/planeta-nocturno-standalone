@@ -33,7 +33,7 @@ function HeaderTickets({
   return (
     <div className='grid relative grid-cols-1 md:grid-cols-12 w-full h-full overflow-hidden'>
       {/* Lado izquierdo - Nombre del evento y fecha */}
-      <div className='col-span-1 md:col-span-5 px-4 py-2 md:px-4 md:py-3 lg:px-6 lg:py-4 flex flex-col justify-center overflow-hidden relative border-b border-stroke md:border-b-0'>
+      <div className='col-span-1 md:col-span-7 px-4 py-2 md:px-4 md:py-3 lg:px-6 lg:py-4 flex flex-col justify-center overflow-hidden relative border-b border-stroke md:border-b-0'>
         {/* Fondo solo visible en móvil (menos que md) */}
         <div className='absolute right-0 bg-cover aspect-square bg-center h-full hidden min-[400px]:block md:hidden'>
           <Image
@@ -55,17 +55,17 @@ function HeaderTickets({
       </div>
 
       {/* Lado derecho - Ubicación */}
-      <div className='col-span-1 flex-1 md:col-span-6 px-4 py-2 md:px-4 md:py-3 lg:px-6 lg:py-4 flex items-center justify-start md:border-l border-stroke overflow-hidden'>
-        <div className='flex items-start min-w-0'>
-          <div className='flex items-center justify-center mr-2'>
+      <div className='col-span-1 flex-1 md:col-span-4 px-4 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 flex items-center justify-start md:border-l border-stroke overflow-hidden md:min-w-0'>
+        <div className='flex items-start min-w-0 gap-1.5 md:gap-1.5'>
+          <div className='flex items-center justify-center shrink-0'>
             <MapPin
-              className='text-black flex-shrink-0 h-5 w-5 sm:h-6 sm:w-6 md:h-5 md:w-5 lg:h-6 lg:w-6'
+              className='text-black flex-shrink-0 h-5 w-5 sm:h-6 sm:w-6 md:h-4 md:w-4 lg:h-5 lg:w-5'
               strokeWidth={1.5}
             />
           </div>
-          <div className='text-sm lg:text-base h-full min-w-0'>
+          <div className='text-sm md:text-xs lg:text-sm h-full min-w-0'>
             <p
-              className='font-semibold text-black line-clamp-3'
+              className='font-semibold text-black line-clamp-3 md:line-clamp-2'
               title={event.location.address}
             >
               {event.location.address}

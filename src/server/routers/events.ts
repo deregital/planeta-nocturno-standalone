@@ -1758,6 +1758,7 @@ export const eventsRouter = router({
               ...event,
               slug: eventSlug,
               name: `${event.name} (copia)`,
+              isActive: false,
             })
             .returning();
 
