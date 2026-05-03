@@ -10,8 +10,8 @@ import { auth } from '@/server/auth';
 import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
 const saveCredentialsSchema = z.object({
-  accessToken: z.string().min(1, 'El access token es obligatorio'),
-  secretKey: z.string().min(1, 'La secret key es obligatoria'),
+  accessToken: z.string().min(1, 'Completá el token de acceso'),
+  secretKey: z.string().min(1, 'Completá la clave secreta'),
 });
 
 function signPayload(timestamp: string, rawBody: string) {
@@ -51,7 +51,7 @@ export async function saveCredentials(formData: FormData) {
       redirect('/credentials?error=missing-env-variable' as Route);
     }
 
-    const url = new URL(process.env.PLUTO_URL);
+    const url = new URL(`${process.env.PLUTO_URL}/api/credentials`);
 
     const timestamp = Date.now().toString();
     const rawBody = JSON.stringify({

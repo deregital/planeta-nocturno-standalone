@@ -24,12 +24,13 @@ export default async function CredentialsWaitPage({
   return (
     <main className='mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-6 py-10'>
       <section className='rounded-xl border border-stroke/50 bg-white p-6 shadow-sm sm:p-8'>
-        <h1 className='text-2xl font-semibold text-main'>
-          Aplicando configuracion de Mercado Pago
+        <h1 className='text-2xl font-semibold tracking-tight text-main'>
+          Terminando de conectar Mercado Pago
         </h1>
-        <p className='mt-3 text-sm text-main/80'>
-          Estamos esperando que termine el redeploy del servidor. Esta pagina se
-          actualiza automaticamente.
+        <p className='mt-2 text-sm leading-relaxed text-main/80'>
+          Al aplicarse la configuración, esta pantalla se actualizará
+          automáticamente y te llevará al inicio. Esto suele tardar unos
+          minutos.
         </p>
         <CredentialsRedeployStatus nextPath={nextPath} />
       </section>
