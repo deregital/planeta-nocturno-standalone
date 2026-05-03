@@ -2,9 +2,6 @@ import { createHmac } from 'crypto';
 
 import { NextResponse } from 'next/server';
 
-const CREDENTIALS_STATUS_URL =
-  process.env.CREDENTIALS_STATUS_URL ?? 'https://.../api/credentials/status'; // remove on prod
-
 function signPayload(timestamp: string, rawBody: string) {
   const signingSecret = process.env.CREDENTIALS_SIGNING_SECRET?.trim();
   if (!signingSecret) return null;
@@ -22,12 +19,22 @@ export async function GET() {
   }
   const instanceWebUrl = new URL(`https://${process.env.INSTANCE_WEB_URL}`);
 
+  if (!process.env.PLUTO_URL) {
+    return NextResponse.json(
+      { success: false, message: 'Missing PLUTO_URL environment variable' },
+      { status: 500 },
+    );
+  }
+  const credentialsStatusUrl = new URL(
+    `${process.env.PLUTO_URL}/api/credentials/status`,
+  );
+
   try {
     const timestamp = Date.now().toString();
     const rawBody = JSON.stringify({ projectUrl: instanceWebUrl });
     const signature = signPayload(timestamp, rawBody);
 
-    const response = await fetch(CREDENTIALS_STATUS_URL, {
+    const response = await fetch(credentialsStatusUrl, {
       method: 'POST',
       cache: 'no-store',
       headers: {
