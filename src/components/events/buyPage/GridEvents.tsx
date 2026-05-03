@@ -57,7 +57,7 @@ function GridEvents() {
     <div className='max-w-full py-4 sm:py-8 mb-20'>
       <div className='grid grid-cols-2 md:grid-cols-3 place-content-center lg:grid-cols-3 xl:grid-cols-4 gap-6'>
         {filteredEvents?.map((event) => (
-          <div key={event.id} className='justify-self-center'>
+          <div key={event.id} className='flex h-full justify-center'>
             <EventCardContainer event={event} />
           </div>
         ))}

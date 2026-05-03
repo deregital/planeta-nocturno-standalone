@@ -30,7 +30,11 @@ function EventCardContainer({ event }: EventCardContainerProps) {
     />
   );
 
-  return <Link href={`/event/${event.slug}`}>{cardEvent}</Link>;
+  return (
+    <Link href={`/event/${event.slug}`} className='h-full w-full'>
+      {cardEvent}
+    </Link>
+  );
 }
 
 export default EventCardContainer;
