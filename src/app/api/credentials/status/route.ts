@@ -46,7 +46,8 @@ export async function GET() {
         'cache-control': 'no-store',
       },
     });
-  } catch {
+  } catch (error) {
+    console.error(error);
     return NextResponse.json(
       { success: false, message: 'Unable to fetch redeploy status' },
       { status: 502 },
