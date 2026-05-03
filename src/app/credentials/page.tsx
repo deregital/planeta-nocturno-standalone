@@ -16,10 +16,14 @@ type CredentialsPageProps = {
 const errorMessages: Record<string, string> = {
   'missing-instance-url':
     'Ocurrió un error en el servidor. Por favor contacta al administrador. (ERROR: missing-instance-url)',
+  'invalid-access-token':
+    'El Access Token no tiene un formato válido. Asegurate de copiarlo correctamente.',
+  'invalid-secret-key':
+    'La Clave Secreta no tiene un formato válido. Asegurate de copiarla correctamente.',
   'missing-access-token':
-    'Falta el Access Token. Copialo desde Mercado Pago y pegalo en el campo correspondiente.',
+    'No completaste el Access Token. Copialo desde Mercado Pago y pegalo en el campo correspondiente.',
   'missing-secret-key':
-    'Falta la Clave Secreta. Copiala desde Mercado Pago y pegala en el campo correspondiente.',
+    'No completaste la Clave Secreta. Copiala desde Mercado Pago y pegala en el campo correspondiente.',
   'save-failed':
     'No pudimos guardar los datos. Revisá que estén bien copiados e intentá de nuevo.',
   'missing-env-variable':

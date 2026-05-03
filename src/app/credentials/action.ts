@@ -4,15 +4,12 @@ import { createHmac } from 'crypto';
 
 import { type Route } from 'next';
 import { redirect } from 'next/navigation';
-import { z } from 'zod';
 
 import { auth } from '@/server/auth';
 import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
-const saveCredentialsSchema = z.object({
-  accessToken: z.string().min(1, 'Completá el token de acceso'),
-  secretKey: z.string().min(1, 'Completá la clave secreta'),
-});
+const MP_ACCESS_TOKEN_RE = /^APP_USR-\d+-\d+-[A-Za-z0-9]+-\d+$/;
+const MP_SECRET_KEY_RE = /^[a-fA-F0-9]{64}$/;
 
 function signPayload(timestamp: string, rawBody: string) {
   const signingSecret = process.env.CREDENTIALS_SIGNING_SECRET?.trim();
@@ -33,17 +30,20 @@ export async function saveCredentials(formData: FormData) {
   }
   const instanceWebUrl = new URL(`https://${process.env.INSTANCE_WEB_URL}`);
 
-  const parsed = saveCredentialsSchema.safeParse({
-    accessToken: formData.get('accessToken'),
-    secretKey: formData.get('secretKey'),
-  });
+  const accessToken = String(formData.get('accessToken') ?? '').trim();
+  const secretKey = String(formData.get('secretKey') ?? '').trim();
 
-  if (!parsed.success) {
-    const field = z.treeifyError(parsed.error).properties;
-    if (field?.accessToken?.errors[0]) {
-      redirect('/credentials?error=missing-access-token' as Route);
-    }
+  if (!accessToken) {
+    redirect('/credentials?error=missing-access-token' as Route);
+  }
+  if (!secretKey) {
     redirect('/credentials?error=missing-secret-key' as Route);
+  }
+  if (!MP_ACCESS_TOKEN_RE.test(accessToken)) {
+    redirect('/credentials?error=invalid-access-token' as Route);
+  }
+  if (!MP_SECRET_KEY_RE.test(secretKey)) {
+    redirect('/credentials?error=invalid-secret-key' as Route);
   }
 
   try {
@@ -56,8 +56,8 @@ export async function saveCredentials(formData: FormData) {
     const timestamp = Date.now().toString();
     const rawBody = JSON.stringify({
       projectUrl: instanceWebUrl,
-      mpAccessToken: parsed.data.accessToken,
-      mpSecretKey: parsed.data.secretKey,
+      mpAccessToken: accessToken,
+      mpSecretKey: secretKey,
       redeploy: true,
     });
     const signature = signPayload(timestamp, rawBody);

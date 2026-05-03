@@ -104,7 +104,7 @@ export default function CredentialsRedeployStatus({
           );
         } else {
           setMessage(
-            'No hace falta que hagas nada: esta pantalla se actualiza sola cuando termine.',
+            'Al finalizar el proceso, esta pantalla se actualizará automáticamente y te llevará al inicio.',
           );
         }
       } catch {
