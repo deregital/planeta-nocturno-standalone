@@ -87,6 +87,7 @@ export default async function EventPage({
       {event.inviteCondition === 'TRADITIONAL' && (
         <div className='w-full text-center'>
           <CopyUrl
+            eventName={event.name}
             url={`${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}${ticketParam}`}
           />
         </div>
