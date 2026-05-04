@@ -1,11 +1,11 @@
 'use client';
+import { isWithinInterval } from 'date-fns';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
-import { isWithinInterval } from 'date-fns';
 
-import { trpc } from '@/server/trpc/client';
 import EventCardContainer from '@/components/events/buyPage/EventCardContainer';
 import { dateRanges } from '@/components/events/buyPage/EventFilter';
+import { trpc } from '@/server/trpc/client';
 
 function GridEvents() {
   const { data, isLoading } = trpc.events.getActive.useQuery();
@@ -54,10 +54,13 @@ function GridEvents() {
   }
 
   return (
-    <div className='max-w-full py-4 sm:py-8 mb-20'>
-      <div className='grid grid-cols-2 md:grid-cols-3 place-content-center lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+    <div className='max-w-full p-4 sm:px-8 sm:py-8 md:px-12 mb-20 '>
+      <div className='grid w-full max-w-6xl grid-cols-2 lg:grid-cols-4 mx-auto gap-6 place-content-start items-stretch justify-items-stretch'>
         {filteredEvents?.map((event) => (
-          <div key={event.id} className='flex h-full justify-center'>
+          <div
+            key={event.id}
+            className='flex h-full w-full min-h-0 justify-center'
+          >
             <EventCardContainer event={event} />
           </div>
         ))}
