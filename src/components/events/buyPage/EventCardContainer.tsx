@@ -31,7 +31,10 @@ function EventCardContainer({ event }: EventCardContainerProps) {
   );
 
   return (
-    <Link href={`/event/${event.slug}`} className='h-full w-full'>
+    <Link
+      href={`/event/${event.slug}`}
+      className='flex h-full min-h-0 w-full flex-col max-w-52 sm:max-w-64'
+    >
       {cardEvent}
     </Link>
   );

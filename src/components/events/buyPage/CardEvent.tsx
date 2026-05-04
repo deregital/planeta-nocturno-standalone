@@ -24,24 +24,24 @@ function CardEvent({
 }: CardEventProps) {
   return (
     <div
-      className={`bg-white rounded-3xl overflow-hidden drop-shadow-md flex h-full w-full flex-col ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:shadow-xl hover:cursor-pointer'} transition-shadow duration-300`}
+      className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl bg-white drop-shadow-md ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:cursor-pointer hover:shadow-xl'} transition-shadow duration-300`}
     >
       <div
-        className={`relative h-28 w-full shrink-0 sm:h-44 ${disabled ? 'bg-gray-300' : 'bg-accent/10'}`}
+        className={`relative h-32 w-full shrink-0 sm:h-48 ${disabled ? 'bg-gray-300' : 'bg-accent/10'}`}
       >
         <Image src={imageUrl} alt={title} fill className='object-cover' />
       </div>
-      <div className='flex min-h-0 flex-1 flex-col px-2 py-2 font-sans sm:px-4 sm:py-8'>
-        <h3 className='text-sm font-light text-accent-dark sm:text-lg mb-2 sm:mb-5'>
+      <div className='flex min-h-0 flex-1 flex-col justify-between gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-5'>
+        <h3 className='line-clamp-3 font-light leading-snug text-accent-dark'>
           {title}
         </h3>
-        <div className='mt-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex items-center gap-2 text-accent'>
             <div className='flex items-center gap-1'>
               <span className='hidden sm:inline text-xs text-gray-600'>
                 {dayOfWeek}
               </span>
-              <span className='text-3xl sm:text-2xl font-bold'>{date}</span>
+              <span className='text-xl sm:text-xl font-bold'>{date}</span>
               <div className='flex flex-col'>
                 <span className='text-xs'>{month}</span>
                 <span className='text-xs'>{year}</span>
@@ -51,7 +51,7 @@ function CardEvent({
           </div>
           <div className='flex items-center gap-2 text-accent'>
             <div className='flex items-center gap-1'>
-              <span className='text-3xl sm:text-2xl font-bold'>
+              <span className='text-xl sm:text-2xl font-bold'>
                 {time.split(':')[0]}{' '}
               </span>
               <div className='flex flex-col'>
