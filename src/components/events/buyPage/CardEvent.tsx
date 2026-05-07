@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import { Calendar, Clock } from 'lucide-react';
+import Image from 'next/image';
 
 interface CardEventProps {
   title: string;
@@ -24,44 +24,44 @@ function CardEvent({
 }: CardEventProps) {
   return (
     <div
-      className={`bg-white rounded-3xl overflow-hidden drop-shadow-md ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:shadow-[0_0_15px_8px_rgba(0,0,0,0.1)] hover:cursor-pointer'} transition-all duration-300 w-[150px] sm:w-[240px]`}
+      className={`flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl bg-white drop-shadow-md ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:cursor-pointer hover:shadow-xl'} transition-shadow duration-300`}
     >
       <div
-        className={`relative h-[120px] sm:h-[180px] w-full ${disabled ? 'bg-gray-300' : 'bg-accent/10'}`}
+        className={`relative h-32 w-full shrink-0 sm:h-48 ${disabled ? 'bg-gray-300' : 'bg-accent/10'}`}
       >
         <Image src={imageUrl} alt={title} fill className='object-cover' />
       </div>
-      <div className='px-2 sm:px-4 py-2 sm:py-8 font-sans'>
-        <h3 className='text-[14px] sm:text-[18px] font-light text-accent-dark mb-2 sm:mb-5'>
+      <div className='flex min-h-0 flex-1 flex-col justify-between gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-5'>
+        <h3 className='line-clamp-3 font-light leading-snug text-accent-dark'>
           {title}
         </h3>
-        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex items-center gap-2 text-accent'>
             <div className='flex items-center gap-1'>
               <span className='hidden sm:inline text-xs text-gray-600'>
                 {dayOfWeek}
               </span>
-              <span className='text-3xl sm:text-2xl font-bold'>{date}</span>
+              <span className='text-xl sm:text-xl font-bold'>{date}</span>
               <div className='flex flex-col'>
-                <span className='text-[10px]'>{month}</span>
-                <span className='text-[10px]'>{year}</span>
+                <span className='text-xs'>{month}</span>
+                <span className='text-xs'>{year}</span>
               </div>
             </div>
-            <Calendar size={16} />
+            <Calendar className='size-4 shrink-0' aria-hidden />
           </div>
           <div className='flex items-center gap-2 text-accent'>
             <div className='flex items-center gap-1'>
-              <span className='text-3xl sm:text-2xl font-bold'>
+              <span className='text-xl sm:text-2xl font-bold'>
                 {time.split(':')[0]}{' '}
               </span>
               <div className='flex flex-col'>
-                <span className='text-[10px]'>
+                <span className='text-xs'>
                   {time.includes(':') ? time.split(':')[1] : '00'}
                 </span>
-                <span className='text-[10px]'>hs</span>
+                <span className='text-xs'>hs</span>
               </div>
             </div>
-            <Clock size={16} />
+            <Clock className='size-4 shrink-0' aria-hidden />
           </div>
         </div>
       </div>

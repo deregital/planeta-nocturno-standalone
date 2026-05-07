@@ -15,6 +15,7 @@ type UploadDropzoneProps = {
         fileTypes?: string;
         maxFileSize?: string;
         maxFiles?: number;
+        extra?: string;
       }
     | string;
   className?: string;
@@ -95,7 +96,7 @@ export function UploadDropzone({
                   `${description.maxFiles !== 1 ? 'Cada archivo' : 'El archivo'} debe pesar menos de ${description.maxFileSize}.`}{' '}
                 {description?.fileTypes &&
                   `Se aceptan archivos de tipo ${description.fileTypes}.`}{' '}
-                La imagen debe ser cuadrada (relación 1:1).
+                {description?.extra}
               </>
             )}
           </p>

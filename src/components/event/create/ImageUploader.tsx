@@ -7,9 +7,27 @@ import { cn } from '@/lib/utils';
 export function ImageUploader({
   onUploadComplete,
   error,
+  prepareFile,
+  prepareInteractive,
+  description: descriptionProp,
 }: {
   onUploadComplete: (objectKey: string) => void;
   error: string | null;
+  /** Procesa el archivo antes de subirlo (p. ej. compresión tras un recorte). */
+  prepareFile?: (file: File) => Promise<File>;
+  /**
+   * Recibe el archivo elegido y una función `upload`; llamala cuando tengas el
+   * archivo final (p. ej. tras un recorte en un modal).
+   */
+  prepareInteractive?: (file: File, upload: (file: File) => void) => void;
+  description?:
+    | {
+        fileTypes?: string;
+        maxFileSize?: string;
+        maxFiles?: number;
+        extra?: string;
+      }
+    | string;
 }) {
   const [localError, setLocalError] = useState<string | null>(null);
   const { control } = useUploadFiles({
@@ -19,7 +37,6 @@ export function ImageUploader({
     },
   });
 
-  // Override del upload para validar relacion de aspecto de la imagen
   async function handleUploadOverride(
     ...args: Parameters<typeof control.upload>
   ) {
@@ -32,25 +49,42 @@ export function ImageUploader({
     if (!file) return;
 
     try {
-      const bitmap = await createImageBitmap(file);
-      if (bitmap.width !== bitmap.height) {
-        setLocalError('La imagen debe ser cuadrada (relación 1:1).');
-      } else {
-        setLocalError(null);
-        control.upload(input, options);
+      if (prepareInteractive) {
+        prepareInteractive(file, (toUpload) => {
+          void (async () => {
+            try {
+              const finalFile = prepareFile
+                ? await prepareFile(toUpload)
+                : toUpload;
+              setLocalError(null);
+              control.upload([finalFile], options);
+            } catch {
+              setLocalError(
+                'No se pudo procesar la imagen. Intentalo nuevamente.',
+              );
+            }
+          })();
+        });
+        return;
       }
+
+      const toUpload = prepareFile ? await prepareFile(file) : file;
+      setLocalError(null);
+      control.upload([toUpload], options);
     } catch {
-      setLocalError('No se pudo leer la imagen. Intentalo nuevamente.');
+      setLocalError('No se pudo procesar la imagen. Intentalo nuevamente.');
     }
   }
 
   return (
     <div>
       <UploadDropzone
-        description={{
-          maxFiles: 1,
-          fileTypes: 'JPG, JPEG, PNG',
-        }}
+        description={
+          descriptionProp ?? {
+            maxFiles: 1,
+            fileTypes: 'JPG, JPEG, PNG',
+          }
+        }
         control={control}
         accept='image/*'
         uploadOverride={handleUploadOverride}

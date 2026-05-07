@@ -19,6 +19,7 @@ import FormInputMail from '@/components/checkout/FormInputMail';
 import OrganizerCodeOTP from '@/components/checkout/OrganizerCodeOTP';
 import { TicketGroupTable } from '@/components/checkout/TicketGroupTable';
 import GoBack from '@/components/common/GoBack';
+import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import { Button } from '@/components/ui/button';
@@ -333,11 +334,11 @@ export default function CheckoutClient({
                       }
                       onChange={() => {}}
                     />
-                    <InputWithLabel
+                    <InputDateWithLabel
                       name={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
                       id={`birthDate_${ticket.ticketType.id}-${indexAmount}`}
                       label='Fecha de nacimiento'
-                      type='date'
+                      dateType='date'
                       required
                       max={format(new Date(), 'yyyy-MM-dd')}
                       suppressHydrationWarning
@@ -468,11 +469,11 @@ export default function CheckoutClient({
               value={phoneNumbers[`phoneNumber_all-tickets`] ?? ''}
               onChange={() => {}}
             />
-            <InputWithLabel
+            <InputDateWithLabel
               name={`birthDate_all-tickets`}
               id={`birthDate_all-tickets`}
               label='Fecha de nacimiento'
-              type='date'
+              dateType='date'
               required
               max={format(new Date(), 'yyyy-MM-dd')}
               suppressHydrationWarning
