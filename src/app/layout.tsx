@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { DM_Sans } from 'next/font/google';
 
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { TRPCReactProvider } from '@/server/trpc/client';
 
 const dmSans = DM_Sans({
@@ -33,7 +34,7 @@ export default function RootLayout({
     <TRPCReactProvider>
       <html lang='es' className='notranslate' translate='no'>
         <body className={`${dmSans.className} antialiased`}>
-          {children}
+          <TooltipProvider>{children}</TooltipProvider>
           <Toaster />
           <Analytics />
         </body>

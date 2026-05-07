@@ -95,6 +95,14 @@ export const mercadoPagoRouter = router({
         discountPercentage,
       });
 
+      // Actualizar el totalAmount del ticketGroup
+      await ctx.db
+        .update(ticketGroup)
+        .set({
+          totalAmount: totalPrice.toFixed(2),
+        })
+        .where(eq(ticketGroup.id, input.ticketGroupId));
+
       const preference = await new Preference(mercadoPago).create({
         body: {
           items: [
