@@ -17,14 +17,11 @@ function columns({
   return [
     {
       id: 'id',
-      accessorKey: 'id',
+      accessorKey: 'shortId',
       header: 'ID',
-      cell: ({ row, table }) =>
-        (table
-          .getSortedRowModel()
-          ?.flatRows?.findIndex((flatRow) => flatRow.id === row.id) || 0) + 1,
+      cell: ({ row }) => row.original.shortId,
       meta: {
-        exportValue: ({ index }) => (index + 1).toString(),
+        exportValue: (row) => String(row.original.shortId),
         exportHeader: 'ID',
       },
     },
