@@ -556,6 +556,7 @@ export const ticketXorganizer = pgTable(
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    shortId: integer().notNull(),
   },
   (table) => [
     index('ticketXOrganizer_code_idx').using(
@@ -565,6 +566,11 @@ export const ticketXorganizer = pgTable(
     uniqueIndex('ticketXOrganizer_code_key').using(
       'btree',
       table.code.asc().nullsLast().op('text_ops'),
+    ),
+    uniqueIndex('ticketXOrganizer_eventId_shortId_key').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('int4_ops'),
+      table.shortId.asc().nullsLast().op('int4_ops'),
     ),
     index('ticketXOrganizer_organizerId_idx').using(
       'btree',

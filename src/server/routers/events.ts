@@ -65,6 +65,7 @@ import {
   presentismoPDFSchemaGroupedTicketType,
 } from '@/server/utils/presentismo-pdf';
 import { generatePdf } from '@/server/utils/ticket-template';
+import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
 import {
   generateSlug,
   getDMSansFonts,
@@ -823,14 +824,23 @@ export const eventsRouter = router({
                     })
                     .returning();
 
+                  const shortIds = await allocateTicketXOrganizerShortIds(
+                    tx,
+                    eventCreated.id,
+                    organizer.ticketAmount,
+                  );
+
                   // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles
                   await tx.insert(ticketXorganizer).values(
-                    Array.from({ length: organizer.ticketAmount }).map(() => ({
-                      eventId: eventCreated.id,
-                      organizerId: organizer.id,
-                      ticketGroupId: thisOrganizerTicketGroup.id,
-                      // ticketId será null hasta que se use el código
-                    })),
+                    Array.from({ length: organizer.ticketAmount }).map(
+                      (_, i) => ({
+                        eventId: eventCreated.id,
+                        organizerId: organizer.id,
+                        ticketGroupId: thisOrganizerTicketGroup.id,
+                        shortId: shortIds[i]!,
+                        // ticketId será null hasta que se use el código
+                      }),
+                    ),
                   );
                 }
               }
@@ -1345,12 +1355,19 @@ export const eventsRouter = router({
                       })
                       .returning();
 
+                    const shortIds = await allocateTicketXOrganizerShortIds(
+                      tx,
+                      eventUpdated.id,
+                      ticketAmount,
+                    );
+
                     // Crear registros TicketsXOrganizer con ticketId null
                     await tx.insert(ticketXorganizer).values(
-                      Array.from({ length: ticketAmount }).map(() => ({
+                      Array.from({ length: ticketAmount }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: addedOrganizerId,
                         ticketGroupId: thisOrganizerTicketGroup.id,
+                        shortId: shortIds[i]!,
                         // ticketId será null hasta que se use el código
                       })),
                     );
@@ -1526,12 +1543,19 @@ export const eventsRouter = router({
                       organizerTicketGroup = newTicketGroup;
                     }
 
+                    const shortIds = await allocateTicketXOrganizerShortIds(
+                      tx,
+                      eventUpdated.id,
+                      difference,
+                    );
+
                     // Crear los registros faltantes
                     await tx.insert(ticketXorganizer).values(
-                      Array.from({ length: difference }).map(() => ({
+                      Array.from({ length: difference }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: organizerInput.id,
                         ticketGroupId: organizerTicketGroup.id,
+                        shortId: shortIds[i]!,
                         // ticketId será null hasta que se use el código
                       })),
                     );
