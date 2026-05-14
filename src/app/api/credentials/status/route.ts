@@ -1,14 +1,6 @@
-import { createHmac } from 'crypto';
-
 import { NextResponse } from 'next/server';
 
-function signPayload(timestamp: string, rawBody: string) {
-  const signingSecret = process.env.CREDENTIALS_SIGNING_SECRET?.trim();
-  if (!signingSecret) return null;
-  return createHmac('sha256', signingSecret)
-    .update(`${timestamp}.${rawBody}`)
-    .digest('hex');
-}
+import { signPayload } from '@/server/security/signed-request';
 
 export async function GET() {
   if (!process.env.INSTANCE_WEB_URL) {

@@ -3,6 +3,7 @@ import { and, between, eq, gte, lte, ne } from 'drizzle-orm';
 import z from 'zod';
 
 import { emittedTicket, event, ticketGroup } from '@/drizzle/schema';
+import { calculateTicketGroupStats } from '@/server/services/eventStats';
 import { adminProcedure, router } from '@/server/trpc';
 
 export const statisticsRouter = router({
@@ -52,57 +53,15 @@ export const statisticsRouter = router({
         },
       });
 
-      // Total raised & sold per ticketType per ticketGroup (ttpg: ticketTypePerGroups)
-      const { totalRaised, totalSold } = data
-        .flatMap((ticketGroup) => ticketGroup.ticketTypePerGroups)
-        .reduce(
-          (acc, ttpg) => {
-            const price = ttpg.ticketType?.price ?? 0;
-            const amount = ttpg.amount ?? 0;
-
-            acc.totalRaised += amount * price;
-            acc.totalSold += amount;
-
-            return acc;
-          },
-          { totalRaised: 0, totalSold: 0 },
-        );
-
-      // Asistencia
-      const allTickets = data.flatMap((tg) => tg.emittedTickets);
-      const { totalTickets, totalScanned } = allTickets.reduce(
-        (acc, ticket) => {
-          acc.totalTickets++;
-          if (ticket.scanned) {
-            acc.totalScanned++;
-          }
-
-          return acc;
-        },
-        { totalTickets: 0, totalScanned: 0 },
-      );
-      const scannedPercentage =
-        totalTickets > 0 ? (totalScanned / totalTickets) * 100 : 0;
-
-      // Asistencia por genero y por hora
-      const genderCounts: Record<string, number> = {};
-
-      for (const ticket of allTickets) {
-        if (!ticket.scanned) continue;
-        const gender = ticket.gender;
-        if (!genderCounts[gender]) {
-          genderCounts[gender] = 0;
-        }
-        genderCounts[gender]++;
-      }
+      const stats = calculateTicketGroupStats(data);
 
       return {
-        totalRaised,
-        totalSold,
-        totalTickets,
-        totalScanned,
-        scannedPercentage,
-        genderCounts,
+        totalRaised: stats.totalRaised,
+        totalSold: stats.totalSold,
+        totalTickets: stats.totalTickets,
+        totalScanned: stats.totalScanned,
+        scannedPercentage: stats.scannedPercentage,
+        genderCounts: stats.genderCounts,
       };
     }),
   getEventsStats: adminProcedure
@@ -147,37 +106,15 @@ export const statisticsRouter = router({
       });
 
       const stats = data.map((e) => {
-        const { totalRaised, totalSold } = e.ticketGroups
-          .flatMap((ticketGroup) => ticketGroup.ticketTypePerGroups)
-          .reduce(
-            (acc, ttpg) => {
-              const price = ttpg.ticketType?.price ?? 0;
-              const amount = ttpg.amount ?? 0;
-
-              acc.totalRaised += amount * price;
-              acc.totalSold += amount;
-
-              return acc;
-            },
-            { totalRaised: 0, totalSold: 0 },
-          );
-        const allEt = e.ticketGroups.flatMap((tg) =>
-          tg.emittedTickets.map((et) => et.scanned),
-        );
-        const attendance = allEt.filter((et) => et).length;
-
-        const amountEt = e.ticketGroups.reduce((acc, tg) => {
-          acc += tg.emittedTickets.length;
-          return acc;
-        }, 0);
+        const stats = calculateTicketGroupStats(e.ticketGroups);
 
         return {
           id: e.id,
           name: e.name,
-          attendance,
-          totalRaised,
-          totalSold,
-          totalEmitted: amountEt,
+          attendance: stats.totalScanned,
+          totalRaised: stats.totalRaised,
+          totalSold: stats.totalSold,
+          totalEmitted: stats.totalTickets,
         };
       });
 
@@ -228,40 +165,17 @@ export const statisticsRouter = router({
       });
 
       const stats = data.map((l) => {
-        const { totalRaised, totalSold } = l.events
-          .flatMap((e) => e.ticketGroups)
-          .flatMap((ticketGroup) => ticketGroup.ticketTypePerGroups)
-          .reduce(
-            (acc, ttpg) => {
-              const price = ttpg.ticketType?.price ?? 0;
-              const amount = ttpg.amount ?? 0;
-
-              acc.totalRaised += amount * price;
-              acc.totalSold += amount;
-
-              return acc;
-            },
-            { totalRaised: 0, totalSold: 0 },
-          );
-        const allEt = l.events
-          .flatMap((e) => e.ticketGroups)
-          .flatMap((tg) => tg.emittedTickets.map((et) => et.scanned));
-        const attendance = allEt.filter((et) => et).length;
-
-        const amountEt = l.events
-          .flatMap((e) => e.ticketGroups)
-          .reduce((acc, tg) => {
-            acc += tg.emittedTickets.length;
-            return acc;
-          }, 0);
+        const stats = calculateTicketGroupStats(
+          l.events.flatMap((e) => e.ticketGroups),
+        );
 
         return {
           id: l.id,
           name: l.name,
-          attendance,
-          totalRaised,
-          totalSold,
-          totalEmitted: amountEt,
+          attendance: stats.totalScanned,
+          totalRaised: stats.totalRaised,
+          totalSold: stats.totalSold,
+          totalEmitted: stats.totalTickets,
         };
       });
 
