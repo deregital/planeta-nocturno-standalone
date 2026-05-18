@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
+import { type OrganizerSchema } from '@/server/schemas/organizer';
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
 
@@ -16,10 +16,17 @@ export function calculateMaxTicketsPerOrganizer(
   return Math.max(0, maxPerOrganizer);
 }
 
-export function useOrganizerTickets(type: InviteCondition) {
-  const organizers = useCreateEventStore((state) => state.organizers);
-  const { locationId } = useCreateEventStore((state) => state.event);
-  const { data: location } = trpc.location.getById.useQuery(locationId, {
+export function useOrganizerTickets(
+  type: InviteCondition,
+  {
+    organizers,
+    locationId,
+  }: {
+    organizers: OrganizerSchema[];
+    locationId: string | null | undefined;
+  },
+) {
+  const { data: location } = trpc.location.getById.useQuery(locationId ?? '', {
     enabled: !!locationId,
   });
 

@@ -91,9 +91,16 @@ export default function PreviewEvent({ back }: { back: () => void }) {
                 ? 'Porcentaje de descuento'
                 : 'Cantidad de tickets'
             }
-            type='TRADITIONAL'
+            type={(event.inviteCondition ?? 'TRADITIONAL') as InviteCondition}
             disableActions
             maxNumber={100}
+            updateOrganizerNumber={() => {}}
+            deleteOrganizer={() => {}}
+            eventId={
+              'id' in event && typeof event.id === 'string'
+                ? event.id
+                : undefined
+            }
           >
             <></>
           </OrganizerTableWithAction>

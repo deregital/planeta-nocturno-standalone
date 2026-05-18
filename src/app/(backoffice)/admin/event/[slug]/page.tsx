@@ -7,6 +7,7 @@ import GoBack from '@/components/common/GoBack';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
+import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
@@ -71,6 +72,11 @@ async function EventDetails({ slug }: { slug: string }) {
                   <ToggleActivateButton event={event} />
                 </div>
               )}
+            {isAdmin && event.inviteCondition === 'INVITATION' && (
+              <div className='md:order-5 order-5'>
+                <OrganizerDistribution event={event} />
+              </div>
+            )}
           </div>
         </div>
       </div>

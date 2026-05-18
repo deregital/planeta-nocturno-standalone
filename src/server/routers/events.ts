@@ -2187,4 +2187,25 @@ export const eventsRouter = router({
 
       return deletedEvent[0];
     }),
+  getOrganizerDeliveredTicketCounts: adminProcedure
+    .input(z.object({ eventId: z.uuid() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          organizerId: ticketXorganizer.organizerId,
+          count: sql<number>`cast(count(*) as int)`,
+        })
+        .from(ticketXorganizer)
+        .where(
+          and(
+            eq(ticketXorganizer.eventId, input.eventId),
+            not(isNull(ticketXorganizer.ticketId)),
+          ),
+        )
+        .groupBy(ticketXorganizer.organizerId);
+
+      return Object.fromEntries(
+        rows.map((row) => [row.organizerId, row.count]),
+      ) as Record<string, number>;
+    }),
 });
