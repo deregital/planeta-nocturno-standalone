@@ -11,6 +11,7 @@ import {
   calculateMaxTicketsPerOrganizer,
   useOrganizerTickets,
 } from '@/hooks/organizers/useOrganizerTickets';
+import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
 import {
   getTotalTicketsWithoutOrganizer,
   type EventOrganizersState,
@@ -24,9 +25,11 @@ import { type InviteCondition } from '@/server/types';
 function OrganizerCapacitySummary({
   organizers,
   maxCapacity,
+  usesTicketPool = false,
 }: {
   organizers: OrganizerSchema[];
   maxCapacity?: number;
+  usesTicketPool?: boolean;
 }) {
   const assignedTickets = useMemo(
     () =>
@@ -42,13 +45,19 @@ function OrganizerCapacitySummary({
   const totalAssignable = maxCapacity ?? 0;
   const remainingTickets = Math.max(
     0,
-    totalAssignable - organizers.length - assignedTickets,
+    usesTicketPool
+      ? totalAssignable - assignedTickets
+      : totalAssignable - organizers.length - assignedTickets,
   );
 
-  if (!maxCapacity) {
+  if (maxCapacity === undefined) {
     return (
       <div className='shrink-0 text-left text-sm text-muted-foreground sm:text-right'>
-        <p>Seleccioná una locación para ver la capacidad</p>
+        <p>
+          {usesTicketPool
+            ? 'No tenés tickets asignados para distribuir'
+            : 'Seleccioná una locación para ver la capacidad'}
+        </p>
       </div>
     );
   }
@@ -79,6 +88,7 @@ export function EventOrganizers({ type }: { type: InviteCondition }) {
 export function EventOrganizersContent({
   type,
   showSendEmailOption = true,
+  capacityOrganizers,
   organizers,
   addOrganizer,
   deleteOrganizer,
@@ -89,13 +99,27 @@ export function EventOrganizersContent({
   locationId,
   ticketTypes,
   eventId,
+  ticketPool,
+  nonDeletableOrganizerIds,
 }: {
   type: InviteCondition;
   showSendEmailOption?: boolean;
+  capacityOrganizers?: OrganizerSchema[];
+  ticketPool?: number;
+  nonDeletableOrganizerIds?: string[];
 } & EventOrganizersState) {
-  const { maxNumber, maxCapacity, minNumber } = useOrganizerTickets(type, {
-    organizers,
+  const organizersForCapacity = capacityOrganizers ?? organizers;
+  const usesTicketPool = ticketPool !== undefined;
+
+  const {
+    maxNumber,
+    maxCapacity,
+    minNumber,
+    usesTicketPool: poolMode,
+  } = useOrganizerTickets(type, {
+    organizers: organizersForCapacity,
     locationId,
+    ticketPool,
   });
   const [defaultNumber, setDefaultNumber] = useState<number>(minNumber);
   const [selectedComboboxOption, setSelectedComboboxOption] =
@@ -157,7 +181,11 @@ export function EventOrganizersContent({
     }
 
     // Para el modo INVITACIÓN, asegurar que todos los organizadores respeten los nuevos límites
-    if (type === 'INVITATION' && (maxChanged || organizersLengthChanged)) {
+    if (
+      type === 'INVITATION' &&
+      !usesTicketPool &&
+      (maxChanged || organizersLengthChanged)
+    ) {
       // Verificar si algún organizador excede el nuevo máximo
       organizers.forEach((org) => {
         const currentAmount = 'ticketAmount' in org ? org.ticketAmount : null;
@@ -181,34 +209,30 @@ export function EventOrganizersContent({
     organizers,
     updateOrganizerNumber,
     updateAllOrganizerNumber,
+    usesTicketPool,
   ]);
 
-  const selectedOrganizers = useMemo(() => {
-    return organizersData
-      ?.filter((organizer) => organizers.find((org) => org.id === organizer.id))
-      .map((organizer) => {
-        const org = organizers.find((org) => org.id === organizer.id);
-        return {
-          id: organizer.id,
-          fullName: organizer.fullName,
-          dni: organizer.dni,
-          phoneNumber: organizer.phoneNumber,
-          number:
-            org &&
-            'discountPercentage' in org &&
-            type === 'TRADITIONAL' &&
-            org.discountPercentage !== null
-              ? org.discountPercentage
-              : org &&
-                  'ticketAmount' in org &&
-                  type === 'INVITATION' &&
-                  org.ticketAmount !== null
-                ? org.ticketAmount
-                : 0,
-          role: organizer.role,
-        };
-      });
-  }, [organizersData, organizers]);
+  const selectedOrganizers = useMemo(
+    () =>
+      organizers.map((org) => ({
+        id: org.id,
+        fullName: org.fullName,
+        dni: org.dni,
+        phoneNumber: org.phoneNumber,
+        number:
+          'discountPercentage' in org &&
+          type === 'TRADITIONAL' &&
+          org.discountPercentage !== null
+            ? org.discountPercentage
+            : 'ticketAmount' in org &&
+                type === 'INVITATION' &&
+                org.ticketAmount !== null
+              ? org.ticketAmount
+              : 0,
+        role: org.role,
+      })),
+    [organizers, type],
+  );
 
   const organizerOptions = useMemo(() => {
     if (!organizersData) return [];
@@ -324,13 +348,15 @@ export function EventOrganizersContent({
 
   // Limpiar la selección del combobox cuando se eliminan organizadores
   useEffect(() => {
-    if (selectedComboboxOption) {
-      const dni = selectedComboboxOption.split(' - ').pop();
-      const id = organizersData?.find((org) => org.dni === dni)?.id;
-      const isStillSelected = organizers.some((org) => org.id === id);
-      if (!isStillSelected) {
-        setSelectedComboboxOption('');
-      }
+    if (!selectedComboboxOption) return;
+
+    const dni = selectedComboboxOption.split(' - ').pop();
+    const id = organizersData?.find((org) => org.dni === dni)?.id;
+    if (!id) return;
+
+    const isStillSelected = organizers.some((org) => org.id === id);
+    if (!isStillSelected) {
+      setSelectedComboboxOption('');
     }
   }, [organizers, organizersData, selectedComboboxOption]);
 
@@ -355,6 +381,25 @@ export function EventOrganizersContent({
       return availableCapacity >= 0;
     },
     [type, location, organizers.length, totalTicketsWithoutOrganizer],
+  );
+
+  const getInvitationMaxAllowed = useCallback(
+    (organizersToAdd: number) => {
+      if (ticketPool !== undefined) {
+        const assigned = sumInvitationTicketAmounts(organizersForCapacity);
+        const remaining = ticketPool - assigned;
+        if (organizersToAdd <= 0) return Math.max(0, remaining);
+        return Math.max(0, Math.floor(remaining / organizersToAdd));
+      }
+
+      if (!maxCapacity) return maxNumber;
+
+      return calculateMaxTicketsPerOrganizer(
+        maxCapacity,
+        organizersForCapacity.length + organizersToAdd,
+      );
+    },
+    [ticketPool, organizersForCapacity, maxCapacity, maxNumber],
   );
 
   return (
@@ -404,12 +449,7 @@ export function EventOrganizersContent({
                   // Calcular el máximo permitido una vez, considerando todos los organizadores que se agregarán
                   const maxAllowed =
                     type === 'INVITATION'
-                      ? maxCapacity
-                        ? calculateMaxTicketsPerOrganizer(
-                            maxCapacity,
-                            organizers.length + totalToAdd,
-                          )
-                        : maxNumber
+                      ? getInvitationMaxAllowed(totalToAdd)
                       : undefined;
 
                   organizersToAdd.forEach((organizer) => {
@@ -470,12 +510,7 @@ export function EventOrganizersContent({
                   // Calcular el máximo permitido una vez, considerando todos los organizadores que se agregarán
                   const maxAllowed =
                     type === 'INVITATION'
-                      ? maxCapacity
-                        ? calculateMaxTicketsPerOrganizer(
-                            maxCapacity,
-                            organizers.length + totalToAdd,
-                          )
-                        : maxNumber
+                      ? getInvitationMaxAllowed(totalToAdd)
                       : undefined;
 
                   // Agregar el CHIEF_ORGANIZER
@@ -516,12 +551,10 @@ export function EventOrganizersContent({
                 if (type === 'TRADITIONAL') {
                   addOrganizer(organizer, defaultNumber, type);
                 } else {
-                  const maxAllowed = maxCapacity
-                    ? calculateMaxTicketsPerOrganizer(
-                        maxCapacity,
-                        organizers.length + 1,
-                      )
-                    : maxNumber;
+                  const maxAllowed =
+                    type === 'INVITATION'
+                      ? getInvitationMaxAllowed(1)
+                      : maxNumber;
                   const clampedNumber = Math.min(defaultNumber, maxAllowed);
                   addOrganizer(organizer, clampedNumber, type);
                 }
@@ -536,8 +569,9 @@ export function EventOrganizersContent({
         </div>
         {type === 'INVITATION' && (
           <OrganizerCapacitySummary
-            organizers={organizers}
+            organizers={organizersForCapacity}
             maxCapacity={maxCapacity}
+            usesTicketPool={usesTicketPool || poolMode}
           />
         )}
       </div>
@@ -545,6 +579,26 @@ export function EventOrganizersContent({
       <OrganizerTableWithAction
         type={type}
         data={selectedOrganizers || []}
+        usesTicketPool={usesTicketPool || poolMode}
+        nonDeletableOrganizerIds={nonDeletableOrganizerIds}
+        capacityData={
+          capacityOrganizers
+            ? capacityOrganizers.map((org) => ({
+                id: org.id,
+                fullName: org.fullName,
+                dni: org.dni,
+                phoneNumber: org.phoneNumber,
+                role: org.role,
+                number:
+                  'ticketAmount' in org && org.ticketAmount !== null
+                    ? org.ticketAmount
+                    : 'discountPercentage' in org &&
+                        org.discountPercentage !== null
+                      ? org.discountPercentage
+                      : 0,
+              }))
+            : undefined
+        }
         numberTitle={
           type === 'TRADITIONAL'
             ? 'Porcentaje de descuento'

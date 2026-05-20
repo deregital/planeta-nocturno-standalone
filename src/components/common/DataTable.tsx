@@ -130,6 +130,7 @@ export function DataTable<
   const table = useReactTable({
     data,
     columns,
+    getRowId: (row) => row.id,
     autoResetPageIndex: false,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,

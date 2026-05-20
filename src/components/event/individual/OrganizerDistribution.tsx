@@ -1,6 +1,7 @@
 'use client';
 
 import { Loader2, Ticket } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -16,6 +17,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useStandaloneEventOrganizersState } from '@/hooks/organizers/useEventOrganizersState';
+import {
+  getChiefCapacityOrganizers,
+  getChiefDistributableTicketPool,
+  getEventTicketTypeRefs,
+  mapEventOrganizersForChief,
+} from '@/lib/chief-organizer-event';
 import { mapEventOrganizersToSchema } from '@/lib/event-organizers';
 import { type RouterOutputs } from '@/server/routers/app';
 import { type OrganizerSchema } from '@/server/schemas/organizer';
@@ -23,6 +30,13 @@ import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
 
 type EventForDistribution = RouterOutputs['events']['getBySlug'];
+
+function useChiefOrganizerId() {
+  const { data: session } = useSession();
+  return session?.user?.role === 'CHIEF_ORGANIZER'
+    ? session.user.id
+    : undefined;
+}
 
 function OrganizerDistributionSaveButton({
   event,
@@ -35,8 +49,26 @@ function OrganizerDistributionSaveButton({
   sendOrganizerTicketEmail: boolean;
   onSuccess: () => void;
 }) {
+  const chiefOrganizerId = useChiefOrganizerId();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const updateChiefDistribution =
+    trpc.events.updateChiefOrganizerTicketDistribution.useMutation({
+      onSuccess: () => {
+        toast.success('Tickets para organizadores actualizados');
+        router.refresh();
+        onSuccess();
+        setIsSubmitting(false);
+      },
+      onError: (error) => {
+        toast.error(
+          error.message ||
+            'Error al actualizar los tickets para organizadores. Por favor, intente nuevamente.',
+        );
+        setIsSubmitting(false);
+      },
+    });
 
   const updateEvent = trpc.events.update.useMutation({
     onSuccess: () => {
@@ -61,6 +93,15 @@ function OrganizerDistributionSaveButton({
     }
 
     setIsSubmitting(true);
+
+    if (chiefOrganizerId) {
+      updateChiefDistribution.mutate({
+        eventId: event.id,
+        organizersInput: organizers.filter((o) => o.type === 'INVITATION'),
+      });
+      return;
+    }
+
     updateEvent.mutate({
       event: {
         id: event.id,
@@ -114,7 +155,9 @@ function OrganizerDistributionDialogBody({
   event: NonNullable<EventForDistribution>;
   onSuccess: () => void;
 }) {
-  const initialOrganizers = useMemo(
+  const chiefOrganizerId = useChiefOrganizerId();
+
+  const allEventOrganizers = useMemo(
     () =>
       mapEventOrganizersToSchema(
         event.eventXorganizers,
@@ -123,14 +166,15 @@ function OrganizerDistributionDialogBody({
     [event.eventXorganizers, event.inviteCondition],
   );
 
-  const ticketTypes = useMemo(
+  const initialOrganizers = useMemo(
     () =>
-      event.ticketTypes.map((t) => ({
-        name: t.name,
-        maxAvailable: t.maxAvailable,
-      })),
-    [event.ticketTypes],
+      chiefOrganizerId
+        ? mapEventOrganizersForChief(event, chiefOrganizerId)
+        : allEventOrganizers,
+    [allEventOrganizers, chiefOrganizerId, event],
   );
+
+  const ticketTypes = useMemo(() => getEventTicketTypeRefs(event), [event]);
 
   const organizersState = useStandaloneEventOrganizersState({
     initialOrganizers,
@@ -139,11 +183,36 @@ function OrganizerDistributionDialogBody({
     eventId: event.id,
   });
 
+  const chiefTicketPool = useMemo(
+    () =>
+      chiefOrganizerId
+        ? getChiefDistributableTicketPool(event, chiefOrganizerId)
+        : undefined,
+    [chiefOrganizerId, event],
+  );
+
+  const capacityOrganizers = useMemo(
+    () =>
+      chiefOrganizerId
+        ? getChiefCapacityOrganizers(
+            event,
+            chiefOrganizerId,
+            organizersState.organizers,
+          )
+        : organizersState.organizers,
+    [chiefOrganizerId, event, organizersState.organizers],
+  );
+
   return (
     <>
       <EventOrganizersContent
         type='INVITATION'
         showSendEmailOption={false}
+        capacityOrganizers={capacityOrganizers}
+        ticketPool={chiefTicketPool}
+        nonDeletableOrganizerIds={
+          chiefOrganizerId ? [chiefOrganizerId] : undefined
+        }
         {...organizersState}
       />
       <DialogFooter className='mt-4'>
@@ -176,6 +245,7 @@ export function OrganizerDistribution({
           Redistribuir tickets <Ticket />
         </Button>
       </DialogTrigger>
+      {/* TODO: Ver que hacer con el max-h y max-w */}
       <DialogContent className='flex max-h-[min(90vh,100dvh)] w-full max-w-[calc(100vw-1rem)] flex-col overflow-x-hidden overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl'>
         <DialogHeader>
           <DialogTitle>Redistribuir tickets</DialogTitle>

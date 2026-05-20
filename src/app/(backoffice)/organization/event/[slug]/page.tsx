@@ -6,6 +6,7 @@ import GoBack from '@/components/common/GoBack';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
+import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
 import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
@@ -91,6 +92,12 @@ export default async function EventPage({
           />
         </div>
       )}
+      {session?.user.role === 'CHIEF_ORGANIZER' &&
+        event.inviteCondition === 'INVITATION' && (
+          <div className='mt-4 flex justify-center px-4'>
+            <OrganizerDistribution event={event} />
+          </div>
+        )}
       <h2 className='text-3xl font-bold px-4 text-accent my-4'>
         Lista de ventas
       </h2>

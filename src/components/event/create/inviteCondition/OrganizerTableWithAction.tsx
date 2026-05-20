@@ -1,6 +1,6 @@
 import { type ColumnDef } from '@tanstack/react-table';
 import { TrashIcon } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { DataTable } from '@/components/common/DataTable';
 import { SortableColumnHeader } from '@/components/common/table/SortableColumnHeader';
@@ -50,20 +50,54 @@ function OrganizerNumberInput({
   const assigned = row.number;
   const remaining = row.remainingCount;
   const minValue = type === 'INVITATION' ? Math.max(1, delivered) : 0;
+  const [inputValue, setInputValue] = useState(String(row.number));
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setInputValue(String(row.number));
+    }
+  }, [row.id, row.number]);
+
+  const commitValue = (raw: string) => {
+    if (raw === '') return;
+
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed)) return;
+
+    const clampedValue = Math.min(Math.max(parsed, minValue), maxForRow);
+    setInputValue(String(clampedValue));
+    updateOrganizerNumber(row, clampedValue, type);
+  };
 
   return (
-    <div className='flex items-center gap-2'>
+    <div
+      className='flex items-center gap-2'
+      onClick={(e) => e.stopPropagation()}
+    >
       <Input
         className={cn('w-16 shrink-0', inputClassName)}
         type='number'
         min={minValue}
         max={maxForRow}
         disabled={disableActions}
-        value={row.number}
+        value={inputValue}
+        onFocus={() => {
+          isFocusedRef.current = true;
+        }}
+        onBlur={() => {
+          isFocusedRef.current = false;
+          if (inputValue === '') {
+            setInputValue(String(minValue));
+            updateOrganizerNumber(row, minValue, type);
+            return;
+          }
+          commitValue(inputValue);
+        }}
         onChange={(e) => {
-          const value = Number(e.target.value);
-          const clampedValue = Math.min(Math.max(value, minValue), maxForRow);
-          updateOrganizerNumber(row, clampedValue, type);
+          const raw = e.target.value;
+          setInputValue(raw);
+          commitValue(raw);
         }}
       />
       {showRemaining && type === 'INVITATION' && (
@@ -83,6 +117,7 @@ function columns({
   maxNumber,
   disableActions,
   getMaxForRow,
+  nonDeletableOrganizerIds,
 }: {
   type: InviteCondition;
   numberTitle: string;
@@ -91,7 +126,9 @@ function columns({
   maxNumber: number;
   disableActions: boolean;
   getMaxForRow: (rowId: string) => number;
+  nonDeletableOrganizerIds?: string[];
 }): ColumnDef<OrganizerTableData>[] {
+  const nonDeletableIds = new Set(nonDeletableOrganizerIds ?? []);
   const showInvitationStats = type === 'INVITATION';
 
   const baseColumns: ColumnDef<OrganizerTableData>[] = [
@@ -163,7 +200,7 @@ function columns({
             updateOrganizerNumber={updateOrganizerNumber}
             showRemaining={showInvitationStats}
           />
-          {!disableActions && (
+          {!disableActions && !nonDeletableIds.has(row.original.id) && (
             <Button
               variant='ghost'
               size='sm'
@@ -184,23 +221,29 @@ function columns({
 
 export function OrganizerTableWithAction({
   data,
+  capacityData,
   children,
   numberTitle,
   type,
   maxNumber,
   disableActions = false,
   maxCapacity,
+  usesTicketPool = false,
+  nonDeletableOrganizerIds,
   eventId,
   updateOrganizerNumber,
   deleteOrganizer,
 }: {
   data: OrganizerTableRowInput[];
+  capacityData?: OrganizerTableRowInput[];
   children: React.ReactNode;
   numberTitle: string;
   type: InviteCondition;
   maxNumber: number;
   disableActions?: boolean;
   maxCapacity?: number;
+  usesTicketPool?: boolean;
+  nonDeletableOrganizerIds?: string[];
   eventId?: string;
   updateOrganizerNumber: EventOrganizersState['updateOrganizerNumber'];
   deleteOrganizer: EventOrganizersState['deleteOrganizer'];
@@ -213,9 +256,13 @@ export function OrganizerTableWithAction({
 
   // Keep a ref to the latest data to avoid recreating the function
   const dataRef = useRef(data);
+  const capacityDataRef = useRef(capacityData ?? data);
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
+  useEffect(() => {
+    capacityDataRef.current = capacityData ?? data;
+  }, [capacityData, data]);
 
   // Función para calcular el máximo dinámico para cada fila
   const getMaxForRow = useCallback(
@@ -230,23 +277,23 @@ export function OrganizerTableWithAction({
         return maxNumber;
       }
 
-      const currentData = dataRef.current;
-      const totalOrganizers = currentData.length;
+      const currentData = capacityDataRef.current;
       const sumOfAllInputs = currentData.reduce(
         (sum, row) => sum + row.number,
         0,
       );
       const thisRowValue =
-        currentData.find((row) => row.id === rowId)?.number || 0;
+        dataRef.current.find((row) => row.id === rowId)?.number ??
+        currentData.find((row) => row.id === rowId)?.number ??
+        0;
 
-      // Fórmula: capacidadLocacion - cantidadOrganizadores - sumaDeInputsDeLasOtrasFilas
-      // O sea: capacidadLocacion - cantidadOrganizadores - (sumaTotal - valorDeEstaFila)
-      const remainingCapacity =
-        maxCapacity - totalOrganizers - sumOfAllInputs + thisRowValue;
+      const remainingCapacity = usesTicketPool
+        ? maxCapacity - sumOfAllInputs + thisRowValue
+        : maxCapacity - currentData.length - sumOfAllInputs + thisRowValue;
 
       return Math.max(0, remainingCapacity);
     },
-    [type, maxNumber, maxCapacity],
+    [type, maxNumber, maxCapacity, usesTicketPool],
   );
 
   const tableData = useMemo<OrganizerTableData[]>(
@@ -278,6 +325,7 @@ export function OrganizerTableWithAction({
         maxNumber,
         disableActions,
         getMaxForRow,
+        nonDeletableOrganizerIds,
       }),
     [
       numberTitle,
@@ -287,6 +335,7 @@ export function OrganizerTableWithAction({
       maxNumber,
       disableActions,
       getMaxForRow,
+      nonDeletableOrganizerIds,
     ],
   );
 

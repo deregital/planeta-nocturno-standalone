@@ -39,7 +39,10 @@ import {
   createEventSchema,
   eventSchema as eventSchemaZod,
 } from '@/server/schemas/event';
-import { organizerSchema } from '@/server/schemas/organizer';
+import {
+  organizerInvitationSchema,
+  organizerSchema,
+} from '@/server/schemas/organizer';
 import {
   createTicketTypeSchema,
   ticketTypeSchema,
@@ -47,11 +50,13 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
+  chiefOrganizerProcedure,
   controlTicketingProcedure,
   publicProcedure,
   router,
   ticketingProcedure,
 } from '@/server/trpc';
+import { applyChiefOrganizerInvitationDistribution } from '@/server/utils/chief-organizer-invitation-distribution';
 import { type TicketType } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import {
@@ -2187,7 +2192,7 @@ export const eventsRouter = router({
 
       return deletedEvent[0];
     }),
-  getOrganizerDeliveredTicketCounts: adminProcedure
+  getOrganizerDeliveredTicketCounts: chiefOrganizerProcedure
     .input(z.object({ eventId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
@@ -2207,5 +2212,38 @@ export const eventsRouter = router({
       return Object.fromEntries(
         rows.map((row) => [row.organizerId, row.count]),
       ) as Record<string, number>;
+    }),
+  updateChiefOrganizerTicketDistribution: chiefOrganizerProcedure
+    .input(
+      z.object({
+        eventId: z.uuid(),
+        organizersInput: organizerInvitationSchema.array(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'CHIEF_ORGANIZER') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Solo los jefes de organizadores pueden usar esta acción.',
+        });
+      }
+
+      await applyChiefOrganizerInvitationDistribution(ctx.db, {
+        chiefOrganizerId: ctx.session.user.id,
+        eventId: input.eventId,
+        organizersInput: input.organizersInput,
+      });
+
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input.eventId),
+        columns: { slug: true },
+      });
+
+      if (event) {
+        revalidatePath(`/organization/event/${event.slug}`);
+        revalidatePath(`/admin/event/${event.slug}`);
+      }
+
+      return { success: true };
     }),
 });
