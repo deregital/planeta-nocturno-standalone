@@ -340,16 +340,18 @@ export function OrganizerTableWithAction({
   );
 
   return (
-    <div className='min-w-0'>
+    <div className='w-full min-w-0 max-w-full'>
       {children}
-      <DataTable
-        disableExport
-        fullWidth={false}
-        noResultsPlaceholder={'No seleccionaste ningún organizador'}
-        divClassName='mx-0! w-full! max-w-full! overflow-x-auto rounded-tr-none rounded-tl-none sm:rounded-tl-md'
-        columns={memoizedColumns}
-        data={tableData}
-      />
+      <div className='w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain rounded-tr-none rounded-tl-none sm:rounded-tl-md [-webkit-overflow-scrolling:touch] [&_[data-slot=table-container]]:overflow-visible [&_table]:w-full [&_table]:min-w-max'>
+        <DataTable
+          disableExport
+          fullWidth={false}
+          noResultsPlaceholder={'No seleccionaste ningún organizador'}
+          divClassName='mx-0! w-full! max-w-full! overflow-visible! border-stroke/70! rounded-none! border!'
+          columns={memoizedColumns}
+          data={tableData}
+        />
+      </div>
     </div>
   );
 }

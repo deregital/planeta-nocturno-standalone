@@ -403,7 +403,7 @@ export function EventOrganizersContent({
   );
 
   return (
-    <div className='min-w-0'>
+    <div className='w-full min-w-0 max-w-full'>
       <div
         className={cn(
           'flex flex-col gap-4',
