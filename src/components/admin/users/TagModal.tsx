@@ -29,7 +29,7 @@ import { type Tag } from '@/server/types';
 interface TagModalProps {
   type: 'CREATE' | 'EDIT';
   tag?: Tag;
-  userId?: string;
+  userId?: string; // User ID to remove from tag (not the current user)
 }
 
 export function TagModal({ type, tag, userId }: TagModalProps) {
@@ -62,6 +62,7 @@ export function TagModal({ type, tag, userId }: TagModalProps) {
       setOpen(false);
       utils.tag.getAll.invalidate();
       utils.user.getByRole.invalidate('ORGANIZER');
+      utils.user.getOrganizersByChiefOrganizer.invalidate();
       router.refresh();
     },
     onError: (error) => {
