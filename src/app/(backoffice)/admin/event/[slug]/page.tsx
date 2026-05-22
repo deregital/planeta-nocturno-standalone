@@ -4,6 +4,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
+import { AdminInvitationEventView } from '@/components/event/individual/AdminInvitationEventView';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
@@ -92,14 +93,21 @@ async function EventDetails({ slug }: { slug: string }) {
           </div>
         </div>
       </div>
-      <TicketTableWithTabs
-        ticketTypes={event.ticketTypes}
-        event={{
-          slug: event.slug,
-          inviteCondition: event.inviteCondition,
-          hasSimpleInvitation: event.hasSimpleInvitation,
-        }}
-      />
+      <div className='w-full px-4'>
+        <h2 className='text-3xl font-bold text-accent my-4'>Lista de ventas</h2>
+      </div>
+      {event.inviteCondition === 'INVITATION' ? (
+        <AdminInvitationEventView event={event} />
+      ) : (
+        <TicketTableWithTabs
+          ticketTypes={event.ticketTypes}
+          event={{
+            slug: event.slug,
+            inviteCondition: event.inviteCondition,
+            hasSimpleInvitation: event.hasSimpleInvitation,
+          }}
+        />
+      )}
     </div>
   );
 }
