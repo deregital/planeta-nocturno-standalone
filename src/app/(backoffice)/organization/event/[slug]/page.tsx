@@ -4,12 +4,13 @@ import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
+import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
-import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
 import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
+import { getChiefDistributableTicketPool } from '@/lib/chief-organizer-event';
 import { auth } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
 import {
@@ -78,12 +79,24 @@ export default async function EventPage({
     )
     .flatMap((tg) => tg.emittedTickets);
 
+  const userId = session?.user.id;
+  const maxAvailable =
+    event.inviteCondition === 'INVITATION' && userId
+      ? session?.user.role === 'CHIEF_ORGANIZER'
+        ? getChiefDistributableTicketPool(event, userId)
+        : (event.eventXorganizers.find((eo) => eo.user.id === userId)
+            ?.ticketAmount ?? 0)
+      : undefined;
+
   return (
     <div className='w-full py-4'>
       <GoBack route='/organization' className='ml-4' />
       <div className='flex flex-col items-center my-4'>
         <EventBasicInformation event={event} />
-        <QuantityTicketsEmitted tickets={myTickets} />
+        <QuantityTicketsEmitted
+          tickets={myTickets}
+          maxAvailable={maxAvailable}
+        />
       </div>
       {event.inviteCondition === 'TRADITIONAL' && (
         <div className='w-full text-center'>
