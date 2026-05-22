@@ -3,7 +3,7 @@ import { Steps } from '@/components/event/create/steps';
 
 export default function CreateEventPage() {
   return (
-    <div className='flex flex-col gap-2 items-center'>
+    <div className='flex w-full flex-col items-center gap-2'>
       <CreateEventStoreProvider>
         <Steps />
       </CreateEventStoreProvider>

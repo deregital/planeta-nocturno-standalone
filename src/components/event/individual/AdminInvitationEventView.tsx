@@ -6,36 +6,36 @@ import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWi
 import { OrganizerCards } from '@/components/organization/event/OrganizerCards';
 import { type RouterOutputs } from '@/server/routers/app';
 
-interface ChiefOrganizerEventViewProps {
-  event: NonNullable<RouterOutputs['events']['getBySlug']>;
-  chiefOrganizerId: string;
-}
-
-export function ChiefOrganizerEventView({
+export function AdminInvitationEventView({
   event,
-  chiefOrganizerId,
-}: ChiefOrganizerEventViewProps) {
+}: {
+  event: NonNullable<RouterOutputs['events']['getBySlug']>;
+}) {
   const [searchValue, setSearchValue] = useState<string | undefined>(undefined);
+  const [filterInvitedByIds, setFilterInvitedByIds] = useState<
+    string[] | undefined
+  >(undefined);
 
   return (
-    <>
+    <div className='w-full'>
       <OrganizerCards
         event={event}
-        chiefOrganizerId={chiefOrganizerId}
-        onOrganizerClick={({ searchLabel }) => {
+        onOrganizerClick={({ searchLabel, invitedByIds }) => {
           setSearchValue(searchLabel);
+          setFilterInvitedByIds(invitedByIds);
         }}
       />
       <TicketTableWithTabs
         ticketTypes={event.ticketTypes}
         externalSearchValue={searchValue}
-        userId={chiefOrganizerId}
+        externalFilterInvitedByIds={filterInvitedByIds}
+        onClearOrganizerFilter={() => setFilterInvitedByIds(undefined)}
         event={{
           slug: event.slug,
           inviteCondition: event.inviteCondition,
           hasSimpleInvitation: event.hasSimpleInvitation,
         }}
       />
-    </>
+    </div>
   );
 }

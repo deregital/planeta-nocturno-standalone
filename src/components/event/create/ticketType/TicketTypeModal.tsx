@@ -229,8 +229,8 @@ export default function TicketTypeModal({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className='max-w-xl! md:max-w-3xl! w-full lg:max-w-4xl!'>
-        <DialogHeader>
+      <DialogContent className='max-w-xl! w-full md:max-w-3xl! lg:max-w-4xl! max-md:top-4 max-md:w-[calc(100%-2rem)] max-md:max-w-[calc(100%-2rem)] max-md:max-h-[calc(100dvh-2rem)] max-md:translate-y-0 max-md:overflow-y-auto'>
+        <DialogHeader className='max-md:pr-8'>
           <DialogTitle className='text-left'>
             Crear ticket de tipo {text}
           </DialogTitle>
@@ -238,7 +238,7 @@ export default function TicketTypeModal({
         </DialogHeader>
         <form
           onSubmit={handleSubmit}
-          className='flex flex-col gap-4 justify-center'
+          className='flex flex-col gap-4 justify-center max-md:pb-4'
         >
           <FormRow>
             <InputWithLabel
@@ -451,7 +451,7 @@ export default function TicketTypeModal({
               />
             </div>
           </FormRow>
-          <FormRow>
+          <FormRow className='md:flex-row flex-col'>
             <InputWithLabel
               id='maxPerPurchase'
               name='maxPerPurchase'
@@ -503,7 +503,7 @@ export default function TicketTypeModal({
                 label='¿Tiene?'
                 id='lowStockThresholdEnabled'
                 type='checkbox'
-                className='[&>input]:w-6 items-center'
+                className='[&>input]:w-6 items-center self-end'
                 name='lowStockThresholdEnabled'
                 checked={hasLowStockThreshold}
                 onChange={(e) => {

@@ -10,6 +10,7 @@ import GoBack from '@/components/common/GoBack';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
 import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
+import { mapEventOrganizersToSchema } from '@/lib/event-organizers';
 import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -70,27 +71,10 @@ export default function Client({
         })),
       });
       setOrganizers(
-        event.eventXorganizers.map((e) => {
-          const base = {
-            type: event.inviteCondition,
-            dni: e.user.dni,
-            id: e.user.id,
-            fullName: e.user.fullName,
-            phoneNumber: e.user.phoneNumber,
-            role: e.user.role,
-          };
-          return event.inviteCondition === 'TRADITIONAL'
-            ? {
-                ...base,
-                type: 'TRADITIONAL' as const,
-                discountPercentage: e.discountPercentage,
-              }
-            : {
-                ...base,
-                type: 'INVITATION' as const,
-                ticketAmount: e.ticketAmount,
-              };
-        }),
+        mapEventOrganizersToSchema(
+          event.eventXorganizers,
+          event.inviteCondition as InviteCondition,
+        ),
       );
       setTicketTypes(
         event.ticketTypes.map((t) => ({
@@ -161,8 +145,8 @@ export default function Client({
   if (!event) return null;
 
   return (
-    <div className='w-full p-4 [&_section]:flex [&_section]:flex-col [&_section]:gap-4 [&_section]:p-4 [&_section]:border-2 [&_section]:bg-accent-ultra-light [&_section]:border-stroke [&_section]:rounded-md [&_section]:w-full'>
-      <div className='flex gap-2 items-center'>
+    <div className='w-full min-w-0 p-4 [&_section]:flex [&_section]:flex-col [&_section]:gap-4 [&_section]:p-4 [&_section]:border-2 [&_section]:bg-accent-ultra-light [&_section]:border-stroke [&_section]:rounded-md [&_section]:w-full [&_section]:min-w-0'>
+      <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
         <GoBack className='self-baseline' route='/admin/event' />
         <h1 className='text-4xl font-bold'>Editar Evento</h1>
       </div>
