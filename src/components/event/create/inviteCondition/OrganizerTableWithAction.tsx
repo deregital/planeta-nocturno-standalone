@@ -59,15 +59,18 @@ function OrganizerNumberInput({
     }
   }, [row.id, row.number]);
 
-  const commitValue = (raw: string) => {
+  const commitValue = (raw: string, syncInputToCommitted = false) => {
     if (raw === '') return;
 
     const parsed = Number(raw);
     if (Number.isNaN(parsed)) return;
 
     const clampedValue = Math.min(Math.max(parsed, minValue), maxForRow);
-    setInputValue(String(clampedValue));
     updateOrganizerNumber(row, clampedValue, type);
+
+    if (syncInputToCommitted) {
+      setInputValue(String(clampedValue));
+    }
   };
 
   return (
@@ -78,8 +81,6 @@ function OrganizerNumberInput({
       <Input
         className={cn('w-16 shrink-0', inputClassName)}
         type='number'
-        min={minValue}
-        max={maxForRow}
         disabled={disableActions}
         value={inputValue}
         onFocus={() => {
@@ -92,7 +93,7 @@ function OrganizerNumberInput({
             updateOrganizerNumber(row, minValue, type);
             return;
           }
-          commitValue(inputValue);
+          commitValue(inputValue, true);
         }}
         onChange={(e) => {
           const raw = e.target.value;
@@ -117,7 +118,6 @@ function columns({
   maxNumber,
   disableActions,
   getMaxForRow,
-  nonDeletableOrganizerIds,
 }: {
   type: InviteCondition;
   numberTitle: string;
@@ -126,9 +126,7 @@ function columns({
   maxNumber: number;
   disableActions: boolean;
   getMaxForRow: (rowId: string) => number;
-  nonDeletableOrganizerIds?: string[];
 }): ColumnDef<OrganizerTableData>[] {
-  const nonDeletableIds = new Set(nonDeletableOrganizerIds ?? []);
   const showInvitationStats = type === 'INVITATION';
 
   const baseColumns: ColumnDef<OrganizerTableData>[] = [
@@ -200,7 +198,7 @@ function columns({
             updateOrganizerNumber={updateOrganizerNumber}
             showRemaining={showInvitationStats}
           />
-          {!disableActions && !nonDeletableIds.has(row.original.id) && (
+          {!disableActions && (
             <Button
               variant='ghost'
               size='sm'
@@ -229,7 +227,6 @@ export function OrganizerTableWithAction({
   disableActions = false,
   maxCapacity,
   usesTicketPool = false,
-  nonDeletableOrganizerIds,
   eventId,
   updateOrganizerNumber,
   deleteOrganizer,
@@ -243,7 +240,6 @@ export function OrganizerTableWithAction({
   disableActions?: boolean;
   maxCapacity?: number;
   usesTicketPool?: boolean;
-  nonDeletableOrganizerIds?: string[];
   eventId?: string;
   updateOrganizerNumber: EventOrganizersState['updateOrganizerNumber'];
   deleteOrganizer: EventOrganizersState['deleteOrganizer'];
@@ -325,7 +321,6 @@ export function OrganizerTableWithAction({
         maxNumber,
         disableActions,
         getMaxForRow,
-        nonDeletableOrganizerIds,
       }),
     [
       numberTitle,
@@ -335,23 +330,20 @@ export function OrganizerTableWithAction({
       maxNumber,
       disableActions,
       getMaxForRow,
-      nonDeletableOrganizerIds,
     ],
   );
 
   return (
     <div className='w-full min-w-0 max-w-full'>
       {children}
-      <div className='w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain rounded-tr-none rounded-tl-none sm:rounded-tl-md [-webkit-overflow-scrolling:touch] [&_[data-slot=table-container]]:overflow-visible [&_table]:w-full [&_table]:min-w-max'>
-        <DataTable
-          disableExport
-          fullWidth={false}
-          noResultsPlaceholder={'No seleccionaste ningún organizador'}
-          divClassName='mx-0! w-full! max-w-full! overflow-visible! border-stroke/70! rounded-none! border!'
-          columns={memoizedColumns}
-          data={tableData}
-        />
-      </div>
+      <DataTable
+        disableExport
+        fullWidth={false}
+        noResultsPlaceholder={'No seleccionaste ningún organizador'}
+        divClassName='mx-0! w-full! max-w-full! rounded-tr-none rounded-tl-none sm:rounded-tl-md'
+        columns={memoizedColumns}
+        data={tableData}
+      />
     </div>
   );
 }

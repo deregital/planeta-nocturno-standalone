@@ -4,7 +4,9 @@ import { useCallback, useState } from 'react';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import {
+  applyAddInvitationOrganizersStealingTickets,
   type EventOrganizersState,
+  type InvitationOrganizerCapacityOptions,
   type OrganizerTicketTypeRef,
 } from '@/lib/event-organizers';
 import {
@@ -16,6 +18,9 @@ import { type InviteCondition } from '@/server/types';
 export function useCreateEventOrganizersState(): EventOrganizersState {
   const organizers = useCreateEventStore((state) => state.organizers);
   const addOrganizer = useCreateEventStore((state) => state.addOrganizer);
+  const addInvitationOrganizersStealingTickets = useCreateEventStore(
+    (state) => state.addInvitationOrganizersStealingTickets,
+  );
   const deleteOrganizer = useCreateEventStore((state) => state.deleteOrganizer);
   const updateOrganizerNumber = useCreateEventStore(
     (state) => state.updateOrganizerNumber,
@@ -37,6 +42,7 @@ export function useCreateEventOrganizersState(): EventOrganizersState {
   return {
     organizers,
     addOrganizer,
+    addInvitationOrganizersStealingTickets,
     deleteOrganizer,
     updateOrganizerNumber,
     updateAllOrganizerNumber,
@@ -125,9 +131,33 @@ export function useStandaloneEventOrganizersState({
     [],
   );
 
+  const addInvitationOrganizersStealingTickets = useCallback(
+    (
+      organizersToAdd: OrganizerBaseSchema[],
+      capacity: InvitationOrganizerCapacityOptions,
+    ) => {
+      let success = false;
+      setOrganizers((current) => {
+        const result = applyAddInvitationOrganizersStealingTickets(
+          current,
+          organizersToAdd,
+          capacity,
+        );
+        if ('error' in result) {
+          return current;
+        }
+        success = true;
+        return result.organizers;
+      });
+      return success;
+    },
+    [],
+  );
+
   return {
     organizers,
     addOrganizer,
+    addInvitationOrganizersStealingTickets,
     deleteOrganizer,
     updateOrganizerNumber,
     updateAllOrganizerNumber,

@@ -111,3 +111,62 @@ export function getChiefCapacityOrganizers(
   const teamOnEvent = mapEventOrganizersForChief(event, chiefOrganizerId);
   return mergeOrganizersForCapacity(teamOnEvent, currentOrganizers);
 }
+
+type ChiefTeamTicketSnapshot = {
+  organizerId: string;
+  ticketAmount: number | null;
+};
+
+type ChiefTicketInput = {
+  id: string;
+  ticketAmount: number | null;
+};
+
+/** Tickets liberados al quitar cupo a subordinados o eliminarlos del equipo. */
+export function computeInvitationTicketsFreedForChief(
+  chiefOrganizerId: string,
+  organizersInput: ChiefTicketInput[],
+  teamOnEvent: ChiefTeamTicketSnapshot[],
+  deletedOrganizersIds: string[],
+) {
+  let freed = 0;
+
+  for (const organizerId of deletedOrganizersIds) {
+    const onEvent = teamOnEvent.find((o) => o.organizerId === organizerId);
+    freed += onEvent?.ticketAmount ?? 0;
+  }
+
+  for (const organizer of organizersInput) {
+    if (organizer.id === chiefOrganizerId) continue;
+
+    const onEvent = teamOnEvent.find((o) => o.organizerId === organizer.id);
+    const previous = onEvent?.ticketAmount ?? 0;
+    const next = organizer.ticketAmount ?? 0;
+    if (next < previous) {
+      freed += previous - next;
+    }
+  }
+
+  return freed;
+}
+
+/** Máximo que el jefe puede tener sin auto-asignarse del pool (solo base + liberados). */
+export function getChiefMaxAssignableTickets(
+  chiefOrganizerId: string,
+  organizersInput: ChiefTicketInput[],
+  teamOnEvent: ChiefTeamTicketSnapshot[],
+  deletedOrganizersIds: string[],
+) {
+  const chiefOnEvent = teamOnEvent.find(
+    (o) => o.organizerId === chiefOrganizerId,
+  );
+  const chiefBase = chiefOnEvent?.ticketAmount ?? 0;
+  const freed = computeInvitationTicketsFreedForChief(
+    chiefOrganizerId,
+    organizersInput,
+    teamOnEvent,
+    deletedOrganizersIds,
+  );
+
+  return chiefBase + freed;
+}

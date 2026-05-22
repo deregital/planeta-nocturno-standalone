@@ -210,9 +210,7 @@ function OrganizerDistributionDialogBody({
         showSendEmailOption={false}
         capacityOrganizers={capacityOrganizers}
         ticketPool={chiefTicketPool}
-        nonDeletableOrganizerIds={
-          chiefOrganizerId ? [chiefOrganizerId] : undefined
-        }
+        chiefOrganizerId={chiefOrganizerId}
         {...organizersState}
       />
       <DialogFooter className='mt-4'>

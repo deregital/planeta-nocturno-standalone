@@ -12,6 +12,10 @@ import {
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
+import {
+  computeInvitationTicketsFreedForChief,
+  getChiefMaxAssignableTickets,
+} from '@/lib/chief-organizer-event';
 import { type OrganizerInvitationSchema } from '@/server/schemas/organizer';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
@@ -21,6 +25,130 @@ type Transaction = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 function getTicketAmount(organizer: OrganizerInvitationSchema) {
   return organizer.ticketAmount ?? 0;
+}
+
+/** Tickets quitados a subordinados o eliminados del equipo se suman al jefe en el input. */
+function applyFreedTicketsToChiefInput(
+  organizersInput: OrganizerInvitationSchema[],
+  chiefOrganizerId: string,
+  deletedOrganizersIds: string[],
+  teamOnEvent: { organizerId: string; ticketAmount: number | null }[],
+) {
+  const chiefIndex = organizersInput.findIndex(
+    (o) => o.id === chiefOrganizerId,
+  );
+  if (chiefIndex === -1) return organizersInput;
+
+  const freed = computeInvitationTicketsFreedForChief(
+    chiefOrganizerId,
+    organizersInput,
+    teamOnEvent,
+    deletedOrganizersIds,
+  );
+
+  if (freed <= 0) return organizersInput;
+
+  const chief = organizersInput[chiefIndex]!;
+  const nextChiefAmount = getTicketAmount(chief) + freed;
+
+  return organizersInput.map((organizer, index) =>
+    index === chiefIndex
+      ? { ...organizer, ticketAmount: nextChiefAmount }
+      : organizer,
+  );
+}
+
+async function getChiefInvitationTicketGroup(
+  tx: Transaction,
+  eventId: string,
+  chiefOrganizerId: string,
+) {
+  const existing = await tx.query.ticketXorganizer.findFirst({
+    where: and(
+      eq(ticketXorganizer.eventId, eventId),
+      eq(ticketXorganizer.organizerId, chiefOrganizerId),
+      isNull(ticketXorganizer.ticketId),
+    ),
+    orderBy: [asc(ticketXorganizer.createdAt)],
+  });
+
+  if (existing?.ticketGroupId) {
+    const group = await tx.query.ticketGroup.findFirst({
+      where: eq(ticketGroup.id, existing.ticketGroupId),
+    });
+    if (group) return group;
+  }
+
+  const [created] = await tx
+    .insert(ticketGroup)
+    .values({
+      eventId,
+      status: 'FREE',
+      amountTickets: 0,
+    })
+    .returning();
+
+  return created;
+}
+
+async function transferInvitationTicketsToChief(
+  tx: Transaction,
+  eventId: string,
+  chiefOrganizerId: string,
+  tickets: { code: string; ticketGroupId: string | null }[],
+) {
+  if (tickets.length === 0) return;
+
+  const chiefGroup = await getChiefInvitationTicketGroup(
+    tx,
+    eventId,
+    chiefOrganizerId,
+  );
+
+  const fromGroupCounts = new Map<string, number>();
+  for (const ticket of tickets) {
+    if (!ticket.ticketGroupId) continue;
+    fromGroupCounts.set(
+      ticket.ticketGroupId,
+      (fromGroupCounts.get(ticket.ticketGroupId) ?? 0) + 1,
+    );
+  }
+
+  for (const [groupId, count] of fromGroupCounts.entries()) {
+    const group = await tx.query.ticketGroup.findFirst({
+      where: eq(ticketGroup.id, groupId),
+    });
+    if (group) {
+      await tx
+        .update(ticketGroup)
+        .set({
+          amountTickets: Math.max(0, group.amountTickets - count),
+        })
+        .where(eq(ticketGroup.id, groupId));
+    }
+  }
+
+  for (const ticket of tickets) {
+    await tx
+      .update(ticketXorganizer)
+      .set({
+        organizerId: chiefOrganizerId,
+        ticketGroupId: chiefGroup.id,
+      })
+      .where(
+        and(
+          eq(ticketXorganizer.eventId, eventId),
+          eq(ticketXorganizer.code, ticket.code),
+        ),
+      );
+  }
+
+  await tx
+    .update(ticketGroup)
+    .set({
+      amountTickets: chiefGroup.amountTickets + tickets.length,
+    })
+    .where(eq(ticketGroup.id, chiefGroup.id));
 }
 
 function validateChiefTicketPool(pool: number, assignedTickets: number) {
@@ -91,6 +219,7 @@ async function buildOrganizerTicketCounts(
 async function deleteChiefOrganizersFromEvent(
   tx: Transaction,
   eventId: string,
+  chiefOrganizerId: string,
   deletedOrganizersIds: string[],
   currentOrganizerGroup: { id: string; amountTickets: number } | null,
 ) {
@@ -109,49 +238,20 @@ async function deleteChiefOrganizersFromEvent(
     columns: { id: true, dni: true },
   });
 
-  const ticketGroupsToUpdate = new Map<string, number>();
+  const unusedTicketsToTransfer: {
+    code: string;
+    ticketGroupId: string | null;
+  }[] = [];
 
   for (const organizerId of deletedOrganizersIds) {
-    const ticketXOrgsToDelete = await tx.query.ticketXorganizer.findMany({
+    const unusedTickets = await tx.query.ticketXorganizer.findMany({
       where: and(
         eq(ticketXorganizer.eventId, eventId),
         eq(ticketXorganizer.organizerId, organizerId),
         isNull(ticketXorganizer.ticketId),
       ),
     });
-
-    for (const ticketXOrg of ticketXOrgsToDelete) {
-      if (ticketXOrg.ticketGroupId) {
-        const currentCount =
-          ticketGroupsToUpdate.get(ticketXOrg.ticketGroupId) || 0;
-        ticketGroupsToUpdate.set(ticketXOrg.ticketGroupId, currentCount + 1);
-      }
-    }
-
-    await tx
-      .delete(ticketXorganizer)
-      .where(
-        and(
-          eq(ticketXorganizer.eventId, eventId),
-          eq(ticketXorganizer.organizerId, organizerId),
-          isNull(ticketXorganizer.ticketId),
-        ),
-      );
-  }
-
-  for (const [ticketGroupId, deletedCount] of ticketGroupsToUpdate.entries()) {
-    const group = await tx.query.ticketGroup.findFirst({
-      where: eq(ticketGroup.id, ticketGroupId),
-    });
-
-    if (group) {
-      await tx
-        .update(ticketGroup)
-        .set({
-          amountTickets: Math.max(0, group.amountTickets - deletedCount),
-        })
-        .where(eq(ticketGroup.id, ticketGroupId));
-    }
+    unusedTicketsToTransfer.push(...unusedTickets);
   }
 
   if (organizerTicketType && currentOrganizerGroup) {
@@ -182,6 +282,13 @@ async function deleteChiefOrganizersFromEvent(
       })
       .where(eq(ticketGroup.id, currentOrganizerGroup.id));
   }
+
+  await transferInvitationTicketsToChief(
+    tx,
+    eventId,
+    chiefOrganizerId,
+    unusedTicketsToTransfer,
+  );
 
   await tx
     .delete(eventXorganizer)
@@ -277,13 +384,21 @@ async function addChiefOrganizerToEvent(
 async function updateChiefOrganizerTicketAmount(
   tx: Transaction,
   eventId: string,
+  chiefOrganizerId: string,
   organizerInput: OrganizerInvitationSchema,
   organizerTicketCounts: Map<string, number>,
 ) {
   const newTicketAmount = getTicketAmount(organizerInput);
-  const currentTicketAmount = organizerTicketCounts.get(organizerInput.id) ?? 0;
+  const currentTicketCount = organizerTicketCounts.get(organizerInput.id) ?? 0;
 
-  if (newTicketAmount === currentTicketAmount) return;
+  const eventOrganizerRow = await tx.query.eventXorganizer.findFirst({
+    where: and(
+      eq(eventXorganizer.eventId, eventId),
+      eq(eventXorganizer.organizerId, organizerInput.id),
+    ),
+  });
+
+  const currentAssignedAmount = eventOrganizerRow?.ticketAmount ?? 0;
 
   const usedTickets = await tx.query.ticketXorganizer.findMany({
     where: and(
@@ -307,15 +422,22 @@ async function updateChiefOrganizerTicketAmount(
     });
   }
 
-  await tx
-    .update(eventXorganizer)
-    .set({ ticketAmount: newTicketAmount })
-    .where(
-      and(
-        eq(eventXorganizer.eventId, eventId),
-        eq(eventXorganizer.organizerId, organizerInput.id),
-      ),
-    );
+  if (currentAssignedAmount !== newTicketAmount) {
+    await tx
+      .update(eventXorganizer)
+      .set({ ticketAmount: newTicketAmount })
+      .where(
+        and(
+          eq(eventXorganizer.eventId, eventId),
+          eq(eventXorganizer.organizerId, organizerInput.id),
+        ),
+      );
+  }
+
+  if (newTicketAmount === currentTicketCount) {
+    organizerTicketCounts.set(organizerInput.id, newTicketAmount);
+    return;
+  }
 
   const existingTicketXOrganizers = await tx.query.ticketXorganizer.findMany({
     where: and(
@@ -326,44 +448,55 @@ async function updateChiefOrganizerTicketAmount(
     orderBy: [asc(ticketXorganizer.createdAt)],
   });
 
-  const difference = newTicketAmount - currentTicketAmount;
+  const difference = newTicketAmount - currentTicketCount;
+  const isSubordinate = organizerInput.id !== chiefOrganizerId;
 
   if (difference < 0) {
-    const toDelete = existingTicketXOrganizers.slice(0, Math.abs(difference));
-    const ticketGroupsToUpdate = new Map<string, number>();
+    const toRemove = existingTicketXOrganizers.slice(0, Math.abs(difference));
 
-    for (const ticketXOrg of toDelete) {
-      if (ticketXOrg.ticketGroupId) {
-        const currentCount =
-          ticketGroupsToUpdate.get(ticketXOrg.ticketGroupId) || 0;
-        ticketGroupsToUpdate.set(ticketXOrg.ticketGroupId, currentCount + 1);
+    if (isSubordinate && toRemove.length > 0) {
+      await transferInvitationTicketsToChief(
+        tx,
+        eventId,
+        chiefOrganizerId,
+        toRemove,
+      );
+    } else if (!isSubordinate) {
+      const ticketGroupsToUpdate = new Map<string, number>();
+
+      for (const ticketXOrg of toRemove) {
+        if (ticketXOrg.ticketGroupId) {
+          const currentCount =
+            ticketGroupsToUpdate.get(ticketXOrg.ticketGroupId) || 0;
+          ticketGroupsToUpdate.set(ticketXOrg.ticketGroupId, currentCount + 1);
+        }
+
+        await tx
+          .delete(ticketXorganizer)
+          .where(
+            and(
+              eq(ticketXorganizer.eventId, eventId),
+              eq(ticketXorganizer.code, ticketXOrg.code),
+            ),
+          );
       }
 
-      await tx
-        .delete(ticketXorganizer)
-        .where(
-          and(
-            eq(ticketXorganizer.eventId, eventId),
-            eq(ticketXorganizer.code, ticketXOrg.code),
-          ),
-        );
-    }
+      for (const [
+        ticketGroupId,
+        deletedCount,
+      ] of ticketGroupsToUpdate.entries()) {
+        const group = await tx.query.ticketGroup.findFirst({
+          where: eq(ticketGroup.id, ticketGroupId),
+        });
 
-    for (const [
-      ticketGroupId,
-      deletedCount,
-    ] of ticketGroupsToUpdate.entries()) {
-      const group = await tx.query.ticketGroup.findFirst({
-        where: eq(ticketGroup.id, ticketGroupId),
-      });
-
-      if (group) {
-        await tx
-          .update(ticketGroup)
-          .set({
-            amountTickets: Math.max(0, group.amountTickets - deletedCount),
-          })
-          .where(eq(ticketGroup.id, ticketGroupId));
+        if (group) {
+          await tx
+            .update(ticketGroup)
+            .set({
+              amountTickets: Math.max(0, group.amountTickets - deletedCount),
+            })
+            .where(eq(ticketGroup.id, ticketGroupId));
+        }
       }
     }
   } else if (difference > 0) {
@@ -488,6 +621,33 @@ export async function applyChiefOrganizerInvitationDistribution(
     )
     .map((org) => org.organizerId);
 
+  const organizersInputBalanced = applyFreedTicketsToChiefInput(
+    organizersInput,
+    chiefOrganizerId,
+    deletedOrganizersIds,
+    chiefTeamOnEvent,
+  );
+
+  const chiefMaxAssignable = getChiefMaxAssignableTickets(
+    chiefOrganizerId,
+    organizersInput,
+    chiefTeamOnEvent,
+    deletedOrganizersIds,
+  );
+  const chiefInputBalanced = organizersInputBalanced.find(
+    (o) => o.id === chiefOrganizerId,
+  );
+  if (
+    chiefInputBalanced &&
+    getTicketAmount(chiefInputBalanced) > chiefMaxAssignable
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'No podés asignarte más tickets directamente. Quitá tickets a tus organizadores para sumarlos a tu cupo.',
+    });
+  }
+
   const distributablePool = chiefTeamOnEvent.reduce(
     (sum, org) => sum + (org.ticketAmount ?? 0),
     0,
@@ -497,7 +657,7 @@ export async function applyChiefOrganizerInvitationDistribution(
     organizersDB,
     chiefOrganizerId,
     subordinateIds,
-    organizersInput,
+    organizersInputBalanced,
     deletedOrganizersIds,
   );
 
@@ -527,6 +687,7 @@ export async function applyChiefOrganizerInvitationDistribution(
     await deleteChiefOrganizersFromEvent(
       tx,
       eventId,
+      chiefOrganizerId,
       deletedOrganizersIds,
       currentOrganizerGroup,
     );
@@ -569,14 +730,14 @@ export async function applyChiefOrganizerInvitationDistribution(
       organizerTicketType = createdOrganizerTicketType;
     }
 
-    const addedOrganizersIds = organizersInput
+    const addedOrganizersIds = organizersInputBalanced
       .filter(
         (o) => !organizersDBAfterDelete.some((org) => org.organizerId === o.id),
       )
       .map((o) => o.id);
 
     for (const addedOrganizerId of addedOrganizersIds) {
-      const organizerInput = organizersInput.find(
+      const organizerInput = organizersInputBalanced.find(
         (o) => o.id === addedOrganizerId,
       );
       if (!organizerInput) continue;
@@ -602,7 +763,12 @@ export async function applyChiefOrganizerInvitationDistribution(
       organizersDBFinal,
     );
 
-    for (const organizerInput of organizersInput) {
+    const organizersToUpdate = [
+      ...organizersInputBalanced.filter((o) => o.id !== chiefOrganizerId),
+      ...organizersInputBalanced.filter((o) => o.id === chiefOrganizerId),
+    ];
+
+    for (const organizerInput of organizersToUpdate) {
       const existsOnEvent = organizersDBFinal.some(
         (org) => org.organizerId === organizerInput.id,
       );
@@ -611,6 +777,7 @@ export async function applyChiefOrganizerInvitationDistribution(
       await updateChiefOrganizerTicketAmount(
         tx,
         eventId,
+        chiefOrganizerId,
         organizerInput,
         finalTicketCounts,
       );
