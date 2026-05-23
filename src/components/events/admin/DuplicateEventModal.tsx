@@ -20,12 +20,20 @@ import { trpc } from '@/server/trpc/client';
 export default function DuplicateEventModal({
   eventId,
   eventName,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  hideTrigger = false,
 }: {
   eventId: string;
   eventName: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChangeProp ?? setInternalOpen;
 
   const duplicateEvent = trpc.events.duplicate.useMutation({
     onSuccess: () => {
@@ -40,11 +48,13 @@ export default function DuplicateEventModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant={'ghost'} size={'icon'}>
-          <CopyIcon className='w-4 h-4 text-on-accent' />
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button variant={'ghost'} size={'icon'}>
+            <CopyIcon className='w-4 h-4 text-on-accent' />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogTitle className='text-lg font-bold'>
           ¿Duplicar este evento?
