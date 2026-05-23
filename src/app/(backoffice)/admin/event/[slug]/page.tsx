@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
@@ -9,6 +10,7 @@ import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
 import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
+import { PrintEventQr } from '@/components/event/individual/PrintEventQr';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
@@ -48,6 +50,16 @@ async function EventDetails({ slug }: { slug: string }) {
     .filter((tg) => tg.isOrganizerGroup)
     .flatMap((tg) => tg.emittedTickets);
 
+  const headersList = await headers();
+  const host = headersList.get('x-forwarded-host');
+  const proto = headersList.get('x-forwarded-proto');
+  const origin =
+    proto && host
+      ? `${proto}://${host}`
+      : process.env.INSTANCE_WEB_URL
+        ? `https://${process.env.INSTANCE_WEB_URL}`
+        : '';
+
   return (
     <div className='flex flex-col items-center mt-4 relative'>
       <div className='absolute top-0 left-0 px-4'>
@@ -78,15 +90,24 @@ async function EventDetails({ slug }: { slug: string }) {
                 <EmitTicketModal event={event} />
               </div>
             )}
+            {event.inviteCondition !== 'INVITATION' && (
+              <div className='md:order-4 order-4'>
+                <PrintEventQr
+                  showLabel={false}
+                  url={`${origin}/event/${event.slug}`}
+                  eventName={event.name}
+                />
+              </div>
+            )}
             {isAdmin &&
               (event.inviteCondition === 'TRADITIONAL' ||
                 event.inviteCondition === 'SIMPLE') && (
-                <div className='md:order-4 order-4'>
+                <div className='md:order-5 order-5'>
                   <ToggleActivateButton event={event} />
                 </div>
               )}
             {isAdmin && event.inviteCondition === 'INVITATION' && (
-              <div className='md:order-5 order-5'>
+              <div className='md:order-6 order-6'>
                 <OrganizerDistribution event={event} />
               </div>
             )}
