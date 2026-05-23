@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import GoBack from '@/components/common/GoBack';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
 import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
+import { PrintEventQr } from '@/components/event/individual/PrintEventQr';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
@@ -61,6 +62,8 @@ export default async function EventPage({
       ? `&ticket=${myTicketTypeSlugs.join(',')}`
       : '';
 
+  const organizerEventUrl = `${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}${ticketParam}`;
+
   // Para chief organizer: obtener IDs de sus organizadores
   const myOrganizerIds =
     session?.user.role === 'CHIEF_ORGANIZER'
@@ -100,9 +103,14 @@ export default async function EventPage({
       </div>
       {event.inviteCondition === 'TRADITIONAL' && (
         <div className='w-full text-center'>
-          <CopyUrl
-            url={`${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}${ticketParam}`}
-          />
+          <div className='flex flex-wrap items-center justify-center gap-3'>
+            <CopyUrl eventName={event.name} url={organizerEventUrl} />
+            <PrintEventQr
+              eventName={event.name}
+              url={organizerEventUrl}
+              showLabel={false}
+            />
+          </div>
         </div>
       )}
       {session?.user.role === 'CHIEF_ORGANIZER' &&
