@@ -5,6 +5,7 @@ import {
   Calendar,
   CopyIcon,
   FileSpreadsheet,
+  Folder,
   Link2,
   MoreVertical,
   Pencil,
@@ -12,9 +13,11 @@ import {
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import ChangeEventFolder from '@/components/events/admin/ChangeEventFolder';
+import DuplicateEventModal from '@/components/events/admin/DuplicateEventModal';
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
 import { Button } from '@/components/ui/button';
@@ -43,6 +46,8 @@ export default function EventCardHorizontal({
 }) {
   const router = useRouter();
   const session = useSession();
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   const isAdmin = session.data?.user.role === 'ADMIN';
 
@@ -54,8 +59,6 @@ export default function EventCardHorizontal({
 
   const exportXlsxByTicketType =
     trpc.events.exportXlsxByTicketType.useMutation();
-
-  const duplicateEvent = trpc.events.duplicate.useMutation();
 
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
 
@@ -83,11 +86,18 @@ export default function EventCardHorizontal({
         </div>
         {showActions && (
           <div className='flex flex-row gap-0.5 items-center'>
-            <Button variant={'ghost'} size={'icon'} asChild>
-              <Link href={`/event/${event.slug}`} target='_blank'>
-                <Link2 className='w-4 h-4 text-on-accent' />
-              </Link>
-            </Button>
+            {event.inviteCondition !== 'INVITATION' && (
+              <Button
+                variant={'ghost'}
+                size={'icon'}
+                asChild
+                className='hidden sm:inline-flex'
+              >
+                <Link href={`/event/${event.slug}`} target='_blank'>
+                  <Link2 className='w-4 h-4 text-on-accent' />
+                </Link>
+              </Button>
+            )}
             <Button variant={'ghost'} size={'icon'} asChild>
               <Link
                 href={`/admin/event/${event.slug}`}
@@ -98,22 +108,19 @@ export default function EventCardHorizontal({
             </Button>
             {isAdmin && (
               <>
-                <Button
-                  variant={'ghost'}
-                  size={'icon'}
-                  onClick={() => {
-                    duplicateEvent.mutate(event.id, {
-                      onSuccess: () => {
-                        toast.success('Evento duplicado correctamente');
-                      },
-                      onError: (error) => {
-                        toast.error(error.message);
-                      },
-                    });
-                  }}
-                >
-                  <CopyIcon className='w-4 h-4 text-on-accent' />
-                </Button>
+                <div className='hidden sm:block'>
+                  <DuplicateEventModal
+                    eventId={event.id}
+                    eventName={event.name}
+                  />
+                </div>
+                <DuplicateEventModal
+                  eventId={event.id}
+                  eventName={event.name}
+                  open={duplicateDialogOpen}
+                  onOpenChange={setDuplicateDialogOpen}
+                  hideTrigger
+                />
                 <Button
                   variant={'ghost'}
                   className='text-on-accent'
@@ -122,9 +129,18 @@ export default function EventCardHorizontal({
                 >
                   <Pencil />
                 </Button>
+                <div className='hidden sm:block'>
+                  <ChangeEventFolder
+                    eventId={event.id}
+                    folderId={event.folderId ?? undefined}
+                  />
+                </div>
                 <ChangeEventFolder
                   eventId={event.id}
                   folderId={event.folderId ?? undefined}
+                  open={folderDialogOpen}
+                  onOpenChange={setFolderDialogOpen}
+                  hideTrigger
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -137,6 +153,35 @@ export default function EventCardHorizontal({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align='end'>
+                    {event.inviteCondition !== 'INVITATION' && (
+                      <DropdownMenuItem
+                        asChild
+                        className='sm:hidden cursor-pointer'
+                      >
+                        <Link
+                          href={`/event/${event.slug}`}
+                          target='_blank'
+                          className='flex w-full items-center'
+                        >
+                          <Link2 className='mr-2 h-4 w-4' />
+                          Ver evento
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      className='sm:hidden cursor-pointer'
+                      onClick={() => setFolderDialogOpen(true)}
+                    >
+                      <Folder className='mr-2 h-4 w-4' />
+                      Cambiar carpeta
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className='sm:hidden cursor-pointer'
+                      onClick={() => setDuplicateDialogOpen(true)}
+                    >
+                      <CopyIcon className='mr-2 h-4 w-4' />
+                      Duplicar evento
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
                         generatePresentismoOrdenAlfPDF.mutate(
@@ -228,6 +273,31 @@ export default function EventCardHorizontal({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
+            )}
+            {!isAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={'ghost'}
+                    size={'icon'}
+                    className='text-on-accent sm:hidden'
+                  >
+                    <MoreVertical className='w-4 h-4' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuItem asChild className='cursor-pointer'>
+                    <Link
+                      href={`/event/${event.slug}`}
+                      target='_blank'
+                      className='flex w-full items-center'
+                    >
+                      <Link2 className='mr-2 h-4 w-4' />
+                      Ver evento
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         )}
