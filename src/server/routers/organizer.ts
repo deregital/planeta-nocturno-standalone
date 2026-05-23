@@ -1,5 +1,6 @@
 import {
   and,
+  asc,
   between,
   desc,
   eq,
@@ -52,12 +53,13 @@ export const organizerRouter = router({
           isNull(ticketXorganizer.ticketId),
           eq(ticketXorganizer.eventId, input),
         ),
-        orderBy: desc(ticketXorganizer.code),
+        orderBy: asc(ticketXorganizer.shortId),
       });
-      return codes.map((code) => ({
-        id: code.code,
-        code: code.code,
-        createdAt: code.createdAt,
+      return codes.map((row) => ({
+        id: row.code,
+        shortId: row.shortId,
+        code: row.code,
+        createdAt: row.createdAt,
       }));
     }),
   getMyCode: organizerProcedure.query(async ({ ctx }) => {

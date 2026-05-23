@@ -14,12 +14,16 @@ interface SearchTicketsProps {
       | undefined,
   ) => void;
   externalSearchValue?: string;
+  externalFilterInvitedByIds?: string[];
+  onClearOrganizerFilter?: () => void;
 }
 
 export function SearchTickets({
   tickets,
   onFilteredTicketsChange,
   externalSearchValue,
+  externalFilterInvitedByIds,
+  onClearOrganizerFilter,
 }: SearchTicketsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const prevExternalValue = useRef<string | undefined>(undefined);
@@ -33,7 +37,18 @@ export function SearchTickets({
 
   // Filter tickets based on search term
   const filteredTickets = useMemo(() => {
-    if (!tickets || !searchTerm.trim()) return tickets;
+    if (!tickets) return tickets;
+
+    if (externalFilterInvitedByIds?.length) {
+      const idSet = new Set(externalFilterInvitedByIds);
+      return tickets.filter(
+        (ticket) =>
+          ticket.ticketGroup.invitedById != null &&
+          idSet.has(ticket.ticketGroup.invitedById),
+      );
+    }
+
+    if (!searchTerm.trim()) return tickets;
 
     return tickets.filter((ticket) => {
       const searchLower = searchTerm
@@ -58,7 +73,7 @@ export function SearchTickets({
         return normalizedField.includes(searchLower);
       });
     });
-  }, [tickets, searchTerm]);
+  }, [tickets, searchTerm, externalFilterInvitedByIds]);
 
   // Notify parent component of filtered tickets
   useEffect(() => {
@@ -78,6 +93,7 @@ export function SearchTickets({
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
+    onClearOrganizerFilter?.();
   };
 
   return (

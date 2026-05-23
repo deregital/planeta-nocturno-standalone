@@ -58,7 +58,7 @@ export function EventInvitationTypeAction({
   }
 
   return (
-    <div className='flex w-full flex-col gap-4'>
+    <div className='flex w-full min-w-0 max-w-full flex-col gap-4'>
       {tab === null && (
         <div className='flex flex-col gap-4 w-full'>
           <Button
@@ -103,7 +103,7 @@ export function EventInvitationTypeAction({
         <Tabs
           onValueChange={(value) => handleChange(value as InviteCondition)}
           value={tab}
-          className='w-full overflow-x-hidden'
+          className='w-full min-w-0 max-w-full overflow-x-hidden'
         >
           <TabsList className='flex-1 w-full max-w-full mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
             <TabsTrigger
@@ -125,10 +125,16 @@ export function EventInvitationTypeAction({
               {inviteConditionTranslation[inviteCondition.enumValues[2]]}
             </TabsTrigger>
           </TabsList>
-          <TabsContent value={inviteCondition.enumValues[0]}>
+          <TabsContent
+            className='min-w-0'
+            value={inviteCondition.enumValues[0]}
+          >
             <EventOrganizers type={tab} />
           </TabsContent>
-          <TabsContent value={inviteCondition.enumValues[1]}>
+          <TabsContent
+            className='min-w-0'
+            value={inviteCondition.enumValues[1]}
+          >
             <EventOrganizers type={tab} />
           </TabsContent>
           <TabsContent value={inviteCondition.enumValues[2]}>

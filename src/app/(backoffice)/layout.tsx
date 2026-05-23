@@ -30,9 +30,9 @@ export default async function AdminLayout({
         }
       >
         <TopBar auth={session} />
-        <div className='flex'>
+        <div className='flex min-w-0'>
           <SideBar role={session.user.role} />
-          <main className='flex-1 border-l-3 border-stroke/40 '>
+          <main className='min-w-0 flex-1 overflow-x-hidden border-l-3 border-stroke/40'>
             {children}
           </main>
         </div>

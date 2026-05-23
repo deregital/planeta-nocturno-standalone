@@ -4,16 +4,22 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
+import { AdminInvitationEventView } from '@/components/event/individual/AdminInvitationEventView';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
+import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
+import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
+import {
+  getTotalTicketsWithoutOrganizer,
+  mapEventOrganizersToSchema,
+} from '@/lib/event-organizers';
 import { auth } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
-import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 async function EventDetails({ slug }: { slug: string }) {
   const event = await trpc.events.getBySlug(slug);
@@ -27,9 +33,17 @@ async function EventDetails({ slug }: { slug: string }) {
   const tickets = event.ticketGroups
     .filter((tg) => !tg.isOrganizerGroup)
     .flatMap((tg) => tg.emittedTickets);
-  const maxAvailable = event.ticketTypes
-    .filter((tt) => tt.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim())
-    .reduce((acc, tt) => acc + tt.maxAvailable, 0);
+  const maxAvailable =
+    event.inviteCondition === 'INVITATION'
+      ? sumInvitationTicketAmounts(
+          mapEventOrganizersToSchema(event.eventXorganizers, 'INVITATION'),
+        )
+      : getTotalTicketsWithoutOrganizer(
+          event.ticketTypes.map((tt) => ({
+            name: tt.name,
+            maxAvailable: tt.maxAvailable,
+          })),
+        );
   const organizerTickets = event.ticketGroups
     .filter((tg) => tg.isOrganizerGroup)
     .flatMap((tg) => tg.emittedTickets);
@@ -71,17 +85,29 @@ async function EventDetails({ slug }: { slug: string }) {
                   <ToggleActivateButton event={event} />
                 </div>
               )}
+            {isAdmin && event.inviteCondition === 'INVITATION' && (
+              <div className='md:order-5 order-5'>
+                <OrganizerDistribution event={event} />
+              </div>
+            )}
           </div>
         </div>
       </div>
-      <TicketTableWithTabs
-        ticketTypes={event.ticketTypes}
-        event={{
-          slug: event.slug,
-          inviteCondition: event.inviteCondition,
-          hasSimpleInvitation: event.hasSimpleInvitation,
-        }}
-      />
+      <div className='w-full px-4'>
+        <h2 className='text-3xl font-bold text-accent my-4'>Lista de ventas</h2>
+      </div>
+      {event.inviteCondition === 'INVITATION' ? (
+        <AdminInvitationEventView event={event} />
+      ) : (
+        <TicketTableWithTabs
+          ticketTypes={event.ticketTypes}
+          event={{
+            slug: event.slug,
+            inviteCondition: event.inviteCondition,
+            hasSimpleInvitation: event.hasSimpleInvitation,
+          }}
+        />
+      )}
     </div>
   );
 }

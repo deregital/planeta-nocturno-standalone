@@ -1,5 +1,9 @@
 import { createStore } from 'zustand/vanilla';
 
+import {
+  applyAddInvitationOrganizersStealingTickets,
+  type InvitationOrganizerCapacityOptions,
+} from '@/lib/event-organizers';
 import { type CreateEventSchema } from '@/server/schemas/event';
 import {
   type OrganizerBaseSchema,
@@ -36,6 +40,10 @@ type EventActions = {
     number: number,
     type: InviteCondition,
   ) => void;
+  addInvitationOrganizersStealingTickets: (
+    organizers: OrganizerBaseSchema[],
+    capacity: InvitationOrganizerCapacityOptions,
+  ) => boolean;
   editOrganizer: (
     organizer: OrganizerBaseSchema,
     number: number,
@@ -133,7 +141,7 @@ function updateOrganizerTicketTypeMaxAvailable(
 }
 
 export const createEventStore = (initState: EventState = initialState) => {
-  return createStore<CreateEventStore>((set) => ({
+  return createStore<CreateEventStore>((set, get) => ({
     ...initState,
     setEvent: (event) => {
       set((state) => ({ event: { ...state.event, ...event } }));
@@ -230,6 +238,33 @@ export const createEventStore = (initState: EventState = initialState) => {
           ),
         };
       });
+    },
+    addInvitationOrganizersStealingTickets: (organizersToAdd, capacity) => {
+      const state = get();
+      const result = applyAddInvitationOrganizersStealingTickets(
+        state.organizers,
+        organizersToAdd,
+        capacity,
+      );
+
+      if ('error' in result) {
+        return false;
+      }
+
+      const maxAvailable = calculateOrganizerMaxAvailable(
+        result.organizers,
+        state.event.inviteCondition,
+      );
+
+      set({
+        organizers: result.organizers,
+        ticketTypes: updateOrganizerTicketTypeMaxAvailable(
+          state.ticketTypes,
+          maxAvailable,
+        ),
+      });
+
+      return true;
     },
     editOrganizer: (organizer, number, type) => {
       set((state) => {
