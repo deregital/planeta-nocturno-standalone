@@ -3,7 +3,6 @@ import { format } from 'date-fns';
 import {
   BadgeCheck,
   Calendar,
-  CopyIcon,
   FileSpreadsheet,
   Link2,
   MoreVertical,
@@ -15,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import ChangeEventFolder from '@/components/events/admin/ChangeEventFolder';
+import DuplicateEventModal from '@/components/events/admin/DuplicateEventModal';
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
 import { Button } from '@/components/ui/button';
@@ -54,8 +54,6 @@ export default function EventCardHorizontal({
 
   const exportXlsxByTicketType =
     trpc.events.exportXlsxByTicketType.useMutation();
-
-  const duplicateEvent = trpc.events.duplicate.useMutation();
 
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
 
@@ -98,22 +96,10 @@ export default function EventCardHorizontal({
             </Button>
             {isAdmin && (
               <>
-                <Button
-                  variant={'ghost'}
-                  size={'icon'}
-                  onClick={() => {
-                    duplicateEvent.mutate(event.id, {
-                      onSuccess: () => {
-                        toast.success('Evento duplicado correctamente');
-                      },
-                      onError: (error) => {
-                        toast.error(error.message);
-                      },
-                    });
-                  }}
-                >
-                  <CopyIcon className='w-4 h-4 text-on-accent' />
-                </Button>
+                <DuplicateEventModal
+                  eventId={event.id}
+                  eventName={event.name}
+                />
                 <Button
                   variant={'ghost'}
                   className='text-on-accent'
