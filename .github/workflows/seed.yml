@@ -80,10 +80,11 @@ jobs:
           DATABASE_URL="$DATABASE_URL" npx tsx src/drizzle/seed.ts
           
           echo "✅ User seed completed!"
-          echo "🚩 Running feature flags seed..."
           
-          # Ejecutar el seed de feature flags
-          DATABASE_URL="$DATABASE_URL" npx tsx src/drizzle/seed-feature-flag.ts
+          # echo "🚩 Running feature flags seed..."
           
-          echo "✅ All seeds completed successfully!"
+          # Ejecutar el seed de feature flags (si hay)
+          # DATABASE_URL="$DATABASE_URL" npx tsx src/drizzle/seed-feature-flag.ts
+          
+          # echo "✅ All seeds completed successfully!"
 
