@@ -1,23 +1,14 @@
 'use server';
 
-import { createHmac } from 'crypto';
-
 import { type Route } from 'next';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/server/auth';
+import { signPayload } from '@/server/security/signed-request';
 import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
 const MP_ACCESS_TOKEN_RE = /^APP_USR-\d+-\d+-[A-Za-z0-9]+-\d+$/;
 const MP_SECRET_KEY_RE = /^[a-fA-F0-9]{64}$/;
-
-function signPayload(timestamp: string, rawBody: string) {
-  const signingSecret = process.env.CREDENTIALS_SIGNING_SECRET?.trim();
-  if (!signingSecret) return null;
-  return createHmac('sha256', signingSecret)
-    .update(`${timestamp}.${rawBody}`)
-    .digest('hex');
-}
 
 export async function saveCredentials(formData: FormData) {
   const session = await auth();
