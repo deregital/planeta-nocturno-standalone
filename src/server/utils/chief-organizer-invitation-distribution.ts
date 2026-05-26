@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, asc, eq, inArray, isNull, not } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, not, sql } from 'drizzle-orm';
 
 import { type Db } from '@/drizzle';
 
@@ -203,14 +203,28 @@ async function buildOrganizerTicketCounts(
 ) {
   const organizerTicketCounts = new Map<string, number>();
 
+  if (organizersDB.length === 0) {
+    return organizerTicketCounts;
+  }
+
+  const rows = await tx
+    .select({
+      organizerId: ticketXorganizer.organizerId,
+      count: sql<number>`cast(count(*) as int)`,
+    })
+    .from(ticketXorganizer)
+    .where(eq(ticketXorganizer.eventId, eventId))
+    .groupBy(ticketXorganizer.organizerId);
+
+  const countsByOrganizerId = new Map(
+    rows.map((row) => [row.organizerId, row.count]),
+  );
+
   for (const org of organizersDB) {
-    const ticketXOrgCount = await tx.query.ticketXorganizer.findMany({
-      where: and(
-        eq(ticketXorganizer.eventId, eventId),
-        eq(ticketXorganizer.organizerId, org.organizerId),
-      ),
-    });
-    organizerTicketCounts.set(org.organizerId, ticketXOrgCount.length);
+    organizerTicketCounts.set(
+      org.organizerId,
+      countsByOrganizerId.get(org.organizerId) ?? 0,
+    );
   }
 
   return organizerTicketCounts;
@@ -695,8 +709,6 @@ export async function applyChiefOrganizerInvitationDistribution(
     const organizersDBAfterDelete = await tx.query.eventXorganizer.findMany({
       where: eq(eventXorganizer.eventId, eventId),
     });
-
-    await buildOrganizerTicketCounts(tx, eventId, organizersDBAfterDelete);
 
     const ticketTypesDB = await tx.query.ticketType.findMany({
       where: eq(ticketType.eventId, eventId),
