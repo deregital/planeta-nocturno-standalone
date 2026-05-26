@@ -227,6 +227,7 @@ export function OrganizerTableWithAction({
   disableActions = false,
   maxCapacity,
   usesTicketPool = false,
+  redistributeTeamPool = false,
   eventId,
   updateOrganizerNumber,
   deleteOrganizer,
@@ -240,6 +241,8 @@ export function OrganizerTableWithAction({
   disableActions?: boolean;
   maxCapacity?: number;
   usesTicketPool?: boolean;
+  /** Pool del equipo: el jefe no consume cupo visible; subordinados pueden usar todo el pool. */
+  redistributeTeamPool?: boolean;
   eventId?: string;
   updateOrganizerNumber: EventOrganizersState['updateOrganizerNumber'];
   deleteOrganizer: EventOrganizersState['deleteOrganizer'];
@@ -287,9 +290,14 @@ export function OrganizerTableWithAction({
         ? maxCapacity - sumOfAllInputs + thisRowValue
         : maxCapacity - currentData.length - sumOfAllInputs + thisRowValue;
 
-      return Math.max(0, remainingCapacity);
+      const rowMax = Math.max(0, remainingCapacity);
+      if (redistributeTeamPool) {
+        return rowMax;
+      }
+
+      return Math.min(rowMax, maxNumber);
     },
-    [type, maxNumber, maxCapacity, usesTicketPool],
+    [type, maxNumber, maxCapacity, usesTicketPool, redistributeTeamPool],
   );
 
   const tableData = useMemo<OrganizerTableData[]>(

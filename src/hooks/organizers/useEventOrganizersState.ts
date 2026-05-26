@@ -4,6 +4,10 @@ import { useCallback, useState } from 'react';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import {
+  rebalanceChiefInvitationOrganizers,
+  sumChiefSubordinateInvitationTickets,
+} from '@/lib/chief-organizer-event';
+import {
   applyAddInvitationOrganizersStealingTickets,
   type EventOrganizersState,
   type InvitationOrganizerCapacityOptions,
@@ -11,6 +15,7 @@ import {
 } from '@/lib/event-organizers';
 import {
   type OrganizerBaseSchema,
+  type OrganizerInvitationSchema,
   type OrganizerSchema,
 } from '@/server/schemas/organizer';
 import { type InviteCondition } from '@/server/types';
@@ -62,16 +67,36 @@ export function useStandaloneEventOrganizersState({
   locationId,
   ticketTypes,
   eventId,
+  chiefOrganizerId,
+  chiefInvitationPool,
 }: {
   initialOrganizers: OrganizerSchema[];
   locationId: string | null | undefined;
   ticketTypes: OrganizerTicketTypeRef[];
   eventId: string;
+  /** Si se define, al cambiar subordinados se ajusta el cupo del jefe dentro del pool. */
+  chiefOrganizerId?: string;
+  chiefInvitationPool?: number;
 }): EventOrganizersState {
   const [organizers, setOrganizers] =
     useState<OrganizerSchema[]>(initialOrganizers);
   const [sendOrganizerTicketEmail, setSendOrganizerTicketEmail] =
     useState(false);
+
+  const applyChiefPoolBalance = useCallback(
+    (organizers: OrganizerSchema[]) => {
+      if (chiefOrganizerId === undefined || chiefInvitationPool === undefined) {
+        return organizers;
+      }
+
+      return rebalanceChiefInvitationOrganizers(
+        organizers,
+        chiefOrganizerId,
+        chiefInvitationPool,
+      );
+    },
+    [chiefOrganizerId, chiefInvitationPool],
+  );
 
   const addOrganizer = useCallback(
     (organizer: OrganizerBaseSchema, number: number, type: InviteCondition) => {
@@ -93,42 +118,77 @@ export function useStandaloneEventOrganizersState({
                 ticketAmount: number,
               } as const);
 
-        return [...current, newOrganizer];
+        return applyChiefPoolBalance([...current, newOrganizer]);
       });
     },
-    [],
+    [applyChiefPoolBalance],
   );
 
-  const deleteOrganizer = useCallback((organizer: OrganizerBaseSchema) => {
-    setOrganizers((current) => current.filter((o) => o.id !== organizer.id));
-  }, []);
+  const deleteOrganizer = useCallback(
+    (organizer: OrganizerBaseSchema) => {
+      setOrganizers((current) =>
+        applyChiefPoolBalance(current.filter((o) => o.id !== organizer.id)),
+      );
+    },
+    [applyChiefPoolBalance],
+  );
 
   const updateOrganizerNumber = useCallback(
     (organizer: OrganizerBaseSchema, number: number, type: InviteCondition) => {
-      setOrganizers((current) =>
-        current.map((o) =>
-          o.id === organizer.id
-            ? type === 'TRADITIONAL'
-              ? { ...o, discountPercentage: number }
-              : { ...o, ticketAmount: number }
-            : o,
-        ),
-      );
+      setOrganizers((current) => {
+        let nextNumber = number;
+
+        if (
+          chiefOrganizerId !== undefined &&
+          chiefInvitationPool !== undefined &&
+          type === 'INVITATION' &&
+          organizer.id !== chiefOrganizerId
+        ) {
+          const otherSubs = current.filter(
+            (o): o is OrganizerInvitationSchema =>
+              o.type === 'INVITATION' &&
+              o.id !== organizer.id &&
+              o.id !== chiefOrganizerId,
+          );
+          const otherSubsTotal = sumChiefSubordinateInvitationTickets(
+            otherSubs,
+            chiefOrganizerId,
+          );
+          nextNumber = Math.min(
+            number,
+            Math.max(0, chiefInvitationPool - otherSubsTotal),
+          );
+        }
+
+        return applyChiefPoolBalance(
+          current.map((o) =>
+            o.id === organizer.id
+              ? type === 'TRADITIONAL'
+                ? { ...o, discountPercentage: nextNumber }
+                : { ...o, ticketAmount: nextNumber }
+              : o,
+          ),
+        );
+      });
     },
-    [],
+    [applyChiefPoolBalance, chiefOrganizerId, chiefInvitationPool],
   );
 
   const updateAllOrganizerNumber = useCallback(
     (number: number, type: InviteCondition) => {
       setOrganizers((current) =>
-        current.map((o) =>
-          type === 'TRADITIONAL'
-            ? { ...o, discountPercentage: number }
-            : { ...o, ticketAmount: number },
+        applyChiefPoolBalance(
+          current.map((o) =>
+            type === 'TRADITIONAL'
+              ? { ...o, discountPercentage: number }
+              : o.id === chiefOrganizerId
+                ? o
+                : { ...o, ticketAmount: number },
+          ),
         ),
       );
     },
-    [],
+    [applyChiefPoolBalance, chiefOrganizerId],
   );
 
   const addInvitationOrganizersStealingTickets = useCallback(
@@ -147,11 +207,11 @@ export function useStandaloneEventOrganizersState({
           return current;
         }
         success = true;
-        return result.organizers;
+        return applyChiefPoolBalance(result.organizers);
       });
       return success;
     },
-    [],
+    [applyChiefPoolBalance],
   );
 
   return {

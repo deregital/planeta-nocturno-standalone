@@ -45,11 +45,24 @@ function OrganizerCapacitySummary({
     () => getInvitationAssignedTickets(organizersForCounts),
     [organizersForCounts],
   );
+  const chiefSurplusTickets = useMemo(() => {
+    if (!usesTicketPool || !chiefOrganizerId || maxCapacity === undefined) {
+      return 0;
+    }
+    return Math.max(0, totalAssignable - assignedTickets);
+  }, [
+    usesTicketPool,
+    chiefOrganizerId,
+    maxCapacity,
+    totalAssignable,
+    assignedTickets,
+  ]);
+
   const remainingTickets = useMemo(() => {
     if (maxCapacity === undefined) return 0;
 
     if (usesTicketPool && chiefOrganizerId) {
-      return Math.max(0, totalAssignable - assignedTickets);
+      return chiefSurplusTickets;
     }
 
     return getInvitationRemainingTickets(organizers, {
@@ -61,8 +74,7 @@ function OrganizerCapacitySummary({
     maxCapacity,
     usesTicketPool,
     chiefOrganizerId,
-    totalAssignable,
-    assignedTickets,
+    chiefSurplusTickets,
   ]);
 
   if (maxCapacity === undefined) {
@@ -134,6 +146,14 @@ export function EventOrganizersContent({
   chiefOrganizerId?: string;
 } & EventOrganizersState) {
   const organizersForCapacity = capacityOrganizers ?? organizers;
+
+  const organizersForDistribution = useMemo(
+    () =>
+      chiefOrganizerId
+        ? organizersForCapacity.filter((org) => org.id !== chiefOrganizerId)
+        : organizersForCapacity,
+    [organizersForCapacity, chiefOrganizerId],
+  );
   const usesTicketPool = ticketPool !== undefined;
   const {
     maxNumber,
@@ -141,7 +161,7 @@ export function EventOrganizersContent({
     minNumber,
     usesTicketPool: poolMode,
   } = useOrganizerTickets(type, {
-    organizers: organizersForCapacity,
+    organizers: organizersForDistribution,
     locationId,
     ticketPool,
   });
@@ -543,9 +563,10 @@ export function EventOrganizersContent({
         type={type}
         data={tableOrganizers}
         usesTicketPool={usesTicketPool || poolMode}
+        redistributeTeamPool={!!chiefOrganizerId && usesTicketPool}
         capacityData={
           capacityOrganizers
-            ? capacityOrganizers.map((org) => ({
+            ? organizersForDistribution.map((org) => ({
                 id: org.id,
                 fullName: org.fullName,
                 dni: org.dni,

@@ -176,13 +176,6 @@ function OrganizerDistributionDialogBody({
 
   const ticketTypes = useMemo(() => getEventTicketTypeRefs(event), [event]);
 
-  const organizersState = useStandaloneEventOrganizersState({
-    initialOrganizers,
-    locationId: event.locationId,
-    ticketTypes,
-    eventId: event.id,
-  });
-
   const chiefTicketPool = useMemo(
     () =>
       chiefOrganizerId
@@ -190,6 +183,15 @@ function OrganizerDistributionDialogBody({
         : undefined,
     [chiefOrganizerId, event],
   );
+
+  const organizersState = useStandaloneEventOrganizersState({
+    initialOrganizers,
+    locationId: event.locationId,
+    ticketTypes,
+    eventId: event.id,
+    chiefOrganizerId,
+    chiefInvitationPool: chiefTicketPool,
+  });
 
   const capacityOrganizers = useMemo(
     () =>

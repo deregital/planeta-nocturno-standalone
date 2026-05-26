@@ -3,7 +3,10 @@ import {
   type OrganizerTicketTypeRef,
 } from '@/lib/event-organizers';
 import { type RouterOutputs } from '@/server/routers/app';
-import { type OrganizerSchema } from '@/server/schemas/organizer';
+import {
+  type OrganizerInvitationSchema,
+  type OrganizerSchema,
+} from '@/server/schemas/organizer';
 import { type InviteCondition } from '@/server/types';
 
 type EventWithOrganizers = NonNullable<RouterOutputs['events']['getBySlug']>;
@@ -148,6 +151,84 @@ export function computeInvitationTicketsFreedForChief(
   }
 
   return freed;
+}
+
+export function sumChiefSubordinateInvitationTickets(
+  organizers: ChiefTicketInput[],
+  chiefOrganizerId: string,
+) {
+  return organizers
+    .filter((o) => o.id !== chiefOrganizerId)
+    .reduce((sum, o) => sum + (o.ticketAmount ?? 0), 0);
+}
+
+/** Tickets que le quedan al jefe tras asignar a su equipo (nunca más que el pool). */
+export function getChiefInvitationSurplus(
+  distributablePool: number,
+  organizers: ChiefTicketInput[],
+  chiefOrganizerId: string,
+) {
+  const subordinateTotal = sumChiefSubordinateInvitationTickets(
+    organizers,
+    chiefOrganizerId,
+  );
+  return Math.max(0, distributablePool - subordinateTotal);
+}
+
+/**
+ * Ajusta el cupo del jefe al resto del pool del equipo tras asignar a subordinados.
+ * El total del equipo se mantiene en `distributablePool`.
+ */
+export function balanceChiefInvitationPoolInput<T extends ChiefTicketInput>(
+  organizersInput: T[],
+  chiefOrganizerId: string,
+  distributablePool: number,
+): T[] {
+  const chiefAmount = getChiefInvitationSurplus(
+    distributablePool,
+    organizersInput,
+    chiefOrganizerId,
+  );
+  const chiefIndex = organizersInput.findIndex(
+    (o) => o.id === chiefOrganizerId,
+  );
+
+  if (chiefIndex === -1) {
+    return organizersInput;
+  }
+
+  return organizersInput.map((organizer, index) =>
+    index === chiefIndex
+      ? { ...organizer, ticketAmount: chiefAmount }
+      : organizer,
+  );
+}
+
+export function rebalanceChiefInvitationOrganizers(
+  organizers: OrganizerSchema[],
+  chiefOrganizerId: string,
+  distributablePool: number,
+): OrganizerSchema[] {
+  const invitationOrganizers = organizers.filter(
+    (o): o is OrganizerInvitationSchema => o.type === 'INVITATION',
+  );
+
+  if (invitationOrganizers.length === 0) {
+    return organizers;
+  }
+
+  const balanced = balanceChiefInvitationPoolInput(
+    invitationOrganizers,
+    chiefOrganizerId,
+    distributablePool,
+  );
+  const balancedById = new Map(balanced.map((o) => [o.id, o]));
+
+  return organizers.map((organizer) =>
+    organizer.type === 'INVITATION'
+      ? (balancedById.get(organizer.id) ?? organizer)
+      : organizer,
+  );
 }
 
 /** Máximo que el jefe puede tener sin auto-asignarse del pool (solo base + liberados). */
