@@ -24,11 +24,15 @@ import {
 export function TicketTableWithTabs({
   ticketTypes,
   externalSearchValue,
+  externalFilterInvitedByIds,
+  onClearOrganizerFilter,
   userId,
   event,
 }: {
   ticketTypes: TicketType[];
   externalSearchValue?: string;
+  externalFilterInvitedByIds?: string[];
+  onClearOrganizerFilter?: () => void;
   userId?: string;
   event: {
     slug: string;
@@ -125,6 +129,8 @@ export function TicketTableWithTabs({
         tickets={tickets}
         onFilteredTicketsChange={setFilteredTickets}
         externalSearchValue={externalSearchValue}
+        externalFilterInvitedByIds={externalFilterInvitedByIds}
+        onClearOrganizerFilter={onClearOrganizerFilter}
       />
 
       <Tabs

@@ -4,11 +4,14 @@ import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
 import { EventBasicInformation } from '@/components/event/individual/EventBasicInformation';
+import { OrganizerDistribution } from '@/components/event/individual/OrganizerDistribution';
+import { PrintEventQr } from '@/components/event/individual/PrintEventQr';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOrganizerEventView';
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
+import { getChiefDistributableTicketPool } from '@/lib/chief-organizer-event';
 import { auth } from '@/server/auth';
 import { trpc } from '@/server/trpc/server';
 import {
@@ -59,6 +62,8 @@ export default async function EventPage({
       ? `&ticket=${myTicketTypeSlugs.join(',')}`
       : '';
 
+  const organizerEventUrl = `${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}${ticketParam}`;
+
   // Para chief organizer: obtener IDs de sus organizadores
   const myOrganizerIds =
     session?.user.role === 'CHIEF_ORGANIZER'
@@ -77,20 +82,43 @@ export default async function EventPage({
     )
     .flatMap((tg) => tg.emittedTickets);
 
+  const userId = session?.user.id;
+  const maxAvailable =
+    event.inviteCondition === 'INVITATION' && userId
+      ? session?.user.role === 'CHIEF_ORGANIZER'
+        ? getChiefDistributableTicketPool(event, userId)
+        : (event.eventXorganizers.find((eo) => eo.user.id === userId)
+            ?.ticketAmount ?? 0)
+      : undefined;
+
   return (
     <div className='w-full py-4'>
       <GoBack route='/organization' className='ml-4' />
       <div className='flex flex-col items-center my-4'>
         <EventBasicInformation event={event} />
-        <QuantityTicketsEmitted tickets={myTickets} />
+        <QuantityTicketsEmitted
+          tickets={myTickets}
+          maxAvailable={maxAvailable}
+        />
       </div>
       {event.inviteCondition === 'TRADITIONAL' && (
         <div className='w-full text-center'>
-          <CopyUrl
-            url={`${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}${ticketParam}`}
-          />
+          <div className='flex flex-wrap items-center justify-center gap-3'>
+            <CopyUrl eventName={event.name} url={organizerEventUrl} />
+            <PrintEventQr
+              eventName={event.name}
+              url={organizerEventUrl}
+              showLabel={false}
+            />
+          </div>
         </div>
       )}
+      {session?.user.role === 'CHIEF_ORGANIZER' &&
+        event.inviteCondition === 'INVITATION' && (
+          <div className='mt-4 flex justify-center px-4'>
+            <OrganizerDistribution event={event} />
+          </div>
+        )}
       <h2 className='text-3xl font-bold px-4 text-accent my-4'>
         Lista de ventas
       </h2>

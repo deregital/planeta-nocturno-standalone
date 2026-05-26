@@ -620,16 +620,44 @@ export const emittedTicketsRouter = router({
         },
       });
 
-      const buyerCodes = await getBuyersCodeByDni(
-        ctx.db,
-        tickets.map((ticket) => ticket.dni),
-      );
+      const eventInvite = await ctx.db.query.event.findFirst({
+        where: eq(event.id, input.eventId),
+        columns: { inviteCondition: true },
+      });
+      const isInvitation = eventInvite?.inviteCondition === 'INVITATION';
+
+      const ticketIds = tickets.map((t) => t.id);
+      const invitationShortIdByTicketId = new Map<string, number>();
+      if (isInvitation && ticketIds.length > 0) {
+        const ticketXRows = await ctx.db.query.ticketXorganizer.findMany({
+          where: and(
+            eq(ticketXorganizer.eventId, input.eventId),
+            inArray(ticketXorganizer.ticketId, ticketIds),
+          ),
+          columns: { ticketId: true, shortId: true },
+        });
+        for (const row of ticketXRows) {
+          if (row.ticketId) {
+            invitationShortIdByTicketId.set(row.ticketId, row.shortId);
+          }
+        }
+      }
+
+      const buyerCodes =
+        !isInvitation && tickets.length > 0
+          ? await getBuyersCodeByDni(
+              ctx.db,
+              tickets.map((ticket) => ticket.dni),
+            )
+          : null;
 
       return tickets.map((ticket) => ({
         ...ticket,
-        buyerCode:
-          buyerCodes?.find((code) => code.dni === ticket.dni)?.id.toString() ||
-          '---',
+        buyerCode: isInvitation
+          ? (invitationShortIdByTicketId.get(ticket.id)?.toString() ?? '-')
+          : buyerCodes
+              ?.find((code) => code.dni === ticket.dni)
+              ?.id.toString() || '---',
         ticketGroup: {
           ...ticket.ticketGroup,
           invitedBy: ticket.ticketGroup.user?.fullName || '-',
