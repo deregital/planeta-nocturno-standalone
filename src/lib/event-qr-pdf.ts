@@ -98,10 +98,62 @@ export async function generateEventLinkPdf(url: string, eventName: string) {
   return pdfDoc.save();
 }
 
-export function printPdfBytes(pdfBytes: Uint8Array) {
+function isMobileDevice() {
+  if (typeof window === 'undefined') return false;
+
+  const mobileUserAgent = /android|iphone|ipad|ipod|mobile/i.test(
+    navigator.userAgent,
+  );
+  return window.matchMedia('(max-width: 768px)').matches || mobileUserAgent;
+}
+
+function sanitizeFilename(name: string) {
+  return name.replace(/[^\w\s-]/g, '').trim() || 'evento-qr';
+}
+
+export type PrintPdfResult = 'printed' | 'opened' | 'shared';
+
+export async function printPdfBytes(
+  pdfBytes: Uint8Array,
+  options?: { filename?: string; title?: string },
+): Promise<PrintPdfResult> {
   const blob = new Blob([new Uint8Array(pdfBytes)], {
     type: 'application/pdf',
   });
+  const filename = `${sanitizeFilename(options?.filename ?? options?.title ?? 'evento-qr')}.pdf`;
+
+  if (isMobileDevice()) {
+    const file = new File([blob], filename, { type: 'application/pdf' });
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: options?.title,
+        });
+        return 'shared';
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return 'shared';
+        }
+      }
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
+    const opened = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    return 'opened';
+  }
+
   const objectUrl = URL.createObjectURL(blob);
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
@@ -120,4 +172,6 @@ export function printPdfBytes(pdfBytes: Uint8Array) {
       iframe.remove();
     }, 2_000);
   };
+
+  return 'printed';
 }
