@@ -26,12 +26,20 @@ import { trpc } from '@/server/trpc/client';
 export default function ChangeEventFolder({
   eventId,
   folderId,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  hideTrigger = false,
 }: {
   eventId: string;
   folderId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
   const utils = trpc.useUtils();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = onOpenChangeProp ?? setInternalOpen;
   const [selectedFolderId, setSelectedFolderId] = useState<string>(
     folderId || 'none',
   );
@@ -73,11 +81,13 @@ export default function ChangeEventFolder({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant={'ghost'} size={'icon'} className='text-on-accent'>
-          <Folder />
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button variant={'ghost'} size={'icon'} className='text-on-accent'>
+            <Folder />
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Cambiar carpeta del evento</DialogTitle>

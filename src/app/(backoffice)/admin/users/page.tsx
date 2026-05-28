@@ -8,10 +8,12 @@ export default async function UsersPage() {
   const data = await trpc.user.getOrganizers();
 
   return (
-    <div className='flex flex-col gap-4 py-4'>
-      <div className='flex justify-between items-center px-4'>
-        <h1 className='text-3xl font-bold text-accent'>Organizadores</h1>
-        <div className='flex gap-2'>
+    <div className='flex min-w-0 flex-col gap-4 py-4'>
+      <div className='flex flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between'>
+        <h1 className='text-2xl font-bold text-accent sm:text-3xl'>
+          Organizadores
+        </h1>
+        <div className='flex flex-wrap gap-2 sm:justify-end'>
           <TagModal type='CREATE' />
           <ImportUsersWrapper />
           <CreateOrganizerForm />

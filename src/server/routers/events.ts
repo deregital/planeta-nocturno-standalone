@@ -39,7 +39,10 @@ import {
   createEventSchema,
   eventSchema as eventSchemaZod,
 } from '@/server/schemas/event';
-import { organizerSchema } from '@/server/schemas/organizer';
+import {
+  organizerInvitationSchema,
+  organizerSchema,
+} from '@/server/schemas/organizer';
 import {
   createTicketTypeSchema,
   ticketTypeSchema,
@@ -47,11 +50,13 @@ import {
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
+  chiefOrganizerProcedure,
   controlTicketingProcedure,
   publicProcedure,
   router,
   ticketingProcedure,
 } from '@/server/trpc';
+import { applyChiefOrganizerInvitationDistribution } from '@/server/utils/chief-organizer-invitation-distribution';
 import { type TicketType } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import {
@@ -65,6 +70,7 @@ import {
   presentismoPDFSchemaGroupedTicketType,
 } from '@/server/utils/presentismo-pdf';
 import { generatePdf } from '@/server/utils/ticket-template';
+import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
 import {
   generateSlug,
   getDMSansFonts,
@@ -823,14 +829,23 @@ export const eventsRouter = router({
                     })
                     .returning();
 
+                  const shortIds = await allocateTicketXOrganizerShortIds(
+                    tx,
+                    eventCreated.id,
+                    organizer.ticketAmount,
+                  );
+
                   // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles
                   await tx.insert(ticketXorganizer).values(
-                    Array.from({ length: organizer.ticketAmount }).map(() => ({
-                      eventId: eventCreated.id,
-                      organizerId: organizer.id,
-                      ticketGroupId: thisOrganizerTicketGroup.id,
-                      // ticketId será null hasta que se use el código
-                    })),
+                    Array.from({ length: organizer.ticketAmount }).map(
+                      (_, i) => ({
+                        eventId: eventCreated.id,
+                        organizerId: organizer.id,
+                        ticketGroupId: thisOrganizerTicketGroup.id,
+                        shortId: shortIds[i]!,
+                        // ticketId será null hasta que se use el código
+                      }),
+                    ),
                   );
                 }
               }
@@ -1345,12 +1360,19 @@ export const eventsRouter = router({
                       })
                       .returning();
 
+                    const shortIds = await allocateTicketXOrganizerShortIds(
+                      tx,
+                      eventUpdated.id,
+                      ticketAmount,
+                    );
+
                     // Crear registros TicketsXOrganizer con ticketId null
                     await tx.insert(ticketXorganizer).values(
-                      Array.from({ length: ticketAmount }).map(() => ({
+                      Array.from({ length: ticketAmount }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: addedOrganizerId,
                         ticketGroupId: thisOrganizerTicketGroup.id,
+                        shortId: shortIds[i]!,
                         // ticketId será null hasta que se use el código
                       })),
                     );
@@ -1526,12 +1548,19 @@ export const eventsRouter = router({
                       organizerTicketGroup = newTicketGroup;
                     }
 
+                    const shortIds = await allocateTicketXOrganizerShortIds(
+                      tx,
+                      eventUpdated.id,
+                      difference,
+                    );
+
                     // Crear los registros faltantes
                     await tx.insert(ticketXorganizer).values(
-                      Array.from({ length: difference }).map(() => ({
+                      Array.from({ length: difference }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: organizerInput.id,
                         ticketGroupId: organizerTicketGroup.id,
+                        shortId: shortIds[i]!,
                         // ticketId será null hasta que se use el código
                       })),
                     );
@@ -2162,5 +2191,59 @@ export const eventsRouter = router({
       }
 
       return deletedEvent[0];
+    }),
+  getOrganizerDeliveredTicketCounts: chiefOrganizerProcedure
+    .input(z.object({ eventId: z.uuid() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          organizerId: ticketXorganizer.organizerId,
+          count: sql<number>`cast(count(*) as int)`,
+        })
+        .from(ticketXorganizer)
+        .where(
+          and(
+            eq(ticketXorganizer.eventId, input.eventId),
+            not(isNull(ticketXorganizer.ticketId)),
+          ),
+        )
+        .groupBy(ticketXorganizer.organizerId);
+
+      return Object.fromEntries(
+        rows.map((row) => [row.organizerId, row.count]),
+      ) as Record<string, number>;
+    }),
+  updateChiefOrganizerTicketDistribution: chiefOrganizerProcedure
+    .input(
+      z.object({
+        eventId: z.uuid(),
+        organizersInput: organizerInvitationSchema.array(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'CHIEF_ORGANIZER') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Solo los jefes de organizadores pueden usar esta acción.',
+        });
+      }
+
+      await applyChiefOrganizerInvitationDistribution(ctx.db, {
+        chiefOrganizerId: ctx.session.user.id,
+        eventId: input.eventId,
+        organizersInput: input.organizersInput,
+      });
+
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input.eventId),
+        columns: { slug: true },
+      });
+
+      if (event) {
+        revalidatePath(`/organization/event/${event.slug}`);
+        revalidatePath(`/admin/event/${event.slug}`);
+      }
+
+      return { success: true };
     }),
 });

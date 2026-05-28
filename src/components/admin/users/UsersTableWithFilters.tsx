@@ -107,8 +107,8 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
 
   return (
     <div className='space-y-4'>
-      <div className='flex items-center justify-between px-4'>
-        <div className='flex md:items-center justify-start w-full gap-4 flex-col md:flex-row'>
+      <div className='px-4'>
+        <div className='flex w-full min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-start'>
           <div className='md:w-80 w-full'>
             <p className='text-sm text-accent truncate'>
               Filtrar por nombre, DNI, teléfono, mail o Instagram
@@ -120,10 +120,10 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
               className='max-full self-end'
             />
           </div>
-          <div className='flex flex-row md:items-center gap-4 w-full md:w-auto'>
+          <div className='flex w-full flex-row items-end gap-4 md:w-auto'>
             {isAdmin && (
               <MultiSelect
-                className='w-full min-w-48'
+                className='min-w-0 flex-1 sm:min-w-48 sm:flex-none'
                 options={roleOptions}
                 selectedValues={selectedRoles}
                 onSelectionChange={setSelectedRoles}
@@ -133,7 +133,7 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
               />
             )}
             <MultiSelect
-              className='w-full'
+              className='min-w-0 flex-1 sm:min-w-48 sm:flex-none'
               options={availableBatches}
               selectedValues={selectedBatches}
               onSelectionChange={setSelectedBatches}
@@ -142,7 +142,7 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
               emptyMessage='No hay grupos disponibles'
             />
           </div>
-          <div className='flex flex-row items-center gap-2 pt-4 md:pt-0 md:place-self-end'>
+          <div className='flex flex-row items-center gap-2 sm:pt-0 md:place-self-end'>
             <p className='text-sm text-accent'>
               {filteredData.length} de {data.length} resultados
             </p>

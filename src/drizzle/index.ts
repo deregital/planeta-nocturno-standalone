@@ -9,3 +9,5 @@ export const db = drizzle(process.env.DATABASE_URL!, {
     ...models,
   },
 });
+
+export type Db = typeof db;

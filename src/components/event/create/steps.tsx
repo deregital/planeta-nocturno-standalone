@@ -59,7 +59,7 @@ export function Steps() {
       <Stepper
         value={currentStep}
         onValueChange={setCurrentStep}
-        className='space-y-8 max-w-5xl p-4'
+        className='w-full max-w-5xl space-y-8 p-4'
       >
         <StepperNav>
           {steps.map((step, index) => (
@@ -95,7 +95,7 @@ export function Steps() {
         <StepperPanel className='text-sm'>
           {steps.map((step, idx) => (
             <StepperContent
-              className='w-full flex items-center justify-center'
+              className='w-full min-w-0 max-w-full'
               key={idx}
               value={idx + 1}
             >
