@@ -30,10 +30,26 @@ interface TagModalProps {
   type: 'CREATE' | 'EDIT';
   tag?: Tag;
   userId?: string; // User ID to remove from tag (not the current user)
+  assignUserIdOnCreate?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+  onUserAssignedToNewTag?: (tagId: string) => void;
 }
 
-export function TagModal({ type, tag, userId }: TagModalProps) {
-  const [open, setOpen] = useState(false);
+export function TagModal({
+  type,
+  tag,
+  userId,
+  assignUserIdOnCreate,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  hideTrigger = false,
+  onUserAssignedToNewTag,
+}: TagModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState<string>('');
@@ -56,14 +72,43 @@ export function TagModal({ type, tag, userId }: TagModalProps) {
     }
   }, [open, type, tag]);
 
+  const addUserToTagOnCreate = trpc.tag.addUserToTag.useMutation();
+
+  function invalidateAfterTagChange() {
+    utils.tag.getAll.invalidate();
+    utils.user.getByRole.invalidate('ORGANIZER');
+    utils.user.getOrganizersByChiefOrganizer.invalidate();
+    router.refresh();
+  }
+
   const createTag = trpc.tag.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (createdTag) => {
+      if (assignUserIdOnCreate && createdTag?.id) {
+        addUserToTagOnCreate.mutate(
+          { userId: assignUserIdOnCreate, tagId: createdTag.id },
+          {
+            onSuccess: () => {
+              toast.success('Grupo creado y usuario agregado exitosamente');
+              onUserAssignedToNewTag?.(createdTag.id);
+              setOpen(false);
+              invalidateAfterTagChange();
+            },
+            onError: (error) => {
+              toast.error(
+                error.message ||
+                  'El grupo se creó pero no se pudo agregar el usuario',
+              );
+              setOpen(false);
+              invalidateAfterTagChange();
+            },
+          },
+        );
+        return;
+      }
+
       toast.success('Grupo creado exitosamente');
       setOpen(false);
-      utils.tag.getAll.invalidate();
-      utils.user.getByRole.invalidate('ORGANIZER');
-      utils.user.getOrganizersByChiefOrganizer.invalidate();
-      router.refresh();
+      invalidateAfterTagChange();
     },
     onError: (error) => {
       toast.error(error.message || 'Error al crear el grupo');
@@ -166,13 +211,22 @@ export function TagModal({ type, tag, userId }: TagModalProps) {
   }
 
   if (type === 'CREATE') {
+    const isPending =
+      createTag.isPending ||
+      addUserToTagOnCreate.isPending ||
+      updateTag.isPending ||
+      removeUserFromTag.isPending ||
+      deleteTag.isPending;
+
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant='outline' onClick={(e) => e.stopPropagation()}>
-            <Plus /> Crear grupo
-          </Button>
-        </DialogTrigger>
+        {!hideTrigger && (
+          <DialogTrigger asChild>
+            <Button variant='outline' onClick={(e) => e.stopPropagation()}>
+              <Plus /> Crear grupo
+            </Button>
+          </DialogTrigger>
+        )}
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo grupo</DialogTitle>
@@ -194,26 +248,12 @@ export function TagModal({ type, tag, userId }: TagModalProps) {
                 error={error}
                 required
                 maxLength={20}
-                disabled={
-                  createTag.isPending ||
-                  updateTag.isPending ||
-                  removeUserFromTag.isPending ||
-                  deleteTag.isPending
-                }
+                disabled={isPending}
               />
             </div>
             <DialogFooter>
-              <Button
-                type='submit'
-                disabled={
-                  createTag.isPending ||
-                  updateTag.isPending ||
-                  removeUserFromTag.isPending ||
-                  deleteTag.isPending ||
-                  !name.trim()
-                }
-              >
-                {createTag.isPending ? 'Guardando...' : 'Crear'}
+              <Button type='submit' disabled={isPending || !name.trim()}>
+                {isPending ? 'Guardando...' : 'Crear'}
               </Button>
             </DialogFooter>
           </form>

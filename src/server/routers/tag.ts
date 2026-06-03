@@ -22,7 +22,10 @@ export const tagRouter = router({
         throw new Error('Ya existe un grupo con ese nombre');
       }
 
-      const createdTag = await ctx.db.insert(tag).values({ name: input });
+      const [createdTag] = await ctx.db
+        .insert(tag)
+        .values({ name: input })
+        .returning();
       return createdTag;
     }),
   update: chiefOrganizerProcedure

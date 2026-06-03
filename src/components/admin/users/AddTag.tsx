@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { TagModal } from '@/components/admin/users/TagModal';
 import { Badge } from '@/components/ui/badge';
 import {
   Command,
@@ -13,6 +14,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -28,6 +30,7 @@ interface AddTagProps {
 
 export function AddTag({ userId, currentUserTagIds = [] }: AddTagProps) {
   const [open, setOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [addedTagIds, setAddedTagIds] = useState<string[]>([]);
   const router = useRouter();
   const utils = trpc.useUtils();
@@ -67,44 +70,67 @@ export function AddTag({ userId, currentUserTagIds = [] }: AddTagProps) {
     });
   };
 
+  const handleOpenCreateModal = () => {
+    setOpen(false);
+    setCreateModalOpen(true);
+  };
+
   if (isLoading) {
     return null;
   }
 
-  if (availableTags.length === 0) {
-    return null;
-  }
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Badge
-          variant='outline'
-          className='cursor-pointer hover:bg-accent-light/50 transition-all'
-        >
-          <Plus />
-        </Badge>
-      </PopoverTrigger>
-      <PopoverContent className='p-0 w-[200px]' align='start'>
-        <Command>
-          <CommandInput placeholder='Buscar grupo...' />
-          <CommandList>
-            <CommandEmpty>No se encontró ningún grupo</CommandEmpty>
-            <CommandGroup>
-              {availableTags.map((tag) => (
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <Badge
+            variant='outline'
+            className='cursor-pointer hover:bg-accent-light/50 transition-all'
+          >
+            <Plus />
+          </Badge>
+        </PopoverTrigger>
+        <PopoverContent className='p-0 w-[200px]' align='start'>
+          <Command>
+            <CommandInput placeholder='Buscar grupo...' />
+            <CommandList>
+              <CommandEmpty>No se encontró ningún grupo</CommandEmpty>
+              <CommandGroup>
                 <CommandItem
-                  key={tag.id}
-                  value={tag.name}
-                  onSelect={() => handleSelectTag(tag.id)}
-                  disabled={addUserToTagMutation.isPending}
+                  value='crear grupo'
+                  onSelect={handleOpenCreateModal}
+                  disabled={addUserToTagMutation.isPending || createModalOpen}
+                  className='text-accent'
                 >
-                  {tag.name}
+                  <Plus className='mr-2 h-4 w-4' />
+                  Crear grupo
                 </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                {availableTags.length > 0 && <CommandSeparator />}
+                {availableTags.map((tag) => (
+                  <CommandItem
+                    key={tag.id}
+                    value={tag.name}
+                    onSelect={() => handleSelectTag(tag.id)}
+                    disabled={addUserToTagMutation.isPending}
+                  >
+                    {tag.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <TagModal
+        type='CREATE'
+        hideTrigger
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        assignUserIdOnCreate={userId}
+        onUserAssignedToNewTag={(tagId) => {
+          setAddedTagIds((prev) => [...prev, tagId]);
+        }}
+      />
+    </>
   );
 }
