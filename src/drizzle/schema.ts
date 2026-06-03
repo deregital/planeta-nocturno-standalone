@@ -371,11 +371,6 @@ export const event = pgTable(
   ],
 );
 
-export const tag = pgTable('tag', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-});
-
 export const eventFolder = pgTable('eventFolder', {
   id: uuid().defaultRandom().primaryKey().notNull(),
   name: text().notNull(),
@@ -384,6 +379,28 @@ export const eventFolder = pgTable('eventFolder', {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+export const tag = pgTable(
+  'tag',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    createdById: uuid().notNull(),
+  },
+  (table) => [
+    index('tag_createdById_idx').using(
+      'btree',
+      table.createdById.asc().nullsLast().op('uuid_ops'),
+    ),
+    foreignKey({
+      columns: [table.createdById],
+      foreignColumns: [user.id],
+      name: 'tag_createdById_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
 
 export const eventXUser = pgTable(
   '_EVENT_X_USER',

@@ -31,6 +31,7 @@ model User {
   role           Role
   code           String  @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
   tags           Tag[]   @relation("USER_X_TAG")
+  tagsCreated    Tag[]   @relation("TAG_CREATED_BY")
 
   accounts      Account[]
   sessions      Session[]
@@ -57,10 +58,13 @@ model User {
 }
 
 model Tag {
-  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name String
-  user User[] @relation("USER_X_TAG")
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  createdById String @db.Uuid
+  createdBy   User   @relation("TAG_CREATED_BY", fields: [createdById], references: [id], onDelete: Cascade)
+  user        User[] @relation("USER_X_TAG")
 
+  @@index([createdById])
   @@map("tag")
 }
 
