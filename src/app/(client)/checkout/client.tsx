@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
+import Image from 'next/image';
 
 import { handlePurchase } from '@/app/(client)/checkout/action';
 import FormInputGender from '@/components/checkout/FormInputGender';
@@ -206,11 +207,22 @@ export default function CheckoutClient({
       <div className='flex justify-baseline w-full'>
         <GoBack />
       </div>
-      <div className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'>
-        <p className='text-2xl'>{ticketGroup.event.name}</p>
-        <p className='text-lg font-medium text-accent'>
-          {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
-        </p>
+      <div className='flex flex-col md:flex-row justify-center items-center w-full sm:w-xl md:w-2xl'>
+        <div className='flex flex-col px-4'>
+          <p className='text-2xl'>{ticketGroup.event.name}</p>
+          <p className='text-lg font-medium text-accent'>
+            {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
+          </p>
+        </div>
+        <div className='flex justify-center items-center w-16 h-36 md:w-24 md:h-24 rounded-md overflow-hidden'>
+          <Image
+            src={ticketGroup.event.coverImageUrl}
+            alt='Portada del evento'
+            width={100}
+            height={100}
+            className='w-full h-full object-cover md:object-contain'
+          />
+        </div>
       </div>
 
       <TicketGroupTable
