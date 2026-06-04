@@ -78,6 +78,7 @@ export function TagModal({
     utils.tag.getAll.invalidate();
     utils.user.getByRole.invalidate('ORGANIZER');
     utils.user.getOrganizersByChiefOrganizer.invalidate();
+    utils.user.getOrganizers.invalidate();
     router.refresh();
   }
 
@@ -122,6 +123,8 @@ export function TagModal({
       setOpen(false);
       utils.tag.getAll.invalidate();
       utils.user.getByRole.invalidate('ORGANIZER');
+      utils.user.getOrganizersByChiefOrganizer.invalidate();
+      utils.user.getOrganizers.invalidate();
       router.refresh();
     },
     onError: (error) => {
@@ -138,6 +141,8 @@ export function TagModal({
       setSure(false);
       utils.tag.getAll.invalidate();
       utils.user.getByRole.invalidate('ORGANIZER');
+      utils.user.getOrganizersByChiefOrganizer.invalidate();
+      utils.user.getOrganizers.invalidate();
       router.refresh();
     },
     onError: (error) => {
@@ -154,6 +159,8 @@ export function TagModal({
       setSureDelete(false);
       utils.tag.getAll.invalidate();
       utils.user.getByRole.invalidate('ORGANIZER');
+      utils.user.getOrganizersByChiefOrganizer.invalidate();
+      utils.user.getOrganizers.invalidate();
       router.refresh();
     },
     onError: (error) => {

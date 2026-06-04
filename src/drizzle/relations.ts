@@ -9,8 +9,8 @@ import {
   location,
   eventCategory,
   eventFolder,
-  eventXUser,
   tag,
+  eventXUser,
   userXTag,
   ticketTypeXOrganizers,
   ticketTypePerGroup,
@@ -39,6 +39,7 @@ export const userRelations = relations(user, ({ one, many }) => ({
   }),
   emittedTickets: many(emittedTicket),
   ticketGroups: many(ticketGroup),
+  tags: many(tag),
   eventXUsers: many(eventXUser),
   userXTags: many(userXTag),
   ticketTypeXOrganizers: many(ticketTypeXOrganizers),
@@ -128,6 +129,14 @@ export const eventFolderRelations = relations(eventFolder, ({ many }) => ({
   events: many(event),
 }));
 
+export const tagRelations = relations(tag, ({ one, many }) => ({
+  user: one(user, {
+    fields: [tag.createdById],
+    references: [user.id],
+  }),
+  userXTags: many(userXTag),
+}));
+
 export const eventXUserRelations = relations(eventXUser, ({ one }) => ({
   event: one(event, {
     fields: [eventXUser.a],
@@ -148,10 +157,6 @@ export const userXTagRelations = relations(userXTag, ({ one }) => ({
     fields: [userXTag.b],
     references: [user.id],
   }),
-}));
-
-export const tagRelations = relations(tag, ({ many }) => ({
-  userXTags: many(userXTag),
 }));
 
 export const ticketTypeXOrganizersRelations = relations(
