@@ -2,6 +2,7 @@
 
 import { ChevronDown } from 'lucide-react';
 
+import EventDescriptionContent from '@/components/event/buyPage/EventDescriptionContent';
 import { type RouterOutputs } from '@/server/routers/app';
 
 interface InformationEventProps {
@@ -19,9 +20,9 @@ function InformationEvent({ description }: InformationEventProps) {
             <details className='group'>
               <summary className='list-none [&::-webkit-details-marker]:hidden'>
                 <div className='min-w-0'>
-                  <p className='line-clamp-2 text-sm leading-relaxed text-black/90 group-open:line-clamp-none'>
-                    {description}
-                  </p>
+                  <div className='line-clamp-2 group-open:line-clamp-none'>
+                    <EventDescriptionContent description={description} />
+                  </div>
                   <div className='mt-2 flex items-center gap-2 text-xs font-semibold text-accent'>
                     <span className='group-open:hidden'>Ver más</span>
                     <span className='hidden group-open:inline'>Ver menos</span>
@@ -31,15 +32,13 @@ function InformationEvent({ description }: InformationEventProps) {
               </summary>
             </details>
           ) : (
-            <p className='text-sm leading-relaxed text-black/90'>
-              {description}
-            </p>
+            <EventDescriptionContent description={description} />
           )}
         </div>
 
-        <p className='hidden text-center text-base font-light leading-relaxed text-black md:block'>
-          {description}
-        </p>
+        <div className='hidden text-center md:block'>
+          <EventDescriptionContent description={description} />
+        </div>
       </div>
     </div>
   );
