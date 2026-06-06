@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import {
   useActionState,
   useCallback,
@@ -206,11 +207,22 @@ export default function CheckoutClient({
       <div className='flex justify-baseline w-full'>
         <GoBack />
       </div>
-      <div className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'>
-        <p className='text-2xl'>{ticketGroup.event.name}</p>
-        <p className='text-lg font-medium text-accent'>
-          {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
-        </p>
+      <div className='flex flex-col md:flex-row justify-between items-center w-full sm:w-xl md:w-2xl'>
+        <div className='flex flex-col'>
+          <p className='text-2xl'>{ticketGroup.event.name}</p>
+          <p className='text-lg font-medium text-accent'>
+            {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
+          </p>
+        </div>
+        <div className='hidden md:flex w-24 h-24 rounded-md overflow-hidden'>
+          <Image
+            src={ticketGroup.event.coverImageUrl}
+            alt='Portada del evento'
+            width={96}
+            height={96}
+            className='w-full h-full object-contain'
+          />
+        </div>
       </div>
 
       <TicketGroupTable
