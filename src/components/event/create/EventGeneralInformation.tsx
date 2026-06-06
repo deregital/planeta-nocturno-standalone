@@ -13,6 +13,7 @@ import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
 import EventCategoryModal from '@/components/category/EventCategoryModal';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
+import MarkdownTextareaWithLabel from '@/components/common/MarkdownTextareaWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { EventCoverSquareCropDialog } from '@/components/event/create/EventCoverSquareCropDialog';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
@@ -255,13 +256,13 @@ export function EventGeneralInformation({
               readOnly={action === 'PREVIEW'}
               disabled={action === 'PREVIEW'}
             />
-            <InputWithLabel
+            <MarkdownTextareaWithLabel
               label='Descripción'
               id='description'
-              type='text'
               placeholder='Descripción del evento'
               required
               name='description'
+              rows={5}
               onChange={(e) => handleChange('description', e.target.value)}
               error={error.description}
               defaultValue={event.description ?? ''}
