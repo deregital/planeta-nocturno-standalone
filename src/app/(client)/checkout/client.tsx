@@ -214,13 +214,13 @@ export default function CheckoutClient({
             {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
           </p>
         </div>
-        <div className='flex justify-center items-center w-full aspect-2/1 md:w-24 md:h-24 md:aspect-auto rounded-md overflow-hidden'>
+        <div className='hidden md:flex w-24 h-24 rounded-md overflow-hidden'>
           <Image
             src={ticketGroup.event.coverImageUrl}
             alt='Portada del evento'
-            width={400}
-            height={200}
-            className='w-full h-full object-cover md:object-contain'
+            width={96}
+            height={96}
+            className='w-full h-full object-contain'
           />
         </div>
       </div>
