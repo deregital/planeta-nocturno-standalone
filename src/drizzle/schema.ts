@@ -327,6 +327,7 @@ export const event = pgTable(
     name: text().notNull(),
     description: text().notNull(),
     coverImageUrl: text().notNull(),
+    videoUrl: text(),
     slug: text().notNull(),
     startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
     endingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
