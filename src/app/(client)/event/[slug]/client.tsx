@@ -51,7 +51,10 @@ export default function Client({
               />
             </div>
             <div className='order-1 md:order-0 px-3 sm:px-4 md:px-4 md:col-span-4 flex flex-col justify-start items-stretch md:items-center overflow-hidden'>
-              <InformationEvent description={event.description} />
+              <InformationEvent
+                description={event.description}
+                videoUrl={event.videoUrl}
+              />
             </div>
           </div>
         </main>

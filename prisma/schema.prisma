@@ -132,6 +132,7 @@ model Event {
   name          String
   description   String
   coverImageUrl String
+  videoUrl      String?
   slug          String
   startingDate  DateTime @db.Timestamptz
   endingDate    DateTime @db.Timestamptz

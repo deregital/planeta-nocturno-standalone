@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { inviteCondition } from '@/drizzle/schema';
+import { isSupportedEventVideoUrl } from '@/lib/event-video-url';
 
 export const eventSchema = z.object({
   id: z.uuid({
@@ -12,6 +13,18 @@ export const eventSchema = z.object({
   coverImageUrl: z.url({
     error: 'La imagen de portada es requerida',
   }),
+  videoUrl: z
+    .union([
+      z.null(),
+      z.literal(''),
+      z.url({
+        error: 'La URL del video no es válida',
+      }),
+    ])
+    .transform((value) => (value === '' ? null : value))
+    .refine((value) => value === null || isSupportedEventVideoUrl(value), {
+      error: 'Solo se admiten videos de YouTube',
+    }),
 
   startingDate: z.date({
     error: 'La fecha de inicio es requerida',

@@ -25,7 +25,7 @@ export function LastScanCard({
               {lastScan.ticket?.fullName}
             </p>
           </div>
-          <p className='text-accent-dark p-2 text-sm'>
+          <p className='text-accent-dark p-2 text-normal'>
             <span className='font-bold'>DNI:</span> {lastScan.ticket?.dni}
           </p>
           <p className='text-accent-dark p-2 text-sm'>
@@ -36,6 +36,15 @@ export function LastScanCard({
             <span className='font-bold'>Invitado por:</span>{' '}
             {lastScan.ticket?.ticketGroup?.invitedBy || '-'}
           </p>
+          <p className='text-accent-dark p-2 text-sm'>
+            <span className='font-bold'>Tipo de ticket:</span>{' '}
+            {lastScan.ticket?.ticketType.name || '-'}
+          </p>
+          {lastScan.extraInfo && (
+            <p className='text-accent-dark p-2 text-sm bg-amber-300'>
+              <span className='font-bold'>Extra:</span> {lastScan.extraInfo}
+            </p>
+          )}
         </>
       ) : (
         <>

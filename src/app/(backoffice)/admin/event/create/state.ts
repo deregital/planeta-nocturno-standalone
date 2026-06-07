@@ -85,6 +85,7 @@ const initialState: EventState = {
     name: '',
     description: '',
     coverImageUrl: '',
+    videoUrl: null,
     startingDate: new Date(),
     endingDate: new Date(),
     categoryId: '',
