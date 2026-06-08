@@ -1,6 +1,5 @@
 import { CreateOrganizerForm } from '@/components/admin/users/CreateOrganizerForm';
 import { ImportUsersWrapper } from '@/components/admin/users/ImportUsersWrapper';
-import { TagModal } from '@/components/admin/users/TagModal';
 import { UsersTableWithFilters } from '@/components/admin/users/UsersTableWithFilters';
 import { trpc } from '@/server/trpc/server';
 
@@ -14,7 +13,6 @@ export default async function UsersPage() {
           Organizadores
         </h1>
         <div className='flex flex-wrap gap-2 sm:justify-end'>
-          <TagModal type='CREATE' />
           <ImportUsersWrapper />
           <CreateOrganizerForm />
         </div>

@@ -3,6 +3,15 @@ import { z } from 'zod';
 import { inviteCondition } from '@/drizzle/schema';
 import { isSupportedEventVideoUrl } from '@/lib/event-video-url';
 
+export const eventQuestionSchema = z.object({
+  id: z.uuid().optional(),
+  text: z.string().min(1, { error: 'La pregunta es requerida' }),
+});
+
+export const eventQuestionsSchema = z.array(eventQuestionSchema).default([]);
+
+export type EventQuestionSchema = z.infer<typeof eventQuestionSchema>;
+
 export const eventSchema = z.object({
   id: z.uuid({
     error: 'El id debe ser UUID',

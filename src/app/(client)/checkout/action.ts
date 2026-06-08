@@ -36,6 +36,16 @@ export const handlePurchase = async (
   const invitedBySimple =
     formData.get('invitedBySimple')?.toString().trim() || '';
 
+  const surveyAnswers: { questionId: string; answer: string }[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith('question_')) continue;
+    const questionId = key.replace('question_', '');
+    surveyAnswers.push({
+      questionId,
+      answer: value.toString().trim(),
+    });
+  }
+
   let url: Route | undefined = undefined;
 
   if (!eventId) {
@@ -61,6 +71,8 @@ export const handlePurchase = async (
   }
 
   for (const [key, value] of formData.entries()) {
+    if (key.startsWith('question_')) continue;
+
     const [campo, id] = key.split('_');
     if (!campo || !id) continue;
 
@@ -168,6 +180,15 @@ export const handlePurchase = async (
     });
   }
 
+  for (const question of event.questions) {
+    const answer = surveyAnswers.find(
+      (item) => item.questionId === question.id,
+    );
+    if (!answer || answer.answer === '') {
+      errorsArray[`question_${question.id}`] = 'Esta pregunta es requerida';
+    }
+  }
+
   if (!validationInvitedBy.success) {
     errorsArray['invitedBy'] = validationInvitedBy.error.issues[0].message;
   }
@@ -222,6 +243,13 @@ export const handlePurchase = async (
       await trpc.ticketGroup.updateInvitedBySimple({
         id: ticketGroupId,
         invitedBySimple,
+      });
+    }
+
+    if (surveyAnswers.length > 0) {
+      await trpc.ticketGroup.saveAnswers({
+        ticketGroupId,
+        answers: surveyAnswers.filter((answer) => answer.answer !== ''),
       });
     }
 

@@ -372,6 +372,57 @@ export const event = pgTable(
   ],
 );
 
+export const eventQuestion = pgTable(
+  'eventQuestion',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    text: text().notNull(),
+    sortOrder: integer().default(0).notNull(),
+    eventId: uuid().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'eventQuestion_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+export const ticketGroupAnswer = pgTable(
+  'ticketGroupAnswer',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    answer: text().notNull(),
+    questionId: uuid().notNull(),
+    ticketGroupId: uuid().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.questionId],
+      foreignColumns: [eventQuestion.id],
+      name: 'ticketGroupAnswer_questionId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.ticketGroupId],
+      foreignColumns: [ticketGroup.id],
+      name: 'ticketGroupAnswer_ticketGroupId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
 export const eventFolder = pgTable('eventFolder', {
   id: uuid().defaultRandom().primaryKey().notNull(),
   name: text().notNull(),

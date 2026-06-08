@@ -54,6 +54,8 @@ export default function Client({
   const setEvent = useCreateEventStore((state) => state.setEvent);
   const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
   const setOrganizers = useCreateEventStore((state) => state.setOrganizers);
+  const setQuestions = useCreateEventStore((state) => state.setQuestions);
+  const questions = useCreateEventStore((state) => state.questions);
 
   const [error, setError] = useState<{
     [key: string]: string;
@@ -88,8 +90,14 @@ export default function Client({
               : null,
         })),
       );
+      setQuestions(
+        event.questions.map((question) => ({
+          id: question.id,
+          text: question.text,
+        })),
+      );
     }
-  }, [event, setEvent, setOrganizers, setTicketTypes]);
+  }, [event, setEvent, setOrganizers, setTicketTypes, setQuestions]);
 
   async function handleSubmit() {
     setIsSubmitting(true);
@@ -139,6 +147,7 @@ export default function Client({
       ticketTypes: ticketTypesState,
       organizersInput: organizers,
       sendOrganizerTicketEmail,
+      questions: questions.filter((question) => question.text.trim() !== ''),
     });
   }
 

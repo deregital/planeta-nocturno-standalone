@@ -13,6 +13,7 @@ import { OrganizerDistribution } from '@/components/event/individual/OrganizerDi
 import { PrintEventQr } from '@/components/event/individual/PrintEventQr';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
+import { SurveyAnswersTable } from '@/components/event/individual/SurveyAnswersTable';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
@@ -126,9 +127,11 @@ async function EventDetails({ slug }: { slug: string }) {
             slug: event.slug,
             inviteCondition: event.inviteCondition,
             hasSimpleInvitation: event.hasSimpleInvitation,
+            hasQuestions: event.questions.length > 0,
           }}
         />
       )}
+      {event.questions.length > 0 && <SurveyAnswersTable event={event} />}
     </div>
   );
 }

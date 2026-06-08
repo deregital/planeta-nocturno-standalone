@@ -16,6 +16,7 @@ import InputWithLabel from '@/components/common/InputWithLabel';
 import MarkdownTextareaWithLabel from '@/components/common/MarkdownTextareaWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { EventCoverSquareCropDialog } from '@/components/event/create/EventCoverSquareCropDialog';
+import { EventQuestions } from '@/components/event/create/EventQuestions';
 import EventVideoField from '@/components/event/create/EventVideoField';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { TicketingUserModal } from '@/components/event/create/TicketingUserModal';
@@ -769,6 +770,18 @@ export function EventGeneralInformation({
             ingresar quien lo invitó al evento.
           </p>
         </section>
+        {action !== 'PREVIEW' && (
+          <section>
+            <h3 className='text-accent-dark text-lg font-semibold'>
+              Preguntas del formulario
+            </h3>
+            <p className='text-sm'>
+              Agregá preguntas de texto libre que los compradores deberán
+              responder durante el checkout. Este apartado es opcional.
+            </p>
+            <EventQuestions embedded showNavigation={false} />
+          </section>
+        )}
         {action === 'CREATE' && (
           <Button type='submit' variant={'accent'}>
             Continuar
