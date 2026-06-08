@@ -25,6 +25,7 @@ import {
   emittedTicket,
   eventFolder,
   event as eventSchema,
+  eventQuestion,
   eventXorganizer,
   eventXUser,
   location as locationSchema,
@@ -37,6 +38,7 @@ import {
 import { genderTranslation } from '@/lib/translations';
 import {
   createEventSchema,
+  eventQuestionsSchema,
   eventSchema as eventSchemaZod,
 } from '@/server/schemas/event';
 import {
@@ -361,6 +363,9 @@ export const eventsRouter = router({
             },
           },
         },
+        questions: {
+          orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
+        },
       },
     });
 
@@ -379,7 +384,15 @@ export const eventsRouter = router({
                 ticketType: true,
               },
             },
+            answers: {
+              with: {
+                question: true,
+              },
+            },
           },
+        },
+        questions: {
+          orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
         },
         ticketTypes: {
           orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
@@ -585,11 +598,17 @@ export const eventsRouter = router({
         ticketTypes: createTicketTypeSchema.array(),
         organizersInput: organizerSchema.array(),
         sendOrganizerTicketEmail: z.boolean().optional().default(false),
+        questions: eventQuestionsSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes, organizersInput, sendOrganizerTicketEmail } =
-        input;
+      const {
+        event,
+        ticketTypes,
+        organizersInput,
+        sendOrganizerTicketEmail,
+        questions,
+      } = input;
       const uniqueEventSlug = await getUniqueEventSlug(ctx.db, event.name);
 
       const organizers = await ctx.db.query.user.findMany({
@@ -709,6 +728,17 @@ export const eventsRouter = router({
                 })),
               );
             }
+
+            if (questions.length > 0) {
+              await tx.insert(eventQuestion).values(
+                questions.map((question, index) => ({
+                  text: question.text,
+                  sortOrder: index,
+                  eventId: eventCreated.id,
+                })),
+              );
+            }
+
             // Crear tickets para organizadores
             if (organizersInput.length > 0) {
               // Buscar o crear tipo de ticket "Organizador"
@@ -870,11 +900,17 @@ export const eventsRouter = router({
         ticketTypes: ticketTypeSchema.array(),
         organizersInput: organizerSchema.array(),
         sendOrganizerTicketEmail: z.boolean().optional().default(false),
+        questions: eventQuestionsSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes, organizersInput, sendOrganizerTicketEmail } =
-        input;
+      const {
+        event,
+        ticketTypes,
+        organizersInput,
+        sendOrganizerTicketEmail,
+        questions,
+      } = input;
 
       if (
         event.inviteCondition === 'INVITATION' &&
@@ -1736,6 +1772,20 @@ export const eventsRouter = router({
                 event.authorizedUsers.map((user) => ({
                   a: eventUpdated.id,
                   b: user.id,
+                })),
+              );
+            }
+
+            await tx
+              .delete(eventQuestion)
+              .where(eq(eventQuestion.eventId, eventUpdated.id));
+
+            if (questions.length > 0) {
+              await tx.insert(eventQuestion).values(
+                questions.map((question, index) => ({
+                  text: question.text,
+                  sortOrder: index,
+                  eventId: eventUpdated.id,
                 })),
               );
             }

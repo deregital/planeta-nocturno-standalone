@@ -170,9 +170,23 @@ model Event {
 
   ticketXOrganizers TicketXOrganizer[] @relation("EVENT_X_TICKET_X_ORGANIZER")
 
+  questions EventQuestion[] @relation("EVENT_X_QUESTION")
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("event")
+}
+
+model EventQuestion {
+  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  text      String
+  sortOrder Int                 @default(0)
+  eventId   String              @db.Uuid
+  event     Event               @relation("EVENT_X_QUESTION", fields: [eventId], references: [id], onDelete: Cascade)
+  answers   TicketGroupAnswer[] @relation("QUESTION_X_ANSWER")
+  createdAt DateTime            @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("eventQuestion")
 }
 
 model EventFolder {
@@ -251,10 +265,23 @@ model TicketGroup {
   tickets            EmittedTicket[]      @relation("TICKET_X_TICKET_GROUP")
   ticketTypePerGroup TicketTypePerGroup[] @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP")
   ticketXOrganizers  TicketXOrganizer[]   @relation("TICKET_GROUP_X_ORGANIZER")
+  answers            TicketGroupAnswer[]  @relation("TICKET_GROUP_X_ANSWER")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("ticketGroup")
+}
+
+model TicketGroupAnswer {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  answer        String
+  questionId    String        @db.Uuid
+  question      EventQuestion @relation("QUESTION_X_ANSWER", fields: [questionId], references: [id], onDelete: Cascade)
+  ticketGroupId String        @db.Uuid
+  ticketGroup   TicketGroup   @relation("TICKET_GROUP_X_ANSWER", fields: [ticketGroupId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("ticketGroupAnswer")
 }
 
 model TicketTypePerGroup {

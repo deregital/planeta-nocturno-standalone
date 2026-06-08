@@ -38,6 +38,7 @@ export function TicketTableWithTabs({
     slug: string;
     inviteCondition: InviteCondition;
     hasSimpleInvitation: boolean;
+    hasQuestions?: boolean;
   };
 }) {
   const { data: tickets } = trpc.emittedTickets.getByEventId.useQuery(
@@ -183,6 +184,7 @@ export function TicketTableWithTabs({
                   event={{
                     inviteCondition: event.inviteCondition,
                     hasSimpleInvitation: event.hasSimpleInvitation,
+                    hasQuestions: event.hasQuestions,
                   }}
                 />
               ) : (

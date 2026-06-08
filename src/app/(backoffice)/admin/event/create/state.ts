@@ -4,7 +4,10 @@ import {
   applyAddInvitationOrganizersStealingTickets,
   type InvitationOrganizerCapacityOptions,
 } from '@/lib/event-organizers';
-import { type CreateEventSchema } from '@/server/schemas/event';
+import {
+  type CreateEventSchema,
+  type EventQuestionSchema,
+} from '@/server/schemas/event';
 import {
   type OrganizerBaseSchema,
   type OrganizerSchema,
@@ -26,6 +29,7 @@ export type EventState = {
   )[];
   organizers: OrganizerSchema[];
   sendOrganizerTicketEmail: boolean;
+  questions: EventQuestionSchema[];
 };
 type EventActions = {
   addTicketType: (ticketType: CreateTicketTypeSchema) => void;
@@ -60,6 +64,10 @@ type EventActions = {
   addOrganizerTicketType: () => void;
   updateOrganizerTicketType: () => void;
   reorderTicketTypes: (activeId: string, overId: string) => void;
+  setQuestions: (questions: EventQuestionSchema[]) => void;
+  addQuestion: () => void;
+  removeQuestion: (index: number) => void;
+  updateQuestion: (index: number, text: string) => void;
 };
 
 export type CreateEventStore = EventState & EventActions;
@@ -103,6 +111,7 @@ const initialState: EventState = {
   ticketTypes: [],
   organizers: [],
   sendOrganizerTicketEmail: false,
+  questions: [],
 };
 
 function calculateOrganizerMaxAvailable(
@@ -431,6 +440,26 @@ export const createEventStore = (initState: EventState = initialState) => {
           ticketTypes: moveItem(state.ticketTypes, fromIndex, toIndex),
         };
       });
+    },
+    setQuestions: (questions) => {
+      set(() => ({ questions }));
+    },
+    addQuestion: () => {
+      set((state) => ({
+        questions: [...state.questions, { text: '' }],
+      }));
+    },
+    removeQuestion: (index) => {
+      set((state) => ({
+        questions: state.questions.filter((_, i) => i !== index),
+      }));
+    },
+    updateQuestion: (index, text) => {
+      set((state) => ({
+        questions: state.questions.map((question, i) =>
+          i === index ? { ...question, text } : question,
+        ),
+      }));
     },
   }));
 };
