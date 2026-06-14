@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { hash } from 'bcrypt';
-import { eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -25,17 +25,18 @@ import {
   router,
 } from '@/server/trpc';
 import { type Tag, type User } from '@/server/types';
+import {
+  buildUserXTagsRelation,
+  getTagIdsOwnedByUser,
+} from '@/server/utils/tags';
 import { generateRandomPassword } from '@/server/utils/users';
 
 export const userRouter = router({
   getAll: adminProcedure.query(async ({ ctx }) => {
+    const ownedTagIds = await getTagIdsOwnedByUser(ctx.db, ctx.session.user.id);
     const users = await ctx.db.query.user.findMany({
       with: {
-        userXTags: {
-          with: {
-            tag: true,
-          },
-        },
+        userXTags: buildUserXTagsRelation(ownedTagIds),
         user: {
           columns: {
             fullName: true,
@@ -49,28 +50,28 @@ export const userRouter = router({
   getByRole: chiefOrganizerProcedure
     .input(z.enum(role.enumValues))
     .query(async ({ ctx, input }) => {
+      const ownedTagIds = await getTagIdsOwnedByUser(
+        ctx.db,
+        ctx.session.user.id,
+      );
       const users = await ctx.db.query.user.findMany({
         where: eq(userTable.role, input),
         with: {
-          userXTags: {
-            with: {
-              tag: true,
-            },
-          },
+          userXTags: buildUserXTagsRelation(ownedTagIds),
         },
       });
       return users;
     }),
   getOrganizersByChiefOrganizer: chiefOrganizerProcedure.query(
     async ({ ctx }) => {
+      const ownedTagIds = await getTagIdsOwnedByUser(
+        ctx.db,
+        ctx.session.user.id,
+      );
       const users = await ctx.db.query.user.findMany({
         where: eq(userTable.chiefOrganizerId, ctx.session.user.id),
         with: {
-          userXTags: {
-            with: {
-              tag: true,
-            },
-          },
+          userXTags: buildUserXTagsRelation(ownedTagIds),
           user: {
             columns: {
               fullName: true,
@@ -352,10 +353,13 @@ export const userRouter = router({
         });
       }
 
-      // Crear o obtener el tag del batch
+      // Crear o obtener el tag del batch (solo del usuario que importa)
       let batchTag: Tag;
       const existingTag = await ctx.db.query.tag.findFirst({
-        where: eq(tagTable.name, input.batchName),
+        where: and(
+          eq(tagTable.name, input.batchName),
+          eq(tagTable.createdById, ctx.session.user.id),
+        ),
       });
 
       if (existingTag) {
@@ -363,7 +367,10 @@ export const userRouter = router({
       } else {
         const newTag = await ctx.db
           .insert(tagTable)
-          .values({ name: input.batchName })
+          .values({
+            name: input.batchName,
+            createdById: ctx.session.user.id,
+          })
           .returning();
         batchTag = newTag[0];
       }
@@ -459,14 +466,11 @@ export const userRouter = router({
       };
     }),
   getOrganizers: adminProcedure.query(async ({ ctx }) => {
+    const ownedTagIds = await getTagIdsOwnedByUser(ctx.db, ctx.session.user.id);
     const organizers = await ctx.db.query.user.findMany({
       where: inArray(userTable.role, ['ORGANIZER', 'CHIEF_ORGANIZER']),
       with: {
-        userXTags: {
-          with: {
-            tag: true,
-          },
-        },
+        userXTags: buildUserXTagsRelation(ownedTagIds),
         user: {
           columns: {
             fullName: true,

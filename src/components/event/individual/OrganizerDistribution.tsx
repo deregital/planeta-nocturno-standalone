@@ -108,6 +108,7 @@ function OrganizerDistributionSaveButton({
         name: event.name,
         description: event.description,
         coverImageUrl: event.coverImageUrl,
+        videoUrl: event.videoUrl,
         startingDate: new Date(event.startingDate),
         endingDate: new Date(event.endingDate),
         minAge: event.minAge,

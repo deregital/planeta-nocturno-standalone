@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import {
   useActionState,
   useCallback,
@@ -206,11 +207,22 @@ export default function CheckoutClient({
       <div className='flex justify-baseline w-full'>
         <GoBack />
       </div>
-      <div className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'>
-        <p className='text-2xl'>{ticketGroup.event.name}</p>
-        <p className='text-lg font-medium text-accent'>
-          {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
-        </p>
+      <div className='flex flex-col md:flex-row justify-between items-center w-full sm:w-xl md:w-2xl'>
+        <div className='flex flex-col'>
+          <p className='text-2xl'>{ticketGroup.event.name}</p>
+          <p className='text-lg font-medium text-accent'>
+            {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
+          </p>
+        </div>
+        <div className='hidden md:flex w-24 h-24 rounded-md overflow-hidden'>
+          <Image
+            src={ticketGroup.event.coverImageUrl}
+            alt='Portada del evento'
+            width={96}
+            height={96}
+            className='w-full h-full object-contain'
+          />
+        </div>
       </div>
 
       <TicketGroupTable
@@ -532,39 +544,68 @@ export default function CheckoutClient({
             className='[&>input]:border-dashed'
           />
         )}
-        <Separator className='my-2' />
+        {ticketGroup.event.questions.length > 0 && (
+          <>
+            <Separator className='my-2' />
+            <div className='flex flex-col gap-4'>
+              {ticketGroup.event.questions.map((question) => (
+                <InputWithLabel
+                  key={question.id}
+                  name={`question_${question.id}`}
+                  id={`question_${question.id}`}
+                  label={question.text}
+                  type='text'
+                  required
+                  defaultValue={
+                    state.formData?.[`question_${question.id}`] ?? ''
+                  }
+                  error={
+                    typeof state.errors === 'object' && state.errors !== null
+                      ? (state.errors as Record<string, string>)[
+                          `question_${question.id}`
+                        ]
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          </>
+        )}
         {(ticketGroup.event.inviteCondition === 'TRADITIONAL' ||
           (ticketGroup.event.inviteCondition === 'INVITATION' &&
             organizerCodeFromTicketGroup)) && (
-          <OrganizerCodeOTP
-            value={organizerCode}
-            onChange={handleOrganizerCodeChange}
-            disabled={ticketGroup.event.inviteCondition === 'INVITATION'}
-            isValidating={isValidatingCode || validateOrganizerCode.isLoading}
-            organizerName={
-              validateOrganizerCode.data?.valid
-                ? validateOrganizerCode.data.organizerName
-                : null
-            }
-            discountPercentage={
-              validateOrganizerCode.data?.valid
-                ? validateOrganizerCode.data.discountPercentage
-                : null
-            }
-            error={
-              organizerCodeError ||
-              (typeof state.errors === 'object' && state.errors !== null
-                ? (state.errors as Record<string, string>)['invitedBy']
-                : undefined)
-            }
-            label={
-              organizerCodeFromTicketGroup
-                ? 'Código del organizador'
-                : 'Ingrese el código del organizador (opcional)'
-            }
-            id='organizerCode'
-            required={false}
-          />
+          <>
+            <Separator className='my-2' />
+            <OrganizerCodeOTP
+              value={organizerCode}
+              onChange={handleOrganizerCodeChange}
+              disabled={ticketGroup.event.inviteCondition === 'INVITATION'}
+              isValidating={isValidatingCode || validateOrganizerCode.isLoading}
+              organizerName={
+                validateOrganizerCode.data?.valid
+                  ? validateOrganizerCode.data.organizerName
+                  : null
+              }
+              discountPercentage={
+                validateOrganizerCode.data?.valid
+                  ? validateOrganizerCode.data.discountPercentage
+                  : null
+              }
+              error={
+                organizerCodeError ||
+                (typeof state.errors === 'object' && state.errors !== null
+                  ? (state.errors as Record<string, string>)['invitedBy']
+                  : undefined)
+              }
+              label={
+                organizerCodeFromTicketGroup
+                  ? 'Código del organizador'
+                  : 'Ingrese el código del organizador (opcional)'
+              }
+              id='organizerCode'
+              required={false}
+            />
+          </>
         )}
 
         <input hidden name='invitedBy' value={organizerId || ''} readOnly />

@@ -16,6 +16,7 @@ const generalEventSchema = createEventSchema.pick({
   name: true,
   description: true,
   coverImageUrl: true,
+  videoUrl: true,
   startingDate: true,
   endingDate: true,
   categoryId: true,
@@ -32,6 +33,7 @@ export async function validateGeneralInformation(
     | 'name'
     | 'description'
     | 'coverImageUrl'
+    | 'videoUrl'
     | 'startingDate'
     | 'endingDate'
     | 'categoryId'

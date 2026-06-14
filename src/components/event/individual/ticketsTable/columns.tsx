@@ -7,6 +7,7 @@ import { format as formatPhoneNumber } from 'libphonenumber-js';
 import {
   ArrowDownAZ,
   ArrowUpDown,
+  ClipboardList,
   DownloadIcon,
   MoreHorizontal,
   ScanBarcode,
@@ -14,6 +15,7 @@ import {
   TrashIcon,
   UserCircle,
 } from 'lucide-react';
+import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -43,6 +45,34 @@ import { trpc } from '@/server/trpc/client';
 import { type InviteCondition, type Role } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
+export const FORM_SEARCH_PARAM = 'formulario';
+
+function FormCell({ dni }: { dni: string }) {
+  const [, setFormularioSearch] = useQueryState(
+    FORM_SEARCH_PARAM,
+    parseAsString,
+  );
+
+  return (
+    <div className='flex w-full items-center justify-center'>
+      <Button
+        variant='ghost'
+        size='sm'
+        className='h-8 gap-1 text-blue-500 hover:text-blue-500/75'
+        onClick={async () => {
+          await setFormularioSearch(dni);
+          document
+            .getElementById('form-answers')
+            ?.scrollIntoView({ behavior: 'smooth' });
+        }}
+      >
+        <ClipboardList className='size-4' />
+        Ver
+      </Button>
+    </div>
+  );
+}
+
 export function generateTicketColumns({
   role,
   event,
@@ -51,6 +81,7 @@ export function generateTicketColumns({
   event: {
     inviteCondition: InviteCondition;
     hasSimpleInvitation: boolean;
+    hasQuestions?: boolean;
   };
 }) {
   let columns: StrictColumnDef<
@@ -594,6 +625,24 @@ export function generateTicketColumns({
       },
     },
     {
+      id: 'formulario',
+      enableSorting: false,
+      header: () => (
+        <div className='text-center w-full font-bold text-sm'>Formulario</div>
+      ),
+      minSize: 50,
+      size: 50,
+      maxSize: 50,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return <FormCell dni={row.original.dni} />;
+      },
+      meta: {
+        exportValue: () => '',
+        exportHeader: 'Formulario',
+      },
+    },
+    {
       id: 'actions',
       enableHiding: false,
       size: 10,
@@ -948,6 +997,10 @@ export function generateTicketColumns({
       },
     },
   ];
+
+  if (!event.hasQuestions) {
+    columns = columns.filter((col) => col.id !== 'formulario');
+  }
 
   if (event.inviteCondition === 'SIMPLE') {
     columns = columns.filter(

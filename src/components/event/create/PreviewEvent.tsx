@@ -18,6 +18,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
   const sendOrganizerTicketEmail = useCreateEventStore(
     (state) => state.sendOrganizerTicketEmail,
   );
+  const questions = useCreateEventStore((state) => state.questions);
   const organizers = useCreateEventStore((state) => state.organizers).map(
     (organizer) => ({
       id: organizer.id,
@@ -61,6 +62,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
         ticketTypes,
         organizersInput: organizers,
         sendOrganizerTicketEmail,
+        questions: questions.filter((question) => question.text.trim() !== ''),
       });
       toast('¡Evento creado con éxito!');
       router.push('/admin/event');

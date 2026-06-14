@@ -13,6 +13,7 @@ import { OrganizerDistribution } from '@/components/event/individual/OrganizerDi
 import { PrintEventQr } from '@/components/event/individual/PrintEventQr';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
+import { SurveyAnswersTable } from '@/components/event/individual/SurveyAnswersTable';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
@@ -49,6 +50,13 @@ async function EventDetails({ slug }: { slug: string }) {
   const organizerTickets = event.ticketGroups
     .filter((tg) => tg.isOrganizerGroup)
     .flatMap((tg) => tg.emittedTickets);
+
+  const answeredQuestionIds = new Set(
+    event.ticketGroups.flatMap((tg) => tg.answers.map((a) => a.questionId)),
+  );
+  const hasVisibleQuestions = event.questions.some(
+    (question) => !question.isDeleted || answeredQuestionIds.has(question.id),
+  );
 
   const headersList = await headers();
   const host = headersList.get('x-forwarded-host');
@@ -126,9 +134,11 @@ async function EventDetails({ slug }: { slug: string }) {
             slug: event.slug,
             inviteCondition: event.inviteCondition,
             hasSimpleInvitation: event.hasSimpleInvitation,
+            hasQuestions: hasVisibleQuestions,
           }}
         />
       )}
+      {hasVisibleQuestions && <SurveyAnswersTable event={event} />}
     </div>
   );
 }

@@ -17,6 +17,7 @@ export function TicketTableSection({
   event: {
     inviteCondition: InviteCondition;
     hasSimpleInvitation: boolean;
+    hasQuestions?: boolean;
   };
 }) {
   return (
