@@ -310,7 +310,10 @@ export const handlePurchase = async (
         });
       }
 
-      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
+      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket), {
+        maxAge: 60 * 60 * 24 * 365, // 1 año
+        path: '/',
+      });
       (await cookies()).delete('carrito');
 
       url = `/tickets/${ticketGroupId}` as Route;
@@ -329,7 +332,10 @@ export const handlePurchase = async (
         };
       }
 
-      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket));
+      (await cookies()).set('lastPurchase', JSON.stringify(firstTicket), {
+        maxAge: 60 * 60 * 24 * 365, // 1 año
+        path: '/',
+      });
       (await cookies()).delete('carrito');
       (await cookies()).set('pendingPaymentUrl', mercadoPagoUrl);
 
