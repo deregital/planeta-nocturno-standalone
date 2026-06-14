@@ -51,6 +51,13 @@ async function EventDetails({ slug }: { slug: string }) {
     .filter((tg) => tg.isOrganizerGroup)
     .flatMap((tg) => tg.emittedTickets);
 
+  const answeredQuestionIds = new Set(
+    event.ticketGroups.flatMap((tg) => tg.answers.map((a) => a.questionId)),
+  );
+  const hasVisibleQuestions = event.questions.some(
+    (question) => !question.isDeleted || answeredQuestionIds.has(question.id),
+  );
+
   const headersList = await headers();
   const host = headersList.get('x-forwarded-host');
   const proto = headersList.get('x-forwarded-proto');
@@ -127,11 +134,11 @@ async function EventDetails({ slug }: { slug: string }) {
             slug: event.slug,
             inviteCondition: event.inviteCondition,
             hasSimpleInvitation: event.hasSimpleInvitation,
-            hasQuestions: event.questions.length > 0,
+            hasQuestions: hasVisibleQuestions,
           }}
         />
       )}
-      {event.questions.length > 0 && <SurveyAnswersTable event={event} />}
+      {hasVisibleQuestions && <SurveyAnswersTable event={event} />}
     </div>
   );
 }

@@ -378,6 +378,7 @@ export const eventQuestion = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     text: text().notNull(),
     sortOrder: integer().default(0).notNull(),
+    isDeleted: boolean().default(false).notNull(),
     eventId: uuid().notNull(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)

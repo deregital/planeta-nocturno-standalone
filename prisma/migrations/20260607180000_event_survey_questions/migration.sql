@@ -3,6 +3,7 @@ CREATE TABLE "eventQuestion" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "text" TEXT NOT NULL,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "eventId" UUID NOT NULL,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

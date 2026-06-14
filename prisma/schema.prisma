@@ -181,6 +181,7 @@ model EventQuestion {
   id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   text      String
   sortOrder Int                 @default(0)
+  isDeleted Boolean             @default(false)
   eventId   String              @db.Uuid
   event     Event               @relation("EVENT_X_QUESTION", fields: [eventId], references: [id], onDelete: Cascade)
   answers   TicketGroupAnswer[] @relation("QUESTION_X_ANSWER")

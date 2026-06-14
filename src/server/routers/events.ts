@@ -1776,18 +1776,47 @@ export const eventsRouter = router({
               );
             }
 
-            await tx
-              .delete(eventQuestion)
-              .where(eq(eventQuestion.eventId, eventUpdated.id));
+            // Las preguntas se manejan con soft-delete para no borrar las
+            // respuestas ya emitidas (TicketGroupAnswer).
+            const questionsDB = await tx.query.eventQuestion.findMany({
+              where: eq(eventQuestion.eventId, eventUpdated.id),
+            });
+            const inputQuestionIds = new Set(
+              questions
+                .map((question) => question.id)
+                .filter((id): id is string => Boolean(id)),
+            );
 
-            if (questions.length > 0) {
-              await tx.insert(eventQuestion).values(
-                questions.map((question, index) => ({
+            // Marcar como eliminadas las preguntas activas que ya no están
+            const questionsToSoftDelete = questionsDB
+              .filter((question) => !question.isDeleted)
+              .filter((question) => !inputQuestionIds.has(question.id))
+              .map((question) => question.id);
+            if (questionsToSoftDelete.length > 0) {
+              await tx
+                .update(eventQuestion)
+                .set({ isDeleted: true })
+                .where(inArray(eventQuestion.id, questionsToSoftDelete));
+            }
+
+            // Actualizar preguntas existentes y crear las nuevas
+            for (const [index, question] of questions.entries()) {
+              if (question.id && inputQuestionIds.has(question.id)) {
+                await tx
+                  .update(eventQuestion)
+                  .set({
+                    text: question.text,
+                    sortOrder: index,
+                    isDeleted: false,
+                  })
+                  .where(eq(eventQuestion.id, question.id));
+              } else {
+                await tx.insert(eventQuestion).values({
                   text: question.text,
                   sortOrder: index,
                   eventId: eventUpdated.id,
-                })),
-              );
+                });
+              }
             }
 
             return { eventUpdated, ticketTypesUpdated };

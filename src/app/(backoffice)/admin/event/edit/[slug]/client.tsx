@@ -91,10 +91,12 @@ export default function Client({
         })),
       );
       setQuestions(
-        event.questions.map((question) => ({
-          id: question.id,
-          text: question.text,
-        })),
+        event.questions
+          .filter((question) => !question.isDeleted)
+          .map((question) => ({
+            id: question.id,
+            text: question.text,
+          })),
       );
     }
   }, [event, setEvent, setOrganizers, setTicketTypes, setQuestions]);

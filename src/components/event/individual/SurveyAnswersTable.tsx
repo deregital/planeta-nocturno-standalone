@@ -110,12 +110,25 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
     return rows.filter((row) => row.searchable.includes(term));
   }, [rows, search]);
 
+  // Mostrar preguntas activas o eliminadas que aún tengan respuestas, para no
+  // perder la visualización de respuestas históricas.
+  const visibleQuestions = useMemo(() => {
+    const answeredQuestionIds = new Set(
+      event.ticketGroups.flatMap((ticketGroup) =>
+        ticketGroup.answers.map((answer) => answer.questionId),
+      ),
+    );
+    return event.questions.filter(
+      (question) => !question.isDeleted || answeredQuestionIds.has(question.id),
+    );
+  }, [event.questions, event.ticketGroups]);
+
   const columns = useMemo(
-    () => generateSurveyAnswerColumns(event.questions),
-    [event.questions],
+    () => generateSurveyAnswerColumns(visibleQuestions),
+    [visibleQuestions],
   );
 
-  if (event.questions.length === 0) {
+  if (visibleQuestions.length === 0) {
     return null;
   }
 
