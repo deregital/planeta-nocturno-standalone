@@ -25,6 +25,7 @@ import {
   emittedTicket,
   eventFolder,
   event as eventSchema,
+  eventQuestion,
   eventXorganizer,
   eventXUser,
   location as locationSchema,
@@ -37,6 +38,7 @@ import {
 import { genderTranslation } from '@/lib/translations';
 import {
   createEventSchema,
+  eventQuestionsSchema,
   eventSchema as eventSchemaZod,
 } from '@/server/schemas/event';
 import {
@@ -361,6 +363,10 @@ export const eventsRouter = router({
             },
           },
         },
+        questions: {
+          where: eq(eventQuestion.isDeleted, false),
+          orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
+        },
       },
     });
 
@@ -379,7 +385,15 @@ export const eventsRouter = router({
                 ticketType: true,
               },
             },
+            answers: {
+              with: {
+                question: true,
+              },
+            },
           },
+        },
+        questions: {
+          orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
         },
         ticketTypes: {
           orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
@@ -585,11 +599,17 @@ export const eventsRouter = router({
         ticketTypes: createTicketTypeSchema.array(),
         organizersInput: organizerSchema.array(),
         sendOrganizerTicketEmail: z.boolean().optional().default(false),
+        questions: eventQuestionsSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes, organizersInput, sendOrganizerTicketEmail } =
-        input;
+      const {
+        event,
+        ticketTypes,
+        organizersInput,
+        sendOrganizerTicketEmail,
+        questions,
+      } = input;
       const uniqueEventSlug = await getUniqueEventSlug(ctx.db, event.name);
 
       const organizers = await ctx.db.query.user.findMany({
@@ -603,6 +623,7 @@ export const eventsRouter = router({
         name: event.name,
         description: event.description,
         coverImageUrl: event.coverImageUrl,
+        videoUrl: event.videoUrl,
         startingDate: event.startingDate.toISOString(),
         endingDate: event.endingDate.toISOString(),
         minAge: event.minAge,
@@ -708,6 +729,17 @@ export const eventsRouter = router({
                 })),
               );
             }
+
+            if (questions.length > 0) {
+              await tx.insert(eventQuestion).values(
+                questions.map((question, index) => ({
+                  text: question.text,
+                  sortOrder: index,
+                  eventId: eventCreated.id,
+                })),
+              );
+            }
+
             // Crear tickets para organizadores
             if (organizersInput.length > 0) {
               // Buscar o crear tipo de ticket "Organizador"
@@ -869,11 +901,17 @@ export const eventsRouter = router({
         ticketTypes: ticketTypeSchema.array(),
         organizersInput: organizerSchema.array(),
         sendOrganizerTicketEmail: z.boolean().optional().default(false),
+        questions: eventQuestionsSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { event, ticketTypes, organizersInput, sendOrganizerTicketEmail } =
-        input;
+      const {
+        event,
+        ticketTypes,
+        organizersInput,
+        sendOrganizerTicketEmail,
+        questions,
+      } = input;
 
       if (
         event.inviteCondition === 'INVITATION' &&
@@ -890,6 +928,7 @@ export const eventsRouter = router({
         name: event.name,
         description: event.description,
         coverImageUrl: event.coverImageUrl,
+        videoUrl: event.videoUrl,
         startingDate: event.startingDate.toISOString(),
         endingDate: event.endingDate.toISOString(),
         minAge: event.minAge,
@@ -1736,6 +1775,49 @@ export const eventsRouter = router({
                   b: user.id,
                 })),
               );
+            }
+
+            // Las preguntas se manejan con soft-delete para no borrar las
+            // respuestas ya emitidas (TicketGroupAnswer).
+            const questionsDB = await tx.query.eventQuestion.findMany({
+              where: eq(eventQuestion.eventId, eventUpdated.id),
+            });
+            const inputQuestionIds = new Set(
+              questions
+                .map((question) => question.id)
+                .filter((id): id is string => Boolean(id)),
+            );
+
+            // Marcar como eliminadas las preguntas activas que ya no están
+            const questionsToSoftDelete = questionsDB
+              .filter((question) => !question.isDeleted)
+              .filter((question) => !inputQuestionIds.has(question.id))
+              .map((question) => question.id);
+            if (questionsToSoftDelete.length > 0) {
+              await tx
+                .update(eventQuestion)
+                .set({ isDeleted: true })
+                .where(inArray(eventQuestion.id, questionsToSoftDelete));
+            }
+
+            // Actualizar preguntas existentes y crear las nuevas
+            for (const [index, question] of questions.entries()) {
+              if (question.id && inputQuestionIds.has(question.id)) {
+                await tx
+                  .update(eventQuestion)
+                  .set({
+                    text: question.text,
+                    sortOrder: index,
+                    isDeleted: false,
+                  })
+                  .where(eq(eventQuestion.id, question.id));
+              } else {
+                await tx.insert(eventQuestion).values({
+                  text: question.text,
+                  sortOrder: index,
+                  eventId: eventUpdated.id,
+                });
+              }
             }
 
             return { eventUpdated, ticketTypesUpdated };

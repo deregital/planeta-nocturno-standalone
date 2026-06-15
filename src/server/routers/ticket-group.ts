@@ -1,10 +1,12 @@
 import { TRPCError } from '@trpc/server';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
   emittedTicket,
+  eventQuestion,
   ticketGroup,
+  ticketGroupAnswer,
   ticketTypePerGroup,
   ticketXorganizer,
 } from '@/drizzle/schema';
@@ -145,6 +147,13 @@ export const ticketGroupRouter = router({
                   name: true,
                 },
               },
+              questions: {
+                where: eq(eventQuestion.isDeleted, false),
+                orderBy: [
+                  asc(eventQuestion.sortOrder),
+                  asc(eventQuestion.createdAt),
+                ],
+              },
             },
           },
         },
@@ -233,6 +242,67 @@ export const ticketGroupRouter = router({
         .where(eq(ticketGroup.id, input.id))
         .returning();
       return group[0];
+    }),
+  saveAnswers: publicProcedure
+    .input(
+      z.object({
+        ticketGroupId: z.uuid(),
+        answers: z.array(
+          z.object({
+            questionId: z.uuid(),
+            answer: z.string().trim().min(1, 'La respuesta es requerida'),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.answers.length === 0) {
+        return [];
+      }
+
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input.ticketGroupId),
+        columns: {
+          id: true,
+          eventId: true,
+        },
+      });
+
+      if (!group) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Tickets no encontrados',
+        });
+      }
+
+      const eventQuestions = await ctx.db.query.eventQuestion.findMany({
+        where: eq(eventQuestion.eventId, group.eventId),
+        columns: {
+          id: true,
+        },
+      });
+
+      const validQuestionIds = new Set(eventQuestions.map((q) => q.id));
+
+      for (const answer of input.answers) {
+        if (!validQuestionIds.has(answer.questionId)) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Pregunta inválida para este evento',
+          });
+        }
+      }
+
+      return ctx.db
+        .insert(ticketGroupAnswer)
+        .values(
+          input.answers.map((answer) => ({
+            questionId: answer.questionId,
+            ticketGroupId: input.ticketGroupId,
+            answer: answer.answer,
+          })),
+        )
+        .returning();
     }),
   updateTicketXOrganizerTicketGroupId: publicProcedure
     .input(

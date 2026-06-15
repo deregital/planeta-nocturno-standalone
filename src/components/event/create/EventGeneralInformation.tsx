@@ -13,8 +13,11 @@ import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
 import EventCategoryModal from '@/components/category/EventCategoryModal';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
+import MarkdownTextareaWithLabel from '@/components/common/MarkdownTextareaWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { EventCoverSquareCropDialog } from '@/components/event/create/EventCoverSquareCropDialog';
+import { EventQuestions } from '@/components/event/create/EventQuestions';
+import EventVideoField from '@/components/event/create/EventVideoField';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { TicketingUserModal } from '@/components/event/create/TicketingUserModal';
 import { UserBox } from '@/components/event/create/UserBox';
@@ -210,24 +213,33 @@ export function EventGeneralInformation({
           />
         ) : (
           (action === 'CREATE' || action === 'EDIT') && (
-            <div className='flex flex-col gap-2 items-center w-full mx-auto'>
-              <div className='relative aspect-square w-full max-w-40 overflow-hidden rounded-md bg-muted/40'>
-                <Image
-                  fill
-                  quality={100}
-                  src={event.coverImageUrl}
-                  className='object-cover'
-                  sizes='160px'
-                  alt='Portada del evento'
-                />
+            <div className='mx-auto flex w-full flex-col items-center justify-center gap-3 md:max-w-2xl md:flex-row md:items-start'>
+              <div className='flex shrink-0 flex-col items-center justify-center gap-2'>
+                <div className='relative aspect-square w-full max-w-40 overflow-hidden rounded-md bg-muted/40'>
+                  <Image
+                    fill
+                    quality={100}
+                    src={event.coverImageUrl}
+                    className='object-cover'
+                    sizes='160px'
+                    alt='Portada del evento'
+                  />
+                </div>
+                <Button
+                  variant='ghost'
+                  className='w-fit'
+                  onClick={() => handleChange('coverImageUrl', '')}
+                >
+                  Cambiar imagen
+                </Button>
               </div>
-              <Button
-                variant='ghost'
-                className='w-fit mx-auto'
-                onClick={() => handleChange('coverImageUrl', '')}
-              >
-                Cambiar imagen
-              </Button>
+              <EventVideoField
+                videoUrl={event.videoUrl}
+                error={error.videoUrl}
+                onChange={(value) => handleChange('videoUrl', value)}
+                slotClassName='w-40 sm:w-48'
+                className='self-center md:self-auto'
+              />
             </div>
           )
         )}
@@ -255,13 +267,13 @@ export function EventGeneralInformation({
               readOnly={action === 'PREVIEW'}
               disabled={action === 'PREVIEW'}
             />
-            <InputWithLabel
+            <MarkdownTextareaWithLabel
               label='Descripción'
               id='description'
-              type='text'
               placeholder='Descripción del evento'
               required
               name='description'
+              rows={5}
               onChange={(e) => handleChange('description', e.target.value)}
               error={error.description}
               defaultValue={event.description ?? ''}
@@ -270,14 +282,23 @@ export function EventGeneralInformation({
             />
           </div>
           {action === 'PREVIEW' && (
-            <div className='relative aspect-square w-full max-w-48 shrink-0 overflow-hidden rounded-md bg-muted/40 md:w-48 md:max-w-none'>
-              <Image
-                fill
-                quality={100}
-                src={event.coverImageUrl}
-                className='object-cover'
-                sizes='192px'
-                alt='Portada del evento'
+            <div className='flex shrink-0 items-start gap-2'>
+              <div className='relative aspect-square w-full max-w-48 overflow-hidden rounded-md bg-muted/40 md:w-48 md:max-w-none'>
+                <Image
+                  fill
+                  quality={100}
+                  src={event.coverImageUrl}
+                  className='object-cover'
+                  sizes='192px'
+                  alt='Portada del evento'
+                />
+              </div>
+              <EventVideoField
+                videoUrl={event.videoUrl}
+                readOnly
+                onChange={() => {}}
+                slotClassName='w-40 sm:w-48'
+                className='self-center md:self-auto'
               />
             </div>
           )}
@@ -749,6 +770,18 @@ export function EventGeneralInformation({
             ingresar quien lo invitó al evento.
           </p>
         </section>
+        {action !== 'PREVIEW' && (
+          <section>
+            <h3 className='text-accent-dark text-lg font-semibold'>
+              Preguntas del formulario
+            </h3>
+            <p className='text-sm'>
+              Agregá preguntas de texto libre que los compradores deberán
+              responder durante el checkout. Este apartado es opcional.
+            </p>
+            <EventQuestions embedded showNavigation={false} />
+          </section>
+        )}
         {action === 'CREATE' && (
           <Button type='submit' variant={'accent'}>
             Continuar
