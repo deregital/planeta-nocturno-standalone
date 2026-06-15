@@ -364,6 +364,7 @@ export const eventsRouter = router({
           },
         },
         questions: {
+          where: eq(eventQuestion.isDeleted, false),
           orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
         },
       },
