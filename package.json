@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint --fix",
     "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-ticket-slug.ts",
+    "seed-event": "tsx src/drizzle/seed-event.ts && tsx src/drizzle/seed-ticket-slug.ts",
     "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",
     "prepare": "husky"
   },
