@@ -2,7 +2,7 @@
 
 import { Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import InputWithLabel from '@/components/common/InputWithLabel';
@@ -62,13 +62,6 @@ export default function EventCategoryModal({
 
   const open = controlledOpen || internalOpen;
   const setOpen = openController || internalSetOpen;
-
-  useEffect(() => {
-    if (createMutation.isSuccess) {
-      setOpen(false);
-      toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
-    }
-  }, [createMutation.isSuccess, toastMsg, setOpen]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

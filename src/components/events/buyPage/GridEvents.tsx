@@ -11,6 +11,7 @@ function GridEvents() {
   const { data, isLoading } = trpc.events.getActive.useQuery();
   const [dateRange] = useQueryState('date', parseAsString);
   const [search] = useQueryState('q', parseAsString);
+  const [selectedCategory] = useQueryState('cat', parseAsString);
 
   const selectedDateRange = useMemo(() => {
     if (!dateRange) return null;
@@ -34,8 +35,12 @@ function GridEvents() {
           start: selectedDateRange?.from,
           end: selectedDateRange?.to,
         });
+      })
+      .filter((event) => {
+        if (!selectedCategory) return true;
+        return event.eventCategory?.id === selectedCategory;
       });
-  }, [data, search, selectedDateRange]);
+  }, [data, search, selectedDateRange, selectedCategory]);
 
   if (isLoading) {
     return (

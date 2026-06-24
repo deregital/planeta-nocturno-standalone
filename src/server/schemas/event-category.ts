@@ -5,6 +5,7 @@ export const eventCategorySchema = z.object({
   name: z.string().min(1, {
     error: 'El nombre es requerido',
   }),
+  isActive: z.boolean().optional(),
 });
 
 export type EventCategory = z.infer<typeof eventCategorySchema>;
