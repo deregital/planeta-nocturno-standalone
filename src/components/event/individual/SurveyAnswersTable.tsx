@@ -30,7 +30,7 @@ function normalize(value: string) {
 }
 
 function generateSurveyAnswerColumns(
-  questions: SurveyEvent['questions'],
+  questions: SurveyEvent['eventQuestions'],
 ): StrictColumnDef<SurveyAnswerRow>[] {
   return [
     {
@@ -69,7 +69,7 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
     () =>
       event.ticketGroups
         .filter((ticketGroup) => !ticketGroup.isOrganizerGroup)
-        .filter((ticketGroup) => ticketGroup.answers.length > 0)
+        .filter((ticketGroup) => ticketGroup.ticketGroupAnswers.length > 0)
         .map((ticketGroup) => {
           const firstTicket = ticketGroup.emittedTickets[0];
           const purchase = firstTicket
@@ -77,7 +77,7 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
             : `Compra ${format(new Date(ticketGroup.createdAt), 'dd/MM/yyyy HH:mm', { locale: es })}`;
 
           const answersByQuestionId = Object.fromEntries(
-            ticketGroup.answers.map((answer) => [
+            ticketGroup.ticketGroupAnswers.map((answer) => [
               answer.questionId,
               answer.answer,
             ]),
@@ -115,13 +115,13 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
   const visibleQuestions = useMemo(() => {
     const answeredQuestionIds = new Set(
       event.ticketGroups.flatMap((ticketGroup) =>
-        ticketGroup.answers.map((answer) => answer.questionId),
+        ticketGroup.ticketGroupAnswers.map((answer) => answer.questionId),
       ),
     );
-    return event.questions.filter(
+    return event.eventQuestions.filter(
       (question) => !question.isDeleted || answeredQuestionIds.has(question.id),
     );
-  }, [event.questions, event.ticketGroups]);
+  }, [event.eventQuestions, event.ticketGroups]);
 
   const columns = useMemo(
     () => generateSurveyAnswerColumns(visibleQuestions),
