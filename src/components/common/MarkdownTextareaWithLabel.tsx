@@ -1,9 +1,10 @@
 'use client';
 
 import { Bold, Italic, Link2, Underline } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
+import EventDescriptionContent from '@/components/event/buyPage/EventDescriptionContent';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,6 +38,7 @@ interface MarkdownTextareaWithLabelProps
   id: string;
   error?: string;
   hint?: string;
+  showPreview?: boolean;
 }
 
 export default function MarkdownTextareaWithLabel({
@@ -45,21 +47,41 @@ export default function MarkdownTextareaWithLabel({
   className,
   error,
   hint,
+  showPreview = true,
   disabled,
   readOnly,
   onChange,
+  value,
+  defaultValue,
   ...textareaProps
 }: MarkdownTextareaWithLabelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('https://');
   const [linkSelection, setLinkSelection] = useState('');
+  const [previewValue, setPreviewValue] = useState(() =>
+    String(value ?? defaultValue ?? ''),
+  );
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setPreviewValue(String(value));
+    }
+  }, [value]);
 
   const isEditable = !disabled && !readOnly;
 
+  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setPreviewValue(e.target.value);
+    onChange?.(e);
+  }
+
   function notifyChange() {
     const textarea = textareaRef.current;
-    if (!textarea || !onChange) return;
+    if (!textarea) return;
+
+    setPreviewValue(textarea.value);
+    if (!onChange) return;
 
     onChange({
       target: textarea,
@@ -147,7 +169,9 @@ export default function MarkdownTextareaWithLabel({
             id={id}
             disabled={disabled}
             readOnly={readOnly}
-            onChange={onChange}
+            onChange={handleChange}
+            value={value}
+            defaultValue={defaultValue}
             {...textareaProps}
             className='border-stroke py-2'
           />
@@ -155,6 +179,20 @@ export default function MarkdownTextareaWithLabel({
             <p className='pl-1 text-xs leading-relaxed text-accent-dark/70'>
               {hint}
             </p>
+          )}
+          {showPreview && (
+            <div className='mt-1 flex flex-col gap-1'>
+              <p className='pl-1 text-sm text-accent'>Vista previa</p>
+              <div className='pl-1'>
+                {previewValue.trim() ? (
+                  <EventDescriptionContent description={previewValue} />
+                ) : (
+                  <p className='text-sm italic text-accent-dark/50'>
+                    La vista previa aparecerá aquí mientras escribís.
+                  </p>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </GenericInputWithLabel>
