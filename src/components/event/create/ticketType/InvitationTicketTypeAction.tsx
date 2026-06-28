@@ -110,6 +110,7 @@ export function InvitationTicketTypeAction({
           scanLimit: null,
           visibleInWeb: true,
           lowStockThreshold: null,
+          allowMultipleScans: false,
           name: ticketTypeInfo.name,
           description: ticketTypeInfo.description,
           price: 0,

@@ -1,6 +1,5 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
 import { and, count, desc, eq, inArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -31,6 +30,12 @@ import {
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { getBuyersCodeByDni } from '@/server/utils/db/utils';
 import { generatePdf } from '@/server/utils/ticket-template';
+import {
+  canRegisterScan,
+  formatLastScanTime,
+  registerTicketScan,
+  registerTicketScanInTx,
+} from '@/server/utils/register-ticket-scan';
 import { decryptString, generateSlug } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
@@ -91,12 +96,15 @@ export const emittedTicketsRouter = router({
               ...input,
               birthDate: input.birthDate.toISOString(),
               ticketGroupId: ticketGroupCreated.id,
-              scanned: true,
-              scannedAt: new Date().toISOString(),
-              scannedByUserId: ctx.session.user.id,
               slug,
             })
             .returning();
+
+          await registerTicketScanInTx(
+            tx,
+            ticketCreated.id,
+            ctx.session.user.id,
+          );
 
           return ticketCreated;
         } catch (error) {
@@ -400,6 +408,9 @@ export const emittedTicketsRouter = router({
         ),
         with: {
           ticketType: true,
+          emittedTicketScans: {
+            columns: { id: true },
+          },
           ticketGroup: {
             with: {
               event: true,
@@ -430,31 +441,27 @@ export const emittedTicketsRouter = router({
         },
       };
 
-      if (ticket.scanned) {
+      const scanCheck = canRegisterScan(ticket);
+      if (!scanCheck.allowed) {
         return {
           ticket,
           status: 'already-scanned',
           text: 'Ticket ya escaneado',
-          extraInfo: `Escaneado a las ${
-            ticket.scannedAt
-              ? `${formatInTimeZone(
-                  new Date(ticket.scannedAt),
-                  'America/Argentina/Buenos_Aires',
-                  'HH:mm',
-                )}`
-              : ''
-          }`,
+          extraInfo: `Escaneado a las ${formatLastScanTime(ticket.scannedAt)}`,
         };
       }
 
-      await ctx.db
-        .update(emittedTicket)
-        .set({
-          scanned: true,
-          scannedAt: new Date().toISOString(),
-          scannedByUserId: ctx.session.user.id,
-        })
-        .where(eq(emittedTicket.id, decryptedTicketId));
+      const scannedAt = await registerTicketScan(
+        ctx.db,
+        decryptedTicketId,
+        ctx.session.user.id,
+      );
+
+      const scanNumber = ticket.emittedTicketScans.length + 1;
+
+      ticket.scanned = true;
+      ticket.scannedAt = scannedAt;
+      ticket.scannedByUserId = ctx.session.user.id;
 
       if (
         ticket.ticketType.startingDate &&
@@ -480,7 +487,8 @@ export const emittedTicketsRouter = router({
         ticket,
         status: 'success',
         text: `Escaneado con éxito: ${ticket.fullName}`,
-        extraInfo: `${extraInfo} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`,
+        extraInfo:
+          `${extraInfo}${scanNumber > 1 ? ` - Escaneo #${scanNumber}` : ''} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`.trim(),
       };
     }),
   manualScan: ticketingProcedure
@@ -488,6 +496,9 @@ export const emittedTicketsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
         where: eq(emittedTicket.id, input.ticketId),
+        with: {
+          ticketType: true,
+        },
       });
       if (!ticket) {
         throw new TRPCError({
@@ -496,16 +507,21 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      await ctx.db
-        .update(emittedTicket)
-        .set({
-          scanned: true,
-          scannedAt: new Date().toISOString(),
-          scannedByUserId: ctx.session.user.id,
-        })
-        .where(eq(emittedTicket.id, input.ticketId));
+      const scanCheck = canRegisterScan(ticket);
+      if (!scanCheck.allowed) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Ticket ya escaneado',
+        });
+      }
 
-      return { success: true, ticket };
+      await registerTicketScan(ctx.db, input.ticketId, ctx.session.user.id);
+
+      const updatedTicket = await ctx.db.query.emittedTicket.findFirst({
+        where: eq(emittedTicket.id, input.ticketId),
+      });
+
+      return { success: true, ticket: updatedTicket };
     }),
   getByEventId: ticketingProcedure
     .input(
@@ -601,6 +617,16 @@ export const emittedTicketsRouter = router({
             ),
         with: {
           ticketType: true,
+          emittedTicketScans: {
+            orderBy: (scans, { desc }) => [desc(scans.scannedAt)],
+            with: {
+              user: {
+                columns: {
+                  fullName: true,
+                },
+              },
+            },
+          },
           ticketGroup: {
             with: {
               user: {
