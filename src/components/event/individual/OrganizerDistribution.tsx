@@ -132,6 +132,7 @@ function OrganizerDistributionSaveButton({
         startingDate: new Date(t.startingDate),
         maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : new Date(),
         scanLimit: t.scanLimit ? new Date(t.scanLimit) : new Date(),
+        allowMultipleScans: t.allowMultipleScans ?? false,
         organizers:
           'ticketTypeXOrganizers' in t && t.ticketTypeXOrganizers
             ? t.ticketTypeXOrganizers.map((rel) => rel.b)

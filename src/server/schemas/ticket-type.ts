@@ -21,6 +21,7 @@ export const ticketTypeSchema = z.object({
   scanLimit: z.coerce
     .date({ error: 'La fecha de escaneo no es válida' })
     .nullable(),
+  allowMultipleScans: z.boolean().default(false),
   visibleInWeb: z.boolean(),
   lowStockThreshold: z
     .number()
