@@ -103,6 +103,12 @@ const eslintConfig = [
       ],
     },
   },
+  {
+    files: ['tests/**/*.ts'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
 ];
 
 export default eslintConfig;
