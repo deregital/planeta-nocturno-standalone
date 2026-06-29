@@ -15,8 +15,8 @@ type CreatedUser = {
 let createdUser: CreatedUser | null = null;
 
 async function loginAsAdmin(page: Page) {
-  const username = process.env.SEED_USER_NAME ?? 'admin';
-  const password = process.env.SEED_USER_PASSWORD ?? '123456';
+  const username = process.env.TEST_SEED_USER_NAME!;
+  const password = process.env.TEST_SEED_USER_PASSWORD!;
 
   await page.goto('/login');
   await page.getByRole('textbox', { name: 'Nombre de usuario' }).fill(username);
@@ -43,6 +43,12 @@ async function loginAsUser(
 }
 
 test.describe.serial('admin autenticado', () => {
+  if (!process.env.TEST_SEED_USER_NAME) {
+    throw new Error('TEST_SEED_USER_NAME is not set');
+  }
+  if (!process.env.TEST_SEED_USER_PASSWORD) {
+    throw new Error('TEST_SEED_USER_PASSWORD is not set');
+  }
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
   });
@@ -53,7 +59,7 @@ test.describe.serial('admin autenticado', () => {
       fullName: `Usuario Test ${uniqueId}`,
       email: `test-user-${uniqueId}@example.com`,
       username: `testuser${uniqueId}`,
-      password: '123456',
+      password: process.env.TEST_SEED_USER_PASSWORD!,
       dni: `40${uniqueId}`,
       birthDate: '2000-05-15',
     };
