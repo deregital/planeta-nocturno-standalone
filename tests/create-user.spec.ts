@@ -1,6 +1,8 @@
 import 'dotenv/config';
 
-import test, { expect, type Page } from '@playwright/test';
+import test, { expect } from '@playwright/test';
+
+import { getAdminCredentials, loginAsAdmin, loginAsUser } from './helpers/auth';
 
 test.use({ baseURL: process.env.TEST_BASE_URL });
 
@@ -14,41 +16,7 @@ type CreatedUser = {
 
 let createdUser: CreatedUser | null = null;
 
-async function loginAsAdmin(page: Page) {
-  const username = process.env.TEST_SEED_USER_NAME!;
-  const password = process.env.TEST_SEED_USER_PASSWORD!;
-
-  await page.goto('/login');
-  await page.getByRole('textbox', { name: 'Nombre de usuario' }).fill(username);
-  await page.getByRole('textbox', { name: 'Contraseña' }).fill(password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
-async function loginAsUser(
-  page: Page,
-  credentials: { username: string; password: string },
-) {
-  await page.goto('/login');
-  await page
-    .getByRole('textbox', { name: 'Nombre de usuario' })
-    .fill(credentials.username);
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill(credentials.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
 test.describe.serial('admin autenticado', () => {
-  if (!process.env.TEST_SEED_USER_NAME) {
-    throw new Error('TEST_SEED_USER_NAME is not set');
-  }
-  if (!process.env.TEST_SEED_USER_PASSWORD) {
-    throw new Error('TEST_SEED_USER_PASSWORD is not set');
-  }
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
   });
@@ -59,7 +27,7 @@ test.describe.serial('admin autenticado', () => {
       fullName: `Usuario Test ${uniqueId}`,
       email: `test-user-${uniqueId}@example.com`,
       username: `testuser${uniqueId}`,
-      password: process.env.TEST_SEED_USER_PASSWORD!,
+      password: getAdminCredentials().password,
       dni: `40${uniqueId}`,
       birthDate: '2000-05-15',
     };
@@ -109,7 +77,7 @@ test.describe.serial('admin autenticado', () => {
     await expect(confirmDialog).toBeVisible();
     await confirmDialog
       .getByRole('textbox')
-      .fill(process.env.SEED_USER_PASSWORD ?? '123456');
+      .fill(getAdminCredentials().password);
     await confirmDialog.getByRole('button', { name: 'Confirmar' }).click();
 
     const credentialsDialog = page.getByRole('dialog', {

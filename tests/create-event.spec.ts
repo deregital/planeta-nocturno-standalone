@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import test, { expect, type Locator, type Page } from '@playwright/test';
 
+import { loginAsAdmin } from './helpers/auth';
+
 test.use({ baseURL: process.env.TEST_BASE_URL });
 test.setTimeout(120_000);
 
@@ -13,28 +15,22 @@ type CreatedEvent = {
   name: string;
   ticketName: string;
   slug: string;
+  locationLabel: string;
+  categoryLabel: string;
+  updatedLocationLabel?: string;
 };
 
 let createdEvent: CreatedEvent | null = null;
 
-async function loginAsAdmin(page: Page) {
-  const username = process.env.SEED_USER_NAME ?? 'admin';
-  const password = process.env.SEED_USER_PASSWORD ?? '123456';
+async function selectExistingOption(page: Page, index = 0): Promise<string> {
+  const options = page.getByRole('option').filter({ hasNotText: /crear/i });
+  const count = await options.count();
+  expect(count).toBeGreaterThan(0);
 
-  await page.goto('/login');
-  await page.getByRole('textbox', { name: 'Nombre de usuario' }).fill(username);
-  await page.getByRole('textbox', { name: 'Contraseña' }).fill(password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
-
-  await expect(page).not.toHaveURL(/\/login/);
-}
-
-async function selectFirstExistingOption(page: Page) {
-  await page
-    .getByRole('option')
-    .filter({ hasNotText: /crear/i })
-    .first()
-    .click();
+  const option = options.nth(Math.min(index, count - 1));
+  const text = (await option.textContent())?.trim() ?? '';
+  await option.click();
+  return text;
 }
 
 async function uploadEventCover(page: Page) {
@@ -56,6 +52,16 @@ async function replaceEventCover(page: Page) {
   await uploadEventCover(page);
 }
 
+async function selectOptionByPattern(
+  page: Page,
+  pattern: RegExp,
+): Promise<string> {
+  const option = page.getByRole('option', { name: pattern });
+  const text = (await option.textContent())?.trim() ?? '';
+  await option.click();
+  return text;
+}
+
 async function fillGeneralInformation(
   page: Page,
   data: {
@@ -64,10 +70,10 @@ async function fillGeneralInformation(
     eventDate: string;
     startTime: string;
     endTime: string;
-    locationPattern: RegExp;
+    locationPattern?: RegExp;
     categoryPattern?: RegExp;
   },
-) {
+): Promise<{ locationLabel: string; categoryLabel: string }> {
   await page.getByRole('textbox', { name: 'Nombre *' }).fill(data.name);
   await page
     .getByRole('textbox', { name: 'Descripción *' })
@@ -83,21 +89,19 @@ async function fillGeneralInformation(
     .filter({ hasText: 'Selecciona una opción' })
     .first()
     .click();
-  await page.getByRole('option', { name: data.locationPattern }).click();
+  const locationLabel = data.locationPattern
+    ? await selectOptionByPattern(page, data.locationPattern)
+    : await selectExistingOption(page, 0);
 
-  if (data.categoryPattern) {
-    await page
-      .getByRole('combobox')
-      .filter({ hasText: 'Selecciona una opción' })
-      .click();
-    await page.getByRole('option', { name: data.categoryPattern }).click();
-  } else {
-    await page
-      .getByRole('combobox')
-      .filter({ hasText: 'Selecciona una opción' })
-      .click();
-    await selectFirstExistingOption(page);
-  }
+  await page
+    .getByRole('combobox')
+    .filter({ hasText: 'Selecciona una opción' })
+    .click();
+  const categoryLabel = data.categoryPattern
+    ? await selectOptionByPattern(page, data.categoryPattern)
+    : await selectExistingOption(page, 0);
+
+  return { locationLabel, categoryLabel };
 }
 
 async function submitTicketDialog(
@@ -143,21 +147,27 @@ async function createFreeTicket(
 
 async function storeCreatedEventSlug(
   page: Page,
-  eventName: string,
-  ticketName: string,
+  data: {
+    eventName: string;
+    ticketName: string;
+    locationLabel: string;
+    categoryLabel: string;
+  },
 ) {
   const eventCard = page
     .locator('[data-slot="card-content"]')
-    .filter({ hasText: eventName });
+    .filter({ hasText: data.eventName });
   const href = await eventCard
     .locator('a[href^="/admin/event/"]')
     .first()
     .getAttribute('href');
   expect(href).toBeTruthy();
   createdEvent = {
-    name: eventName,
-    ticketName,
+    name: data.eventName,
+    ticketName: data.ticketName,
     slug: href!.replace('/admin/event/', ''),
+    locationLabel: data.locationLabel,
+    categoryLabel: data.categoryLabel,
   };
 }
 
@@ -217,14 +227,16 @@ test.describe.serial('eventos admin', () => {
     ).toBeVisible();
 
     await uploadEventCover(page);
-    await fillGeneralInformation(page, {
-      name: eventName,
-      description: 'Evento creado automáticamente por Playwright.',
-      eventDate: '2026-12-15',
-      startTime: '20:00',
-      endTime: '23:00',
-      locationPattern: /NovaClub/i,
-    });
+    const { locationLabel, categoryLabel } = await fillGeneralInformation(
+      page,
+      {
+        name: eventName,
+        description: 'Evento creado automáticamente por Playwright.',
+        eventDate: '2026-12-15',
+        startTime: '20:00',
+        endTime: '23:00',
+      },
+    );
 
     await page.getByRole('button', { name: 'Continuar' }).click();
     await page.getByRole('button', { name: /Simple/i }).click();
@@ -244,7 +256,12 @@ test.describe.serial('eventos admin', () => {
 
     await expect(page).toHaveURL(/\/admin\/event$/, { timeout: 30_000 });
     await expect(page.getByText(eventName)).toBeVisible();
-    await storeCreatedEventSlug(page, eventName, ticketName);
+    await storeCreatedEventSlug(page, {
+      eventName,
+      ticketName,
+      locationLabel,
+      categoryLabel,
+    });
   });
 
   test('editar evento y actualizar todos los campos', async ({ page }) => {
@@ -280,24 +297,15 @@ test.describe.serial('eventos admin', () => {
 
     await page.locator('#extraTicketData').check();
 
-    await page
-      .getByRole('combobox')
-      .filter({ hasText: /NovaClub/i })
-      .click();
-    await page.getByRole('option', { name: /Ohana Bar/i }).click();
+    const locationCategorySection = page
+      .locator('section')
+      .filter({ hasText: 'Ubicación y categoría' });
+    await locationCategorySection.getByRole('combobox').first().click();
+    const updatedLocationLabel = await selectExistingOption(page, 1);
     await closeOverlays(page);
 
-    const categoryCombobox = page
-      .locator('section')
-      .filter({ hasText: 'Ubicación y categoría' })
-      .getByRole('combobox')
-      .nth(1);
-    await categoryCombobox.click();
-    await page
-      .getByRole('option')
-      .filter({ hasNotText: /crear/i })
-      .nth(1)
-      .click();
+    await locationCategorySection.getByRole('combobox').nth(1).click();
+    await selectExistingOption(page, 1);
     await closeOverlays(page);
 
     await addTicketingUser(page);
@@ -384,7 +392,9 @@ test.describe.serial('eventos admin', () => {
     await expect(page.locator('#minAge')).toHaveValue('18');
     await expect(page.locator('#extraTicketData')).toBeChecked();
     await expect(
-      page.getByRole('combobox').filter({ hasText: /Ohana Bar/i }),
+      page
+        .getByRole('combobox')
+        .filter({ hasText: updatedLocationLabel.split(' (')[0] }),
     ).toBeVisible();
     await expect(page.getByPlaceholder('correo@ejemplo.com')).toHaveValue(
       `playwright-${uniqueId}@example.com`,
@@ -407,6 +417,7 @@ test.describe.serial('eventos admin', () => {
       ...createdEvent!,
       name: updatedEventName,
       ticketName: updatedTicketName,
+      updatedLocationLabel,
     };
   });
 });
