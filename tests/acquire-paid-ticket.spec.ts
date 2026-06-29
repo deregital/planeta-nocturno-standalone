@@ -4,11 +4,13 @@ import test, { expect } from '@playwright/test';
 
 import { waitForPaidTicketConfirmation } from './helpers/mercadopago-checkout';
 import {
+  approvePaidTicketForE2e,
+  assertMercadoPagoPreferenceCreated,
+  canRunPaidTicketE2eTests,
   extractTicketGroupIdFromUrl,
   getTicketGroupStatus,
   preventMercadoPagoRedirect,
-  triggerMercadoPagoWebhook,
-} from './helpers/mercadopago-webhook';
+} from './helpers/paid-ticket-e2e';
 import {
   completePaidTicketCheckout,
   findFirstEventWithPaidTicket,
@@ -19,12 +21,10 @@ import {
 test.use(paidTicketTestUse);
 test.setTimeout(120_000);
 
-test('adquirir ticket pago y confirmar vía webhook de Mercado Pago', async ({
-  page,
-}) => {
+test('adquirir ticket pago y confirmar compra', async ({ page }) => {
   test.skip(
-    process.env.E2E_MOCK_MP_WEBHOOK !== 'true',
-    'Activá E2E_MOCK_MP_WEBHOOK=true y MP_SECRET_KEY en .env (solo local)',
+    !canRunPaidTicketE2eTests(),
+    'Definí DATABASE_URL en .env (misma base que TEST_BASE_URL)',
   );
 
   await preventMercadoPagoRedirect(page);
@@ -51,6 +51,8 @@ test('adquirir ticket pago y confirmar vía webhook de Mercado Pago', async ({
   await expect(page.getByText(event.eventName)).toBeVisible();
   await completePaidTicketCheckout(page, buyer);
 
+  await assertMercadoPagoPreferenceCreated(page);
+
   const ticketGroupId = extractTicketGroupIdFromUrl(page.url());
   expect(ticketGroupId).toBeTruthy();
 
@@ -58,7 +60,7 @@ test('adquirir ticket pago y confirmar vía webhook de Mercado Pago', async ({
     .poll(() => getTicketGroupStatus(page, ticketGroupId!))
     .toBe('BOOKED');
 
-  await triggerMercadoPagoWebhook(page, ticketGroupId!);
+  await approvePaidTicketForE2e(ticketGroupId!);
 
   await expect
     .poll(() => getTicketGroupStatus(page, ticketGroupId!))
@@ -69,18 +71,13 @@ test('adquirir ticket pago y confirmar vía webhook de Mercado Pago', async ({
 });
 
 test('webhook de Mercado Pago rechaza firma inválida', async ({ page }) => {
-  test.skip(
-    process.env.E2E_MOCK_MP_WEBHOOK !== 'true',
-    'Activá E2E_MOCK_MP_WEBHOOK=true en .env',
-  );
-
   const response = await page.request.post('/api/mercadopago', {
     headers: {
       'x-signature': 'ts=0,v1=invalid',
       'x-request-id': 'invalid-request',
     },
     data: {
-      data: { id: 'e2e-00000000-0000-4000-8000-000000000000' },
+      data: { id: '123456789' },
     },
   });
 
