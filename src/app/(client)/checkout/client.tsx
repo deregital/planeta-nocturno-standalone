@@ -544,11 +544,11 @@ export default function CheckoutClient({
             className='[&>input]:border-dashed'
           />
         )}
-        {ticketGroup.event.questions.length > 0 && (
+        {ticketGroup.event.eventQuestions.length > 0 && (
           <>
             <Separator className='my-2' />
             <div className='flex flex-col gap-4'>
-              {ticketGroup.event.questions.map((question) => (
+              {ticketGroup.event.eventQuestions.map((question) => (
                 <InputWithLabel
                   key={question.id}
                   name={`question_${question.id}`}

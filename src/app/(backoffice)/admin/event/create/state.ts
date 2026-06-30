@@ -195,6 +195,7 @@ export const createEventStore = (initState: EventState = initialState) => {
                 scanLimit: null,
                 visibleInWeb: false,
                 organizers: [],
+                allowMultipleScans: false,
               },
             ],
           };
@@ -411,6 +412,7 @@ export const createEventStore = (initState: EventState = initialState) => {
               scanLimit: null,
               visibleInWeb: false,
               organizers: [],
+              allowMultipleScans: false,
             },
           ],
         };

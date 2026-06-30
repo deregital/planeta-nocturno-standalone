@@ -73,6 +73,7 @@ export default function TicketTypeModal({
         visibleInWeb: ticketType.visibleInWeb,
         lowStockThreshold: ticketType.lowStockThreshold,
         organizers: ticketType.organizers || [],
+        allowMultipleScans: ticketType.allowMultipleScans ?? false,
       };
     }
     return {
@@ -89,6 +90,7 @@ export default function TicketTypeModal({
       visibleInWeb: true,
       lowStockThreshold: null,
       organizers: [],
+      allowMultipleScans: false,
     };
   }
 
@@ -447,6 +449,19 @@ export default function TicketTypeModal({
                 checked={hasMaxSellDate}
                 onChange={(e) => {
                   handleMaxSellDateToggle(e.target.checked);
+                }}
+              />
+            </div>
+            <div className='flex w-full flex-col gap-1'>
+              <InputWithLabel
+                label='¿Escaneo múltiple? (Permite volver a escanear un mismo ticket)'
+                id='allowMultipleScans'
+                type='checkbox'
+                className='[&>input]:w-6 items-center'
+                name='allowMultipleScans'
+                checked={editingTicketType.allowMultipleScans}
+                onChange={(e) => {
+                  handleInputChange('allowMultipleScans', e.target.checked);
                 }}
               />
             </div>

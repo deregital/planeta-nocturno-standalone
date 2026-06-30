@@ -10,8 +10,8 @@ import GoBack from '@/components/common/GoBack';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
 import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
-import { mapEventOrganizersToSchema } from '@/lib/event-organizers';
 import { Button } from '@/components/ui/button';
+import { mapEventOrganizersToSchema } from '@/lib/event-organizers';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
@@ -84,6 +84,7 @@ export default function Client({
           startingDate: new Date(t.startingDate),
           maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : new Date(),
           scanLimit: t.scanLimit ? new Date(t.scanLimit) : new Date(),
+          allowMultipleScans: t.allowMultipleScans ?? false,
           organizers:
             'ticketTypeXOrganizers' in t && t.ticketTypeXOrganizers
               ? t.ticketTypeXOrganizers.map((rel) => rel.b)
@@ -91,7 +92,7 @@ export default function Client({
         })),
       );
       setQuestions(
-        event.questions
+        event.eventQuestions
           .filter((question) => !question.isDeleted)
           .map((question) => ({
             id: question.id,

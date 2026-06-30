@@ -276,7 +276,7 @@ export function EventGeneralInformation({
               rows={5}
               onChange={(e) => handleChange('description', e.target.value)}
               error={error.description}
-              defaultValue={event.description ?? ''}
+              value={event.description ?? ''}
               readOnly={action === 'PREVIEW'}
               disabled={action === 'PREVIEW'}
             />

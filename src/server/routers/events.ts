@@ -24,8 +24,8 @@ import z from 'zod';
 import {
   emittedTicket,
   eventFolder,
-  event as eventSchema,
   eventQuestion,
+  event as eventSchema,
   eventXorganizer,
   eventXUser,
   location as locationSchema,
@@ -58,8 +58,8 @@ import {
   router,
   ticketingProcedure,
 } from '@/server/trpc';
-import { applyChiefOrganizerInvitationDistribution } from '@/server/utils/chief-organizer-invitation-distribution';
 import { type TicketType } from '@/server/types';
+import { applyChiefOrganizerInvitationDistribution } from '@/server/utils/chief-organizer-invitation-distribution';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import {
   getUniqueEventSlug,
@@ -318,6 +318,13 @@ export const eventsRouter = router({
             address: true,
           },
         },
+        eventCategory: {
+          columns: {
+            id: true,
+            name: true,
+            isActive: true,
+          },
+        },
       },
       orderBy: asc(eventSchema.startingDate),
     });
@@ -363,7 +370,7 @@ export const eventsRouter = router({
             },
           },
         },
-        questions: {
+        eventQuestions: {
           where: eq(eventQuestion.isDeleted, false),
           orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
         },
@@ -385,14 +392,14 @@ export const eventsRouter = router({
                 ticketType: true,
               },
             },
-            answers: {
+            ticketGroupAnswers: {
               with: {
-                question: true,
+                eventQuestion: true,
               },
             },
           },
         },
-        questions: {
+        eventQuestions: {
           orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
         },
         ticketTypes: {
