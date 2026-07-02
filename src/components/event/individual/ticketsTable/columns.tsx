@@ -20,6 +20,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { downloadTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
+import { TicketEntryTimeCell } from '@/components/event/individual/ticketsTable/TicketEntryTimeCell';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -196,19 +197,7 @@ export function generateTicketColumns({
       size: 50,
       maxSize: 50,
       enableResizing: false,
-      cell: ({ row }) => {
-        return (
-          <p className='w-full text-center'>
-            {row.original.scannedAt
-              ? formatInTimeZone(
-                  new Date(row.original.scannedAt),
-                  'America/Argentina/Buenos_Aires',
-                  'HH:mm:ss',
-                )
-              : '-'}
-          </p>
-        );
-      },
+      cell: ({ row }) => <TicketEntryTimeCell ticket={row.original} />,
     },
     {
       id: 'fullName',
@@ -826,7 +815,10 @@ export function generateTicketColumns({
                   <DropdownMenuItem
                     className='flex cursor-pointer items-center justify-between'
                     onClick={() => {
-                      if (ticket.scanned) {
+                      if (
+                        ticket.scanned &&
+                        !ticket.ticketType.allowMultipleScans
+                      ) {
                         toast.error('Ticket ya escaneado');
                         return;
                       }
@@ -838,7 +830,9 @@ export function generateTicketColumns({
                       });
                       utils.events.getById.invalidate(ticket.eventId ?? '');
                     }}
-                    disabled={row.original.scanned}
+                    disabled={
+                      ticket.scanned && !ticket.ticketType.allowMultipleScans
+                    }
                   >
                     Escaneo manual
                     <ScanBarcode className='size-5' />

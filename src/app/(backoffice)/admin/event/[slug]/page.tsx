@@ -52,10 +52,13 @@ async function EventDetails({ slug }: { slug: string }) {
     .flatMap((tg) => tg.emittedTickets);
 
   const answeredQuestionIds = new Set(
-    event.ticketGroups.flatMap((tg) => tg.answers.map((a) => a.questionId)),
+    event.ticketGroups.flatMap((tg) =>
+      tg.ticketGroupAnswers.map((a) => a.questionId),
+    ),
   );
-  const hasVisibleQuestions = event.questions.some(
-    (question) => !question.isDeleted || answeredQuestionIds.has(question.id),
+  const hasVisibleQuestions = event.eventQuestions.some(
+    (eventQuestion) =>
+      !eventQuestion.isDeleted || answeredQuestionIds.has(eventQuestion.id),
   );
 
   const headersList = await headers();

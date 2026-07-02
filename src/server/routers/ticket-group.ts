@@ -147,7 +147,7 @@ export const ticketGroupRouter = router({
                   name: true,
                 },
               },
-              questions: {
+              eventQuestions: {
                 where: eq(eventQuestion.isDeleted, false),
                 orderBy: [
                   asc(eventQuestion.sortOrder),

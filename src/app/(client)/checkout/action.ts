@@ -180,7 +180,7 @@ export const handlePurchase = async (
     });
   }
 
-  for (const question of event.questions) {
+  for (const question of event.eventQuestions) {
     const answer = surveyAnswers.find(
       (item) => item.questionId === question.id,
     );

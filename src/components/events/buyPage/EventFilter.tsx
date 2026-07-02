@@ -4,6 +4,7 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { useMemo } from 'react';
 import { SearchIcon } from 'lucide-react';
 
+import { CategoryFilter } from '@/components/events/buyPage/CategoryFilter';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -50,7 +51,7 @@ export function EventFilter() {
   );
 
   return (
-    <div className='bg-gray-300 p-2 rounded-md w-full flex-col flex'>
+    <div className='bg-gray-300 p-2 rounded-md w-full min-w-0 max-w-full flex-col flex overflow-hidden'>
       <div className='flex gap-2'>
         <div className='relative flex-1'>
           <Input
@@ -86,6 +87,7 @@ export function EventFilter() {
           </SelectContent>
         </Select>
       </div>
+      <CategoryFilter />
     </div>
   );
 }

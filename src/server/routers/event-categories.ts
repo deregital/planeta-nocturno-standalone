@@ -1,5 +1,6 @@
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
+import z from 'zod';
 
 import { eventCategory } from '@/drizzle/schema';
 import { adminProcedure, publicProcedure, router } from '@/server/trpc';
@@ -7,7 +8,15 @@ import { eventCategorySchema } from '@/server/schemas/event-category';
 
 export const eventCategoriesRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.eventCategory.findMany();
+    return ctx.db.query.eventCategory.findMany({
+      orderBy: asc(eventCategory.sortOrder),
+    });
+  }),
+  getActive: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.query.eventCategory.findMany({
+      where: eq(eventCategory.isActive, true),
+      orderBy: asc(eventCategory.sortOrder),
+    });
   }),
   getById: publicProcedure
     .input(eventCategorySchema.shape.id)
@@ -28,7 +37,16 @@ export const eventCategoriesRouter = router({
   create: adminProcedure
     .input(eventCategorySchema.omit({ id: true }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.insert(eventCategory).values(input);
+      const existing = await ctx.db.query.eventCategory.findMany({
+        orderBy: asc(eventCategory.sortOrder),
+      });
+      const maxSortOrder =
+        existing.length > 0
+          ? Math.max(...existing.map((c) => c.sortOrder))
+          : -1;
+      return ctx.db
+        .insert(eventCategory)
+        .values({ ...input, sortOrder: maxSortOrder + 1 });
     }),
   edit: adminProcedure
     .input(eventCategorySchema)
@@ -37,5 +55,25 @@ export const eventCategoriesRouter = router({
         .update(eventCategory)
         .set(input)
         .where(eq(eventCategory.id, input.id));
+    }),
+  toggleActive: adminProcedure
+    .input(z.object({ id: z.uuid(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db
+        .update(eventCategory)
+        .set({ isActive: input.isActive })
+        .where(eq(eventCategory.id, input.id));
+    }),
+  reorder: adminProcedure
+    .input(z.array(z.object({ id: z.uuid(), sortOrder: z.number().int() })))
+    .mutation(async ({ ctx, input }) => {
+      await Promise.all(
+        input.map(({ id, sortOrder }) =>
+          ctx.db
+            .update(eventCategory)
+            .set({ sortOrder })
+            .where(eq(eventCategory.id, id)),
+        ),
+      );
     }),
 });

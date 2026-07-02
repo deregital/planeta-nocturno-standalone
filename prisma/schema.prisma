@@ -38,7 +38,8 @@ model User {
   emailVerified DateTime? @db.Timestamptz
   image         String?
 
-  scannedTickets       EmittedTicket[]    @relation("USER_X_EMITTED_TICKET")
+  scannedTickets       EmittedTicket[]       @relation("USER_X_EMITTED_TICKET")
+  emittedTicketScans   EmittedTicketScan[]   @relation("USER_X_EMITTED_TICKET_SCAN")
   authorizedEvents     Event[]            @relation("EVENT_X_USER")
   eventsOrganized      EventXOrganizer[]  @relation("ORGANIZER_X_EVENT")
   ticketXOrganizer     TicketXOrganizer[] @relation("ORGANIZER_X_TICKET")
@@ -229,6 +230,8 @@ model TicketType {
   startingDate DateTime  @db.Timestamptz
   scanLimit    DateTime? @db.Timestamptz
 
+  allowMultipleScans Boolean @default(false)
+
   sortOrder Int @default(0)
 
   organizers User[] @relation("TICKET_TYPE_X_ORGANIZERS")
@@ -315,6 +318,8 @@ model EmittedTicket {
   scannedByUserId String? @db.Uuid
   scannedBy       User?   @relation("USER_X_EMITTED_TICKET", fields: [scannedByUserId], references: [id], onDelete: SetNull)
 
+  scans EmittedTicketScan[] @relation("EMITTED_TICKET_X_SCAN")
+
   ticketTypeId String     @db.Uuid
   type         TicketType @relation("TICKET_TYPE_X_EMITTED_TICKET", fields: [ticketTypeId], references: [id])
 
@@ -332,9 +337,23 @@ model EmittedTicket {
   @@map("emittedTicket")
 }
 
+model EmittedTicketScan {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  emittedTicketId String   @db.Uuid
+  emittedTicket   EmittedTicket @relation("EMITTED_TICKET_X_SCAN", fields: [emittedTicketId], references: [id], onDelete: Cascade)
+  scannedAt       DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  scannedByUserId String?  @db.Uuid
+  scannedBy       User?    @relation("USER_X_EMITTED_TICKET_SCAN", fields: [scannedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([emittedTicketId])
+  @@map("emittedTicketScan")
+}
+
 model EventCategory {
-  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name String
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  isActive  Boolean @default(false)
+  sortOrder Int     @default(0)
 
   events Event[] @relation("EVENT_X_CATEGORY")
 
