@@ -56,6 +56,13 @@ export async function POST(req: Request) {
   const isValid = verifySignature(signature, requestId, urlDataId);
 
   if (!isValid) {
+    // TODO: eliminar estos logs una vez resuelto el 403
+    console.error('[MP webhook] Firma inválida. Inputs usados:', {
+      urlDataId,
+      bodyDataId: body.data.id,
+      requestId,
+      signatureHeader: signature,
+    });
     return new NextResponse(null, { status: 403 });
   }
 
