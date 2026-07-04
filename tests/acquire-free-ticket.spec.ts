@@ -83,7 +83,7 @@ test('adquirir ticket gratuito', async ({ page }) => {
   await page.getByRole('button', { name: 'COMPRAR' }).click();
 
   await expect(page).toHaveURL(/\/checkout/);
-  await expect(page.getByText(event.eventName)).toBeVisible();
+  await expect(page.getByText(event.eventName, { exact: true })).toBeVisible();
 
   await page.getByLabel('Nombre y apellido').fill(buyer.fullName);
   await page.getByLabel('Mail').fill(buyer.mail);
