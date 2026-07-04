@@ -14,16 +14,28 @@ function verifySignature(
   request_id: string,
   data_id: string,
 ): boolean {
-  const ts = signature.split(',')[0]?.split('=')[1];
-  const v1 = signature.split(',')[1]?.split('=')[1];
-  const manifest = `id:${data_id};request-id:${request_id};ts:${ts?.trim()};`;
+  // Parsear como pares clave=valor para no depender del orden de los campos
+  const parts = Object.fromEntries(
+    signature.split(',').map((part) => {
+      const idx = part.indexOf('=');
+      return [part.slice(0, idx).trim(), part.slice(idx + 1).trim()];
+    }),
+  );
+
+  const ts = parts['ts'];
+  const v1 = parts['v1'];
+
+  if (!ts || !v1) return false;
+
+  // MP requiere que data.id sea lowercase en el manifest si contiene letras (ej: order IDs)
+  const manifest = `id:${data_id.toLowerCase()};request-id:${request_id};ts:${ts};`;
   const secretKey = process.env.MP_SECRET_KEY!;
   const signatureDecrypted = createHmac('sha256', secretKey)
     .update(manifest)
     .digest('hex');
   // comparacion segura de signatures para evitar timing attacks
   const a = Buffer.from(signatureDecrypted);
-  const b = Buffer.from(v1?.trim() ?? '');
+  const b = Buffer.from(v1);
   const isValid = a.length === b.length && timingSafeEqual(a, b);
   return isValid;
 }
@@ -33,11 +45,15 @@ export async function POST(req: Request) {
   const signature = req.headers.get('x-signature');
   const requestId = req.headers.get('x-request-id');
 
+  // MP firma usando data.id del query param de la URL, no del body
+  const urlDataId =
+    new URL(req.url).searchParams.get('data.id') ?? body.data.id;
+
   if (!signature || !requestId) {
     return new NextResponse(null, { status: 400 });
   }
 
-  const isValid = verifySignature(signature, requestId, body.data.id);
+  const isValid = verifySignature(signature, requestId, urlDataId);
 
   if (!isValid) {
     return new NextResponse(null, { status: 403 });
