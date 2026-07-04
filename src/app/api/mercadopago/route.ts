@@ -57,12 +57,14 @@ export async function POST(req: Request) {
 
   if (!isValid) {
     // TODO: eliminar estos logs una vez resuelto el 403
-    console.error('[MP webhook] Firma inválida. Inputs usados:', {
-      urlDataId,
-      bodyDataId: body.data.id,
-      requestId,
-      signatureHeader: signature,
+    const allHeaders: Record<string, string> = {};
+    req.headers.forEach((value, key) => {
+      allHeaders[key] = value;
     });
+    console.error(
+      '[MP webhook] Firma inválida. Headers completos:',
+      allHeaders,
+    );
     return new NextResponse(null, { status: 403 });
   }
 
