@@ -9,35 +9,46 @@ import { sendNotificationService } from '@/server/services/notification';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { trpc } from '@/server/trpc/server';
 
+function hmacHex(secret: string, manifest: string): string {
+  return createHmac('sha256', secret).update(manifest).digest('hex');
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
 function verifySignature(
   signature: string,
-  request_id: string,
+  request_id: string | null,
   data_id: string,
 ): boolean {
-  // Parsear como pares clave=valor para no depender del orden de los campos
+  // Parsear como pares clave=valor para no depender del orden
   const parts = Object.fromEntries(
     signature.split(',').map((part) => {
       const idx = part.indexOf('=');
       return [part.slice(0, idx).trim(), part.slice(idx + 1).trim()];
     }),
   );
-
   const ts = parts['ts'];
   const v1 = parts['v1'];
-
   if (!ts || !v1) return false;
 
-  // MP requiere que data.id sea lowercase en el manifest si contiene letras (ej: order IDs)
-  const manifest = `id:${data_id.toLowerCase()};request-id:${request_id};ts:${ts};`;
   const secretKey = process.env.MP_SECRET_KEY!;
-  const signatureDecrypted = createHmac('sha256', secretKey)
-    .update(manifest)
-    .digest('hex');
-  // comparacion segura de signatures para evitar timing attacks
-  const a = Buffer.from(signatureDecrypted);
-  const b = Buffer.from(v1);
-  const isValid = a.length === b.length && timingSafeEqual(a, b);
-  return isValid;
+  // MP requiere lowercase en data.id si tiene letras (ej: order IDs)
+  const id = data_id.toLowerCase();
+
+  // Intentar con request-id (caso normal donde MP envía x-request-id)
+  if (request_id) {
+    const manifest = `id:${id};request-id:${request_id};ts:${ts};`;
+    if (safeEqual(hmacHex(secretKey, manifest), v1)) return true;
+  }
+
+  // Fallback sin request-id: Vercel puede inyectar x-request-id que MP no envió,
+  // en cuyo caso MP firma sin ese campo según su documentación.
+  const manifestNoReqId = `id:${id};ts:${ts};`;
+  return safeEqual(hmacHex(secretKey, manifestNoReqId), v1);
 }
 
 export async function POST(req: Request) {
@@ -45,26 +56,23 @@ export async function POST(req: Request) {
   const signature = req.headers.get('x-signature');
   const requestId = req.headers.get('x-request-id');
 
-  // MP firma usando data.id del query param de la URL, no del body
+  // data.id para el manifest viene del query param de la URL según la doc de MP
   const urlDataId =
     new URL(req.url).searchParams.get('data.id') ?? body.data.id;
 
-  if (!signature || !requestId) {
+  if (!signature) {
     return new NextResponse(null, { status: 400 });
   }
 
   const isValid = verifySignature(signature, requestId, urlDataId);
 
   if (!isValid) {
-    // TODO: eliminar estos logs una vez resuelto el 403
-    const allHeaders: Record<string, string> = {};
-    req.headers.forEach((value, key) => {
-      allHeaders[key] = value;
+    console.error('[MP webhook] Firma inválida:', {
+      urlDataId,
+      bodyDataId: body.data.id,
+      requestId,
+      signatureHeader: signature,
     });
-    console.error(
-      '[MP webhook] Firma inválida. Headers completos:',
-      allHeaders,
-    );
     return new NextResponse(null, { status: 403 });
   }
 
