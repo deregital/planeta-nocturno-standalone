@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { verifySignedRequest } from '@/server/security/signed-request';
 import { sendMailService } from '@/server/services/mail';
+import { sendNotificationService } from '@/server/services/notification';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { trpc } from '@/server/trpc/server';
 
