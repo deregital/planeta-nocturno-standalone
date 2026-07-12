@@ -71,17 +71,13 @@ export async function POST(request: Request) {
       )
       .orderBy(asc(event.startingDate));
 
-    const eventStats = new Map(
-      await Promise.all(
-        events.map(
-          async (eventItem) =>
-            [
-              eventItem.id,
-              await getCalendarStatsByEventId(eventItem.id),
-            ] as const,
-        ),
-      ),
-    );
+    const eventStats = new Map();
+    for (const eventItem of events) {
+      eventStats.set(
+        eventItem.id,
+        await getCalendarStatsByEventId(eventItem.id),
+      );
+    }
 
     return NextResponse.json({
       success: true,
