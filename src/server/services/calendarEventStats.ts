@@ -5,25 +5,33 @@ import { db } from '@/drizzle';
 import {
   emittedTicket,
   ticketGroup,
-  ticketType,
   ticketTypePerGroup,
 } from '@/drizzle/schema';
 
 export async function getCalendarStatsByEventId(eventId: string) {
-  const [salesStats] = await db
-    .select({
-      ticketsSold: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)`,
-      totalRaised: sql<number>`coalesce(sum(${ticketTypePerGroup.amount} * coalesce(${ticketType.price}, 0)), 0)`,
-    })
-    .from(ticketTypePerGroup)
-    .innerJoin(
-      ticketGroup,
-      eq(ticketGroup.id, ticketTypePerGroup.ticketGroupId),
-    )
-    .innerJoin(ticketType, eq(ticketType.id, ticketTypePerGroup.ticketTypeId))
-    .where(
-      and(eq(ticketGroup.eventId, eventId), ne(ticketGroup.status, 'BOOKED')),
-    );
+  const ticketGroupFilter = and(
+    eq(ticketGroup.eventId, eventId),
+    ne(ticketGroup.status, 'BOOKED'),
+  );
+
+  const [[salesStats], [raisedStats]] = await Promise.all([
+    db
+      .select({
+        ticketsSold: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)`,
+      })
+      .from(ticketTypePerGroup)
+      .innerJoin(
+        ticketGroup,
+        eq(ticketGroup.id, ticketTypePerGroup.ticketGroupId),
+      )
+      .where(ticketGroupFilter),
+    db
+      .select({
+        totalRaised: sql<number>`coalesce(sum(${ticketGroup.totalAmount}), 0)`,
+      })
+      .from(ticketGroup)
+      .where(ticketGroupFilter),
+  ]);
 
   const [attendanceStats] = await db
     .select({
@@ -45,6 +53,6 @@ export async function getCalendarStatsByEventId(eventId: string) {
     ticketsScanned,
     attendanceRate:
       ticketsIssued > 0 ? (ticketsScanned / ticketsIssued) * 100 : 0,
-    totalRaised: Number(salesStats?.totalRaised ?? 0),
+    totalRaised: Number(raisedStats?.totalRaised ?? 0),
   };
 }

@@ -121,6 +121,10 @@ export const mercadoPagoRouter = router({
             pending: `${process.env.INSTANCE_WEB_URL}/tickets/${group.id}`,
             failure: `${process.env.INSTANCE_WEB_URL}/tickets/error`,
           },
+          metadata: {
+            ticket_group_id: group.id,
+            instance_url: process.env.INSTANCE_WEB_URL,
+          },
         },
       });
       return preference.init_point!;
