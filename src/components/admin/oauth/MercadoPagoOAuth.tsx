@@ -9,21 +9,13 @@ import {
 } from '@/components/ui/card';
 
 function getMercadoPagoAuthUrl() {
-  const { MP_CLIENT_ID, PLUTO_URL, INSTANCE_WEB_URL } = process.env;
-
-  if (!MP_CLIENT_ID || !PLUTO_URL || !INSTANCE_WEB_URL) {
+  if (!process.env.PLUTO_URL || !process.env.INSTANCE_WEB_URL) {
     return null;
   }
 
-  const params = new URLSearchParams({
-    client_id: MP_CLIENT_ID,
-    response_type: 'code',
-    platform_id: 'mp',
-    redirect_uri: `${PLUTO_URL}/oauth`,
-    state: INSTANCE_WEB_URL,
-  });
-
-  return `https://auth.mercadopago.com/authorization?${params.toString()}`;
+  return `${process.env.PLUTO_URL}/oauth/start?instance_url=${encodeURIComponent(
+    process.env.INSTANCE_WEB_URL,
+  )}`;
 }
 
 export default function MercadoPagoOAuth() {
