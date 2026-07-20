@@ -33,7 +33,7 @@ export default function MercadoPagoOAuth() {
         <div className='flex flex-col gap-1'>
           <CardTitle>Mercado Pago</CardTitle>
           <CardDescription>
-            Conectá tu cuenta de Mercado Pago para cobrar las entradas.
+            Conectá tu cuenta de Mercado Pago para cobrar tus tickets.
           </CardDescription>
         </div>
       </CardHeader>

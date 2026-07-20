@@ -1,19 +1,49 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+
+const MP_STATUS_COOKIE = 'mp_oauth_status';
 
 type MercadoPagoConnectProps = {
   isConnected: boolean;
   authUrl: string | null;
 };
 
+function getCookie(name: string) {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setStatusCookie(value: string) {
+  document.cookie = `${MP_STATUS_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=300; SameSite=Lax`;
+}
+
 export default function MercadoPagoConnect({
   isConnected,
   authUrl,
 }: MercadoPagoConnectProps) {
   const searchParams = useSearchParams();
-  const status = searchParams.get('mp');
+  const urlStatus = searchParams.get('mp');
+  const [cookieStatus, setCookieStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlStatus === 'success') {
+      setStatusCookie('success');
+      setCookieStatus('success');
+      return;
+    }
+
+    setCookieStatus(getCookie(MP_STATUS_COOKIE));
+  }, [urlStatus]);
+
+  const status =
+    urlStatus === 'error'
+      ? 'error'
+      : urlStatus === 'success' || cookieStatus === 'success'
+        ? 'success'
+        : null;
 
   const connected = isConnected || status === 'success';
 

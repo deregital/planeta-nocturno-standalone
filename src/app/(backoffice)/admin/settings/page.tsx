@@ -11,7 +11,6 @@ export default async function Page() {
 
   return (
     <div className='flex flex-col gap-4 py-4'>
-      <MercadoPagoOAuth />
       <UpdateFeatures />
       <section className='mb-4 space-y-4'>
         <div className='flex justify-between items-center px-4'>
@@ -27,6 +26,9 @@ export default async function Page() {
       </section>
       <LocationList />
       <CategoryList />
+      <section className='mb-4 space-y-4'>
+        <MercadoPagoOAuth />
+      </section>
     </div>
   );
 }
