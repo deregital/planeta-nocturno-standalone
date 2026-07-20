@@ -6,7 +6,6 @@ import { z } from 'zod';
 
 import { auth, signIn } from '@/server/auth';
 import { userSchema } from '@/server/schemas/user';
-import { hasMercadoPagoCredentials } from '@/server/services/mercadoPagoCredentials';
 import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
 const loginSchema = userSchema.pick({ name: true, password: true });
@@ -59,11 +58,6 @@ export async function authenticate(
 
   const session = await auth();
   const role = session?.user?.role;
-  const hasCredentials = await hasMercadoPagoCredentials();
-
-  if (!hasCredentials) {
-    redirect('/credentials' as Route);
-  }
 
   redirect(getDefaultPathByRole(role) as Route);
 }
