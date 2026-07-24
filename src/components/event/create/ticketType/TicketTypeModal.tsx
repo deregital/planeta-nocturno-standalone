@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Loader2, Pencil } from 'lucide-react';
+import { CircleHelp, Loader2, Pencil } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { validateTicketType } from '@/app/(backoffice)/admin/event/create/actions';
@@ -19,6 +19,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ticketTypesTranslation } from '@/lib/translations';
 import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
 import { trpc } from '@/server/trpc/client';
@@ -29,6 +34,7 @@ type TicketTypeModalProps = {
   maxAvailableLeft: number;
   action: 'CREATE' | 'EDIT';
   ticketType?: EventState['ticketTypes'][number];
+  mercadoPagoEnabled?: boolean | undefined;
 };
 
 export default function TicketTypeModal({
@@ -36,8 +42,12 @@ export default function TicketTypeModal({
   maxAvailableLeft,
   action,
   ticketType,
+  mercadoPagoEnabled,
 }: TicketTypeModalProps) {
   const { text, icon } = ticketTypesTranslation[category];
+  const requiresMercadoPago = category === 'PAID' || category === 'TABLE';
+  const isCreateDisabled =
+    action === 'CREATE' && requiresMercadoPago && mercadoPagoEnabled === false;
   const [error, setError] = useState<{
     [key: string]: string;
   }>({});
@@ -212,19 +222,47 @@ export default function TicketTypeModal({
     }
   };
 
+  const createTrigger = (
+    <Button
+      variant='ghost'
+      disabled={isCreateDisabled}
+      className='flex flex-col justify-center items-center border-2 rounded-2xl border-stroke p-16 bg-white hover:bg-accent-light/10'
+    >
+      <span className='text-3xl font-semibold'>{text}</span>
+      <div>{icon}</div>
+    </Button>
+  );
+
+  if (isCreateDisabled) {
+    return (
+      <div className='relative inline-flex'>
+        {createTrigger}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              className='absolute -top-2 -right-2 size-7 rounded-full bg-accent text-on-accent hover:bg-accent/90'
+              aria-label='¿Por qué está deshabilitado?'
+            >
+              <CircleHelp className='size-4' />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className='max-w-xs text-sm'>
+            Conectá tu cuenta de Mercado Pago desde Configuración para crear
+            este tipo de ticket.
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {action === 'CREATE' ? (
-          <div>
-            <Button
-              variant='ghost'
-              className='flex flex-col justify-center items-center border-2 rounded-2xl border-stroke p-16 bg-white hover:bg-accent-light/10'
-            >
-              <span className='text-3xl font-semibold'>{text}</span>
-              <div>{icon}</div>
-            </Button>
-          </div>
+          <div>{createTrigger}</div>
         ) : (
           <Button variant={'ghost'}>
             <Pencil />
