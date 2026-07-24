@@ -595,7 +595,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       ),
       ticketType: ticket.ticketType,
       name_first_word: firstWord,
-      name_second_word: rest.join(' '),
+      name_second_word: rest.join(' ') || ' ',
       invitedBy: ticket.invitedBy || '-',
       ...(ticket.ticketSlugVisibleInPdf && { ticketId: ticket.slug }),
     },
