@@ -483,8 +483,11 @@ export function EventGeneralInformation({
             <div className='hidden'>
               <LocationModal
                 action='CREATE'
-                onSuccess={() => {
-                  utils.location.getAll.invalidate();
+                onSuccess={async (createdId) => {
+                  await utils.location.getAll.invalidate();
+                  if (createdId) {
+                    handleChange('locationId', createdId);
+                  }
                 }}
                 openController={setOpenLocationModal}
                 open={openLocationModal}
@@ -495,8 +498,11 @@ export function EventGeneralInformation({
             <div className='hidden'>
               <EventCategoryModal
                 action='CREATE'
-                onSuccess={() => {
-                  utils.eventCategory.getAll.invalidate();
+                onSuccess={async (createdId) => {
+                  await utils.eventCategory.getAll.invalidate();
+                  if (createdId) {
+                    handleChange('categoryId', createdId);
+                  }
                 }}
                 openController={setOpenCategoryModal}
                 open={openCategoryModal}
