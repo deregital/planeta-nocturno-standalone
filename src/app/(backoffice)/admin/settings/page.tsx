@@ -2,6 +2,7 @@ import CategoryList from '@/components/admin/category/CategoryList';
 import { CreateUserForm } from '@/components/admin/config/CreateUserForm';
 import UpdateFeatures from '@/components/admin/config/UpdateFeatures';
 import { UsersTable } from '@/components/admin/config/UsersTable';
+import MercadoPagoOAuth from '@/components/admin/oauth/MercadoPagoOAuth';
 import LocationList from '@/components/location/LocationList';
 import { trpc } from '@/server/trpc/server';
 
@@ -25,6 +26,9 @@ export default async function Page() {
       </section>
       <LocationList />
       <CategoryList />
+      <section className='mb-4 space-y-4'>
+        <MercadoPagoOAuth />
+      </section>
     </div>
   );
 }
