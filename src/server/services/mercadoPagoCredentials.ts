@@ -1,8 +1,8 @@
 export async function hasMercadoPagoCredentials() {
   const accessToken = process.env.MP_ACCESS_TOKEN?.trim();
-  const secretKey = process.env.MP_SECRET_KEY?.trim();
+  const refreshToken = process.env.MP_REFRESH_TOKEN?.trim();
 
-  if (!accessToken || !secretKey) {
+  if (!accessToken || !refreshToken) {
     return false;
   }
 
@@ -13,7 +13,7 @@ export async function hasMercadoPagoCredentials() {
 
   if (
     !accessTokenPattern.test(accessToken) ||
-    !secretKeyPattern.test(secretKey)
+    !secretKeyPattern.test(refreshToken)
   ) {
     return false;
   }

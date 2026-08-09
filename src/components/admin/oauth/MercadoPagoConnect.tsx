@@ -3,6 +3,14 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 const MP_STATUS_COOKIE = 'mp_oauth_status';
 
@@ -65,9 +73,27 @@ export default function MercadoPagoConnect({
           Ya estás conectado a Mercado Pago
         </Button>
       ) : authUrl ? (
-        <a href={authUrl} target='_blank' rel='noopener noreferrer'>
-          <Button>Conectar con Mercado Pago</Button>
-        </a>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>Conectar con Mercado Pago</Button>
+          </DialogTrigger>
+          <DialogContent className='flex flex-col items-center justify-center'>
+            <DialogHeader>
+              <DialogTitle>Conectar Mercado Pago</DialogTitle>
+            </DialogHeader>
+            <div className='text-center text-gray-500 p-2'>
+              Al vincular tu cuenta, los cobros de tickets se acreditan en tu
+              Mercado Pago. Nosotros no recibimos ni administramos ese dinero:
+              la conexión solo permite procesar el pago en tu sitio y confirmar
+              las entradas de forma automática cuando se acredita.
+            </div>
+            <DialogFooter className='sm:justify-end'>
+              <a href={authUrl} target='_blank' rel='noopener noreferrer'>
+                <Button className='px-8'>Conectar con Mercado Pago</Button>
+              </a>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : (
         <Button variant='outline' disabled>
           Configuración de Mercado Pago incompleta

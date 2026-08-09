@@ -26,7 +26,7 @@ import { type Location } from '@/server/schemas/location';
 type LocationModalProps = {
   action: 'CREATE' | 'EDIT';
   location?: Location;
-  onSuccess?: () => void;
+  onSuccess?: (createdId?: string) => void;
   openController?: (open: boolean) => void;
   open?: boolean;
 };
@@ -56,7 +56,9 @@ export default function LocationModal({
     if (state.success) {
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la locación con éxito!`);
-      onSuccess?.();
+      onSuccess?.(
+        'id' in state && typeof state.id === 'string' ? state.id : undefined,
+      );
     }
   }, [state, toastMsg, onSuccess, setOpen]);
 

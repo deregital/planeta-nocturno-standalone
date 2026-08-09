@@ -18,6 +18,7 @@ export type CreateLocationActionState = {
   address?: string;
   googleMapsUrl?: string;
   capacity?: number;
+  id?: string;
   errors?: {
     name?: string[];
     address?: string[];
@@ -55,12 +56,13 @@ export async function handleCreate(
     };
   }
 
-  await trpc.location.create(rawData);
+  const created = await trpc.location.create(rawData);
 
   revalidateLocations();
 
   return {
     success: true,
+    id: created.id,
   };
 }
 

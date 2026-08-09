@@ -23,7 +23,7 @@ import { trpc } from '@/server/trpc/client';
 type EventCategoryModalProps = {
   action: 'CREATE' | 'EDIT';
   category?: EventCategory;
-  onSuccess?: () => void;
+  onSuccess?: (createdId?: string) => void;
   openController?: (open: boolean) => void;
   open?: boolean;
 };
@@ -37,13 +37,14 @@ export default function EventCategoryModal({
 }: EventCategoryModalProps) {
   const utils = trpc.useUtils();
   const router = useRouter();
+  const toastMsg = action === 'CREATE' ? 'creado' : 'modificado';
   const createMutation = trpc.eventCategory.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (created) => {
       setOpen(false);
       toast(`¡Se ha ${toastMsg} la categoría con éxito!`);
       router.refresh();
       utils.eventCategory.getAll.invalidate();
-      onSuccess?.();
+      onSuccess?.(created.id);
     },
   });
   const editMutation = trpc.eventCategory.edit.useMutation({
@@ -56,7 +57,6 @@ export default function EventCategoryModal({
     },
   });
   const [name, setName] = useState(category?.name || '');
-  const toastMsg = action === 'CREATE' ? 'creado' : 'modificado';
 
   const [internalOpen, internalSetOpen] = useState(false);
 
