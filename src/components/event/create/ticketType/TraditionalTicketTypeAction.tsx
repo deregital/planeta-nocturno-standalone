@@ -26,6 +26,8 @@ export function TraditionalTicketTypeAction({
   const { data: location } = trpc.location.getById.useQuery(event.locationId, {
     enabled: !!event.locationId,
   });
+  const { data: hasMercadoPagoCredentials } =
+    trpc.mercadoPago.hasCredentials.useQuery();
 
   function handleNext() {
     if (ticketTypes.length === 0) {
@@ -59,6 +61,7 @@ export function TraditionalTicketTypeAction({
             maxAvailableLeft={maxAvailableLeft}
             key={category}
             category={category}
+            mercadoPagoEnabled={hasMercadoPagoCredentials}
           />
         ))}
       </div>

@@ -35,7 +35,7 @@ export const locationRouter = router({
   create: adminProcedure
     .input(createLocationSchema)
     .mutation(async ({ input, ctx }) => {
-      const data = await ctx.db.insert(location).values(input);
+      const [data] = await ctx.db.insert(location).values(input).returning();
 
       if (!data) {
         throw new TRPCError({

@@ -44,9 +44,19 @@ export const eventCategoriesRouter = router({
         existing.length > 0
           ? Math.max(...existing.map((c) => c.sortOrder))
           : -1;
-      return ctx.db
+      const [created] = await ctx.db
         .insert(eventCategory)
-        .values({ ...input, sortOrder: maxSortOrder + 1 });
+        .values({ ...input, sortOrder: maxSortOrder + 1 })
+        .returning();
+
+      if (!created) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No se pudo crear la categoría',
+        });
+      }
+
+      return created;
     }),
   edit: adminProcedure
     .input(eventCategorySchema)
