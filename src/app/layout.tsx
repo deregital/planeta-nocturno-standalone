@@ -6,7 +6,6 @@ import { DM_Sans } from 'next/font/google';
 
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getSingleTenantConfig } from '@/server/config/single-tenant-config';
 import { TRPCReactProvider } from '@/server/trpc/client';
 
 const dmSans = DM_Sans({
@@ -33,34 +32,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const singleTenantConfig = getSingleTenantConfig();
-
-  if (!singleTenantConfig) {
-    console.info(
-      '[Planeta Nocturno] Instancia multi-tenant en modo de prueba. El aprovisionamiento y las migraciones de tenants están deshabilitados.',
-    );
-
-    return (
-      <html lang='es' className='notranslate' translate='no'>
-        <body className={`${dmSans.className} antialiased`}>
-          <main className='flex min-h-screen items-center justify-center p-6'>
-            <div className='max-w-xl text-center'>
-              <p className='mb-2 text-sm font-medium uppercase'>
-                Planeta Nocturno
-              </p>
-              <h1 className='text-3xl font-bold'>Instancia multi-tenant</h1>
-              <p className='mt-4 text-base text-gray-600'>
-                Modo de prueba activo. El aprovisionamiento de tenants todavía
-                no crea bases de datos ni ejecuta migraciones.
-              </p>
-            </div>
-          </main>
-          <Analytics />
-        </body>
-      </html>
-    );
-  }
-
   return (
     <TRPCReactProvider>
       <html lang='es' className='notranslate' translate='no'>
