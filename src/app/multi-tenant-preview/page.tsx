@@ -5,8 +5,8 @@ export default function MultiTenantPreviewPage() {
         <p className='mb-2 text-sm font-medium uppercase'>Planeta Nocturno</p>
         <h1 className='text-3xl font-bold'>Instancia multi-tenant</h1>
         <p className='mt-4 text-base text-gray-600'>
-          Modo de prueba activo. El aprovisionamiento de tenants todavía no crea
-          bases de datos ni ejecuta migraciones.
+          Prueba de instancia multi-tenant. Sin aprovisionamiento de tenants
+          todavía.
         </p>
       </div>
     </main>
