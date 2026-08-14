@@ -18,13 +18,14 @@ async function importTypeScript(relativePath) {
   return import(moduleUrl);
 }
 
+const { createSingleTenantConfig, SINGLE_TENANT_ENV_KEYS } =
+  await importTypeScript('../src/lib/config/single-tenant-config.ts');
 const {
-  createSingleTenantConfig,
-  SINGLE_TENANT_ENV_KEYS,
-} = await importTypeScript('../src/lib/config/single-tenant-config.ts');
-const { getSubdomain, normalizeRootDomain } = await importTypeScript(
-  '../src/lib/tenancy/host.ts',
-);
+  getRequestHost,
+  getSubdomain,
+  normalizeRootDomain,
+  resolveMultiTenantHost,
+} = await importTypeScript('../src/lib/tenancy/host.ts');
 
 for (const key of SINGLE_TENANT_ENV_KEYS) {
   test(`reconoce ${key} como configuración single-tenant`, () => {
@@ -75,13 +76,56 @@ test('trata todas las variables vacías como configuración multi-tenant', () =>
 });
 
 test('resuelve un único nivel de subdominio', () => {
-  assert.equal(getSubdomain('cliente.planeta.test:3000', 'planeta.test'), 'cliente');
+  assert.equal(
+    getSubdomain('cliente.planeta.test:3000', 'planeta.test'),
+    'cliente',
+  );
   assert.equal(getSubdomain('otro.cliente.planeta.test', 'planeta.test'), null);
   assert.equal(getSubdomain('planeta.test', 'planeta.test'), null);
 });
 
 test('normaliza y valida el dominio raíz', () => {
   assert.equal(normalizeRootDomain('.PLANETA.TEST'), 'planeta.test');
-  assert.throws(() => normalizeRootDomain('https://planeta.test'), /ROOT_DOMAIN/);
+  assert.throws(
+    () => normalizeRootDomain('https://planeta.test'),
+    /ROOT_DOMAIN/,
+  );
 });
 
+test('clasifica el dominio de administración', () => {
+  assert.deepEqual(
+    resolveMultiTenantHost('admin.planeta.test', 'planeta.test'),
+    { type: 'admin' },
+  );
+});
+
+test('clasifica el dominio de un tenant', () => {
+  assert.deepEqual(
+    resolveMultiTenantHost('cliente.planeta.test', 'planeta.test'),
+    { type: 'tenant', slug: 'cliente' },
+  );
+});
+
+test('distingue el dominio raíz y los dominios desconocidos', () => {
+  assert.deepEqual(resolveMultiTenantHost('planeta.test', 'planeta.test'), {
+    type: 'root',
+  });
+  assert.deepEqual(resolveMultiTenantHost('otro.example.com', 'planeta.test'), {
+    type: 'unknown',
+  });
+  assert.deepEqual(resolveMultiTenantHost('www.planeta.test', 'planeta.test'), {
+    type: 'unknown',
+  });
+});
+
+test('prioriza x-forwarded-host para resolver el dominio público', () => {
+  assert.equal(
+    getRequestHost(
+      new Headers({
+        host: 'localhost:3000',
+        'x-forwarded-host': 'cliente.planeta.test, proxy.internal',
+      }),
+    ),
+    'cliente.planeta.test',
+  );
+});

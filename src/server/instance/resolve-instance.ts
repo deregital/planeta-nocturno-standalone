@@ -1,25 +1,16 @@
 import 'server-only';
 
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import {
   getHostname,
-  getSubdomain,
+  getRequestHost,
   normalizeRootDomain,
+  resolveMultiTenantHost,
 } from '@/lib/tenancy/host';
 import { getSingleTenantConfig } from '@/server/config/single-tenant-config';
-
-const RESERVED_SUBDOMAINS = new Set([
-  'admin',
-  'api',
-  'app',
-  'assets',
-  'mail',
-  'static',
-  'www',
-]);
 
 export type ResolvedInstance = {
   tenantId: number | null;
@@ -50,26 +41,16 @@ export async function resolveInstance(
 async function resolveMultiTenantInstance(
   headers: Headers,
 ): Promise<ResolvedInstance> {
-  const host = headers.get('host') ?? '';
-  const rootDomain = getRootDomain();
-  const slug = getSubdomain(host, rootDomain);
+  const host = getRequestHost(headers);
+  const target = resolveMultiTenantHost(host, getConfiguredRootDomain());
 
-  if (!slug || RESERVED_SUBDOMAINS.has(slug)) {
+  if (target.type !== 'tenant') {
     throw new Error('No tenant is associated with this host');
   }
 
-  const [tenant] = await getControlDb()
-    .select({
-      id: tenants.id,
-      name: tenants.name,
-      slug: tenants.slug,
-      databaseName: tenants.databaseName,
-    })
-    .from(tenants)
-    .where(and(eq(tenants.slug, slug), eq(tenants.status, 'active')))
-    .limit(1);
+  const tenant = await findTenantBySlug(target.slug);
 
-  if (!tenant?.databaseName) {
+  if (tenant?.status !== 'active' || !tenant.databaseName) {
     throw new Error('The tenant does not have an active database');
   }
 
@@ -82,7 +63,23 @@ async function resolveMultiTenantInstance(
   };
 }
 
-function getRootDomain() {
+export async function findTenantBySlug(slug: string) {
+  const [tenant] = await getControlDb()
+    .select({
+      id: tenants.id,
+      name: tenants.name,
+      slug: tenants.slug,
+      databaseName: tenants.databaseName,
+      status: tenants.status,
+    })
+    .from(tenants)
+    .where(eq(tenants.slug, slug))
+    .limit(1);
+
+  return tenant ?? null;
+}
+
+export function getConfiguredRootDomain() {
   const value = process.env.ROOT_DOMAIN;
   if (!value) throw new Error('ROOT_DOMAIN is required');
   return normalizeRootDomain(value);

@@ -1,5 +1,28 @@
+const RESERVED_SUBDOMAINS = new Set([
+  'api',
+  'app',
+  'assets',
+  'mail',
+  'static',
+  'www',
+]);
+
+export type MultiTenantHost =
+  | { type: 'admin' }
+  | { type: 'root' }
+  | { type: 'tenant'; slug: string }
+  | { type: 'unknown' };
+
 export function getHostname(host: string) {
   return host.trim().toLowerCase().split(':')[0];
+}
+
+export function getRequestHost(headers: Headers) {
+  return (
+    headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    headers.get('host') ||
+    ''
+  );
 }
 
 export function getSubdomain(host: string, rootDomain: string) {
@@ -29,4 +52,18 @@ export function normalizeRootDomain(value: string) {
   }
 
   return rootDomain;
+}
+
+export function resolveMultiTenantHost(
+  host: string,
+  rootDomain: string,
+): MultiTenantHost {
+  const hostname = getHostname(host);
+  if (hostname === rootDomain) return { type: 'root' };
+
+  const slug = getSubdomain(hostname, rootDomain);
+  if (!slug || RESERVED_SUBDOMAINS.has(slug)) return { type: 'unknown' };
+  if (slug === 'admin') return { type: 'admin' };
+
+  return { type: 'tenant', slug };
 }
