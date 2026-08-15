@@ -27,6 +27,7 @@ export const tenants = pgTable('tenants', {
   saturation: integer(),
   mpAccessToken: text('mp_access_token'),
   mpRefreshToken: text('mp_refresh_token'),
+  mpSecretKey: text('mp_secret_key'),
   databaseName: varchar('database_name', { length: 63 }).unique(),
   plan: tenantPlan().notNull().default('free'),
   status: tenantStatus().notNull().default('provisioning'),
