@@ -1,6 +1,6 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 
-import { db } from '@/drizzle';
+import type { Db } from '@/drizzle';
 
 import {
   emittedTicket,
@@ -8,7 +8,7 @@ import {
   ticketTypePerGroup,
 } from '@/drizzle/schema';
 
-export async function getCalendarStatsByEventId(eventId: string) {
+export async function getCalendarStatsByEventId(db: Db, eventId: string) {
   const ticketGroupFilter = and(
     eq(ticketGroup.eventId, eventId),
     ne(ticketGroup.status, 'BOOKED'),

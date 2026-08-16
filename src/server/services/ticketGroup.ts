@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm';
 
-import { db } from '@/drizzle';
+import type { Db } from '@/drizzle';
 
 import { ticketGroup } from '@/drizzle/schema';
 import { type TicketGroupStatus } from '@/server/types';
 import { calculateTotalPriceFromData } from '@/lib/utils';
 
 export async function updateTicketGroupStatus(
+  db: Db,
   id: string,
   status: TicketGroupStatus,
 ) {
@@ -23,13 +24,16 @@ export async function updateTicketGroupStatus(
   return result[0];
 }
 
-export async function calculateTotalPrice({
-  ticketGroupId,
-  discountPercentage,
-}: {
-  ticketGroupId: string;
-  discountPercentage?: number | null;
-}) {
+export async function calculateTotalPrice(
+  db: Db,
+  {
+    ticketGroupId,
+    discountPercentage,
+  }: {
+    ticketGroupId: string;
+    discountPercentage?: number | null;
+  },
+) {
   const group = await db.query.ticketGroup.findFirst({
     where: eq(ticketGroup.id, ticketGroupId),
     with: {
