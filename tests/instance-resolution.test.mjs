@@ -55,11 +55,15 @@ test('crea y normaliza la configuración single-tenant', () => {
       databaseUrl: 'postgresql://example/database',
       name: 'Cliente',
       publicUrl: 'https://cliente.example.com',
+      siteUrl: 'https://cliente.example.com',
       contactEmail: 'contacto@example.com',
       description: 'Descripción',
       faviconUrl: undefined,
       hue: 210,
       saturation: 80,
+      mercadoPagoAccessToken: undefined,
+      mercadoPagoRefreshToken: undefined,
+      mercadoPagoSecretKey: undefined,
     },
   );
 });

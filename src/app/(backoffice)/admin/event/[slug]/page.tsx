@@ -1,5 +1,4 @@
 import { Loader2 } from 'lucide-react';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
@@ -22,6 +21,7 @@ import {
   mapEventOrganizersToSchema,
 } from '@/lib/event-organizers';
 import { auth } from '@/server/auth';
+import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import { trpc } from '@/server/trpc/server';
 
 async function EventDetails({ slug }: { slug: string }) {
@@ -61,15 +61,8 @@ async function EventDetails({ slug }: { slug: string }) {
       !eventQuestion.isDeleted || answeredQuestionIds.has(eventQuestion.id),
   );
 
-  const headersList = await headers();
-  const host = headersList.get('x-forwarded-host');
-  const proto = headersList.get('x-forwarded-proto');
-  const origin =
-    proto && host
-      ? `${proto}://${host}`
-      : process.env.INSTANCE_WEB_URL
-        ? `https://${process.env.INSTANCE_WEB_URL}`
-        : '';
+  const { instance } = await getCurrentRequestContext();
+  const origin = instance.publicUrl;
 
   return (
     <div className='flex flex-col items-center mt-4 relative'>

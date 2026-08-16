@@ -11,10 +11,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import { useInstance } from '@/components/instance/InstanceProvider';
 import { getColors } from '@/lib/get-colors';
 import { trpc } from '@/server/trpc/client';
 
 export default function BuyPerHourChart() {
+  const instance = useInstance();
   const today = useMemo(() => new Date(), []);
   const searchParams = useSearchParams();
 
@@ -34,7 +36,7 @@ export default function BuyPerHourChart() {
 
   const eventColors = useMemo(() => {
     if (!data?.events) return {};
-    const colors = getColors();
+    const colors = getColors(instance.hue, instance.saturation);
     const colorPalette = [
       colors.accentColor,
       colors.brandColor,
@@ -47,7 +49,7 @@ export default function BuyPerHourChart() {
       eventColorMap[event.name] = colorPalette[index];
     });
     return eventColorMap;
-  }, [data?.events]);
+  }, [data?.events, instance.hue, instance.saturation]);
 
   const config = useMemo(() => {
     if (!data?.events) return {};

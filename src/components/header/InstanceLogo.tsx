@@ -1,10 +1,11 @@
 import Link from 'next/link';
 
+import { useInstance } from '@/components/instance/InstanceProvider';
 import { cn } from '@/lib/utils';
 
 function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
-  const [firstWord, ...rest] =
-    process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
+  const { name } = useInstance();
+  const [firstWord, ...rest] = name.split(' ');
 
   return (
     <Link
@@ -17,7 +18,7 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
       )}
     >
       <span className='text-brand'>{firstWord}</span>
-      <span className='text-on-accent'>{rest}</span>
+      <span className='text-on-accent'>{rest.join(' ')}</span>
     </Link>
   );
 }
