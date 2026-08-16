@@ -21,7 +21,7 @@ export function getColors(hue: number, saturation: number) {
   const brandColor = `hsl(${hue}, ${saturation}%, 60%)`;
   const accentLight = `hsl(${hue}, ${saturation}%, 70%)`;
   const accentUltraLight = `hsl(${hue}, ${saturation}%, 97%)`;
-  const textOnAccent = getTextColorByBg(accentColor);
+  const textOnAccent = getTextColorByBg(hslToHex(hue, saturation, 20));
 
   return {
     accentDark,

@@ -46,11 +46,13 @@ export default async function RootLayout({
   } as React.CSSProperties;
 
   return (
-    <html lang='es' className='notranslate' translate='no'>
-      <body
-        className={`${dmSans.className} antialiased`}
-        style={colorVariables}
-      >
+    <html
+      lang='es'
+      className='notranslate'
+      translate='no'
+      style={colorVariables}
+    >
+      <body className={`${dmSans.className} antialiased`}>
         <InstanceProvider
           instance={{
             name: instance.name,
