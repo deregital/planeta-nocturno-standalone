@@ -72,22 +72,6 @@ export const emittedTicketScan = pgTable(
   ],
 );
 
-export const prismaMigrations = pgTable('_prisma_migrations', {
-  id: varchar({ length: 36 }).primaryKey().notNull(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
-  migrationName: varchar('migration_name', { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp('rolled_back_at', {
-    withTimezone: true,
-    mode: 'string',
-  }),
-  startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' })
-    .defaultNow()
-    .notNull(),
-  appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
-});
-
 export const ticketType = pgTable(
   'ticketType',
   {
@@ -116,7 +100,7 @@ export const ticketType = pgTable(
   (table) => [
     uniqueIndex('ticketType_eventId_slug_key').using(
       'btree',
-      table.eventId.asc().nullsLast().op('text_ops'),
+      table.eventId.asc().nullsLast().op('uuid_ops'),
       table.slug.asc().nullsLast().op('text_ops'),
     ),
     index('ticketType_eventId_sortOrder_idx').using(
@@ -126,8 +110,8 @@ export const ticketType = pgTable(
     ),
     uniqueIndex('ticketType_eventId_sortOrder_key').using(
       'btree',
-      table.eventId.asc().nullsLast().op('int4_ops'),
-      table.sortOrder.asc().nullsLast().op('uuid_ops'),
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+      table.sortOrder.asc().nullsLast().op('int4_ops'),
     ),
     foreignKey({
       columns: [table.eventId],
@@ -675,7 +659,7 @@ export const ticketXorganizer = pgTable(
     uniqueIndex('ticketXOrganizer_eventId_shortId_key').using(
       'btree',
       table.eventId.asc().nullsLast().op('uuid_ops'),
-      table.shortId.asc().nullsLast().op('uuid_ops'),
+      table.shortId.asc().nullsLast().op('int4_ops'),
     ),
     index('ticketXOrganizer_organizerId_idx').using(
       'btree',
