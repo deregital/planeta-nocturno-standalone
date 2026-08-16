@@ -14,10 +14,7 @@ export function getTextColorByBg(bg: string) {
   return L > 0.179 ? 'black' : 'white';
 }
 
-export function getColors() {
-  const hue = process.env.NEXT_PUBLIC_HUE ?? '200';
-  const saturation = process.env.NEXT_PUBLIC_SATURATION ?? '100';
-
+export function getColors(hue: number, saturation: number) {
   const accentDark = `hsl(${hue}, ${saturation}%, 7%)`;
   const accentColor = `hsl(${hue}, ${saturation}%, 20%)`;
   const buttonColor = `hsl(${hue}, ${saturation}%, 36%)`;
@@ -52,10 +49,7 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 // Function to get colors as hex values
-export function getColorsAsHex() {
-  const hue = parseInt(process.env.NEXT_PUBLIC_HUE ?? '200');
-  const saturation = parseInt(process.env.NEXT_PUBLIC_SATURATION ?? '100');
-
+export function getColorsAsHex(hue: number, saturation: number) {
   return {
     accentDark: hslToHex(hue, saturation, 7),
     accentColor: hslToHex(hue, saturation, 20),

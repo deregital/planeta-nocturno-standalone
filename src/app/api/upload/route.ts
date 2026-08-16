@@ -6,6 +6,7 @@ import {
 } from 'better-upload/server';
 
 import { auth } from '@/server/auth';
+import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import { generateSlug } from '@/server/utils/utils';
 
 const s3 = new S3Client({
@@ -27,7 +28,8 @@ const router: Router = {
           throw new Error('Unauthorized');
         }
 
-        const route = generateSlug(process.env.NEXT_PUBLIC_INSTANCE_NAME!);
+        const { instance } = await getCurrentRequestContext();
+        const route = generateSlug(instance.name);
         const objectKey = `${route}/${file.name}`;
         return {
           objectKey,

@@ -4,7 +4,7 @@ import { and, eq, inArray, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-import { type db } from '@/drizzle';
+import type { Db } from '@/drizzle';
 
 import {
   role,
@@ -131,11 +131,6 @@ export const userRouter = router({
           instagram,
         })
         .returning();
-      // await sendMailWithoutAttachments({
-      //   to: user.email,
-      //   subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
-      //   html: generateWelcomeEmail(user.name, input.password),
-      // });
       return user;
     }),
   update: chiefOrganizerProcedure
@@ -443,10 +438,14 @@ export const userRouter = router({
           })
           .returning();
 
-        await sendMailWithoutAttachments({
+        await sendMailWithoutAttachments(ctx.instance, {
           to: newUser.email,
-          subject: `Bienvenido a la plataforma ${process.env.NEXT_PUBLIC_INSTANCE_NAME}!`,
-          html: generateWelcomeEmail(newUser.name, randomPassword),
+          subject: `Bienvenido a la plataforma ${ctx.instance.name}!`,
+          html: generateWelcomeEmail(
+            ctx.instance,
+            newUser.name,
+            randomPassword,
+          ),
         });
 
         await ctx.db.insert(userXTag).values({
@@ -483,7 +482,7 @@ export const userRouter = router({
 });
 
 async function assertUniqueUser(
-  database: typeof db,
+  database: Db,
   input: Pick<User, 'email' | 'dni' | 'name'>,
   excludeUserId?: string,
 ) {

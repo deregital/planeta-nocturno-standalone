@@ -3,10 +3,9 @@
 import { compare } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 
-import { db } from '@/drizzle';
-
 import { user as userTable } from '@/drizzle/schema';
 import { auth } from '@/server/auth';
+import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 
 export type ValidatePasswordState = {
   ok: boolean;
@@ -30,6 +29,7 @@ export async function validatePassword(
     return { ok: false, error: 'Ingrese su contraseña' };
   }
 
+  const { db } = await getCurrentRequestContext();
   const user = await db.query.user.findFirst({
     where: eq(userTable.name, session.user.name),
     columns: { password: true },

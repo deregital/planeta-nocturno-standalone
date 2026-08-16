@@ -364,19 +364,23 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      const blob = await generatePdf({
-        eventName: ticket.ticketGroup.event.name,
-        startingDate: ticket.ticketType.startingDate,
-        eventLocation: ticket.ticketGroup.event.location?.address ?? '',
-        ticketType: ticket.ticketType.name,
-        createdAt: ticket.createdAt,
-        dni: ticket.dni,
-        fullName: ticket.fullName,
-        id: ticket.id,
-        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
-        slug: ticket.slug,
-        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
-      });
+      const blob = await generatePdf(
+        {
+          eventName: ticket.ticketGroup.event.name,
+          startingDate: ticket.ticketType.startingDate,
+          eventLocation: ticket.ticketGroup.event.location?.address ?? '',
+          ticketType: ticket.ticketType.name,
+          createdAt: ticket.createdAt,
+          dni: ticket.dni,
+          fullName: ticket.fullName,
+          id: ticket.id,
+          invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
+          slug: ticket.slug,
+          ticketSlugVisibleInPdf:
+            ticket.ticketGroup.event.ticketSlugVisibleInPdf,
+        },
+        ctx.instance,
+      );
 
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
@@ -725,21 +729,25 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      const pdf = await generatePdf({
-        eventName: ticket.ticketGroup.event.name,
-        startingDate: ticket.ticketType.startingDate,
-        eventLocation: ticket.ticketGroup.event.location?.address ?? '',
-        ticketType: ticket.ticketType.name,
-        createdAt: ticket.createdAt,
-        dni: ticket.dni,
-        fullName: ticket.fullName,
-        id: ticket.id,
-        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
-        slug: ticket.slug,
-        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
-      });
+      const pdf = await generatePdf(
+        {
+          eventName: ticket.ticketGroup.event.name,
+          startingDate: ticket.ticketType.startingDate,
+          eventLocation: ticket.ticketGroup.event.location?.address ?? '',
+          ticketType: ticket.ticketType.name,
+          createdAt: ticket.createdAt,
+          dni: ticket.dni,
+          fullName: ticket.fullName,
+          id: ticket.id,
+          invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
+          slug: ticket.slug,
+          ticketSlugVisibleInPdf:
+            ticket.ticketGroup.event.ticketSlugVisibleInPdf,
+        },
+        ctx.instance,
+      );
 
-      const { data, error } = await sendMail({
+      const { data, error } = await sendMail(ctx.instance, {
         to: ticket.mail,
         subject: `Ticket de ${ticket.ticketGroup.event.name}`,
         body: `Hola ${ticket.fullName}, te enviamos tu ticket de ${ticket.ticketGroup.event.name}`,

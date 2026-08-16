@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import { db } from '@/drizzle';
+import type { Db } from '@/drizzle';
 
 import { feature as featureSchema } from '@/drizzle/schema';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/server/constants/feature-keys';
 
 export async function checkFeature<TReturn, Key extends FeatureKey>(
+  db: Db,
   featureKey: Key,
   callback: (value: ValueType<Key>) => TReturn,
   negate = false,

@@ -16,9 +16,9 @@ export const mailRouter = router({
         attatchments: z.instanceof(Blob).array(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
-        return await sendMailService({
+        return await sendMailService(ctx.instance, {
           eventName: input.eventName,
           receiver: input.receiver,
           subject: input.subject,
@@ -41,8 +41,8 @@ export const mailRouter = router({
         email: z.email(),
       }),
     )
-    .mutation(async ({ input }) => {
-      await sendNotificationService({
+    .mutation(async ({ ctx, input }) => {
+      await sendNotificationService(ctx.db, ctx.instance, {
         eventName: input.eventName,
         ticketGroupId: input.ticketGroupId,
         email: input.email,

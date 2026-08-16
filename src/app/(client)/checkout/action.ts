@@ -7,6 +7,7 @@ import { differenceInYears, parseISO } from 'date-fns';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import {
   type CreateManyTicket,
   createManyTicketSchema,
@@ -225,6 +226,7 @@ export const handlePurchase = async (
     };
   }
   try {
+    const { db, instance } = await getCurrentRequestContext();
     // Total Price WITHOUT DISCOUNT OR SERVICE FEE
     const totalPrice = await trpc.ticketGroup.getTotalPriceById(
       ticketGroupId?.toString() ?? '',
@@ -264,7 +266,7 @@ export const handlePurchase = async (
     };
 
     if (totalPrice === 0) {
-      await updateTicketGroupStatus(ticketGroupId, 'FREE');
+      await updateTicketGroupStatus(db, ticketGroupId, 'FREE');
 
       const group = await trpc.ticketGroup.getById(ticketGroupId);
 
@@ -275,7 +277,7 @@ export const handlePurchase = async (
       try {
         // Enviar un solo mail con todas las entradas si extraTicketData = false
         if (!group.event.extraTicketData) {
-          await sendMailService({
+          await sendMailService(instance, {
             eventName: group.event.name,
             receiver: entradas[0].mail,
             subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -284,7 +286,7 @@ export const handlePurchase = async (
           });
         } else {
           for (const pdf of pdfs) {
-            await sendMailService({
+            await sendMailService(instance, {
               eventName: group.event.name,
               receiver: pdf.ticket.mail,
               subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -303,7 +305,7 @@ export const handlePurchase = async (
       }
 
       if (group.event.emailNotification) {
-        await sendNotificationService({
+        await sendNotificationService(db, instance, {
           eventName: group.event.name,
           ticketGroupId,
           email: group.event.emailNotification,

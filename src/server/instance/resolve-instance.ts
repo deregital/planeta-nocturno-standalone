@@ -17,6 +17,15 @@ export type ResolvedInstance = {
   slug: string | null;
   name: string;
   publicUrl: string;
+  siteUrl: string;
+  contactEmail: string | null;
+  description: string | null;
+  faviconUrl: string | null;
+  hue: number;
+  saturation: number;
+  mercadoPagoAccessToken: string | null;
+  mercadoPagoRefreshToken: string | null;
+  mercadoPagoSecretKey: string | null;
   database: { url: string } | { name: string };
 };
 
@@ -31,6 +40,16 @@ export async function resolveInstance(
       slug: null,
       name: singleTenantConfig.name,
       publicUrl: singleTenantConfig.publicUrl,
+      siteUrl: singleTenantConfig.siteUrl,
+      contactEmail: singleTenantConfig.contactEmail ?? null,
+      description: singleTenantConfig.description ?? null,
+      faviconUrl: singleTenantConfig.faviconUrl ?? null,
+      hue: singleTenantConfig.hue,
+      saturation: singleTenantConfig.saturation,
+      mercadoPagoAccessToken: singleTenantConfig.mercadoPagoAccessToken ?? null,
+      mercadoPagoRefreshToken:
+        singleTenantConfig.mercadoPagoRefreshToken ?? null,
+      mercadoPagoSecretKey: singleTenantConfig.mercadoPagoSecretKey ?? null,
       database: { url: singleTenantConfig.databaseUrl },
     };
   }
@@ -59,6 +78,15 @@ async function resolveMultiTenantInstance(
     slug: tenant.slug,
     name: tenant.name,
     publicUrl: getRequestOrigin(headers, host),
+    siteUrl: getRequestOrigin(headers, host),
+    contactEmail: tenant.contactEmail,
+    description: tenant.description,
+    faviconUrl: tenant.faviconUrl,
+    hue: tenant.hue ?? 200,
+    saturation: tenant.saturation ?? 100,
+    mercadoPagoAccessToken: tenant.mpAccessToken,
+    mercadoPagoRefreshToken: tenant.mpRefreshToken,
+    mercadoPagoSecretKey: tenant.mpSecretKey,
     database: { name: tenant.databaseName },
   };
 }
@@ -69,6 +97,14 @@ export async function findTenantBySlug(slug: string) {
       id: tenants.id,
       name: tenants.name,
       slug: tenants.slug,
+      description: tenants.description,
+      contactEmail: tenants.contactEmail,
+      faviconUrl: tenants.faviconUrl,
+      hue: tenants.hue,
+      saturation: tenants.saturation,
+      mpAccessToken: tenants.mpAccessToken,
+      mpRefreshToken: tenants.mpRefreshToken,
+      mpSecretKey: tenants.mpSecretKey,
       databaseName: tenants.databaseName,
       status: tenants.status,
     })
@@ -79,7 +115,7 @@ export async function findTenantBySlug(slug: string) {
   return tenant ?? null;
 }
 
-export function getConfiguredRootDomain() {
+function getConfiguredRootDomain() {
   const value = process.env.ROOT_DOMAIN;
   if (!value) throw new Error('ROOT_DOMAIN is required');
   return normalizeRootDomain(value);
