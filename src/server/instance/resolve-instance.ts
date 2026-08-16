@@ -9,6 +9,7 @@ import {
   getRequestHost,
   normalizeRootDomain,
   resolveMultiTenantHost,
+  TENANT_ID_HEADER,
 } from '@/lib/tenancy/host';
 import { getSingleTenantConfig } from '@/server/config/single-tenant-config';
 
@@ -67,7 +68,12 @@ async function resolveMultiTenantInstance(
     throw new Error('No tenant is associated with this host');
   }
 
-  const tenant = await findTenantBySlug(target.slug);
+  const tenantSlug = headers.get(TENANT_ID_HEADER);
+  if (tenantSlug !== target.slug) {
+    throw new Error('The tenant header does not match the request host');
+  }
+
+  const tenant = await findTenantBySlug(tenantSlug);
 
   if (tenant?.status !== 'active' || !tenant.databaseName) {
     throw new Error('The tenant does not have an active database');

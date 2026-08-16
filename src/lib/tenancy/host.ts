@@ -7,6 +7,8 @@ const RESERVED_SUBDOMAINS = new Set([
   'www',
 ]);
 
+export const TENANT_ID_HEADER = 'x-tenant-id';
+
 export type MultiTenantHost =
   | { type: 'admin' }
   | { type: 'root' }
