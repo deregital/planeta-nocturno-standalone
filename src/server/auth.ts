@@ -2,9 +2,8 @@ import NextAuth, { CredentialsSignin } from 'next-auth';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcrypt';
 
-import { db } from '@/drizzle';
-
 import { user as userTable, type role as roleEnum } from '@/drizzle/schema';
+import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { userSchema } from '@/server/schemas/user';
 
 const credentialsSchema = userSchema.pick({
@@ -26,8 +25,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
         password: { label: 'Password', type: 'password' },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const { name, password } = credentialsSchema.parse(credentials);
+        const { db } = await resolveRequestContext(request.headers);
         const user = await db.query.user.findFirst({
           where: eq(userTable.name, name as string),
         });

@@ -19,11 +19,15 @@ export type SingleTenantConfig = {
   databaseUrl: string;
   name: string;
   publicUrl: string;
+  siteUrl: string;
   contactEmail?: string;
   description?: string;
   faviconUrl?: string;
-  hue?: number;
-  saturation?: number;
+  hue: number;
+  saturation: number;
+  mercadoPagoAccessToken?: string;
+  mercadoPagoRefreshToken?: string;
+  mercadoPagoSecretKey?: string;
 };
 
 function readOptionalValue(environment: EnvironmentVariables, key: string) {
@@ -45,11 +49,18 @@ export function createSingleTenantConfig(
 
   if (!isSingleTenant) return null;
 
+  const publicUrl = normalizePublicUrl(
+    readRequiredValue(environment, 'INSTANCE_WEB_URL'),
+    'INSTANCE_WEB_URL',
+  );
+
   return {
     databaseUrl: readRequiredValue(environment, 'DATABASE_URL'),
     name: readRequiredValue(environment, 'NEXT_PUBLIC_INSTANCE_NAME'),
-    publicUrl: normalizePublicUrl(
-      readRequiredValue(environment, 'INSTANCE_WEB_URL'),
+    publicUrl,
+    siteUrl: normalizePublicUrl(
+      readOptionalValue(environment, 'NEXT_PUBLIC_SITE_URL') ?? publicUrl,
+      'NEXT_PUBLIC_SITE_URL',
     ),
     contactEmail: readOptionalValue(environment, 'INSTANCE_CONTACT_EMAIL'),
     description: readOptionalValue(
@@ -57,17 +68,16 @@ export function createSingleTenantConfig(
       'NEXT_PUBLIC_INSTANCE_DESCRIPTION',
     ),
     faviconUrl: readOptionalValue(environment, 'NEXT_PUBLIC_FAVICON_URL'),
-    hue: readOptionalNumber(environment, 'NEXT_PUBLIC_HUE', 0, 360),
-    saturation: readOptionalNumber(
-      environment,
-      'NEXT_PUBLIC_SATURATION',
-      0,
-      100,
-    ),
+    hue: readOptionalNumber(environment, 'NEXT_PUBLIC_HUE', 0, 360) ?? 200,
+    saturation:
+      readOptionalNumber(environment, 'NEXT_PUBLIC_SATURATION', 0, 100) ?? 100,
+    mercadoPagoAccessToken: readOptionalValue(environment, 'MP_ACCESS_TOKEN'),
+    mercadoPagoRefreshToken: readOptionalValue(environment, 'MP_REFRESH_TOKEN'),
+    mercadoPagoSecretKey: readOptionalValue(environment, 'MP_SECRET_KEY'),
   };
 }
 
-function normalizePublicUrl(value: string) {
+function normalizePublicUrl(value: string, key: string) {
   const candidate = value.includes('://') ? value : `https://${value}`;
 
   try {
@@ -76,7 +86,7 @@ function normalizePublicUrl(value: string) {
     if (url.pathname !== '/' || url.search || url.hash) throw new Error();
     return url.origin;
   } catch {
-    throw new Error('INSTANCE_WEB_URL must be an HTTP(S) origin');
+    throw new Error(`${key} must be an HTTP(S) origin`);
   }
 }
 

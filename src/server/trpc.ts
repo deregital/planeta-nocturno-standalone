@@ -2,10 +2,9 @@ import { type inferRouterOutputs, initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { z, ZodError } from 'zod';
 
-import { db } from '@/drizzle';
-
 import { type role as roleEnum } from '@/drizzle/schema';
 import { auth } from '@/server/auth';
+import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { type appRouter } from '@/server/routers/app';
 
 export function handleError(error: {
@@ -59,10 +58,14 @@ export function handleError(error: {
 }
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth();
+  const [session, requestContext] = await Promise.all([
+    auth(),
+    resolveRequestContext(opts.headers),
+  ]);
 
   return {
     session,
+    ...requestContext,
     ...opts,
   };
 };
@@ -128,8 +131,8 @@ function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
 
     return next({
       ctx: {
+        ...ctx,
         session: { ...session, user: session.user },
-        db: db,
       },
     });
   });
@@ -146,14 +149,7 @@ export const ticketingProcedure = genericProcedure('TICKETING');
 export const controlTicketingProcedure = genericProcedure('CONTROL_TICKETING');
 
 export const router = t.router;
-export const publicProcedure = t.procedure.use(({ next }) => {
-  return next({
-    ctx: {
-      fetch: fetch,
-      db: db,
-    },
-  });
-});
+export const publicProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;
 
 export type RouterOutput = inferRouterOutputs<typeof appRouter>;
