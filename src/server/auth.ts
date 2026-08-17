@@ -1,8 +1,11 @@
-import NextAuth, { CredentialsSignin } from 'next-auth';
-import { eq } from 'drizzle-orm';
 import { compare } from 'bcrypt';
+import { eq } from 'drizzle-orm';
+import NextAuth, { CredentialsSignin, type Session } from 'next-auth';
 
-import { user as userTable, type role as roleEnum } from '@/drizzle/schema';
+import { getControlDb } from '@/db/control/client';
+import { controlAdmins } from '@/db/control/schema';
+import { user as userTable } from '@/drizzle/schema';
+import { isControlRequest } from '@/server/control/is-control-request';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { userSchema } from '@/server/schemas/user';
 
@@ -27,12 +30,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       authorize: async (credentials, request) => {
         const { name, password } = credentialsSchema.parse(credentials);
+
+        if (isControlRequest(request.headers)) {
+          const admin = await getControlDb().query.controlAdmins.findFirst({
+            where: eq(controlAdmins.username, name),
+          });
+          if (!admin) throw new CustomError('Usuario no encontrado');
+          if (!(await compare(password, admin.password))) {
+            throw new CustomError('Contraseña incorrecta');
+          }
+
+          return {
+            id: admin.id,
+            name: admin.username,
+            email: admin.email,
+            emailVerified: null,
+            role: 'CONTROL_ADMIN',
+            fullName: admin.username,
+            image: null,
+          };
+        }
+
         const { db } = await resolveRequestContext(request.headers);
         const user = await db.query.user.findFirst({
-          where: eq(userTable.name, name as string),
+          where: eq(userTable.name, name),
         });
         if (!user) throw new CustomError('Usuario no encontrado');
-        if (!(await compare(password as string, user.password)))
+        if (!(await compare(password, user.password)))
           throw new CustomError('Contraseña incorrecta');
         return {
           ...user,
@@ -61,7 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: token.name as string,
           email: token.email as string,
           emailVerified: token.emailVerified as Date | null,
-          role: token.role as (typeof roleEnum.enumValues)[number],
+          role: token.role as Session['user']['role'],
           fullName: token.fullName as string,
           image: token.image as string | null,
         };

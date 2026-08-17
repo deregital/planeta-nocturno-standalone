@@ -3,11 +3,13 @@ import type { Metadata } from 'next';
 import '@/app/globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { DM_Sans } from 'next/font/google';
+import { headers } from 'next/headers';
 
 import { InstanceProvider } from '@/components/instance/InstanceProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getColors } from '@/lib/get-colors';
+import { isControlRequest } from '@/server/control/is-control-request';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import { TRPCReactProvider } from '@/server/trpc/client';
 
@@ -17,12 +19,19 @@ const dmSans = DM_Sans({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (isControlRequest(new Headers(await headers()))) {
+    return {
+      title: 'Administración central',
+      description: 'Gestión central de instancias y tenants',
+    };
+  }
+
   const { instance } = await getCurrentRequestContext();
 
   return {
     title: instance.name,
     description:
-      instance.description ?? 'Plataforma multi-tenant de Planeta Nocturno',
+      instance.description ?? 'Plataforma de eventos y venta de entradas',
     icons: { icon: [{ url: instance.faviconUrl ?? '/icon.ico' }] },
   };
 }
@@ -32,8 +41,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { instance } = await getCurrentRequestContext();
-  const colors = getColors(instance.hue, instance.saturation);
+  const controlRequest = isControlRequest(new Headers(await headers()));
+  const instance = controlRequest
+    ? null
+    : (await getCurrentRequestContext()).instance;
+  const colors = getColors(instance?.hue ?? 200, instance?.saturation ?? 100);
   const colorVariables = {
     '--accent-dark-color': colors.accentDark,
     '--accent-color': colors.accentColor,
@@ -53,21 +65,29 @@ export default async function RootLayout({
       style={colorVariables}
     >
       <body className={`${dmSans.className} antialiased`}>
-        <InstanceProvider
-          instance={{
-            name: instance.name,
-            publicUrl: instance.publicUrl,
-            siteUrl: instance.siteUrl,
-            hue: instance.hue,
-            saturation: instance.saturation,
-          }}
-        >
-          <TRPCReactProvider>
+        {instance ? (
+          <InstanceProvider
+            instance={{
+              name: instance.name,
+              publicUrl: instance.publicUrl,
+              siteUrl: instance.siteUrl,
+              hue: instance.hue,
+              saturation: instance.saturation,
+            }}
+          >
+            <TRPCReactProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+              <Toaster />
+              <Analytics />
+            </TRPCReactProvider>
+          </InstanceProvider>
+        ) : (
+          <>
             <TooltipProvider>{children}</TooltipProvider>
             <Toaster />
             <Analytics />
-          </TRPCReactProvider>
-        </InstanceProvider>
+          </>
+        )}
       </body>
     </html>
   );

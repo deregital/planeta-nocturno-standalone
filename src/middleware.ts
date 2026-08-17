@@ -30,7 +30,17 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  if (target.type === 'root' || target.type === 'admin') {
+  if (target.type === 'admin') {
+    if (request.nextUrl.pathname.startsWith('/api/auth')) {
+      return NextResponse.next({ request: { headers } });
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = `/control${url.pathname === '/' ? '' : url.pathname}`;
+    return NextResponse.rewrite(url, { request: { headers } });
+  }
+
+  if (target.type === 'root') {
     return NextResponse.next({ request: { headers } });
   }
 

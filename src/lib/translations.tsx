@@ -3,7 +3,8 @@ import { type ReactNode } from 'react';
 
 import FreeIcon from '@/components/icons/FreeIcon';
 import TableBar from '@/components/icons/TableBar';
-import { type inviteCondition, type role as roleEnum } from '@/drizzle/schema';
+import { type inviteCondition } from '@/drizzle/schema';
+import { type AppRole } from '@/lib/auth/roles';
 import { type TicketTypeCategory } from '@/server/types';
 
 export const ticketTypesTranslation: Record<
@@ -24,10 +25,8 @@ export const genderTranslation: Record<'male' | 'female' | 'other', string> = {
   other: 'Otro',
 };
 
-export const roleTranslation: Record<
-  (typeof roleEnum.enumValues)[number],
-  string
-> = {
+export const roleTranslation: Record<AppRole, string> = {
+  CONTROL_ADMIN: 'Administrador central',
   ADMIN: 'Administrador',
   TICKETING: 'Acceso',
   CONTROL_TICKETING: 'Control',

@@ -122,6 +122,10 @@ function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
       throw new TRPCError({ code: 'UNAUTHORIZED' });
     }
 
+    if (session.user.role === 'CONTROL_ADMIN') {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
+
     const adminIndex = levelsOfAccess.indexOf(level);
     const index = levelsOfAccess.indexOf(session.user.role);
 
