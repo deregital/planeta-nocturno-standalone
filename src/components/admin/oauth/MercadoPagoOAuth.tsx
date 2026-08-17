@@ -8,15 +8,20 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
+import { signPayload } from '@/server/security/signed-request';
 
 function getMercadoPagoAuthUrl(publicUrl: string) {
-  if (!process.env.PLUTO_URL) {
-    return null;
-  }
+  if (!process.env.PLUTO_URL) return null;
 
-  return `${process.env.PLUTO_URL}/oauth/start?instance_url=${encodeURIComponent(
-    publicUrl,
-  )}`;
+  const timestamp = Date.now().toString();
+  const signature = signPayload(timestamp, publicUrl);
+  if (!signature) return null;
+
+  const url = new URL('/oauth/start', process.env.PLUTO_URL);
+  url.searchParams.set('instance_url', publicUrl);
+  url.searchParams.set('timestamp', timestamp);
+  url.searchParams.set('signature', `sha256=${signature}`);
+  return url.toString();
 }
 
 export default async function MercadoPagoOAuth() {
