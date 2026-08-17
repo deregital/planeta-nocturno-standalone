@@ -4,6 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -15,6 +16,19 @@ export const tenantStatus = pgEnum('tenant_status', [
   'failed',
   'deleting',
 ]);
+
+export const controlAdmins = pgTable('control_admins', {
+  id: uuid().primaryKey().defaultRandom(),
+  username: varchar({ length: 100 }).notNull().unique(),
+  email: varchar({ length: 320 }).notNull().unique(),
+  password: text().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const tenants = pgTable('tenants', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
