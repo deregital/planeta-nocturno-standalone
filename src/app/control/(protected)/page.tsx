@@ -1,5 +1,9 @@
 import { desc } from 'drizzle-orm';
+import { Plus } from 'lucide-react';
+import { type Route } from 'next';
+import Link from 'next/link';
 
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -47,12 +51,20 @@ export default async function ControlHomePage() {
 
   return (
     <div className='space-y-6'>
-      <div>
-        <p className='text-sm font-medium text-accent'>Control plane</p>
-        <h1 className='text-3xl font-bold text-gray-900'>Tenants</h1>
-        <p className='mt-1 text-sm text-gray-600'>
-          {tenantList.length} registrados · {activeTenants} activos
-        </p>
+      <div className='flex items-end justify-between gap-4'>
+        <div>
+          <p className='text-sm font-medium text-accent'>Control plane</p>
+          <h1 className='text-3xl font-bold text-gray-900'>Tenants</h1>
+          <p className='mt-1 text-sm text-gray-600'>
+            {tenantList.length} registrados · {activeTenants} activos
+          </p>
+        </div>
+        <Button asChild>
+          <Link href={'/tenants/new' as Route}>
+            <Plus />
+            Nuevo tenant
+          </Link>
+        </Button>
       </div>
 
       <div className='overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
@@ -65,6 +77,7 @@ export default async function ControlHomePage() {
               <TableHead>Plan</TableHead>
               <TableHead>Base de datos</TableHead>
               <TableHead>Creado</TableHead>
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -83,6 +96,21 @@ export default async function ControlHomePage() {
                 <TableCell>{tenant.databaseName ?? 'Sin asignar'}</TableCell>
                 <TableCell>
                   {new Intl.DateTimeFormat('es-AR').format(tenant.createdAt)}
+                </TableCell>
+                <TableCell>
+                  {tenant.status === 'failed' && !tenant.databaseName ? (
+                    <Button asChild variant='outline' size='sm'>
+                      <Link href={`/tenants/new?retry=${tenant.id}` as Route}>
+                        Reintentar
+                      </Link>
+                    </Button>
+                  ) : tenant.status === 'failed' ? (
+                    <span className='text-xs text-red-600'>
+                      Requiere revisión
+                    </span>
+                  ) : (
+                    <span className='text-xs text-gray-400'>—</span>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

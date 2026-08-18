@@ -38,6 +38,10 @@ export function getSubdomain(host: string, rootDomain: string) {
   return subdomain && !subdomain.includes('.') ? subdomain : null;
 }
 
+export function isReservedTenantSlug(slug: string) {
+  return slug === 'admin' || RESERVED_SUBDOMAINS.has(slug);
+}
+
 export function normalizeRootDomain(value: string) {
   const rootDomain = value.trim().toLowerCase().replace(/^\.+/, '');
   const labels = rootDomain.split('.');
@@ -64,8 +68,9 @@ export function resolveMultiTenantHost(
   if (hostname === rootDomain) return { type: 'root' };
 
   const slug = getSubdomain(hostname, rootDomain);
-  if (!slug || RESERVED_SUBDOMAINS.has(slug)) return { type: 'unknown' };
+  if (!slug) return { type: 'unknown' };
   if (slug === 'admin') return { type: 'admin' };
+  if (isReservedTenantSlug(slug)) return { type: 'unknown' };
 
   return { type: 'tenant', slug };
 }
