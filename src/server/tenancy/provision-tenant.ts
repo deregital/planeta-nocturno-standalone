@@ -2,6 +2,8 @@ import 'server-only';
 
 import type { z } from 'zod';
 
+import { randomUUID } from 'node:crypto';
+
 import { hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -24,10 +26,6 @@ const tenantAdminSchema = userSchema.pick({
   password: true,
   email: true,
   fullName: true,
-  gender: true,
-  phoneNumber: true,
-  dni: true,
-  birthDate: true,
 });
 
 const provisionedTenantFields = {
@@ -146,10 +144,10 @@ async function createTenantAdmin(
         email: admin.email,
         fullName: admin.fullName,
         role: 'ADMIN',
-        gender: admin.gender,
-        phoneNumber: admin.phoneNumber,
-        dni: admin.dni,
-        birthDate: admin.birthDate,
+        gender: 'other',
+        phoneNumber: '',
+        dni: `pending-${randomUUID()}`,
+        birthDate: '1900-01-01T00:00:00.000Z',
       });
   } finally {
     await pool.end();

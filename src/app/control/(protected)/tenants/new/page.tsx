@@ -1,7 +1,9 @@
 import { and, eq, isNull } from 'drizzle-orm';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import TenantForm from '@/app/control/(protected)/tenants/new/form';
+import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 
@@ -21,6 +23,10 @@ export default async function NewTenantPage({
 
   return (
     <div className='space-y-6'>
+      <Button asChild variant='ghost'>
+        <Link href='/'>← Volver</Link>
+      </Button>
+
       <div>
         <p className='text-sm font-medium text-accent'>Control plane</p>
         <h1 className='text-3xl font-bold text-gray-900'>
@@ -33,6 +39,7 @@ export default async function NewTenantPage({
       </div>
 
       <TenantForm
+        rootDomain={process.env.ROOT_DOMAIN ?? ''}
         initialValues={
           retryTenant
             ? {
@@ -41,10 +48,8 @@ export default async function NewTenantPage({
                 slug: retryTenant.slug,
                 description: retryTenant.description ?? '',
                 contactEmail: retryTenant.contactEmail ?? '',
-                faviconUrl: retryTenant.faviconUrl ?? '',
                 hue: String(retryTenant.hue ?? 200),
                 saturation: String(retryTenant.saturation ?? 100),
-                plan: retryTenant.plan,
               }
             : undefined
         }
@@ -61,10 +66,8 @@ async function getRetryTenant(id: number) {
       slug: tenants.slug,
       description: tenants.description,
       contactEmail: tenants.contactEmail,
-      faviconUrl: tenants.faviconUrl,
       hue: tenants.hue,
       saturation: tenants.saturation,
-      plan: tenants.plan,
     })
     .from(tenants)
     .where(

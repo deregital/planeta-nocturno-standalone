@@ -12,24 +12,25 @@ import { isReservedTenantSlug } from '@/lib/tenancy/host';
 import { auth } from '@/server/auth';
 import { isControlRequest } from '@/server/control/is-control-request';
 import { userSchema } from '@/server/schemas/user';
-import { phoneNumberSchema } from '@/server/schemas/utils';
 import { provisionTenant } from '@/server/tenancy/provision-tenant';
+
+const subdomainSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, 'El subdominio es requerido')
+  .max(63, 'El subdominio no puede superar los 63 caracteres')
+  .regex(
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
+    'Usá letras minúsculas, números y guiones, sin guiones al inicio o final',
+  )
+  .refine((slug) => !isReservedTenantSlug(slug), {
+    message: 'Ese subdominio está reservado',
+  });
 
 const tenantCreationSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es requerido').max(255),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, 'El slug es requerido')
-    .max(63, 'El slug no puede superar los 63 caracteres')
-    .regex(
-      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
-      'Usá letras minúsculas, números y guiones, sin guiones al inicio o final',
-    )
-    .refine((slug) => !isReservedTenantSlug(slug), {
-      message: 'Ese slug está reservado',
-    }),
+  slug: subdomainSchema,
   description: z
     .string()
     .trim()
@@ -42,22 +43,10 @@ const tenantCreationSchema = z.object({
       message: 'El email de contacto no es válido',
     })
     .transform((value) => value || null),
-  faviconUrl: z
-    .string()
-    .trim()
-    .refine((value) => !value || z.url().safeParse(value).success, {
-      message: 'La URL del ícono no es válida',
-    })
-    .transform((value) => value || null),
   hue: z.coerce.number().int().min(0).max(360),
   saturation: z.coerce.number().int().min(0).max(100),
-  plan: z.enum(['free', 'pro']),
   adminFullName: userSchema.shape.fullName,
   adminEmail: userSchema.shape.email,
-  adminBirthDate: userSchema.shape.birthDate,
-  adminPhoneNumber: phoneNumberSchema,
-  adminDni: userSchema.shape.dni,
-  adminGender: userSchema.shape.gender,
   adminUsername: userSchema.shape.name,
   adminPassword: userSchema.shape.password,
 });
@@ -68,16 +57,10 @@ export type TenantFormValues = {
   slug: string;
   description: string;
   contactEmail: string;
-  faviconUrl: string;
   hue: string;
   saturation: string;
-  plan: string;
   adminFullName: string;
   adminEmail: string;
-  adminBirthDate: string;
-  adminPhoneNumber: string;
-  adminDni: string;
-  adminGender: string;
   adminUsername: string;
   adminPassword: string;
 };
@@ -88,6 +71,51 @@ export type TenantFormState = {
   values?: TenantFormValues;
   errors?: Partial<Record<TenantFormField | 'general', string>>;
 };
+
+export type SubdomainAvailability = {
+  available: boolean;
+  message: string;
+};
+
+export async function checkSubdomainAvailability(
+  value: string,
+  tenantId?: string,
+): Promise<SubdomainAvailability> {
+  if (!(await canManageTenants())) {
+    return { available: false, message: 'No se pudo comprobar el subdominio' };
+  }
+
+  const validation = subdomainSchema.safeParse(value);
+  if (!validation.success) {
+    return {
+      available: false,
+      message: validation.error.issues[0]?.message ?? 'Subdominio inválido',
+    };
+  }
+
+  try {
+    const [existingTenant] = await getControlDb()
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.slug, validation.data))
+      .limit(1);
+    const currentTenantId = Number(tenantId);
+    const available =
+      !existingTenant ||
+      (Number.isInteger(currentTenantId) &&
+        existingTenant.id === currentTenantId);
+
+    return {
+      available,
+      message: available
+        ? 'Subdominio disponible'
+        : 'Ese subdominio ya está en uso',
+    };
+  } catch (error) {
+    console.error('Unable to check subdomain availability', { error });
+    return { available: false, message: 'No se pudo comprobar el subdominio' };
+  }
+}
 
 export async function createTenant(
   _previousState: TenantFormState,
@@ -155,10 +183,8 @@ export async function createTenant(
           name: data.name,
           description: data.description,
           contactEmail: data.contactEmail,
-          faviconUrl: data.faviconUrl,
           hue: data.hue,
           saturation: data.saturation,
-          plan: data.plan,
           updatedAt: new Date(),
         })
         .where(eq(tenants.id, tenant.id));
@@ -171,10 +197,8 @@ export async function createTenant(
           slug: data.slug,
           description: data.description,
           contactEmail: data.contactEmail,
-          faviconUrl: data.faviconUrl,
           hue: data.hue,
           saturation: data.saturation,
-          plan: data.plan,
         })
         .returning({ id: tenants.id });
 
@@ -185,7 +209,7 @@ export async function createTenant(
     if (isUniqueViolation(error)) {
       return {
         values: safeValues,
-        errors: { slug: 'Ya existe un tenant con ese slug' },
+        errors: { slug: 'Ese subdominio ya está en uso' },
       };
     }
 
@@ -204,10 +228,6 @@ export async function createTenant(
         password: data.adminPassword,
         email: data.adminEmail,
         fullName: data.adminFullName,
-        gender: data.adminGender,
-        phoneNumber: data.adminPhoneNumber,
-        dni: data.adminDni,
-        birthDate: data.adminBirthDate,
       },
     });
   } catch (error) {
@@ -237,16 +257,10 @@ function getFormValues(formData: FormData): TenantFormValues {
     slug: value('slug').toLowerCase(),
     description: value('description'),
     contactEmail: value('contactEmail'),
-    faviconUrl: value('faviconUrl'),
     hue: value('hue'),
     saturation: value('saturation'),
-    plan: value('plan'),
     adminFullName: value('adminFullName'),
     adminEmail: value('adminEmail'),
-    adminBirthDate: value('adminBirthDate'),
-    adminPhoneNumber: value('adminPhoneNumber'),
-    adminDni: value('adminDni'),
-    adminGender: value('adminGender'),
     adminUsername: value('adminUsername'),
     adminPassword: String(formData.get('adminPassword') ?? ''),
   };
