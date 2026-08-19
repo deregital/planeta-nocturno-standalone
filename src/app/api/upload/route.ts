@@ -1,4 +1,3 @@
-import { S3Client } from '@aws-sdk/client-s3';
 import {
   createUploadRouteHandler,
   route,
@@ -7,19 +6,12 @@ import {
 
 import { auth } from '@/server/auth';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
+import { getS3Client, S3_BUCKET_NAME } from '@/server/s3/client';
 import { generateSlug } from '@/server/utils/utils';
 
-const s3 = new S3Client({
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-  region: process.env.AWS_REGION!,
-});
-
 const router: Router = {
-  client: s3,
-  bucketName: 'planeta-nocturno',
+  client: getS3Client(),
+  bucketName: S3_BUCKET_NAME,
   routes: {
     eventImage: route({
       onBeforeUpload: async ({ file }) => {

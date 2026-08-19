@@ -19,6 +19,7 @@ import {
   deleteTenantDatabase,
   getTenantDatabaseUrl,
 } from '@/server/neon/get-database-url';
+import { ensureTenantCorsOrigin } from '@/server/s3/ensure-tenant-cors-origin';
 import { migrateTenantDatabase } from '@/server/tenancy/migrate-tenant-database';
 
 const tenantAdminSchema = userSchema.pick({
@@ -88,6 +89,7 @@ export async function provisionTenant(input: ProvisionTenantInput) {
     const connectionString = await getTenantDatabaseUrl(databaseName);
     await migrateTenantDatabase(connectionString);
     await createTenantAdmin(connectionString, admin);
+    await ensureTenantCorsOrigin(tenant.slug);
 
     const [activeTenant] = await controlDb
       .update(tenants)
