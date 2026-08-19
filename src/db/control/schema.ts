@@ -15,6 +15,7 @@ export const tenantStatus = pgEnum('tenant_status', [
   'suspended',
   'failed',
   'deleting',
+  'deleted',
 ]);
 
 export const controlAdmins = pgTable('control_admins', {
@@ -51,4 +52,5 @@ export const tenants = pgTable('tenants', {
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
