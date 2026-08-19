@@ -59,7 +59,11 @@ export async function provisionTenant(input: ProvisionTenantInput) {
 
   if (!tenant) throw new Error('Tenant not found');
   if (tenant.status === 'active' && tenant.databaseName) return tenant;
-  if (tenant.status === 'deleting' || tenant.status === 'suspended') {
+  if (
+    tenant.status === 'deleting' ||
+    tenant.status === 'deleted' ||
+    tenant.status === 'suspended'
+  ) {
     throw new Error(`Tenant cannot be provisioned while ${tenant.status}`);
   }
   if (tenant.databaseName) {

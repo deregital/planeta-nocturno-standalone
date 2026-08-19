@@ -56,6 +56,12 @@ export function buildTenantDatabaseName(tenantId: number, slug: string) {
   return `${base.slice(0, 54)}_${hash}`;
 }
 
+export function buildDeletedTenantDatabaseName(databaseName: string) {
+  const suffix = '_deleted';
+  if (databaseName.endsWith(suffix)) return databaseName;
+  return `${databaseName.slice(0, 63 - suffix.length)}${suffix}`;
+}
+
 export async function createTenantDatabase(databaseName: string) {
   const { projectId, branchId } = await getNeonTarget();
   const result = await neonRequest<{ operations?: NeonOperation[] }>(
@@ -84,6 +90,57 @@ export async function deleteTenantDatabase(databaseName: string) {
     `/projects/${projectId}/branches/${branchId}/databases/${encodeURIComponent(databaseName)}`,
     { method: 'DELETE' },
   );
+}
+
+export async function renameTenantDatabase(
+  databaseName: string,
+  newDatabaseName: string,
+) {
+  if (databaseName === newDatabaseName) return;
+
+  const { projectId, branchId } = await getNeonTarget();
+
+  try {
+    const result = await neonRequest<{ operations?: NeonOperation[] }>(
+      `/projects/${projectId}/branches/${branchId}/databases/${encodeURIComponent(databaseName)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ database: { name: newDatabaseName } }),
+      },
+    );
+
+    await Promise.all(
+      (result.operations ?? []).map((operation) =>
+        waitForOperation(projectId, operation.id),
+      ),
+    );
+  } catch (error) {
+    if (
+      error instanceof NeonApiError &&
+      error.status === 404 &&
+      (await tenantDatabaseExists(projectId, branchId, newDatabaseName))
+    ) {
+      return;
+    }
+
+    throw error;
+  }
+}
+
+async function tenantDatabaseExists(
+  projectId: string,
+  branchId: string,
+  databaseName: string,
+) {
+  try {
+    await neonRequest(
+      `/projects/${projectId}/branches/${branchId}/databases/${encodeURIComponent(databaseName)}`,
+    );
+    return true;
+  } catch (error) {
+    if (error instanceof NeonApiError && error.status === 404) return false;
+    throw error;
+  }
 }
 
 function getNeonTarget() {

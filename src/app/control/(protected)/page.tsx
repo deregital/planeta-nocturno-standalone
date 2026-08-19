@@ -1,8 +1,9 @@
-import { desc } from 'drizzle-orm';
+import { desc, ne } from 'drizzle-orm';
 import { Plus } from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 
+import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -21,6 +22,7 @@ const statusLabels = {
   suspended: 'Suspendido',
   failed: 'Fallido',
   deleting: 'Eliminando',
+  deleted: 'Eliminado',
 } as const;
 
 const statusStyles = {
@@ -29,6 +31,7 @@ const statusStyles = {
   suspended: 'bg-gray-200 text-gray-700',
   failed: 'bg-red-100 text-red-800',
   deleting: 'bg-red-100 text-red-800',
+  deleted: 'bg-gray-200 text-gray-700',
 } as const;
 
 export default async function ControlHomePage() {
@@ -43,6 +46,7 @@ export default async function ControlHomePage() {
       createdAt: tenants.createdAt,
     })
     .from(tenants)
+    .where(ne(tenants.status, 'deleted'))
     .orderBy(desc(tenants.createdAt));
 
   const activeTenants = tenantList.filter(
@@ -72,7 +76,7 @@ export default async function ControlHomePage() {
           <TableHeader>
             <TableRow>
               <TableHead>Tenant</TableHead>
-              <TableHead>Slug</TableHead>
+              <TableHead>Subdominio</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Base de datos</TableHead>
@@ -98,19 +102,12 @@ export default async function ControlHomePage() {
                   {new Intl.DateTimeFormat('es-AR').format(tenant.createdAt)}
                 </TableCell>
                 <TableCell>
-                  {tenant.status === 'failed' && !tenant.databaseName ? (
-                    <Button asChild variant='outline' size='sm'>
-                      <Link href={`/tenants/new?retry=${tenant.id}` as Route}>
-                        Reintentar
-                      </Link>
-                    </Button>
-                  ) : tenant.status === 'failed' ? (
-                    <span className='text-xs text-red-600'>
-                      Requiere revisión
-                    </span>
-                  ) : (
-                    <span className='text-xs text-gray-400'>—</span>
-                  )}
+                  <TenantActions
+                    tenantId={tenant.id}
+                    tenantName={tenant.name}
+                    status={tenant.status}
+                    databaseName={tenant.databaseName}
+                  />
                 </TableCell>
               </TableRow>
             ))}
