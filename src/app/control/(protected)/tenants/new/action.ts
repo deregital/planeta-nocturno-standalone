@@ -2,49 +2,21 @@
 
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import { isReservedTenantSlug } from '@/lib/tenancy/host';
-import { auth } from '@/server/auth';
-import { isControlRequest } from '@/server/control/is-control-request';
+import { canManageTenants } from '@/server/control/can-manage-tenants';
+import {
+  tenantMetadataSchema,
+  tenantSubdomainSchema,
+} from '@/server/schemas/control-tenant';
 import { userSchema } from '@/server/schemas/user';
 import { provisionTenant } from '@/server/tenancy/provision-tenant';
 
-const subdomainSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(1, 'El subdominio es requerido')
-  .max(63, 'El subdominio no puede superar los 63 caracteres')
-  .regex(
-    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
-    'Usá letras minúsculas, números y guiones, sin guiones al inicio o final',
-  )
-  .refine((slug) => !isReservedTenantSlug(slug), {
-    message: 'Ese subdominio está reservado',
-  });
-
-const tenantCreationSchema = z.object({
-  name: z.string().trim().min(1, 'El nombre es requerido').max(255),
-  slug: subdomainSchema,
-  description: z
-    .string()
-    .trim()
-    .max(1000, 'La descripción no puede superar los 1000 caracteres')
-    .transform((value) => value || null),
-  contactEmail: z
-    .string()
-    .trim()
-    .refine((value) => !value || z.email().safeParse(value).success, {
-      message: 'El email de contacto no es válido',
-    })
-    .transform((value) => value || null),
-  hue: z.coerce.number().int().min(0).max(360),
-  saturation: z.coerce.number().int().min(0).max(100),
+const tenantCreationSchema = tenantMetadataSchema.extend({
+  slug: tenantSubdomainSchema,
   adminFullName: userSchema.shape.fullName,
   adminEmail: userSchema.shape.email,
   adminUsername: userSchema.shape.name,
@@ -85,7 +57,7 @@ export async function checkSubdomainAvailability(
     return { available: false, message: 'No se pudo comprobar el subdominio' };
   }
 
-  const validation = subdomainSchema.safeParse(value);
+  const validation = tenantSubdomainSchema.safeParse(value);
   if (!validation.success) {
     return {
       available: false,
@@ -264,12 +236,6 @@ function getFormValues(formData: FormData): TenantFormValues {
     adminUsername: value('adminUsername'),
     adminPassword: String(formData.get('adminPassword') ?? ''),
   };
-}
-
-async function canManageTenants() {
-  const session = await auth();
-  if (session?.user.role !== 'CONTROL_ADMIN') return false;
-  return isControlRequest(new Headers(await headers()));
 }
 
 function isUniqueViolation(error: unknown) {

@@ -9,11 +9,11 @@ import {
   type TenantFormState,
   type TenantFormValues,
 } from '@/app/control/(protected)/tenants/new/action';
+import TenantColorFields from '@/app/control/(protected)/tenants/color-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import styles from '@/app/control/(protected)/tenants/new/form.module.css';
 
 const emptyValues: TenantFormValues = {
   name: '',
@@ -45,8 +45,6 @@ export default function TenantForm({
   const [availability, setAvailability] = useState<
     SubdomainAvailability | { available: null; message: string }
   >({ available: null, message: '' });
-  const [hue, setHue] = useState(values.hue);
-  const [saturation, setSaturation] = useState(values.saturation);
 
   useEffect(() => {
     if (retrying || !slug) return;
@@ -62,8 +60,6 @@ export default function TenantForm({
       clearTimeout(timeout);
     };
   }, [retrying, slug, values.tenantId]);
-
-  const selectedColor = `hsl(${hue} ${saturation}% 50%)`;
 
   return (
     <form action={action} className='space-y-8'>
@@ -139,31 +135,11 @@ export default function TenantForm({
           <FieldError message={state.errors?.description} />
         </div>
 
-        <div className='space-y-4 md:col-span-2'>
-          <div
-            className='size-12 rounded-lg border border-stroke'
-            style={{ backgroundColor: selectedColor }}
-          />
-
-          <RangeField
-            label='Tono'
-            name='hue'
-            value={hue}
-            max={360}
-            onChange={setHue}
-            gradient='linear-gradient(to right, hsl(0 100% 50%), hsl(60 100% 50%), hsl(120 100% 50%), hsl(180 100% 50%), hsl(240 100% 50%), hsl(300 100% 50%), hsl(360 100% 50%))'
-            error={state.errors?.hue}
-          />
-          <RangeField
-            label='Saturación'
-            name='saturation'
-            value={saturation}
-            max={100}
-            onChange={setSaturation}
-            gradient={`linear-gradient(to right, hsl(${hue} 0% 50%), hsl(${hue} 100% 50%))`}
-            error={state.errors?.saturation}
-          />
-        </div>
+        <TenantColorFields
+          initialHue={values.hue}
+          initialSaturation={values.saturation}
+          errors={state.errors}
+        />
       </fieldset>
 
       <fieldset className='grid gap-5 rounded-xl border border-stroke bg-white p-6 md:grid-cols-2'>
@@ -221,43 +197,6 @@ export default function TenantForm({
         </Button>
       </div>
     </form>
-  );
-}
-
-function RangeField({
-  label,
-  name,
-  value,
-  max,
-  onChange,
-  gradient,
-  error,
-}: {
-  label: string;
-  name: 'hue' | 'saturation';
-  value: string;
-  max: number;
-  onChange: (value: string) => void;
-  gradient: string;
-  error?: string;
-}) {
-  return (
-    <div className='space-y-2'>
-      <Label htmlFor={name}>{label}</Label>
-      <input
-        id={name}
-        name={name}
-        type='range'
-        min={0}
-        max={max}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={styles.range}
-        style={{ '--range-gradient': gradient } as React.CSSProperties}
-        aria-invalid={Boolean(error)}
-      />
-      <FieldError message={error} />
-    </div>
   );
 }
 
