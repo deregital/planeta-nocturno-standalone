@@ -28,7 +28,9 @@ export default async function NewTenantPage({
       </Button>
 
       <div>
-        <p className='text-sm font-medium text-accent'>Control plane</p>
+        <p className='text-sm font-medium text-accent'>
+          Administrador de páginas
+        </p>
         <h1 className='text-3xl font-bold text-gray-900'>
           {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva página'}
         </h1>

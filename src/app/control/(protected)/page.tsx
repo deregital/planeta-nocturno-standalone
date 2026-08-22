@@ -40,9 +40,9 @@ export default async function ControlHomePage() {
       id: tenants.id,
       name: tenants.name,
       slug: tenants.slug,
-      plan: tenants.plan,
       status: tenants.status,
       databaseName: tenants.databaseName,
+      createdByControlAdminId: tenants.createdByControlAdminId,
       createdAt: tenants.createdAt,
     })
     .from(tenants)
@@ -57,7 +57,9 @@ export default async function ControlHomePage() {
     <div className='space-y-6'>
       <div className='flex items-end justify-between gap-4'>
         <div>
-          <p className='text-sm font-medium text-accent'>Control plane</p>
+          <p className='text-sm font-medium text-accent'>
+            Administrador de páginas
+          </p>
           <h1 className='text-3xl font-bold text-gray-900'>Páginas</h1>
           <p className='mt-1 text-sm text-gray-600'>
             {tenantList.length} registradas · {activeTenants} activas
@@ -75,11 +77,10 @@ export default async function ControlHomePage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Página</TableHead>
+              <TableHead>ID de Página</TableHead>
               <TableHead>Subdominio</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Plan</TableHead>
-              <TableHead>Base de datos</TableHead>
+              <TableHead>Creado por</TableHead>
               <TableHead>Creado</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
@@ -96,8 +97,9 @@ export default async function ControlHomePage() {
                     {statusLabels[tenant.status]}
                   </span>
                 </TableCell>
-                <TableCell className='uppercase'>{tenant.plan}</TableCell>
-                <TableCell>{tenant.databaseName ?? 'Sin asignar'}</TableCell>
+                <TableCell className='font-mono text-xs'>
+                  {tenant.createdByControlAdminId ?? 'Sin registrar'}
+                </TableCell>
                 <TableCell>
                   {new Intl.DateTimeFormat('es-AR').format(tenant.createdAt)}
                 </TableCell>

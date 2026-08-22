@@ -7,7 +7,10 @@ import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import { canManageTenants } from '@/server/control/can-manage-tenants';
+import {
+  canManageTenants,
+  getControlAdminSession,
+} from '@/server/control/can-manage-tenants';
 import {
   tenantMetadataSchema,
   tenantSubdomainSchema,
@@ -95,8 +98,9 @@ export async function createTenant(
 ): Promise<TenantFormState> {
   const values = getFormValues(formData);
   const safeValues = { ...values, adminPassword: '' };
+  const controlAdminSession = await getControlAdminSession();
 
-  if (!(await canManageTenants())) {
+  if (!controlAdminSession) {
     return {
       values: safeValues,
       errors: { general: 'No tenés permisos para crear páginas' },
@@ -171,6 +175,7 @@ export async function createTenant(
           contactEmail: data.contactEmail,
           hue: data.hue,
           saturation: data.saturation,
+          createdByControlAdminId: controlAdminSession.user.id,
         })
         .returning({ id: tenants.id });
 
