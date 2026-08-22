@@ -8,7 +8,15 @@ import { normalizeRootDomain } from '@/lib/tenancy/host';
 import { getS3Client, S3_BUCKET_NAME } from '@/server/s3/client';
 
 export async function ensureTenantCorsOrigin(slug: string) {
-  const origin = getTenantOrigin(slug);
+  return ensureCorsOrigin(getTenantOrigin(slug));
+}
+
+export async function ensureControlCorsOrigin() {
+  const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
+  return ensureCorsOrigin(getOrigin(`admin.${rootDomain}`));
+}
+
+async function ensureCorsOrigin(origin: string) {
   const corsRules = await getCorsRules();
 
   if (
@@ -47,11 +55,15 @@ export async function ensureTenantCorsOrigin(slug: string) {
 
 function getTenantOrigin(slug: string) {
   const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
+  return getOrigin(`${slug}.${rootDomain}`);
+}
+
+function getOrigin(hostname: string) {
   const protocol =
-    rootDomain === 'localhost' || rootDomain.endsWith('.localhost')
+    hostname === 'localhost' || hostname.endsWith('.localhost')
       ? 'http'
       : 'https';
-  return `${protocol}://${slug}.${rootDomain}`;
+  return `${protocol}://${hostname}`;
 }
 
 async function getCorsRules() {

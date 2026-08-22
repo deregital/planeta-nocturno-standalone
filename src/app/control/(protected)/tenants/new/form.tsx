@@ -10,6 +10,7 @@ import {
   type TenantFormValues,
 } from '@/app/control/(protected)/tenants/new/action';
 import TenantColorFields from '@/app/control/(protected)/tenants/color-fields';
+import TenantFaviconField from '@/app/control/(protected)/tenants/favicon-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,7 @@ const emptyValues: TenantFormValues = {
   slug: '',
   description: '',
   contactEmail: '',
+  faviconUrl: '',
   hue: '200',
   saturation: '100',
   adminFullName: '',
@@ -134,6 +136,11 @@ export default function TenantForm({
           />
           <FieldError message={state.errors?.description} />
         </div>
+
+        <TenantFaviconField
+          initialUrl={values.faviconUrl}
+          error={state.errors?.faviconUrl}
+        />
 
         <TenantColorFields
           initialHue={values.hue}

@@ -50,6 +50,7 @@ export default async function NewTenantPage({
                 slug: retryTenant.slug,
                 description: retryTenant.description ?? '',
                 contactEmail: retryTenant.contactEmail ?? '',
+                faviconUrl: retryTenant.faviconUrl ?? '',
                 hue: String(retryTenant.hue ?? 200),
                 saturation: String(retryTenant.saturation ?? 100),
               }
@@ -68,6 +69,7 @@ async function getRetryTenant(id: number) {
       slug: tenants.slug,
       description: tenants.description,
       contactEmail: tenants.contactEmail,
+      faviconUrl: tenants.faviconUrl,
       hue: tenants.hue,
       saturation: tenants.saturation,
     })

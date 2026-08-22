@@ -19,6 +19,7 @@ export type TenantEditValues = {
   name: string;
   description: string;
   contactEmail: string;
+  faviconUrl: string;
   hue: string;
   saturation: string;
 };
@@ -64,6 +65,7 @@ export async function updateTenant(
         name: data.name,
         description: data.description,
         contactEmail: data.contactEmail,
+        faviconUrl: data.faviconUrl,
         hue: data.hue,
         saturation: data.saturation,
         updatedAt: new Date(),
@@ -94,6 +96,7 @@ function getFormValues(formData: FormData): TenantEditValues {
     name: value('name'),
     description: value('description'),
     contactEmail: value('contactEmail'),
+    faviconUrl: value('faviconUrl'),
     hue: value('hue'),
     saturation: value('saturation'),
   };

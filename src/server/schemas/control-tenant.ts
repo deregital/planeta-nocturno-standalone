@@ -16,6 +16,18 @@ export const tenantMetadataSchema = z.object({
       message: 'El email de contacto no es válido',
     })
     .transform((value) => value || null),
+  faviconUrl: z
+    .string()
+    .trim()
+    .max(2048, 'La URL del favicon es demasiado larga')
+    .refine(
+      (value) =>
+        !value ||
+        (z.url().safeParse(value).success &&
+          ['http:', 'https:'].includes(new URL(value).protocol)),
+      { message: 'El favicon no es válido' },
+    )
+    .transform((value) => value || null),
   hue: z.coerce.number().int().min(0).max(360),
   saturation: z.coerce.number().int().min(0).max(100),
 });

@@ -32,6 +32,7 @@ export type TenantFormValues = {
   slug: string;
   description: string;
   contactEmail: string;
+  faviconUrl: string;
   hue: string;
   saturation: string;
   adminFullName: string;
@@ -159,6 +160,7 @@ export async function createTenant(
           name: data.name,
           description: data.description,
           contactEmail: data.contactEmail,
+          faviconUrl: data.faviconUrl,
           hue: data.hue,
           saturation: data.saturation,
           updatedAt: new Date(),
@@ -173,6 +175,7 @@ export async function createTenant(
           slug: data.slug,
           description: data.description,
           contactEmail: data.contactEmail,
+          faviconUrl: data.faviconUrl,
           hue: data.hue,
           saturation: data.saturation,
           createdByControlAdminId: controlAdminSession.user.id,
@@ -234,6 +237,7 @@ function getFormValues(formData: FormData): TenantFormValues {
     slug: value('slug').toLowerCase(),
     description: value('description'),
     contactEmail: value('contactEmail'),
+    faviconUrl: value('faviconUrl'),
     hue: value('hue'),
     saturation: value('saturation'),
     adminFullName: value('adminFullName'),

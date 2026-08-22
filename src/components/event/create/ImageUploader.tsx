@@ -10,6 +10,9 @@ export function ImageUploader({
   prepareFile,
   prepareInteractive,
   description: descriptionProp,
+  route = 'eventImage',
+  label,
+  accept = 'image/*',
 }: {
   onUploadComplete: (objectKey: string) => void;
   error: string | null;
@@ -20,6 +23,9 @@ export function ImageUploader({
    * archivo final (p. ej. tras un recorte en un modal).
    */
   prepareInteractive?: (file: File, upload: (file: File) => void) => void;
+  route?: string;
+  label?: string;
+  accept?: string;
   description?:
     | {
         fileTypes?: string;
@@ -31,7 +37,7 @@ export function ImageUploader({
 }) {
   const [localError, setLocalError] = useState<string | null>(null);
   const { control } = useUploadFiles({
-    route: 'eventImage',
+    route,
     onUploadComplete: ({ files }) => {
       onUploadComplete(files[0].objectKey);
     },
@@ -86,8 +92,9 @@ export function ImageUploader({
           }
         }
         control={control}
-        accept='image/*'
+        accept={accept}
         uploadOverride={handleUploadOverride}
+        label={label}
         className={cn((error || localError) && 'border-2 border-red-500')}
       />
       {(error || localError) && (

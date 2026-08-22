@@ -8,6 +8,7 @@ import {
   updateTenant,
 } from '@/app/control/(protected)/tenants/[id]/action';
 import TenantColorFields from '@/app/control/(protected)/tenants/color-fields';
+import TenantFaviconField from '@/app/control/(protected)/tenants/favicon-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,6 +56,10 @@ export default function TenantEditForm({
           />
           <FieldError message={state.errors?.description} />
         </div>
+        <TenantFaviconField
+          initialUrl={values.faviconUrl}
+          error={state.errors?.faviconUrl}
+        />
         <TenantColorFields
           initialHue={values.hue}
           initialSaturation={values.saturation}

@@ -31,6 +31,7 @@ export default async function EditTenantPage({
       slug: tenants.slug,
       description: tenants.description,
       contactEmail: tenants.contactEmail,
+      faviconUrl: tenants.faviconUrl,
       hue: tenants.hue,
       saturation: tenants.saturation,
       status: tenants.status,
@@ -70,6 +71,7 @@ export default async function EditTenantPage({
           name: tenant.name,
           description: tenant.description ?? '',
           contactEmail: tenant.contactEmail ?? '',
+          faviconUrl: tenant.faviconUrl ?? '',
           hue: String(tenant.hue ?? 200),
           saturation: String(tenant.saturation ?? 100),
         }}
