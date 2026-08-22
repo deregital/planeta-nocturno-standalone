@@ -68,7 +68,7 @@ export default function TenantForm({
       )}
 
       <fieldset className='grid gap-5 rounded-xl border border-stroke bg-white p-6 md:grid-cols-2'>
-        <legend className='px-2 text-lg font-semibold'>Tenant</legend>
+        <legend className='px-2 text-lg font-semibold'>Página</legend>
 
         <FormField
           label='Nombre'
@@ -190,10 +190,10 @@ export default function TenantForm({
         </p>
         <Button type='submit' disabled={pending}>
           {pending
-            ? 'Preparando tenant...'
+            ? 'Preparando página...'
             : retrying
               ? 'Reintentar creación'
-              : 'Crear tenant'}
+              : 'Crear página'}
         </Button>
       </div>
     </form>

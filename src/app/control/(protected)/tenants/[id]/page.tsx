@@ -9,11 +9,11 @@ import { tenants } from '@/db/control/schema';
 
 const statusLabels = {
   provisioning: 'Preparando',
-  active: 'Activo',
-  suspended: 'Suspendido',
-  failed: 'Fallido',
+  active: 'Activa',
+  suspended: 'Suspendida',
+  failed: 'Fallida',
   deleting: 'Eliminando',
-  deleted: 'Eliminado',
+  deleted: 'Eliminada',
 } as const;
 
 export default async function EditTenantPage({

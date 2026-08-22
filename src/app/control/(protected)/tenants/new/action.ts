@@ -99,7 +99,7 @@ export async function createTenant(
   if (!(await canManageTenants())) {
     return {
       values: safeValues,
-      errors: { general: 'No tenés permisos para crear tenants' },
+      errors: { general: 'No tenés permisos para crear páginas' },
     };
   }
 
@@ -135,7 +135,7 @@ export async function createTenant(
       if (!tenant || tenant.slug !== data.slug || tenant.status !== 'failed') {
         return {
           values: safeValues,
-          errors: { general: 'El tenant no está disponible para reintentar' },
+          errors: { general: 'La página no está disponible para reintentar' },
         };
       }
 
@@ -188,7 +188,7 @@ export async function createTenant(
     console.error('Unable to save tenant', { slug: data.slug, error });
     return {
       values: safeValues,
-      errors: { general: 'No se pudo guardar el tenant' },
+      errors: { general: 'No se pudo guardar la página' },
     };
   }
 

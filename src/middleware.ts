@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
     target = resolveMultiTenantHost(getRequestHost(headers), rootDomain);
   } catch (error) {
     console.error('Invalid multi-tenant configuration', error);
-    return new NextResponse('Configuración multi-tenant inválida', {
+    return new NextResponse('Configuración de páginas inválida', {
       status: 503,
     });
   }
@@ -59,11 +59,11 @@ export async function middleware(request: NextRequest) {
       .limit(1);
 
     if (!tenant) {
-      return new NextResponse('Tenant no encontrado', { status: 404 });
+      return new NextResponse('Página no encontrada', { status: 404 });
     }
 
     if (!tenant.databaseName) {
-      return new NextResponse('Tenant en preparación', { status: 503 });
+      return new NextResponse('Página en preparación', { status: 503 });
     }
 
     headers.set(TENANT_ID_HEADER, tenant.slug);

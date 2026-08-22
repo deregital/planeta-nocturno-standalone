@@ -60,8 +60,8 @@ export default function TenantActions({
         <Button asChild variant='ghost' size='icon'>
           <Link
             href={`/tenants/${tenantId}` as Route}
-            aria-label='Editar tenant'
-            title='Editar tenant'
+            aria-label='Editar página'
+            title='Editar página'
           >
             <Pencil />
           </Link>
@@ -73,7 +73,7 @@ export default function TenantActions({
             tenantId={tenantId}
             operation='suspend'
             pending={pending}
-            label='Suspender tenant'
+            label='Suspender página'
           >
             <Pause />
           </LifecycleButton>
@@ -84,7 +84,7 @@ export default function TenantActions({
             tenantId={tenantId}
             operation='activate'
             pending={pending}
-            label='Activar tenant'
+            label='Activar página'
           >
             <Play />
           </LifecycleButton>
@@ -109,7 +109,7 @@ export default function TenantActions({
             tenantId={tenantId}
             operation='delete'
             pending={pending}
-            label='Eliminar tenant'
+            label='Eliminar página'
             destructive
             confirmMessage={deleteConfirmation(tenantName, databaseName)}
           >
@@ -170,7 +170,7 @@ function deleteConfirmation(tenantName: string, databaseName: string | null) {
   const databaseMessage = databaseName
     ? ` La base ${databaseName} se conservará con el sufijo _deleted.`
     : '';
-  return `¿Eliminar ${tenantName}? El tenant dejará de estar disponible.${databaseMessage}`;
+  return `¿Eliminar ${tenantName}? La página dejará de estar disponible.${databaseMessage}`;
 }
 
 function ActionError({ message }: { message?: string }) {

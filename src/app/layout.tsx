@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (isControlRequest(new Headers(await headers()))) {
     return {
       title: 'Administración central',
-      description: 'Gestión central de instancias y tenants',
+      description: 'Gestión central de instancias y páginas',
     };
   }
 
