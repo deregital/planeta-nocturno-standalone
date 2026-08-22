@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --fix",
+    "test:eslint-rule": "node tests/eslint/tenant-db-isolation.test.mjs",
     "test:instance-resolution": "node --test tests/instance-resolution.test.mjs",
     "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-ticket-slug.ts",
     "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",
