@@ -1,11 +1,18 @@
 import { and, asc, desc, eq, ilike, ne, or, sql } from 'drizzle-orm';
-import { Plus, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Plus, Search } from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 
 import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -35,13 +42,16 @@ const statusStyles = {
   deleted: 'bg-gray-200 text-gray-700',
 } as const;
 
-const sortOptions = {
-  newest: { label: 'Más recientes', orderBy: desc(tenants.createdAt) },
-  oldest: { label: 'Más antiguas', orderBy: asc(tenants.createdAt) },
-  nameAsc: { label: 'ID de Página: A–Z', orderBy: asc(tenants.name) },
-  nameDesc: { label: 'ID de Página: Z–A', orderBy: desc(tenants.name) },
-  status: { label: 'Estado', orderBy: asc(tenants.status) },
+const sortColumns = {
+  name: tenants.name,
+  slug: tenants.slug,
+  status: tenants.status,
+  creator: tenants.createdByControlAdminId,
+  createdAt: tenants.createdAt,
 } as const;
+
+type SortColumn = keyof typeof sortColumns;
+type SortDirection = 'asc' | 'desc';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -53,7 +63,8 @@ export default async function ControlHomePage({
   const params = await searchParams;
   const query = readParam(params.q).trim();
   const status = readStatus(params.status);
-  const sort = readSort(params.sort);
+  const sort = readSortColumn(params.sort);
+  const direction = readSortDirection(params.direction);
   const searchPattern = `%${query}%`;
 
   const tenantList = await getControlDb()
@@ -83,12 +94,15 @@ export default async function ControlHomePage({
           : undefined,
       ),
     )
-    .orderBy(sortOptions[sort].orderBy);
+    .orderBy(
+      direction === 'asc' ? asc(sortColumns[sort]) : desc(sortColumns[sort]),
+    );
 
   const activeTenants = tenantList.filter(
     (tenant) => tenant.status === 'active',
   ).length;
   const hasFilters = Boolean(query || status);
+  const currentSort = { sort, direction, query, status };
 
   return (
     <div className='space-y-6'>
@@ -112,55 +126,45 @@ export default async function ControlHomePage({
       </div>
 
       <div className='overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
-        <form className='grid gap-3 border-b border-stroke p-4 md:grid-cols-[minmax(240px,1fr)_180px_200px_auto] md:items-end'>
-          <label className='space-y-1 text-sm font-medium text-gray-700'>
-            <span>Filtrar</span>
+        <form className='grid gap-3 border-b border-stroke p-4 md:grid-cols-[minmax(240px,1fr)_200px_auto] md:items-end'>
+          <input type='hidden' name='sort' value={sort} />
+          <input type='hidden' name='direction' value={direction} />
+
+          <div className='grid gap-1 text-sm font-medium text-gray-700'>
+            <label htmlFor='page-filter'>Filtrar</label>
             <Input
+              id='page-filter'
               name='q'
               defaultValue={query}
               placeholder='ID de Página, subdominio o creador'
             />
-          </label>
+          </div>
 
-          <label className='space-y-1 text-sm font-medium text-gray-700'>
-            <span>Estado</span>
-            <select
-              name='status'
-              defaultValue={status ?? ''}
-              className='h-9 w-full rounded-md border border-stroke bg-white px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-stroke/50'
-            >
-              <option value=''>Todos</option>
-              {Object.entries(statusLabels)
-                .filter(([value]) => value !== 'deleted')
-                .map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-            </select>
-          </label>
-
-          <label className='space-y-1 text-sm font-medium text-gray-700'>
-            <span>Ordenar por</span>
-            <select
-              name='sort'
-              defaultValue={sort}
-              className='h-9 w-full rounded-md border border-stroke bg-white px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-stroke/50'
-            >
-              {Object.entries(sortOptions).map(([value, option]) => (
-                <option key={value} value={value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className='grid gap-1 text-sm font-medium text-gray-700'>
+            <label htmlFor='status-filter'>Estado</label>
+            <Select name='status' defaultValue={status ?? 'all'}>
+              <SelectTrigger id='status-filter' className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Todos</SelectItem>
+                {Object.entries(statusLabels)
+                  .filter(([value]) => value !== 'deleted')
+                  .map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className='flex gap-2'>
             <Button type='submit'>
               <Search />
               Aplicar
             </Button>
-            {(hasFilters || sort !== 'newest') && (
+            {(hasFilters || sort !== 'createdAt' || direction !== 'desc') && (
               <Button asChild type='button' variant='ghost'>
                 <Link href='/'>Limpiar</Link>
               </Button>
@@ -172,11 +176,31 @@ export default async function ControlHomePage({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID de Página</TableHead>
-                <TableHead>Subdominio</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Creado por</TableHead>
-                <TableHead>Creado</TableHead>
+                <SortableTableHead
+                  label='ID de Página'
+                  column='name'
+                  {...currentSort}
+                />
+                <SortableTableHead
+                  label='Subdominio'
+                  column='slug'
+                  {...currentSort}
+                />
+                <SortableTableHead
+                  label='Estado'
+                  column='status'
+                  {...currentSort}
+                />
+                <SortableTableHead
+                  label='Creado por'
+                  column='creator'
+                  {...currentSort}
+                />
+                <SortableTableHead
+                  label='Creado'
+                  column='createdAt'
+                  {...currentSort}
+                />
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -234,9 +258,57 @@ function readStatus(value: string | string[] | undefined) {
   return status as Exclude<keyof typeof statusLabels, 'deleted'>;
 }
 
-function readSort(value: string | string[] | undefined) {
+function readSortColumn(value: string | string[] | undefined): SortColumn {
   const sort = readParam(value);
-  return Object.hasOwn(sortOptions, sort)
-    ? (sort as keyof typeof sortOptions)
-    : 'newest';
+  return Object.hasOwn(sortColumns, sort) ? (sort as SortColumn) : 'createdAt';
+}
+
+function readSortDirection(
+  value: string | string[] | undefined,
+): SortDirection {
+  const direction = readParam(value);
+  return direction === 'asc' || direction === 'desc' ? direction : 'desc';
+}
+
+function SortableTableHead({
+  label,
+  column,
+  sort,
+  direction,
+  query,
+  status,
+}: {
+  label: string;
+  column: SortColumn;
+  sort: SortColumn;
+  direction: SortDirection;
+  query: string;
+  status: ReturnType<typeof readStatus>;
+}) {
+  const active = sort === column;
+  const nextDirection = active && direction === 'asc' ? 'desc' : 'asc';
+  const params = new URLSearchParams({
+    sort: column,
+    direction: nextDirection,
+  });
+  if (query) params.set('q', query);
+  if (status) params.set('status', status);
+
+  return (
+    <TableHead
+      aria-sort={
+        active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'
+      }
+    >
+      <Link
+        href={`/?${params.toString()}` as Route}
+        className='inline-flex items-center gap-1.5 hover:text-accent-dark'
+      >
+        {label}
+        {!active && <ArrowUpDown className='size-3.5' />}
+        {active && direction === 'asc' && <ArrowUp className='size-3.5' />}
+        {active && direction === 'desc' && <ArrowDown className='size-3.5' />}
+      </Link>
+    </TableHead>
+  );
 }
