@@ -3,7 +3,8 @@ import superjson from 'superjson';
 import { z, ZodError } from 'zod';
 
 import { type role as roleEnum } from '@/drizzle/schema';
-import { auth } from '@/server/auth';
+import { isTenantSessionValid } from '@/lib/auth/session-tenant';
+import { getSessionForInstance } from '@/server/auth';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { type appRouter } from '@/server/routers/app';
 
@@ -58,10 +59,8 @@ export function handleError(error: {
 }
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const [session, requestContext] = await Promise.all([
-    auth(),
-    resolveRequestContext(opts.headers),
-  ]);
+  const requestContext = await resolveRequestContext(opts.headers);
+  const session = await getSessionForInstance(requestContext.instance.slug);
 
   return {
     session,
@@ -123,6 +122,10 @@ function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
     }
 
     if (session.user.role === 'CONTROL_ADMIN') {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
+
+    if (!isTenantSessionValid(session, ctx.instance.slug)) {
       throw new TRPCError({ code: 'UNAUTHORIZED' });
     }
 

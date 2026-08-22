@@ -1,8 +1,12 @@
 import { and, eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
+import {
+  isControlSessionValid,
+  isTenantSessionValid,
+} from '@/lib/auth/session-tenant';
 import { createSingleTenantConfig } from '@/lib/config/single-tenant-config';
 import {
   getRequestHost,
@@ -10,8 +14,9 @@ import {
   resolveMultiTenantHost,
   TENANT_ID_HEADER,
 } from '@/lib/tenancy/host';
+import { authMiddleware } from '@/server/auth';
 
-export async function middleware(request: NextRequest) {
+export default authMiddleware(async function middleware(request) {
   const headers = new Headers(request.headers);
   headers.delete(TENANT_ID_HEADER);
 
@@ -31,6 +36,14 @@ export async function middleware(request: NextRequest) {
   }
 
   if (target.type === 'admin') {
+    if (
+      request.nextUrl.pathname === '/api/auth/session' &&
+      request.auth &&
+      !isControlSessionValid(request.auth)
+    ) {
+      return NextResponse.json(null);
+    }
+
     if (request.nextUrl.pathname.startsWith('/api/auth')) {
       return NextResponse.next({ request: { headers } });
     }
@@ -66,6 +79,24 @@ export async function middleware(request: NextRequest) {
       return new NextResponse('Página en preparación', { status: 503 });
     }
 
+    const sessionIsValid = isTenantSessionValid(request.auth, tenant.slug);
+    if (
+      request.nextUrl.pathname === '/api/auth/session' &&
+      request.auth &&
+      !sessionIsValid
+    ) {
+      return NextResponse.json(null);
+    }
+
+    if (isProtectedTenantPath(request.nextUrl.pathname) && !sessionIsValid) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set(
+        'callbackUrl',
+        `${request.nextUrl.pathname}${request.nextUrl.search}`,
+      );
+      return NextResponse.redirect(loginUrl);
+    }
+
     headers.set(TENANT_ID_HEADER, tenant.slug);
     return NextResponse.next({ request: { headers } });
   } catch (error) {
@@ -74,6 +105,12 @@ export async function middleware(request: NextRequest) {
       status: 503,
     });
   }
+});
+
+function isProtectedTenantPath(pathname: string) {
+  return ['/admin', '/organization', '/profile'].some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
 }
 
 export const config = {

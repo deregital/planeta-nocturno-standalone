@@ -10,6 +10,7 @@ declare module 'next-auth' {
       email: string;
       emailVerified: Date | null;
       role: AppRole;
+      tenantSlug: string | null;
       fullName: string;
       image: string | null;
     } & DefaultSession['user'];
@@ -20,8 +21,15 @@ declare module 'next-auth' {
     name: string;
     email: string;
     role: AppRole;
+    tenantSlug: string | null;
     fullName: string;
     emailVerified: Date | null;
     image: string | null;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    tenantSlug?: string | null;
   }
 }

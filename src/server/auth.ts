@@ -1,12 +1,20 @@
 import { compare } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import NextAuth, { CredentialsSignin, type Session } from 'next-auth';
+import { headers } from 'next/headers';
 
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins } from '@/db/control/schema';
 import { user as userTable } from '@/drizzle/schema';
+import {
+  isControlSessionValid,
+  isTenantSessionValid,
+} from '@/lib/auth/session-tenant';
 import { isControlRequest } from '@/server/control/is-control-request';
-import { resolveRequestContext } from '@/server/instance/resolve-request-context';
+import {
+  getCurrentRequestContext,
+  resolveRequestContext,
+} from '@/server/instance/resolve-request-context';
 import { userSchema } from '@/server/schemas/user';
 
 const credentialsSchema = userSchema.pick({
@@ -14,7 +22,7 @@ const credentialsSchema = userSchema.pick({
   password: true,
 });
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
   providers: [
     {
       type: 'credentials',
@@ -46,12 +54,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: admin.email,
             emailVerified: null,
             role: 'CONTROL_ADMIN',
+            tenantSlug: null,
             fullName: admin.username,
             image: null,
           };
         }
 
-        const { db } = await resolveRequestContext(request.headers);
+        const { db, instance } = await resolveRequestContext(request.headers);
         const user = await db.query.user.findFirst({
           where: eq(userTable.name, name),
         });
@@ -60,6 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new CustomError('Contraseña incorrecta');
         return {
           ...user,
+          tenantSlug: instance.slug,
           emailVerified: user.emailVerified
             ? new Date(user.emailVerified)
             : null,
@@ -76,6 +86,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           emailVerified: user.emailVerified,
           role: user.role,
+          tenantSlug: user.tenantSlug,
           fullName: user.fullName,
           image: user.image,
         };
@@ -86,6 +97,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: token.email as string,
           emailVerified: token.emailVerified as Date | null,
           role: token.role as Session['user']['role'],
+          tenantSlug:
+            typeof token.tenantSlug === 'string' ? token.tenantSlug : null,
           fullName: token.fullName as string,
           image: token.image as string | null,
         };
@@ -98,6 +111,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.name = user.name;
         token.email = user.email;
         token.role = user.role;
+        token.tenantSlug = user.tenantSlug;
         token.fullName = user.fullName;
         token.image = user.image;
       }
@@ -111,6 +125,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: '/login',
   },
 });
+
+export const { handlers, signIn, signOut } = nextAuth;
+export const authMiddleware = nextAuth.auth;
+
+export async function getSessionForInstance(tenantSlug: string | null) {
+  const session = await nextAuth.auth();
+  return isTenantSessionValid(session, tenantSlug) ? session : null;
+}
+
+export async function auth() {
+  const session = await nextAuth.auth();
+  if (!session) return null;
+
+  const requestHeaders = new Headers(await headers());
+  if (isControlRequest(requestHeaders)) {
+    return isControlSessionValid(session) ? session : null;
+  }
+
+  try {
+    const { instance } = await getCurrentRequestContext();
+    return isTenantSessionValid(session, instance.slug) ? session : null;
+  } catch {
+    return null;
+  }
+}
 
 export class CustomError extends CredentialsSignin {
   code = CustomError.CUSTOM_ERROR_CODE;
