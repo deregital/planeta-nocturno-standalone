@@ -66,6 +66,7 @@ export default async function EditTenantPage({
       </div>
 
       <TenantEditForm
+        slug={tenant.slug}
         initialValues={{
           tenantId: String(tenant.id),
           name: tenant.name,

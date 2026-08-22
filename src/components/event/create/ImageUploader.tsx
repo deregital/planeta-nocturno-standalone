@@ -13,6 +13,7 @@ export function ImageUploader({
   route = 'eventImage',
   label,
   accept = 'image/*',
+  metadata,
 }: {
   onUploadComplete: (objectKey: string) => void;
   error: string | null;
@@ -26,6 +27,7 @@ export function ImageUploader({
   route?: string;
   label?: string;
   accept?: string;
+  metadata?: Record<string, unknown>;
   description?:
     | {
         fileTypes?: string;
@@ -93,6 +95,7 @@ export function ImageUploader({
         }
         control={control}
         accept={accept}
+        metadata={metadata}
         uploadOverride={handleUploadOverride}
         label={label}
         className={cn((error || localError) && 'border-2 border-red-500')}

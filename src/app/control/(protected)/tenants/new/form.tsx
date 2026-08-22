@@ -140,6 +140,7 @@ export default function TenantForm({
         <TenantFaviconField
           initialUrl={values.faviconUrl}
           error={state.errors?.faviconUrl}
+          slug={slug}
         />
 
         <TenantColorFields

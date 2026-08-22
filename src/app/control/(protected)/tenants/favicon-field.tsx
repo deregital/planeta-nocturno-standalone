@@ -11,9 +11,11 @@ import { generateS3Url } from '@/lib/utils-client';
 export default function TenantFaviconField({
   initialUrl,
   error,
+  slug,
 }: {
   initialUrl: string;
   error?: string;
+  slug: string;
 }) {
   const [faviconUrl, setFaviconUrl] = useState(initialUrl);
 
@@ -48,21 +50,30 @@ export default function TenantFaviconField({
           </div>
         </div>
       ) : (
-        <ImageUploader
-          route='favicon'
-          label='Subir favicon'
-          accept='image/png,image/jpeg,image/webp,image/x-icon,image/vnd.microsoft.icon'
-          error={error ?? null}
-          description={{
-            maxFiles: 1,
-            maxFileSize: '1 MB',
-            fileTypes: 'PNG, JPG, WEBP o ICO',
-            extra: 'Se recomienda una imagen cuadrada.',
-          }}
-          onUploadComplete={(objectKey) => {
-            setFaviconUrl(generateS3Url(objectKey));
-          }}
-        />
+        <>
+          {slug ? (
+            <ImageUploader
+              route='favicon'
+              label='Subir favicon'
+              accept='image/png,image/jpeg,image/webp,image/x-icon,image/vnd.microsoft.icon'
+              metadata={{ slug }}
+              error={error ?? null}
+              description={{
+                maxFiles: 1,
+                maxFileSize: '1 MB',
+                fileTypes: 'PNG, JPG, WEBP o ICO',
+                extra: 'Se recomienda una imagen cuadrada.',
+              }}
+              onUploadComplete={(objectKey) => {
+                setFaviconUrl(generateS3Url(objectKey));
+              }}
+            />
+          ) : (
+            <p className='rounded-lg border border-dashed border-stroke p-4 text-sm text-gray-500'>
+              Definí el subdominio antes de subir el favicon.
+            </p>
+          )}
+        </>
       )}
 
       {faviconUrl && error && (

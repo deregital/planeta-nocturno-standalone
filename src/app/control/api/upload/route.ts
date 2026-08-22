@@ -5,10 +5,13 @@ import {
   route,
   type Router,
 } from 'better-upload/server';
+import { z } from 'zod';
 
+import { normalizeRootDomain } from '@/lib/tenancy/host';
 import { canManageTenants } from '@/server/control/can-manage-tenants';
 import { getS3Client, S3_BUCKET_NAME } from '@/server/s3/client';
 import { ensureControlCorsOrigin } from '@/server/s3/ensure-tenant-cors-origin';
+import { tenantSubdomainSchema } from '@/server/schemas/control-tenant';
 
 const faviconExtensions: Record<string, string> = {
   'image/png': 'png',
@@ -25,15 +28,18 @@ const router: Router = {
     favicon: route({
       maxFileSize: 1024 * 1024,
       fileTypes: Object.keys(faviconExtensions),
-      onBeforeUpload: async ({ file }) => {
+      clientMetadataSchema: z.object({ slug: tenantSubdomainSchema }),
+      onBeforeUpload: async ({ file, clientMetadata }) => {
         if (!(await canManageTenants())) throw new Error('Unauthorized');
 
         await ensureControlCorsOrigin();
         const extension = faviconExtensions[file.type];
         if (!extension) throw new Error('Invalid favicon type');
+        const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
+        const domain = `${clientMetadata.slug}.${rootDomain}`;
 
         return {
-          objectKey: `page-favicons/${randomUUID()}.${extension}`,
+          objectKey: `${domain}/favicon/${randomUUID()}.${extension}`,
         };
       },
     }),

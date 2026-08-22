@@ -16,8 +16,10 @@ import { Textarea } from '@/components/ui/textarea';
 
 export default function TenantEditForm({
   initialValues,
+  slug,
 }: {
   initialValues: TenantEditValues;
+  slug: string;
 }) {
   const [state, action, pending] = useActionState<TenantEditState, FormData>(
     updateTenant,
@@ -59,6 +61,7 @@ export default function TenantEditForm({
         <TenantFaviconField
           initialUrl={values.faviconUrl}
           error={state.errors?.faviconUrl}
+          slug={slug}
         />
         <TenantColorFields
           initialHue={values.hue}
