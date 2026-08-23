@@ -1,9 +1,76 @@
 {
-  "id": "803e6370-e671-4b88-995d-ea3710dd651d",
+  "id": "80df0508-9683-4fbe-8d01-9bf1fefcc7ef",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.control_admins": {
+      "name": "control_admins",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "control_admins_username_unique": {
+          "name": "control_admins_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        },
+        "control_admins_email_unique": {
+          "name": "control_admins_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.tenants": {
       "name": "tenants",
       "schema": "",
@@ -79,6 +146,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "mp_secret_key": {
+          "name": "mp_secret_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_control_admin_id": {
+          "name": "created_by_control_admin_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "database_name": {
           "name": "database_name",
           "type": "varchar(63)",
@@ -114,10 +193,30 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "tenants_created_by_control_admin_id_control_admins_id_fk": {
+          "name": "tenants_created_by_control_admin_id_control_admins_id_fk",
+          "tableFrom": "tenants",
+          "tableTo": "control_admins",
+          "columnsFrom": [
+            "created_by_control_admin_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "tenants_slug_unique": {
@@ -157,7 +256,8 @@
         "active",
         "suspended",
         "failed",
-        "deleting"
+        "deleting",
+        "deleted"
       ]
     }
   },

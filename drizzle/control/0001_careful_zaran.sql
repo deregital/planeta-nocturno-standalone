@@ -1,1 +1,0 @@
-ALTER TABLE "tenants" ADD COLUMN "mp_secret_key" text;
