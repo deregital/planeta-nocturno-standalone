@@ -2,6 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react';
 
+import TenantColorFields from '@/app/control/(protected)/tenants/color-fields';
+import TenantFaviconField from '@/app/control/(protected)/tenants/favicon-field';
 import {
   checkSubdomainAvailability,
   createTenant,
@@ -9,8 +11,6 @@ import {
   type TenantFormState,
   type TenantFormValues,
 } from '@/app/control/(protected)/tenants/new/action';
-import TenantColorFields from '@/app/control/(protected)/tenants/color-fields';
-import TenantFaviconField from '@/app/control/(protected)/tenants/favicon-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -194,7 +194,7 @@ export default function TenantForm({
 
       <div className='flex items-center justify-end gap-4'>
         <p className='text-sm text-gray-500'>
-          La creación y migración puede tardar unos segundos.
+          La creación puede tardar unos segundos.
         </p>
         <Button type='submit' disabled={pending}>
           {pending

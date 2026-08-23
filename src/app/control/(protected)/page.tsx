@@ -1,14 +1,21 @@
-import { desc, ne } from 'drizzle-orm';
+import { desc, eq, ne } from 'drizzle-orm';
 import { Plus } from 'lucide-react';
 import { type Route } from 'next';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 
 import TenantTable from '@/app/control/(protected)/tenants/tenant-table';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
-import { tenants } from '@/db/control/schema';
+import { controlAdmins, tenants } from '@/db/control/schema';
+import {
+  getHostname,
+  getRequestHost,
+  normalizeRootDomain,
+} from '@/lib/tenancy/host';
 
 export default async function ControlHomePage() {
+  const requestHeaders = new Headers(await headers());
   const tenantList = await getControlDb()
     .select({
       id: tenants.id,
@@ -16,10 +23,14 @@ export default async function ControlHomePage() {
       slug: tenants.slug,
       status: tenants.status,
       databaseName: tenants.databaseName,
-      createdByControlAdminId: tenants.createdByControlAdminId,
+      createdByUsername: controlAdmins.username,
       createdAt: tenants.createdAt,
     })
     .from(tenants)
+    .leftJoin(
+      controlAdmins,
+      eq(tenants.createdByControlAdminId, controlAdmins.id),
+    )
     .where(ne(tenants.status, 'deleted'))
     .orderBy(desc(tenants.createdAt));
 
@@ -47,7 +58,31 @@ export default async function ControlHomePage() {
         </Button>
       </div>
 
-      <TenantTable tenants={tenantList} />
+      <TenantTable
+        tenants={tenantList.map((tenant) => ({
+          ...tenant,
+          publicUrl: getTenantPublicUrl(tenant.slug, requestHeaders),
+        }))}
+      />
     </div>
   );
+}
+
+function getTenantPublicUrl(slug: string, requestHeaders: Headers) {
+  const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
+  const requestHost = getRequestHost(requestHeaders);
+  const hostname = getHostname(requestHost);
+  const forwardedProtocol = requestHeaders
+    .get('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim();
+  const protocol =
+    forwardedProtocol === 'http' || forwardedProtocol === 'https'
+      ? forwardedProtocol
+      : hostname === 'localhost' || hostname.endsWith('.localhost')
+        ? 'http'
+        : 'https';
+  const port = new URL(`${protocol}://${requestHost}`).port;
+
+  return `${protocol}://${slug}.${rootDomain}${port ? `:${port}` : ''}`;
 }

@@ -19,13 +19,13 @@ export const tenantMetadataSchema = z.object({
   faviconUrl: z
     .string()
     .trim()
-    .max(2048, 'La URL del favicon es demasiado larga')
+    .max(2048, 'La URL del logo es demasiado larga')
     .refine(
       (value) =>
         !value ||
         (z.url().safeParse(value).success &&
           ['http:', 'https:'].includes(new URL(value).protocol)),
-      { message: 'El favicon no es válido' },
+      { message: 'El logo no es válido' },
     )
     .transform((value) => value || null),
   hue: z.coerce.number().int().min(0).max(360),

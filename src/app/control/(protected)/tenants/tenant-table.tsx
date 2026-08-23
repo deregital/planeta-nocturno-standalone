@@ -1,6 +1,12 @@
 'use client';
 
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ExternalLink,
+  Search,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
@@ -59,8 +65,9 @@ type TenantRow = {
   slug: string;
   status: TenantLifecycleStatus;
   databaseName: string | null;
-  createdByControlAdminId: string | null;
+  createdByUsername: string | null;
   createdAt: Date;
+  publicUrl: string;
 };
 
 export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
@@ -75,7 +82,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
       const matchesStatus = status === 'all' || tenant.status === status;
       const matchesQuery =
         !normalizedQuery ||
-        [tenant.name, tenant.slug, tenant.createdByControlAdminId ?? ''].some(
+        [tenant.name, tenant.slug, tenant.createdByUsername ?? ''].some(
           (value) => value.toLocaleLowerCase('es').includes(normalizedQuery),
         );
       return matchesStatus && matchesQuery;
@@ -202,7 +209,17 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
             {visibleTenants.map((tenant) => (
               <TableRow key={tenant.id}>
                 <TableCell className='font-medium'>{tenant.name}</TableCell>
-                <TableCell>{tenant.slug}</TableCell>
+                <TableCell>
+                  <a
+                    href={tenant.publicUrl}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline'
+                  >
+                    {tenant.slug}
+                    <ExternalLink className='size-3.5' />
+                  </a>
+                </TableCell>
                 <TableCell>
                   <span
                     className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusStyles[tenant.status]}`}
@@ -210,8 +227,8 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
                     {statusLabels[tenant.status]}
                   </span>
                 </TableCell>
-                <TableCell className='font-mono text-xs'>
-                  {tenant.createdByControlAdminId ?? 'Sin registrar'}
+                <TableCell>
+                  {tenant.createdByUsername ?? 'Sin registrar'}
                 </TableCell>
                 <TableCell>
                   {new Intl.DateTimeFormat('es-AR').format(tenant.createdAt)}
@@ -297,6 +314,6 @@ function getSortValue(
   tenant: TenantRow,
   column: Exclude<SortColumn, 'createdAt'>,
 ) {
-  if (column === 'creator') return tenant.createdByControlAdminId ?? '';
+  if (column === 'creator') return tenant.createdByUsername ?? '';
   return tenant[column];
 }

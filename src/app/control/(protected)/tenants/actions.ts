@@ -1,5 +1,7 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
+
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -45,6 +47,7 @@ export async function updateTenantLifecycle(
   const [tenant] = await getControlDb()
     .select({
       id: tenants.id,
+      slug: tenants.slug,
       status: tenants.status,
       databaseName: tenants.databaseName,
     })
@@ -109,6 +112,7 @@ export async function updateTenantLifecycle(
       await getControlDb()
         .update(tenants)
         .set({
+          slug: buildDeletedTenantSlug(tenant.id, tenant.slug),
           status: 'deleted',
           databaseName: deletedDatabaseName,
           deletedAt: new Date(),
@@ -127,4 +131,10 @@ export async function updateTenantLifecycle(
 
   revalidatePath('/');
   return {};
+}
+
+function buildDeletedTenantSlug(tenantId: number, slug: string) {
+  const prefix = `deleted-${tenantId}-`;
+  const suffix = `-${randomUUID().slice(0, 8)}`;
+  return `${prefix}${slug.slice(0, 63 - prefix.length - suffix.length)}${suffix}`;
 }

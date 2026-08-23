@@ -34,7 +34,7 @@ const router: Router = {
 
         await ensureControlCorsOrigin();
         const extension = faviconExtensions[file.type];
-        if (!extension) throw new Error('Invalid favicon type');
+        if (!extension) throw new Error('Tipo de logo inválido');
         const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
         const domain = `${clientMetadata.slug}.${rootDomain}`;
 

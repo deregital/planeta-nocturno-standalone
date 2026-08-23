@@ -21,7 +21,7 @@ export default function TenantFaviconField({
 
   return (
     <div className='space-y-2 md:col-span-2'>
-      <Label>Favicon</Label>
+      <Label>Logo</Label>
       <input type='hidden' name='faviconUrl' value={faviconUrl} />
 
       {faviconUrl ? (
@@ -33,19 +33,19 @@ export default function TenantFaviconField({
               src={faviconUrl}
               sizes='48px'
               className='object-contain p-1'
-              alt='Favicon actual'
+              alt='Logo actual'
             />
           </div>
           <div>
-            <p className='text-sm font-medium text-gray-900'>Favicon cargado</p>
+            <p className='text-sm font-medium text-gray-900'>Logo cargado</p>
             <Button
               type='button'
               variant='ghost'
               size='sm'
-              className='mt-1 px-0'
+              className='mt-1 px-2'
               onClick={() => setFaviconUrl('')}
             >
-              Cambiar o quitar
+              Cambiar
             </Button>
           </div>
         </div>
@@ -54,7 +54,7 @@ export default function TenantFaviconField({
           {slug ? (
             <ImageUploader
               route='favicon'
-              label='Subir favicon'
+              label='Subir logo'
               accept='image/png,image/jpeg,image/webp,image/x-icon,image/vnd.microsoft.icon'
               metadata={{ slug }}
               error={error ?? null}
@@ -70,7 +70,7 @@ export default function TenantFaviconField({
             />
           ) : (
             <p className='rounded-lg border border-dashed border-stroke p-4 text-sm text-gray-500'>
-              Definí el subdominio antes de subir el favicon.
+              Definí el subdominio antes de subir el logo.
             </p>
           )}
         </>

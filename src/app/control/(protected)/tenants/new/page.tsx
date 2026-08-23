@@ -34,10 +34,6 @@ export default async function NewTenantPage({
         <h1 className='text-3xl font-bold text-gray-900'>
           {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva página'}
         </h1>
-        <p className='mt-1 text-sm text-gray-600'>
-          Se creará la base, se aplicarán las migraciones y se dará de alta el
-          administrador inicial.
-        </p>
       </div>
 
       <TenantForm
