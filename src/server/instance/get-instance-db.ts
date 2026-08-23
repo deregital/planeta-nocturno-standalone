@@ -6,28 +6,111 @@ import { createDb, type Db } from '@/drizzle';
 
 import { getTenantDatabaseUrl } from '@/server/neon/get-database-url';
 
-const connections = new Map<string, Promise<Db>>();
+const TENANT_CACHE_TTL_MS = 15 * 60 * 1000;
+const TENANT_CACHE_TARGET_SIZE = 50;
+const TENANT_POOL_OPTIONS = {
+  max: 3,
+  min: 0,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
+} as const;
+
+type CachedTenantDb = {
+  connection: Promise<Db>;
+  db?: Db;
+  lastUsedAt: number;
+};
+
+let singleTenantConnection: Promise<Db> | undefined;
+const tenantConnections = new Map<string, CachedTenantDb>();
 
 export function getInstanceDb(database: ResolvedInstance['database']) {
-  const key = 'url' in database ? 'single' : database.name;
-  const existingConnection = connections.get(key);
+  if ('url' in database) {
+    singleTenantConnection ??= Promise.resolve(createDb(database.url));
+    return singleTenantConnection;
+  }
 
-  if (existingConnection) return existingConnection;
+  const now = Date.now();
+  removeExpiredTenantConnections(now);
 
-  const connection = createInstanceDb(database).catch((error) => {
-    connections.delete(key);
-    throw error;
-  });
-  connections.set(key, connection);
+  const existingConnection = tenantConnections.get(database.name);
 
-  return connection;
+  if (existingConnection) {
+    existingConnection.lastUsedAt = now;
+    return existingConnection.connection;
+  }
+
+  trimTenantConnections();
+
+  const cachedTenantDb: CachedTenantDb = {
+    connection: createTenantDb(database.name),
+    lastUsedAt: now,
+  };
+
+  cachedTenantDb.connection = cachedTenantDb.connection
+    .then((db) => {
+      cachedTenantDb.db = db;
+      return db;
+    })
+    .catch((error) => {
+      if (tenantConnections.get(database.name) === cachedTenantDb) {
+        tenantConnections.delete(database.name);
+      }
+      throw error;
+    });
+
+  tenantConnections.set(database.name, cachedTenantDb);
+  return cachedTenantDb.connection;
 }
 
-async function createInstanceDb(database: ResolvedInstance['database']) {
-  const databaseUrl =
-    'url' in database
-      ? database.url
-      : await getTenantDatabaseUrl(database.name);
+export async function closeTenantDb(databaseName: string) {
+  const cachedTenantDb = tenantConnections.get(databaseName);
+  if (!cachedTenantDb) return;
 
-  return createDb(databaseUrl);
+  tenantConnections.delete(databaseName);
+
+  const db = await cachedTenantDb.connection.catch(() => null);
+  if (db) await db.$client.end();
+}
+
+async function createTenantDb(databaseName: string) {
+  const databaseUrl = await getTenantDatabaseUrl(databaseName);
+  return createDb(databaseUrl, TENANT_POOL_OPTIONS);
+}
+
+function removeExpiredTenantConnections(now: number) {
+  for (const [databaseName, cachedTenantDb] of tenantConnections) {
+    if (now - cachedTenantDb.lastUsedAt >= TENANT_CACHE_TTL_MS) {
+      closeIdleTenantDb(databaseName, cachedTenantDb);
+    }
+  }
+}
+
+function trimTenantConnections() {
+  if (tenantConnections.size < TENANT_CACHE_TARGET_SIZE) return;
+
+  const oldestConnections = [...tenantConnections.entries()].sort(
+    ([, first], [, second]) => first.lastUsedAt - second.lastUsedAt,
+  );
+
+  for (const [databaseName, cachedTenantDb] of oldestConnections) {
+    if (tenantConnections.size < TENANT_CACHE_TARGET_SIZE) return;
+    closeIdleTenantDb(databaseName, cachedTenantDb);
+  }
+}
+
+function closeIdleTenantDb(
+  databaseName: string,
+  cachedTenantDb: CachedTenantDb,
+) {
+  const pool = cachedTenantDb.db?.$client;
+  if (!pool || pool.totalCount !== pool.idleCount) return;
+
+  tenantConnections.delete(databaseName);
+  void pool.end().catch((error) => {
+    console.error('Unable to close cached tenant database', {
+      databaseName,
+      error,
+    });
+  });
 }

@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { canManageTenants } from '@/server/control/can-manage-tenants';
+import { closeTenantDb } from '@/server/instance/get-instance-db';
 import {
   buildDeletedTenantDatabaseName,
   renameTenantDatabase,
@@ -106,6 +107,7 @@ export async function updateTenantLifecycle(
         : null;
 
       if (tenant.databaseName && deletedDatabaseName) {
+        await closeTenantDb(tenant.databaseName);
         await renameTenantDatabase(tenant.databaseName, deletedDatabaseName);
       }
 
