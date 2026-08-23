@@ -1,9 +1,12 @@
 import { SessionProvider } from 'next-auth/react';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
 import SideBar from '@/components/admin/SideBar';
 import TopBar from '@/components/admin/TopBar';
+import HelpDrawer from '@/components/guide/HelpDrawer';
 import { auth } from '@/server/auth';
+import { getGuideVideos } from '@/server/guide/get-guide-videos';
 
 export default async function AdminLayout({
   children,
@@ -32,7 +35,15 @@ export default async function AdminLayout({
             {children}
           </main>
         </div>
+        <Suspense fallback={<HelpDrawer videos={[]} />}>
+          <TenantHelpDrawer userRole={session.user.role} />
+        </Suspense>
       </div>
     </SessionProvider>
   );
+}
+
+async function TenantHelpDrawer({ userRole }: { userRole: string }) {
+  const videos = await getGuideVideos(userRole);
+  return <HelpDrawer videos={videos} />;
 }
