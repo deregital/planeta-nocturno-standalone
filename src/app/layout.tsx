@@ -8,7 +8,9 @@ import { headers } from 'next/headers';
 import { InstanceProvider } from '@/components/instance/InstanceProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { getMultiTenantLandingConfig } from '@/lib/config/multi-tenant-landing';
 import { getColors } from '@/lib/get-colors';
+import { ROOT_LANDING_HEADER } from '@/lib/tenancy/host';
 import { isControlRequest } from '@/server/control/is-control-request';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import { TRPCReactProvider } from '@/server/trpc/client';
@@ -19,7 +21,14 @@ const dmSans = DM_Sans({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (isControlRequest(new Headers(await headers()))) {
+  const requestHeaders = new Headers(await headers());
+
+  if (requestHeaders.get(ROOT_LANDING_HEADER) === '1') {
+    const landing = getMultiTenantLandingConfig();
+    return { title: landing.name, description: landing.description };
+  }
+
+  if (isControlRequest(requestHeaders)) {
     return {
       title: 'Administración central',
       description: 'Gestión central de instancias y páginas',
@@ -41,10 +50,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const controlRequest = isControlRequest(new Headers(await headers()));
-  const instance = controlRequest
-    ? null
-    : (await getCurrentRequestContext()).instance;
+  const requestHeaders = new Headers(await headers());
+  const rootLandingRequest = requestHeaders.get(ROOT_LANDING_HEADER) === '1';
+  const controlRequest =
+    !rootLandingRequest && isControlRequest(requestHeaders);
+  const instance =
+    controlRequest || rootLandingRequest
+      ? null
+      : (await getCurrentRequestContext()).instance;
   const colors = getColors(instance?.hue ?? 200, instance?.saturation ?? 100);
   const colorVariables = {
     '--accent-dark-color': colors.accentDark,

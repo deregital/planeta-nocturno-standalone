@@ -8,6 +8,7 @@ const RESERVED_SUBDOMAINS = new Set([
 ]);
 
 export const TENANT_ID_HEADER = 'x-tenant-id';
+export const ROOT_LANDING_HEADER = 'x-root-landing';
 
 export type MultiTenantHost =
   | { type: 'admin' }

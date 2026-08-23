@@ -12,12 +12,14 @@ import {
   getRequestHost,
   normalizeRootDomain,
   resolveMultiTenantHost,
+  ROOT_LANDING_HEADER,
   TENANT_ID_HEADER,
 } from '@/lib/tenancy/host';
 import { authMiddleware } from '@/server/auth';
 
 export default authMiddleware(async function middleware(request) {
   const headers = new Headers(request.headers);
+  headers.delete(ROOT_LANDING_HEADER);
   headers.delete(TENANT_ID_HEADER);
 
   if (createSingleTenantConfig(process.env)) {
@@ -54,7 +56,14 @@ export default authMiddleware(async function middleware(request) {
   }
 
   if (target.type === 'root') {
-    return NextResponse.next({ request: { headers } });
+    if (request.nextUrl.pathname !== '/') {
+      return new NextResponse('Página no encontrada', { status: 404 });
+    }
+
+    headers.set(ROOT_LANDING_HEADER, '1');
+    const url = request.nextUrl.clone();
+    url.pathname = '/landing';
+    return NextResponse.rewrite(url, { request: { headers } });
   }
 
   if (target.type === 'unknown') {
