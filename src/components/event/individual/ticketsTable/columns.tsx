@@ -1,7 +1,6 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import {
@@ -40,6 +39,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
+import { formatDateOnly } from '@/lib/date-only';
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -269,7 +269,7 @@ export function generateTicketColumns({
       cell: ({ row }) => {
         return (
           <p className='w-full text-center'>
-            {format(row.original.birthDate, 'dd/MM/yyyy')}
+            {formatDateOnly(row.original.birthDate)}
           </p>
         );
       },

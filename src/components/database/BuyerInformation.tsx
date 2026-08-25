@@ -1,9 +1,9 @@
-import { format } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import { Cake, Contact, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
 
 import { FilledCard } from '@/components/common/FilledCard';
 import { Instagram } from '@/components/icons/Instagram';
+import { formatDateOnly } from '@/lib/date-only';
 import { genderTranslation } from '@/lib/translations';
 
 interface BuyerInformationParams {
@@ -38,7 +38,7 @@ export default function BuyerInformation({ buyer }: BuyerInformationParams) {
         <Cake />
         <p>
           <span className='text-gray-600'>Fecha de nacimiento:</span>{' '}
-          {format(buyer.birthDate, 'dd/MM/yyyy')}{' '}
+          {formatDateOnly(buyer.birthDate)}{' '}
           <span className='text-sm'>({buyer.age} años)</span>
         </p>
       </div>
