@@ -4,7 +4,6 @@ export const SINGLE_TENANT_ENV_KEYS = [
   'INSTANCE_WEB_URL',
   'MP_ACCESS_TOKEN',
   'MP_REFRESH_TOKEN',
-  'MP_SECRET_KEY',
   'NEXT_PUBLIC_FAVICON_URL',
   'NEXT_PUBLIC_HUE',
   'NEXT_PUBLIC_INSTANCE_DESCRIPTION',
@@ -20,14 +19,14 @@ export type SingleTenantConfig = {
   name: string;
   publicUrl: string;
   siteUrl: string;
-  contactEmail?: string;
-  description?: string;
-  faviconUrl?: string;
+  contactEmail: string;
+  description: string;
+  faviconUrl: string;
   hue: number;
   saturation: number;
-  mercadoPagoAccessToken?: string;
-  mercadoPagoRefreshToken?: string;
-  mercadoPagoSecretKey?: string;
+  mercadoPagoAccessToken: string;
+  mercadoPagoRefreshToken: string;
+  mercadoPagoSecretKey: string;
 };
 
 function readOptionalValue(environment: EnvironmentVariables, key: string) {
@@ -59,21 +58,25 @@ export function createSingleTenantConfig(
     name: readRequiredValue(environment, 'NEXT_PUBLIC_INSTANCE_NAME'),
     publicUrl,
     siteUrl: normalizePublicUrl(
-      readOptionalValue(environment, 'NEXT_PUBLIC_SITE_URL') ?? publicUrl,
+      readRequiredValue(environment, 'NEXT_PUBLIC_SITE_URL'),
       'NEXT_PUBLIC_SITE_URL',
     ),
-    contactEmail: readOptionalValue(environment, 'INSTANCE_CONTACT_EMAIL'),
-    description: readOptionalValue(
+    contactEmail: readRequiredValue(environment, 'INSTANCE_CONTACT_EMAIL'),
+    description: readRequiredValue(
       environment,
       'NEXT_PUBLIC_INSTANCE_DESCRIPTION',
     ),
-    faviconUrl: readOptionalValue(environment, 'NEXT_PUBLIC_FAVICON_URL'),
-    hue: readOptionalNumber(environment, 'NEXT_PUBLIC_HUE', 0, 360) ?? 200,
-    saturation:
-      readOptionalNumber(environment, 'NEXT_PUBLIC_SATURATION', 0, 100) ?? 100,
-    mercadoPagoAccessToken: readOptionalValue(environment, 'MP_ACCESS_TOKEN'),
-    mercadoPagoRefreshToken: readOptionalValue(environment, 'MP_REFRESH_TOKEN'),
-    mercadoPagoSecretKey: readOptionalValue(environment, 'MP_SECRET_KEY'),
+    faviconUrl: readRequiredValue(environment, 'NEXT_PUBLIC_FAVICON_URL'),
+    hue: readRequiredNumber(environment, 'NEXT_PUBLIC_HUE', 0, 360),
+    saturation: readRequiredNumber(
+      environment,
+      'NEXT_PUBLIC_SATURATION',
+      0,
+      100,
+    ),
+    mercadoPagoAccessToken: readRequiredValue(environment, 'MP_ACCESS_TOKEN'),
+    mercadoPagoRefreshToken: readRequiredValue(environment, 'MP_REFRESH_TOKEN'),
+    mercadoPagoSecretKey: readRequiredValue(environment, 'MP_SECRET_KEY'),
   };
 }
 
@@ -105,4 +108,15 @@ function readOptionalNumber(
   }
 
   return number;
+}
+
+function readRequiredNumber(
+  environment: EnvironmentVariables,
+  key: string,
+  minimum: number,
+  maximum: number,
+) {
+  const value = readOptionalNumber(environment, key, minimum, maximum);
+  if (value === undefined) throw new Error(`${key} is required`);
+  return value;
 }

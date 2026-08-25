@@ -1,22 +1,25 @@
 type EnvironmentVariables = Readonly<Record<string, string | undefined>>;
 
-const DEFAULT_LANDING = {
-  name: 'Nuestros Tickets',
-  description: 'Todas tus experiencias, en un solo lugar.',
-  color: '#7c3aed',
-} as const;
-
 export function getMultiTenantLandingConfig(
   environment: EnvironmentVariables = process.env,
 ) {
-  const color = environment.MULTI_TENANT_LANDING_COLOR?.trim();
+  const color = getRequiredValue(environment, 'MULTI_TENANT_LANDING_COLOR');
+  if (!/^#[\da-f]{6}$/i.test(color)) {
+    throw new Error('MULTI_TENANT_LANDING_COLOR must be a six-digit hex color');
+  }
 
   return {
-    name: environment.MULTI_TENANT_LANDING_NAME?.trim() || DEFAULT_LANDING.name,
-    description:
-      environment.MULTI_TENANT_LANDING_DESCRIPTION?.trim() ||
-      DEFAULT_LANDING.description,
-    color:
-      color && /^#[\da-f]{6}$/i.test(color) ? color : DEFAULT_LANDING.color,
+    name: getRequiredValue(environment, 'MULTI_TENANT_LANDING_NAME'),
+    description: getRequiredValue(
+      environment,
+      'MULTI_TENANT_LANDING_DESCRIPTION',
+    ),
+    color,
   };
+}
+
+function getRequiredValue(environment: EnvironmentVariables, key: string) {
+  const value = environment[key]?.trim();
+  if (!value) throw new Error(`${key} is required`);
+  return value;
 }

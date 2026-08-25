@@ -13,6 +13,7 @@
     "lint": "eslint --fix",
     "test:eslint-rule": "node tests/eslint/tenant-db-isolation.test.mjs",
     "test:instance-resolution": "node --test tests/instance-resolution.test.mjs",
+    "test:environment": "node --test tests/environment.test.mjs",
     "test:guide-videos": "node --test tests/guide-videos.test.mjs",
     "test:isolation": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/isolation/tenant-data-isolation.test.ts",
     "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-ticket-slug.ts",

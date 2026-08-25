@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
+import { getRequiredEnvironmentValue } from '@/lib/config/environment';
 import {
   getHostname,
   getRequestHost,
@@ -42,15 +43,14 @@ export async function resolveInstance(
       name: singleTenantConfig.name,
       publicUrl: singleTenantConfig.publicUrl,
       siteUrl: singleTenantConfig.siteUrl,
-      contactEmail: singleTenantConfig.contactEmail ?? null,
-      description: singleTenantConfig.description ?? null,
-      faviconUrl: singleTenantConfig.faviconUrl ?? null,
+      contactEmail: singleTenantConfig.contactEmail,
+      description: singleTenantConfig.description,
+      faviconUrl: singleTenantConfig.faviconUrl,
       hue: singleTenantConfig.hue,
       saturation: singleTenantConfig.saturation,
-      mercadoPagoAccessToken: singleTenantConfig.mercadoPagoAccessToken ?? null,
-      mercadoPagoRefreshToken:
-        singleTenantConfig.mercadoPagoRefreshToken ?? null,
-      mercadoPagoSecretKey: singleTenantConfig.mercadoPagoSecretKey ?? null,
+      mercadoPagoAccessToken: singleTenantConfig.mercadoPagoAccessToken,
+      mercadoPagoRefreshToken: singleTenantConfig.mercadoPagoRefreshToken,
+      mercadoPagoSecretKey: singleTenantConfig.mercadoPagoSecretKey,
       database: { url: singleTenantConfig.databaseUrl },
     };
   }
@@ -92,7 +92,10 @@ async function resolveMultiTenantInstance(
     saturation: tenant.saturation ?? 100,
     mercadoPagoAccessToken: tenant.mpAccessToken,
     mercadoPagoRefreshToken: tenant.mpRefreshToken,
-    mercadoPagoSecretKey: tenant.mpSecretKey,
+    mercadoPagoSecretKey: getRequiredEnvironmentValue(
+      process.env,
+      'MP_SECRET_KEY',
+    ),
     database: { name: tenant.databaseName },
   };
 }
@@ -110,7 +113,6 @@ export async function findTenantBySlug(slug: string) {
       saturation: tenants.saturation,
       mpAccessToken: tenants.mpAccessToken,
       mpRefreshToken: tenants.mpRefreshToken,
-      mpSecretKey: tenants.mpSecretKey,
       databaseName: tenants.databaseName,
       status: tenants.status,
     })

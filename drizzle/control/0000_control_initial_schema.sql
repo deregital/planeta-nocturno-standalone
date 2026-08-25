@@ -22,7 +22,6 @@ CREATE TABLE "tenants" (
 	"saturation" integer,
 	"mp_access_token" text,
 	"mp_refresh_token" text,
-	"mp_secret_key" text,
 	"created_by_control_admin_id" uuid,
 	"database_name" varchar(63),
 	"plan" "tenant_plan" DEFAULT 'free' NOT NULL,

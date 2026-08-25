@@ -146,12 +146,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "mp_secret_key": {
-          "name": "mp_secret_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_by_control_admin_id": {
           "name": "created_by_control_admin_id",
           "type": "uuid",

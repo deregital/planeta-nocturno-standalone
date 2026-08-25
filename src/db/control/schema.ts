@@ -42,7 +42,6 @@ export const tenants = pgTable('tenants', {
   saturation: integer(),
   mpAccessToken: text('mp_access_token'),
   mpRefreshToken: text('mp_refresh_token'),
-  mpSecretKey: text('mp_secret_key'),
   createdByControlAdminId: uuid('created_by_control_admin_id').references(
     () => controlAdmins.id,
     { onDelete: 'set null' },
