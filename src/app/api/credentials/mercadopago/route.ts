@@ -10,6 +10,7 @@ import { verifySignedRequest } from '@/server/security/signed-request';
 const credentialsSchema = z.object({
   accessToken: z.string().min(1),
   refreshToken: z.string().min(1),
+  accessTokenExpiresAt: z.iso.datetime().optional(),
 });
 
 export async function POST(request: Request) {
@@ -40,6 +41,9 @@ export async function POST(request: Request) {
     .set({
       mpAccessToken: credentials.data.accessToken,
       mpRefreshToken: credentials.data.refreshToken,
+      mpAccessTokenExpiresAt: credentials.data.accessTokenExpiresAt
+        ? new Date(credentials.data.accessTokenExpiresAt)
+        : null,
       updatedAt: new Date(),
     })
     .where(and(eq(tenants.id, instance.tenantId), eq(tenants.status, 'active')))

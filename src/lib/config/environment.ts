@@ -4,6 +4,7 @@ import { normalizeRootDomain } from '../tenancy/host';
 import {
   createSingleTenantConfig,
   SINGLE_TENANT_ENV_KEYS,
+  SINGLE_TENANT_REQUIRED_ENV_KEYS,
 } from './single-tenant-config';
 /* eslint-enable no-restricted-imports */
 
@@ -42,7 +43,7 @@ export function validateEnvironment(
   const mode = getEnvironmentMode(environment);
   const modeKeys =
     mode === 'single-tenant'
-      ? SINGLE_TENANT_ENV_KEYS
+      ? SINGLE_TENANT_REQUIRED_ENV_KEYS
       : MULTI_TENANT_REQUIRED_ENV_KEYS;
   const issues = findMissingKeys(environment, [
     ...SHARED_REQUIRED_ENV_KEYS,
@@ -60,7 +61,9 @@ export function validateEnvironment(
       );
     }
 
-    if (findMissingKeys(environment, SINGLE_TENANT_ENV_KEYS).length === 0) {
+    if (
+      findMissingKeys(environment, SINGLE_TENANT_REQUIRED_ENV_KEYS).length === 0
+    ) {
       try {
         createSingleTenantConfig(environment);
       } catch (error) {

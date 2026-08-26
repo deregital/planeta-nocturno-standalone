@@ -1,0 +1,1 @@
+ALTER TABLE "tenants" ADD COLUMN "mp_access_token_expires_at" timestamp with time zone;

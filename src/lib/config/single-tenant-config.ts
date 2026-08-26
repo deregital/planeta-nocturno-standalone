@@ -3,6 +3,7 @@ export const SINGLE_TENANT_ENV_KEYS = [
   'INSTANCE_CONTACT_EMAIL',
   'INSTANCE_WEB_URL',
   'MP_ACCESS_TOKEN',
+  'MP_ACCESS_TOKEN_EXPIRES_AT',
   'MP_REFRESH_TOKEN',
   'NEXT_PUBLIC_FAVICON_URL',
   'NEXT_PUBLIC_HUE',
@@ -11,6 +12,10 @@ export const SINGLE_TENANT_ENV_KEYS = [
   'NEXT_PUBLIC_SATURATION',
   'NEXT_PUBLIC_SITE_URL',
 ] as const;
+
+export const SINGLE_TENANT_REQUIRED_ENV_KEYS = SINGLE_TENANT_ENV_KEYS.filter(
+  (key) => key !== 'MP_ACCESS_TOKEN_EXPIRES_AT',
+);
 
 type EnvironmentVariables = Readonly<Record<string, string | undefined>>;
 

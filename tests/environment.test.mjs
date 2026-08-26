@@ -39,7 +39,8 @@ const {
   SHARED_REQUIRED_ENV_KEYS,
   validateEnvironment,
 } = await import(environmentUrl);
-const { SINGLE_TENANT_ENV_KEYS } = await import(singleTenantConfigUrl);
+const { SINGLE_TENANT_ENV_KEYS, SINGLE_TENANT_REQUIRED_ENV_KEYS } =
+  await import(singleTenantConfigUrl);
 
 const sharedEnvironment = Object.fromEntries(
   SHARED_REQUIRED_ENV_KEYS.map((key) => [key, `${key}-value`]),
@@ -93,13 +94,23 @@ test('requiere cada variable compartida', () => {
   }
 });
 
-test('requiere cada variable single-tenant', () => {
-  for (const key of SINGLE_TENANT_ENV_KEYS) {
+test('requiere cada variable single-tenant obligatoria', () => {
+  for (const key of SINGLE_TENANT_REQUIRED_ENV_KEYS) {
     assert.throws(
       () => validateEnvironment({ ...singleTenantEnvironment, [key]: '' }),
       new RegExp(`${key} is required`),
     );
   }
+});
+
+test('permite credenciales existentes sin fecha de vencimiento', () => {
+  assert.equal(
+    validateEnvironment({
+      ...singleTenantEnvironment,
+      MP_ACCESS_TOKEN_EXPIRES_AT: '',
+    }),
+    'single-tenant',
+  );
 });
 
 test('requiere cada variable multi-tenant', () => {
