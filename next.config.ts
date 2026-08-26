@@ -6,7 +6,12 @@ import { validateEnvironment } from '@/lib/config/environment';
 
 const config: NextConfig = {
   outputFileTracingIncludes: {
-    '/*': ['./drizzle/tenant/**/*'],
+    '/*': [
+      './prisma/migrations/**/*',
+      './prisma/schema.prisma',
+      './node_modules/prisma/build/**/*',
+      './node_modules/@prisma/engines/**/*',
+    ],
   },
   images: {
     remotePatterns: [

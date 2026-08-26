@@ -1,12 +1,16 @@
 import 'server-only';
 
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Pool } from 'pg';
-
-const TENANT_MIGRATIONS_FOLDER = path.join(process.cwd(), 'drizzle', 'tenant');
+const PRISMA_SCHEMA = path.join(process.cwd(), 'prisma', 'schema.prisma');
+const PRISMA_CLI = path.join(
+  process.cwd(),
+  'node_modules',
+  'prisma',
+  'build',
+  'index.js',
+);
 
 export class TenantMigrationError extends Error {
   constructor(cause: unknown) {
@@ -16,15 +20,32 @@ export class TenantMigrationError extends Error {
 }
 
 export async function migrateTenantDatabase(connectionString: string) {
-  const pool = new Pool({ connectionString, max: 1 });
-
   try {
-    await migrate(drizzle(pool), {
-      migrationsFolder: TENANT_MIGRATIONS_FOLDER,
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn(
+        process.execPath,
+        [PRISMA_CLI, 'migrate', 'deploy', '--schema', PRISMA_SCHEMA],
+        {
+          env: { ...process.env, DATABASE_URL: connectionString },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+      let output = '';
+
+      child.stdout.on('data', (chunk: Buffer) => {
+        output += chunk.toString();
+      });
+      child.stderr.on('data', (chunk: Buffer) => {
+        output += chunk.toString();
+      });
+      child.once('error', reject);
+      child.once('exit', (code) => {
+        if (code === 0) resolve();
+        else
+          reject(new Error(output.trim() || `Prisma exited with code ${code}`));
+      });
     });
   } catch (error) {
     throw new TenantMigrationError(error);
-  } finally {
-    await pool.end();
   }
 }
