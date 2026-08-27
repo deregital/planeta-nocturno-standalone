@@ -47,17 +47,14 @@ const statusStyles = {
   deleted: 'bg-gray-200 text-gray-700',
 } as const;
 
-const visibleStatuses = [
-  'provisioning',
+const filterStatuses = [
   'active',
   'suspended',
-  'failed',
-  'deleting',
 ] as const satisfies readonly TenantLifecycleStatus[];
 
 type SortColumn = 'name' | 'slug' | 'status' | 'creator' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
-type StatusFilter = 'all' | (typeof visibleStatuses)[number];
+type StatusFilter = 'all' | (typeof filterStatuses)[number];
 
 type TenantRow = {
   id: number;
@@ -145,7 +142,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value='all'>Todos</SelectItem>
-              {visibleStatuses.map((value) => (
+              {filterStatuses.map((value) => (
                 <SelectItem key={value} value={value}>
                   {statusLabels[value]}
                 </SelectItem>
