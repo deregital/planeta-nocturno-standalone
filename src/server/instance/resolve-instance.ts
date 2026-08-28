@@ -4,7 +4,6 @@ import { eq } from 'drizzle-orm';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import { getRequiredEnvironmentValue } from '@/lib/config/environment';
 import {
   getHostname,
   getRequestHost,
@@ -27,7 +26,6 @@ export type ResolvedInstance = {
   saturation: number;
   mercadoPagoAccessToken: string | null;
   mercadoPagoRefreshToken: string | null;
-  mercadoPagoSecretKey: string | null;
   database: { url: string } | { name: string };
 };
 
@@ -50,7 +48,6 @@ export async function resolveInstance(
       saturation: singleTenantConfig.saturation,
       mercadoPagoAccessToken: singleTenantConfig.mercadoPagoAccessToken,
       mercadoPagoRefreshToken: singleTenantConfig.mercadoPagoRefreshToken,
-      mercadoPagoSecretKey: singleTenantConfig.mercadoPagoSecretKey,
       database: { url: singleTenantConfig.databaseUrl },
     };
   }
@@ -92,10 +89,6 @@ async function resolveMultiTenantInstance(
     saturation: tenant.saturation ?? 100,
     mercadoPagoAccessToken: tenant.mpAccessToken,
     mercadoPagoRefreshToken: tenant.mpRefreshToken,
-    mercadoPagoSecretKey: getRequiredEnvironmentValue(
-      process.env,
-      'MP_SECRET_KEY',
-    ),
     database: { name: tenant.databaseName },
   };
 }

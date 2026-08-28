@@ -48,7 +48,6 @@ test('crea y normaliza la configuración single-tenant', () => {
       INSTANCE_WEB_URL: 'cliente.example.com',
       MP_ACCESS_TOKEN: ' access-token ',
       MP_REFRESH_TOKEN: ' refresh-token ',
-      MP_SECRET_KEY: ' secret-key ',
       NEXT_PUBLIC_FAVICON_URL: 'https://cliente.example.com/favicon.ico',
       NEXT_PUBLIC_HUE: '210',
       NEXT_PUBLIC_INSTANCE_DESCRIPTION: ' Descripción ',
@@ -68,7 +67,6 @@ test('crea y normaliza la configuración single-tenant', () => {
       saturation: 80,
       mercadoPagoAccessToken: 'access-token',
       mercadoPagoRefreshToken: 'refresh-token',
-      mercadoPagoSecretKey: 'secret-key',
     },
   );
 });

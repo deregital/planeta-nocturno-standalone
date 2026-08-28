@@ -134,7 +134,7 @@ test('valida el email de contacto multi-tenant', () => {
   );
 });
 
-test('MP_SECRET_KEY compartida no activa el modo single-tenant', () => {
+test('las variables compartidas no activan el modo single-tenant', () => {
   assert.throws(
     () => validateEnvironment(sharedEnvironment),
     /Invalid multi-tenant environment/,
@@ -143,7 +143,7 @@ test('MP_SECRET_KEY compartida no activa el modo single-tenant', () => {
 
 test('informa todas las variables faltantes sin mostrar valores', () => {
   assert.throws(
-    () => validateEnvironment({ MP_SECRET_KEY: 'private-value' }),
+    () => validateEnvironment({ AUTH_SECRET: 'private-value' }),
     (error) => {
       assert.ok(error instanceof Error);
       assert.match(error.message, /CONTROL_DATABASE_URL is required/);

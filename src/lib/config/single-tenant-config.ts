@@ -31,7 +31,6 @@ export type SingleTenantConfig = {
   saturation: number;
   mercadoPagoAccessToken: string;
   mercadoPagoRefreshToken: string;
-  mercadoPagoSecretKey: string;
 };
 
 function readOptionalValue(environment: EnvironmentVariables, key: string) {
@@ -81,7 +80,6 @@ export function createSingleTenantConfig(
     ),
     mercadoPagoAccessToken: readRequiredValue(environment, 'MP_ACCESS_TOKEN'),
     mercadoPagoRefreshToken: readRequiredValue(environment, 'MP_REFRESH_TOKEN'),
-    mercadoPagoSecretKey: readRequiredValue(environment, 'MP_SECRET_KEY'),
   };
 }
 
