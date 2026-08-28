@@ -13,8 +13,16 @@ export const SINGLE_TENANT_ENV_KEYS = [
   'NEXT_PUBLIC_SITE_URL',
 ] as const;
 
+export const SINGLE_TENANT_OPTIONAL_ENV_KEYS = [
+  'MP_ACCESS_TOKEN',
+  'MP_ACCESS_TOKEN_EXPIRES_AT',
+  'MP_REFRESH_TOKEN',
+  'NEXT_PUBLIC_FAVICON_URL',
+] as const;
+
 export const SINGLE_TENANT_REQUIRED_ENV_KEYS = SINGLE_TENANT_ENV_KEYS.filter(
-  (key) => key !== 'MP_ACCESS_TOKEN_EXPIRES_AT',
+  (key) =>
+    !SINGLE_TENANT_OPTIONAL_ENV_KEYS.some((optionalKey) => optionalKey === key),
 );
 
 type EnvironmentVariables = Readonly<Record<string, string | undefined>>;
@@ -26,11 +34,11 @@ export type SingleTenantConfig = {
   siteUrl: string;
   contactEmail: string;
   description: string;
-  faviconUrl: string;
+  faviconUrl: string | null;
   hue: number;
   saturation: number;
-  mercadoPagoAccessToken: string;
-  mercadoPagoRefreshToken: string;
+  mercadoPagoAccessToken: string | null;
+  mercadoPagoRefreshToken: string | null;
 };
 
 function readOptionalValue(environment: EnvironmentVariables, key: string) {
@@ -70,7 +78,8 @@ export function createSingleTenantConfig(
       environment,
       'NEXT_PUBLIC_INSTANCE_DESCRIPTION',
     ),
-    faviconUrl: readRequiredValue(environment, 'NEXT_PUBLIC_FAVICON_URL'),
+    faviconUrl:
+      readOptionalValue(environment, 'NEXT_PUBLIC_FAVICON_URL') ?? null,
     hue: readRequiredNumber(environment, 'NEXT_PUBLIC_HUE', 0, 360),
     saturation: readRequiredNumber(
       environment,
@@ -78,8 +87,10 @@ export function createSingleTenantConfig(
       0,
       100,
     ),
-    mercadoPagoAccessToken: readRequiredValue(environment, 'MP_ACCESS_TOKEN'),
-    mercadoPagoRefreshToken: readRequiredValue(environment, 'MP_REFRESH_TOKEN'),
+    mercadoPagoAccessToken:
+      readOptionalValue(environment, 'MP_ACCESS_TOKEN') ?? null,
+    mercadoPagoRefreshToken:
+      readOptionalValue(environment, 'MP_REFRESH_TOKEN') ?? null,
   };
 }
 
