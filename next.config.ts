@@ -9,13 +9,10 @@ const config: NextConfig = {
     '/*': [
       './prisma/migrations/**/*',
       './prisma/schema.prisma',
-      './node_modules/prisma/build/**/*',
+      './node_modules/prisma/**/*',
       './node_modules/@prisma/**/*',
       './node_modules/@standard-schema/**/*',
-      './node_modules/effect/**/*',
-      './node_modules/empathic/**/*',
-      './node_modules/fast-check/**/*',
-      './node_modules/pure-rand/**/*',
+      './node_modules/{c12,chokidar,citty,confbox,consola,deepmerge-ts,defu,destr,dotenv,effect,empathic,exsolve,fast-check,giget,jiti,node-fetch-native,nypm,ohash,pathe,perfect-debounce,pkg-types,pure-rand,rc9,readdirp,tinyexec}/**/*',
     ],
   },
   images: {

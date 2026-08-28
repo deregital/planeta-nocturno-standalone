@@ -1,12 +1,16 @@
 import 'server-only';
 
-import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 
 const PRISMA_SCHEMA = path.join(process.cwd(), 'prisma', 'schema.prisma');
-const nodeRequire = createRequire(import.meta.url);
-const PRISMA_CLI = nodeRequire.resolve('prisma/build/index.js');
+const PRISMA_CLI = path.join(
+  process.cwd(),
+  'node_modules',
+  'prisma',
+  'build',
+  'index.js',
+);
 
 export class TenantMigrationError extends Error {
   constructor(cause: unknown) {
