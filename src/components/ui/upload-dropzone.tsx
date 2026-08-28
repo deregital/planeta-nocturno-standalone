@@ -19,6 +19,7 @@ type UploadDropzoneProps = {
       }
     | string;
   className?: string;
+  label?: string;
   uploadOverride?: (
     ...args: Parameters<UploadHookControl<true>['upload']>
   ) => void;
@@ -33,6 +34,7 @@ export function UploadDropzone({
   description,
   uploadOverride,
   className,
+  label = 'Agregar flyer',
 }: UploadDropzoneProps) {
   const id = useId();
 
@@ -82,7 +84,7 @@ export function UploadDropzone({
 
         <div className='mt-3 space-y-1 text-center text-accent'>
           <p className='text-sm font-bold underline group-hover:underline-offset-2 transition-all'>
-            Agregar flyer
+            {label}
           </p>
 
           <p className='text-muted-foreground max-w-64 text-xs'>

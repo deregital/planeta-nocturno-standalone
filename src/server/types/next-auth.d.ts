@@ -1,6 +1,6 @@
 import { type DefaultSession } from 'next-auth';
 
-import { type role as roleEnum } from '@/drizzle/schema';
+import { type AppRole } from '@/lib/auth/roles';
 
 declare module 'next-auth' {
   interface Session {
@@ -9,7 +9,8 @@ declare module 'next-auth' {
       name: string;
       email: string;
       emailVerified: Date | null;
-      role: (typeof roleEnum.enumValues)[number];
+      role: AppRole;
+      tenantSlug: string | null;
       fullName: string;
       image: string | null;
     } & DefaultSession['user'];
@@ -19,9 +20,16 @@ declare module 'next-auth' {
     id: string;
     name: string;
     email: string;
-    role: (typeof roleEnum.enumValues)[number];
+    role: AppRole;
+    tenantSlug: string | null;
     fullName: string;
     emailVerified: Date | null;
     image: string | null;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    tenantSlug?: string | null;
   }
 }

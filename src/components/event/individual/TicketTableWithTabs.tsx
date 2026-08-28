@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { SearchTickets } from '@/components/event/individual/SearchTickets';
 import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
+import { useInstance } from '@/components/instance/InstanceProvider';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { trpc } from '@/server/trpc/client';
@@ -41,6 +42,7 @@ export function TicketTableWithTabs({
     hasQuestions?: boolean;
   };
 }) {
+  const { siteUrl } = useInstance();
   const { data: tickets } = trpc.emittedTickets.getByEventId.useQuery(
     {
       eventId: ticketTypes[0].eventId,
@@ -115,11 +117,7 @@ export function TicketTableWithTabs({
   }, [tab, tabItems]);
 
   const copyTicketTypeUrl = (ticketTypeSlug: string) => {
-    const origin =
-      typeof window !== 'undefined'
-        ? window.location.origin
-        : process.env.NEXT_PUBLIC_SITE_URL || '';
-    const url = `${origin}/event/${event.slug}?${myCode ? `${ORGANIZER_CODE_QUERY_PARAM}=${myCode}&` : ''}${TICKET_TYPE_SLUG_QUERY_PARAM}=${ticketTypeSlug}`;
+    const url = `${siteUrl}/event/${event.slug}?${myCode ? `${ORGANIZER_CODE_QUERY_PARAM}=${myCode}&` : ''}${TICKET_TYPE_SLUG_QUERY_PARAM}=${ticketTypeSlug}`;
     navigator.clipboard.writeText(url);
     toast.success('URL copiada al portapapeles');
   };

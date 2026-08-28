@@ -13,6 +13,7 @@ import {
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
+import { dateOnlyToLocalDate, dateToDateOnlyString } from '@/lib/date-only';
 import {
   createManyTicketSchema,
   createTicketSchema,
@@ -94,7 +95,7 @@ export const emittedTicketsRouter = router({
             .insert(emittedTicket)
             .values({
               ...input,
-              birthDate: input.birthDate.toISOString(),
+              birthDate: dateToDateOnlyString(input.birthDate),
               ticketGroupId: ticketGroupCreated.id,
               slug,
             })
@@ -160,7 +161,7 @@ export const emittedTicketsRouter = router({
 
           return {
             ...ticket,
-            birthDate: ticket.birthDate.toISOString(),
+            birthDate: dateToDateOnlyString(ticket.birthDate),
             slug,
             eventId: ticket.eventId ?? '',
           };
@@ -233,7 +234,10 @@ export const emittedTicketsRouter = router({
 
     const dataWithAge = data.map((buyer) => ({
       ...buyer,
-      age: differenceInYears(new Date(), buyer.birthDate).toString(),
+      age: differenceInYears(
+        new Date(),
+        dateOnlyToLocalDate(buyer.birthDate),
+      ).toString(),
       buyerCode:
         buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
         '---',
@@ -264,7 +268,10 @@ export const emittedTicketsRouter = router({
 
       const dataWithAge = data.map((buyer) => ({
         ...buyer,
-        age: differenceInYears(new Date(), buyer.birthDate).toString(),
+        age: differenceInYears(
+          new Date(),
+          dateOnlyToLocalDate(buyer.birthDate),
+        ).toString(),
         buyerCode:
           buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
           '---',
@@ -324,7 +331,7 @@ export const emittedTicketsRouter = router({
         ...buyer,
         age: differenceInYears(
           new Date(),
-          new Date(buyer.birthDate),
+          dateOnlyToLocalDate(buyer.birthDate),
         ).toString(),
         buyerCode:
           buyerCode?.find((code) => code.dni === buyer.dni)?.id.toString() ||
@@ -364,19 +371,23 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      const blob = await generatePdf({
-        eventName: ticket.ticketGroup.event.name,
-        startingDate: ticket.ticketType.startingDate,
-        eventLocation: ticket.ticketGroup.event.location?.address ?? '',
-        ticketType: ticket.ticketType.name,
-        createdAt: ticket.createdAt,
-        dni: ticket.dni,
-        fullName: ticket.fullName,
-        id: ticket.id,
-        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
-        slug: ticket.slug,
-        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
-      });
+      const blob = await generatePdf(
+        {
+          eventName: ticket.ticketGroup.event.name,
+          startingDate: ticket.ticketType.startingDate,
+          eventLocation: ticket.ticketGroup.event.location?.address ?? '',
+          ticketType: ticket.ticketType.name,
+          createdAt: ticket.createdAt,
+          dni: ticket.dni,
+          fullName: ticket.fullName,
+          id: ticket.id,
+          invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
+          slug: ticket.slug,
+          ticketSlugVisibleInPdf:
+            ticket.ticketGroup.event.ticketSlugVisibleInPdf,
+        },
+        ctx.instance,
+      );
 
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
@@ -725,21 +736,25 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      const pdf = await generatePdf({
-        eventName: ticket.ticketGroup.event.name,
-        startingDate: ticket.ticketType.startingDate,
-        eventLocation: ticket.ticketGroup.event.location?.address ?? '',
-        ticketType: ticket.ticketType.name,
-        createdAt: ticket.createdAt,
-        dni: ticket.dni,
-        fullName: ticket.fullName,
-        id: ticket.id,
-        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
-        slug: ticket.slug,
-        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
-      });
+      const pdf = await generatePdf(
+        {
+          eventName: ticket.ticketGroup.event.name,
+          startingDate: ticket.ticketType.startingDate,
+          eventLocation: ticket.ticketGroup.event.location?.address ?? '',
+          ticketType: ticket.ticketType.name,
+          createdAt: ticket.createdAt,
+          dni: ticket.dni,
+          fullName: ticket.fullName,
+          id: ticket.id,
+          invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
+          slug: ticket.slug,
+          ticketSlugVisibleInPdf:
+            ticket.ticketGroup.event.ticketSlugVisibleInPdf,
+        },
+        ctx.instance,
+      );
 
-      const { data, error } = await sendMail({
+      const { data, error } = await sendMail(ctx.instance, {
         to: ticket.mail,
         subject: `Ticket de ${ticket.ticketGroup.event.name}`,
         body: `Hola ${ticket.fullName}, te enviamos tu ticket de ${ticket.ticketGroup.event.name}`,

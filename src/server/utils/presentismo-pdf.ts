@@ -228,8 +228,11 @@ const commonSchema = [
   },
 ];
 
-export function presentismoPDFSchema(): Template {
-  const { accentColor, textOnAccent } = getColorsAsHex();
+export function presentismoPDFSchema(
+  hue: number,
+  saturation: number,
+): Template {
+  const { accentColor, textOnAccent } = getColorsAsHex(hue, saturation);
   return {
     schemas: [
       [
@@ -292,8 +295,10 @@ export function presentismoPDFSchema(): Template {
 
 export function presentismoPDFSchemaGroupedTicketType(
   ticketTypes: Array<{ ticketType: string; tickets: EmittedTicket[] }>,
+  hue: number,
+  saturation: number,
 ): Template {
-  const { accentLight, textOnAccent } = getColorsAsHex();
+  const { accentLight, textOnAccent } = getColorsAsHex(hue, saturation);
   const TEXT_HEIGHT = 10;
   const ROW_HEIGHT = 52.932;
   let offset = 52.96; // Increased from 25.96 to give more top margin

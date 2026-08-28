@@ -8,6 +8,8 @@ import importPlugin from 'eslint-plugin-import';
 import unusedImportPlugin from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 
+import tenantDbIsolationRule from './eslint/rules/tenant-db-isolation.mjs';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -25,7 +27,7 @@ const eslintConfig = [
       'public',
       'src/generated',
       'next-env.d.ts',
-      'src/drizzle/'
+      'src/drizzle/',
     ],
   },
   {
@@ -41,8 +43,14 @@ const eslintConfig = [
       '@typescript-eslint': tsPlugin,
       'unused-imports': unusedImportPlugin,
       import: importPlugin,
+      'tenant-isolation': {
+        rules: {
+          'no-cross-database-query': tenantDbIsolationRule,
+        },
+      },
     },
     rules: {
+      'tenant-isolation/no-cross-database-query': 'error',
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
@@ -101,6 +109,12 @@ const eslintConfig = [
           'newlines-between': 'always',
         },
       ],
+    },
+  },
+  {
+    files: ['eslint.config.mjs', 'eslint/**/*.mjs', 'tests/eslint/**/*.mjs'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
 ];

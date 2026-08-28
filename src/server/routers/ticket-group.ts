@@ -481,19 +481,23 @@ export const ticketGroupRouter = router({
         });
       }
 
-      const blob = await generatePdf({
-        eventName: ticket.ticketGroup.event.name,
-        startingDate: ticket.ticketType.startingDate,
-        eventLocation: ticket.ticketGroup.event.location.address,
-        createdAt: ticket.createdAt,
-        dni: ticket.dni,
-        fullName: ticket.fullName,
-        id: ticket.id,
-        ticketType: ticket.ticketType.name,
-        invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
-        slug: ticket.slug,
-        ticketSlugVisibleInPdf: ticket.ticketGroup.event.ticketSlugVisibleInPdf,
-      });
+      const blob = await generatePdf(
+        {
+          eventName: ticket.ticketGroup.event.name,
+          startingDate: ticket.ticketType.startingDate,
+          eventLocation: ticket.ticketGroup.event.location.address,
+          createdAt: ticket.createdAt,
+          dni: ticket.dni,
+          fullName: ticket.fullName,
+          id: ticket.id,
+          ticketType: ticket.ticketType.name,
+          invitedBy: ticket.ticketGroup.user?.fullName ?? '-',
+          slug: ticket.slug,
+          ticketSlugVisibleInPdf:
+            ticket.ticketGroup.event.ticketSlugVisibleInPdf,
+        },
+        ctx.instance,
+      );
 
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
@@ -548,19 +552,22 @@ export const ticketGroupRouter = router({
 
       const results = await Promise.all(
         group.emittedTickets.map(async (ticket) => {
-          const blob = await generatePdf({
-            eventName: group.event.name,
-            startingDate: ticket.ticketType.startingDate,
-            eventLocation: group.event.location?.address ?? '',
-            createdAt: ticket.createdAt,
-            dni: ticket.dni,
-            fullName: ticket.fullName,
-            id: ticket.id,
-            ticketType: ticket.ticketType.name,
-            invitedBy: group.user?.fullName ?? '-',
-            slug: ticket.slug,
-            ticketSlugVisibleInPdf: group.event.ticketSlugVisibleInPdf,
-          });
+          const blob = await generatePdf(
+            {
+              eventName: group.event.name,
+              startingDate: ticket.ticketType.startingDate,
+              eventLocation: group.event.location?.address ?? '',
+              createdAt: ticket.createdAt,
+              dni: ticket.dni,
+              fullName: ticket.fullName,
+              id: ticket.id,
+              ticketType: ticket.ticketType.name,
+              invitedBy: group.user?.fullName ?? '-',
+              slug: ticket.slug,
+              ticketSlugVisibleInPdf: group.event.ticketSlugVisibleInPdf,
+            },
+            ctx.instance,
+          );
           return {
             ticket: {
               id: ticket.id,

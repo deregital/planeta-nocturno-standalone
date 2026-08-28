@@ -35,6 +35,7 @@ import {
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
+import { dateOnlyToLocalDate } from '@/lib/date-only';
 import { genderTranslation } from '@/lib/translations';
 import {
   createEventSchema,
@@ -826,25 +827,29 @@ export const eventsRouter = router({
                 }
 
                 if (sendOrganizerTicketEmail) {
-                  const pdf = await generatePdf({
-                    id: organizerEmittedTicket.id,
-                    invitedBy:
-                      organizerEmittedTicket.ticketGroup.user?.fullName ?? '-',
-                    slug: organizerEmittedTicket.slug,
-                    eventName: organizerEmittedTicket.event.name,
-                    startingDate:
-                      organizerEmittedTicket.ticketType.startingDate,
-                    eventLocation:
-                      organizerEmittedTicket.event.location.address,
-                    fullName: organizerEmittedTicket.fullName,
-                    dni: organizerEmittedTicket.dni,
-                    createdAt: organizerEmittedTicket.createdAt,
-                    ticketType: organizerEmittedTicket.ticketType.name,
-                    ticketSlugVisibleInPdf:
-                      organizerEmittedTicket.event.ticketSlugVisibleInPdf,
-                  });
+                  const pdf = await generatePdf(
+                    {
+                      id: organizerEmittedTicket.id,
+                      invitedBy:
+                        organizerEmittedTicket.ticketGroup.user?.fullName ??
+                        '-',
+                      slug: organizerEmittedTicket.slug,
+                      eventName: organizerEmittedTicket.event.name,
+                      startingDate:
+                        organizerEmittedTicket.ticketType.startingDate,
+                      eventLocation:
+                        organizerEmittedTicket.event.location.address,
+                      fullName: organizerEmittedTicket.fullName,
+                      dni: organizerEmittedTicket.dni,
+                      createdAt: organizerEmittedTicket.createdAt,
+                      ticketType: organizerEmittedTicket.ticketType.name,
+                      ticketSlugVisibleInPdf:
+                        organizerEmittedTicket.event.ticketSlugVisibleInPdf,
+                    },
+                    ctx.instance,
+                  );
 
-                  await sendMail({
+                  await sendMail(ctx.instance, {
                     to: org.email,
                     subject: `Ticket de ${organizerEmittedTicket.event.name}`,
                     body: `Hola ${organizerEmittedTicket.fullName}, te enviamos tu ticket de Organizador para ${organizerEmittedTicket.event.name}`,
@@ -1268,21 +1273,24 @@ export const eventsRouter = router({
                     if (!emittedTicket) {
                       throw new Error('Ticket no encontrado');
                     }
-                    const pdf = await generatePdf({
-                      id: emittedTicket.id,
-                      invitedBy: '-',
-                      slug: emittedTicket.slug,
-                      eventName: eventUpdated.name,
-                      startingDate: organizerTicketType.startingDate,
-                      fullName: org.fullName,
-                      dni: org.dni,
-                      createdAt: emittedTicket.createdAt,
-                      ticketType: organizerTicketType.name,
-                      eventLocation: eventLocation?.address ?? '-',
-                      ticketSlugVisibleInPdf:
-                        eventUpdated.ticketSlugVisibleInPdf,
-                    });
-                    await sendMail({
+                    const pdf = await generatePdf(
+                      {
+                        id: emittedTicket.id,
+                        invitedBy: '-',
+                        slug: emittedTicket.slug,
+                        eventName: eventUpdated.name,
+                        startingDate: organizerTicketType.startingDate,
+                        fullName: org.fullName,
+                        dni: org.dni,
+                        createdAt: emittedTicket.createdAt,
+                        ticketType: organizerTicketType.name,
+                        eventLocation: eventLocation?.address ?? '-',
+                        ticketSlugVisibleInPdf:
+                          eventUpdated.ticketSlugVisibleInPdf,
+                      },
+                      ctx.instance,
+                    );
+                    await sendMail(ctx.instance, {
                       to: org.email,
                       subject: `Ticket de ${eventUpdated.name}`,
                       body: `Hola ${org.fullName}, te enviamos tu ticket de Organizador para ${eventUpdated.name}`,
@@ -1369,24 +1377,28 @@ export const eventsRouter = router({
                     });
 
                   if (sendOrganizerTicketEmail && organizerEmittedTicketFull) {
-                    const pdf = await generatePdf({
-                      id: organizerEmittedTicketFull.id,
-                      invitedBy: '-',
-                      slug: organizerEmittedTicketFull.slug,
-                      eventName: organizerEmittedTicketFull.event.name,
-                      startingDate:
-                        organizerEmittedTicketFull.ticketType.startingDate,
-                      eventLocation:
-                        organizerEmittedTicketFull.event.location.address,
-                      fullName: organizerEmittedTicketFull.fullName,
-                      dni: organizerEmittedTicketFull.dni,
-                      createdAt: organizerEmittedTicketFull.createdAt,
-                      ticketType: organizerEmittedTicketFull.ticketType.name,
-                      ticketSlugVisibleInPdf:
-                        organizerEmittedTicketFull.event.ticketSlugVisibleInPdf,
-                    });
+                    const pdf = await generatePdf(
+                      {
+                        id: organizerEmittedTicketFull.id,
+                        invitedBy: '-',
+                        slug: organizerEmittedTicketFull.slug,
+                        eventName: organizerEmittedTicketFull.event.name,
+                        startingDate:
+                          organizerEmittedTicketFull.ticketType.startingDate,
+                        eventLocation:
+                          organizerEmittedTicketFull.event.location.address,
+                        fullName: organizerEmittedTicketFull.fullName,
+                        dni: organizerEmittedTicketFull.dni,
+                        createdAt: organizerEmittedTicketFull.createdAt,
+                        ticketType: organizerEmittedTicketFull.ticketType.name,
+                        ticketSlugVisibleInPdf:
+                          organizerEmittedTicketFull.event
+                            .ticketSlugVisibleInPdf,
+                      },
+                      ctx.instance,
+                    );
 
-                    await sendMail({
+                    await sendMail(ctx.instance, {
                       to: org.email,
                       subject: `Ticket de ${organizerEmittedTicketFull.event.name}`,
                       body: `Hola ${organizerEmittedTicketFull.fullName}, te enviamos tu ticket de Organizador para ${organizerEmittedTicketFull.event.name}`,
@@ -1957,7 +1969,7 @@ export const eventsRouter = router({
 
       const pdfData: PDFDataOrderName = [
         {
-          qr: `${process.env.INSTANCE_WEB_URL}/admin/event/${event.slug}`,
+          qr: `${ctx.instance.publicUrl}/admin/event/${event.slug}`,
           ubicacion: event.location.address,
           nombre: event.name,
           fecha: formatInTimeZone(
@@ -2008,7 +2020,10 @@ export const eventsRouter = router({
 
       try {
         const pdf = await generate({
-          template: presentismoPDFSchema(),
+          template: presentismoPDFSchema(
+            ctx.instance.hue,
+            ctx.instance.saturation,
+          ),
           inputs: pdfData,
           plugins,
           options: {
@@ -2088,7 +2103,7 @@ export const eventsRouter = router({
                   t.gender as keyof typeof genderTranslation
                 ] ?? t.gender)
               : '',
-            t.birthDate ? new Date(t.birthDate) : '',
+            t.birthDate ? dateOnlyToLocalDate(t.birthDate) : '',
             t.createdAt ? new Date(t.createdAt) : '',
             t.scanned ? 'Sí' : 'No',
             t.ticketGroup.user?.fullName ?? '-',
@@ -2150,7 +2165,7 @@ export const eventsRouter = router({
 
       const pdfData: PDFDataGroupedTicketType = [
         {
-          qr: `${process.env.INSTANCE_WEB_URL}/admin/event/${event.slug}`,
+          qr: `${ctx.instance.publicUrl}/admin/event/${event.slug}`,
           ubicacion: event.location.address,
           nombre: event.name,
           fecha: formatInTimeZone(
@@ -2223,7 +2238,11 @@ export const eventsRouter = router({
 
       try {
         const pdf = await generate({
-          template: presentismoPDFSchemaGroupedTicketType(tickets),
+          template: presentismoPDFSchemaGroupedTicketType(
+            tickets,
+            ctx.instance.hue,
+            ctx.instance.saturation,
+          ),
           inputs: pdfData,
           plugins,
           options: {

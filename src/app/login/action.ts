@@ -1,10 +1,12 @@
 'use server';
 
 import { type Route } from 'next';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { auth, signIn } from '@/server/auth';
+import { isControlRequest } from '@/server/control/is-control-request';
 import { userSchema } from '@/server/schemas/user';
 import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
@@ -23,6 +25,7 @@ export async function authenticate(
   prevState: LoginActionState,
   formData: FormData,
 ): Promise<LoginActionState> {
+  const controlRequest = isControlRequest(new Headers(await headers()));
   const rawData: z.infer<typeof loginSchema> = {
     name: (formData.get('username') as string)?.trim(),
     password: formData.get('password') as string,
@@ -55,6 +58,8 @@ export async function authenticate(
       },
     };
   }
+
+  if (controlRequest) redirect('/');
 
   const session = await auth();
   const role = session?.user?.role;

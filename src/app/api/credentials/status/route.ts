@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server';
 
+import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { signPayload } from '@/server/security/signed-request';
 
-export async function GET() {
-  if (!process.env.INSTANCE_WEB_URL) {
-    return NextResponse.json(
-      { success: false, message: 'Missing INSTANCE_WEB_URL' },
-      { status: 500 },
-    );
-  }
-  const instanceWebUrl = new URL(`https://${process.env.INSTANCE_WEB_URL}`);
+export async function GET(request: Request) {
+  const { instance } = await resolveRequestContext(request.headers);
 
   if (!process.env.PLUTO_URL) {
     return NextResponse.json(
@@ -23,7 +18,7 @@ export async function GET() {
 
   try {
     const timestamp = Date.now().toString();
-    const rawBody = JSON.stringify({ projectUrl: instanceWebUrl });
+    const rawBody = JSON.stringify({ projectUrl: instance.publicUrl });
     const signature = signPayload(timestamp, rawBody);
 
     const response = await fetch(credentialsStatusUrl, {

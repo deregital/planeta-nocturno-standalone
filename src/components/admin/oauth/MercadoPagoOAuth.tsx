@@ -7,24 +7,29 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
+import { signPayload } from '@/server/security/signed-request';
 
-function getMercadoPagoAuthUrl() {
-  if (!process.env.PLUTO_URL || !process.env.INSTANCE_WEB_URL) {
-    return null;
-  }
+function getMercadoPagoAuthUrl(publicUrl: string) {
+  if (!process.env.PLUTO_URL) return null;
 
-  return `${process.env.PLUTO_URL}/oauth/start?instance_url=${encodeURIComponent(
-    process.env.INSTANCE_WEB_URL,
-  )}`;
+  const timestamp = Date.now().toString();
+  const signature = signPayload(timestamp, publicUrl);
+  if (!signature) return null;
+
+  const url = new URL('/oauth/start', process.env.PLUTO_URL);
+  url.searchParams.set('instance_url', publicUrl);
+  url.searchParams.set('timestamp', timestamp);
+  url.searchParams.set('signature', `sha256=${signature}`);
+  return url.toString();
 }
 
-export default function MercadoPagoOAuth() {
+export default async function MercadoPagoOAuth() {
+  const { instance } = await getCurrentRequestContext();
   const isConnected = Boolean(
-    process.env.MP_ACCESS_TOKEN &&
-      process.env.MP_SECRET_KEY &&
-      process.env.MP_REFRESH_TOKEN,
+    instance.mercadoPagoAccessToken && instance.mercadoPagoRefreshToken,
   );
-  const authUrl = getMercadoPagoAuthUrl();
+  const authUrl = getMercadoPagoAuthUrl(instance.publicUrl);
 
   return (
     <Card className='mx-4 bg-accent-ultra-light'>
