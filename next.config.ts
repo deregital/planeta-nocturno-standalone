@@ -6,14 +6,7 @@ import { validateEnvironment } from '@/lib/config/environment';
 
 const config: NextConfig = {
   outputFileTracingIncludes: {
-    '/*': [
-      './prisma/migrations/**/*',
-      './prisma/schema.prisma',
-      './node_modules/prisma/**/*',
-      './node_modules/@prisma/**/*',
-      './node_modules/@standard-schema/**/*',
-      './node_modules/{c12,chokidar,citty,confbox,consola,deepmerge-ts,defu,destr,dotenv,effect,empathic,exsolve,fast-check,giget,jiti,node-fetch-native,nypm,ohash,pathe,perfect-debounce,pkg-types,pure-rand,rc9,readdirp,tinyexec}/**/*',
-    ],
+    '/*': ['./prisma/migrations/**/*'],
   },
   images: {
     remotePatterns: [

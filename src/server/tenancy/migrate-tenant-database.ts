@@ -1,16 +1,28 @@
 import 'server-only';
 
-import { spawn } from 'node:child_process';
+import type { PoolClient } from 'pg';
+
+import { createHash, randomUUID } from 'node:crypto';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const PRISMA_SCHEMA = path.join(process.cwd(), 'prisma', 'schema.prisma');
-const PRISMA_CLI = path.join(
-  process.cwd(),
-  'node_modules',
-  'prisma',
-  'build',
-  'index.js',
-);
+import { Pool } from 'pg';
+
+const MIGRATIONS_DIRECTORY = path.join(process.cwd(), 'prisma', 'migrations');
+
+type Migration = {
+  name: string;
+  checksum: string;
+  sql: string;
+};
+
+type AppliedMigration = {
+  id: string;
+  checksum: string;
+  migrationName: string;
+  finishedAt: Date | null;
+  rolledBackAt: Date | null;
+};
 
 export class TenantMigrationError extends Error {
   constructor(cause: unknown) {
@@ -20,32 +32,130 @@ export class TenantMigrationError extends Error {
 }
 
 export async function migrateTenantDatabase(connectionString: string) {
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn(
-        process.execPath,
-        [PRISMA_CLI, 'migrate', 'deploy', '--schema', PRISMA_SCHEMA],
-        {
-          env: { ...process.env, DATABASE_URL: connectionString },
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
-      );
-      let output = '';
+  const pool = new Pool({ connectionString, max: 1 });
 
-      child.stdout.on('data', (chunk: Buffer) => {
-        output += chunk.toString();
-      });
-      child.stderr.on('data', (chunk: Buffer) => {
-        output += chunk.toString();
-      });
-      child.once('error', reject);
-      child.once('exit', (code) => {
-        if (code === 0) resolve();
-        else
-          reject(new Error(output.trim() || `Prisma exited with code ${code}`));
-      });
-    });
+  try {
+    const client = await pool.connect();
+    try {
+      await createMigrationsTable(client);
+      await applyPendingMigrations(client, await readMigrations());
+    } finally {
+      client.release();
+    }
   } catch (error) {
     throw new TenantMigrationError(error);
+  } finally {
+    await pool.end();
   }
+}
+
+async function createMigrationsTable(client: PoolClient) {
+  await client.query(`
+    create table if not exists "_prisma_migrations" (
+      id varchar(36) primary key not null,
+      checksum varchar(64) not null,
+      finished_at timestamptz,
+      migration_name varchar(255) not null,
+      logs text,
+      rolled_back_at timestamptz,
+      started_at timestamptz not null default now(),
+      applied_steps_count integer not null default 0
+    )
+  `);
+}
+
+async function applyPendingMigrations(
+  client: PoolClient,
+  migrations: Migration[],
+) {
+  const result = await client.query<AppliedMigration>(`
+    select
+      id,
+      checksum,
+      migration_name as "migrationName",
+      finished_at as "finishedAt",
+      rolled_back_at as "rolledBackAt"
+    from "_prisma_migrations"
+    order by started_at
+  `);
+  const appliedMigrations = new Map(
+    result.rows.map((migration) => [migration.migrationName, migration]),
+  );
+
+  for (const migration of migrations) {
+    const applied = appliedMigrations.get(migration.name);
+    if (applied?.finishedAt && !applied.rolledBackAt) {
+      if (applied.checksum !== migration.checksum) {
+        throw new Error(`Migration checksum changed: ${migration.name}`);
+      }
+      continue;
+    }
+    if (applied && !applied.rolledBackAt) {
+      throw new Error(`Migration previously failed: ${migration.name}`);
+    }
+
+    await applyMigration(client, migration);
+  }
+}
+
+async function applyMigration(client: PoolClient, migration: Migration) {
+  const migrationId = randomUUID();
+  await client.query(
+    `
+      insert into "_prisma_migrations" (
+        id,
+        checksum,
+        migration_name
+      ) values ($1, $2, $3)
+    `,
+    [migrationId, migration.checksum, migration.name],
+  );
+
+  try {
+    await client.query(migration.sql);
+    await client.query(
+      `
+        update "_prisma_migrations"
+        set finished_at = now(), applied_steps_count = 1
+        where id = $1
+      `,
+      [migrationId],
+    );
+  } catch (error) {
+    await client
+      .query(`update "_prisma_migrations" set logs = $2 where id = $1`, [
+        migrationId,
+        getErrorMessage(error),
+      ])
+      .catch(() => undefined);
+    throw error;
+  }
+}
+
+async function readMigrations() {
+  const entries = await readdir(MIGRATIONS_DIRECTORY, {
+    withFileTypes: true,
+  });
+  const migrations: Migration[] = [];
+
+  for (const entry of entries
+    .filter((candidate) => candidate.isDirectory())
+    .sort((left, right) => left.name.localeCompare(right.name))) {
+    const migrationSql = await readFile(
+      path.join(MIGRATIONS_DIRECTORY, entry.name, 'migration.sql'),
+    );
+    migrations.push({
+      name: entry.name,
+      checksum: createHash('sha256').update(migrationSql).digest('hex'),
+      sql: migrationSql.toString('utf8'),
+    });
+  }
+
+  return migrations;
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? (error.stack ?? error.message)
+    : String(error);
 }
