@@ -73,6 +73,7 @@ const multiTenantEnvironment = {
   ),
   CONTROL_DATABASE_URL:
     'postgresql://user:password@database.example.com/control',
+  MULTI_TENANT_CONTACT_EMAIL: 'contact@example.com',
   MULTI_TENANT_LANDING_COLOR: '#7c3aed',
   ROOT_DOMAIN: 'example.com',
 };
@@ -120,6 +121,17 @@ test('requiere cada variable multi-tenant', () => {
       new RegExp(`${key} is required`),
     );
   }
+});
+
+test('valida el email de contacto multi-tenant', () => {
+  assert.throws(
+    () =>
+      validateEnvironment({
+        ...multiTenantEnvironment,
+        MULTI_TENANT_CONTACT_EMAIL: 'invalid-email',
+      }),
+    /MULTI_TENANT_CONTACT_EMAIL must be an email address/,
+  );
 });
 
 test('MP_SECRET_KEY compartida no activa el modo single-tenant', () => {

@@ -14,6 +14,7 @@ export function getMultiTenantLandingConfig(
       environment,
       'MULTI_TENANT_LANDING_DESCRIPTION',
     ),
+    contactEmail: getRequiredValue(environment, 'MULTI_TENANT_CONTACT_EMAIL'),
     color,
   };
 }

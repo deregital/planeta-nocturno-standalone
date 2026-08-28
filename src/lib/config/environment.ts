@@ -27,6 +27,7 @@ export const SHARED_REQUIRED_ENV_KEYS = [
 
 export const MULTI_TENANT_REQUIRED_ENV_KEYS = [
   'CONTROL_DATABASE_URL',
+  'MULTI_TENANT_CONTACT_EMAIL',
   'MULTI_TENANT_LANDING_COLOR',
   'MULTI_TENANT_LANDING_DESCRIPTION',
   'MULTI_TENANT_LANDING_NAME',
@@ -81,6 +82,7 @@ export function validateEnvironment(
   validateHttpUrl(environment, 'NEXT_PUBLIC_S3_BUCKET_URL', issues);
   validateHttpUrl(environment, 'NEXT_PUBLIC_FAVICON_URL', issues);
   validateEmail(environment, 'INSTANCE_CONTACT_EMAIL', issues);
+  validateEmail(environment, 'MULTI_TENANT_CONTACT_EMAIL', issues);
   validateLandingColor(environment, issues);
 
   if (issues.length > 0) {
