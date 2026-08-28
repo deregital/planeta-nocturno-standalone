@@ -71,6 +71,23 @@ test('crea y normaliza la configuración single-tenant', () => {
   );
 });
 
+test('permite configurar Mercado Pago y el favicon después del build', () => {
+  const config = createSingleTenantConfig({
+    DATABASE_URL: 'postgresql://example/database',
+    INSTANCE_CONTACT_EMAIL: 'contacto@example.com',
+    INSTANCE_WEB_URL: 'https://cliente.example.com',
+    NEXT_PUBLIC_HUE: '210',
+    NEXT_PUBLIC_INSTANCE_DESCRIPTION: 'Descripción',
+    NEXT_PUBLIC_INSTANCE_NAME: 'Cliente',
+    NEXT_PUBLIC_SATURATION: '80',
+    NEXT_PUBLIC_SITE_URL: 'https://tickets.cliente.example.com',
+  });
+
+  assert.equal(config?.faviconUrl, null);
+  assert.equal(config?.mercadoPagoAccessToken, null);
+  assert.equal(config?.mercadoPagoRefreshToken, null);
+});
+
 test('trata todas las variables vacías como configuración multi-tenant', () => {
   const environment = Object.fromEntries(
     SINGLE_TENANT_ENV_KEYS.map((key, index) => [
