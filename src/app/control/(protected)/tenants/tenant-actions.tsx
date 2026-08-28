@@ -1,14 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import {
-  LoaderCircle,
-  Pause,
-  Pencil,
-  Play,
-  RotateCcw,
-  Trash2,
-} from 'lucide-react';
+import { LoaderCircle, Pause, Pencil, Play, RotateCcw } from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 
@@ -103,6 +96,7 @@ export default function TenantActions({
         {status === 'failed' && databaseName && (
           <span className='text-xs text-red-600'>Requiere revisión</span>
         )}
+        {/* La eliminación queda deshabilitada hasta que se publique esta función.
         {status !== 'provisioning' && (
           <LifecycleButton
             action={action}
@@ -115,7 +109,7 @@ export default function TenantActions({
           >
             <Trash2 />
           </LifecycleButton>
-        )}
+        )} */}
       </div>
       <ActionError message={state.error} />
     </div>
