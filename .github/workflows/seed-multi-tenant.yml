@@ -1,0 +1,86 @@
+name: Seed Multi-Tenant User
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Username for the new admin user'
+        required: true
+        type: string
+      password:
+        description: 'Password for the new admin user'
+        required: true
+        type: string
+      email:
+        description: 'Email for the new admin user'
+        required: true
+        type: string
+      fullName:
+        description: 'Full name for the new admin user'
+        required: true
+        type: string
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      installation:
+        description: 'Multi-tenant installation suffix (e.g. NUESTROSTICKETS)'
+        required: true
+        type: string
+      tenant:
+        description: 'Page subdomain'
+        required: true
+        type: string
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    env:
+      ALL_SECRETS: ${{ toJSON(secrets) }}
+      TARGET_ENVIRONMENT: ${{ inputs.environment }}
+      TARGET_INSTALLATION: ${{ inputs.installation }}
+      SEED_TENANT_SLUG: ${{ inputs.tenant }}
+      SEED_USER_NAME: ${{ inputs.name }}
+      SEED_USER_PASSWORD: ${{ inputs.password }}
+      SEED_USER_EMAIL: ${{ inputs.email }}
+      SEED_USER_FULLNAME: ${{ inputs.fullName }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Seed tenant database
+        shell: bash
+        run: |
+          instance_name="${TARGET_INSTALLATION^^}"
+          instance_name="${instance_name//-/_}"
+          instance_name="${instance_name// /_}"
+          prefix="${TARGET_ENVIRONMENT^^}"
+
+          control_key="${prefix}_CONTROL_DATABASE_URL_${instance_name}"
+          neon_api_key_name="${prefix}_NEON_API_KEY_${instance_name}"
+          neon_project_name_key="${prefix}_NEON_PROJECT_NAME_${instance_name}"
+
+          control_database_url=$(jq -r --arg key "$control_key" '.[$key] // empty' <<< "$ALL_SECRETS")
+          neon_api_key=$(jq -r --arg key "$neon_api_key_name" '.[$key] // empty' <<< "$ALL_SECRETS")
+          neon_project_name=$(jq -r --arg key "$neon_project_name_key" '.[$key] // empty' <<< "$ALL_SECRETS")
+
+          if [[ -z "$control_database_url" || -z "$neon_api_key" || -z "$neon_project_name" ]]; then
+            echo "Missing secrets for multi-tenant installation: $instance_name"
+            exit 1
+          fi
+
+          echo "Seeding page: $SEED_TENANT_SLUG ($instance_name)"
+          CONTROL_DATABASE_URL="$control_database_url" \
+            NEON_API_KEY="$neon_api_key" \
+            NEON_PROJECT_NAME="$neon_project_name" \
+            node --conditions=react-server --import tsx scripts/seed-multi-tenant.ts

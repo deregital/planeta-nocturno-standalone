@@ -80,5 +80,5 @@ jobs:
             CONTROL_DATABASE_URL="$control_database_url" \
               NEON_API_KEY="$neon_api_key" \
               NEON_PROJECT_NAME="$neon_project_name" \
-              ./node_modules/.bin/tsx scripts/migrate-multi-tenants.ts
+              node --conditions=react-server --import tsx scripts/migrate-multi-tenants.ts
           done

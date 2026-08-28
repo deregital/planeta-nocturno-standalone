@@ -1,4 +1,4 @@
-name: Seed User
+name: Seed Single-Tenant User
 
 on:
   workflow_dispatch:
