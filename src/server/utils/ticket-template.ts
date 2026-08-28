@@ -1,3 +1,5 @@
+import type { ResolvedInstance } from '@/server/instance/resolve-instance';
+
 import { type Font, type Template } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, image, line, rectangle, text } from '@pdfme/schemas';
@@ -21,8 +23,13 @@ export async function generateTicketTemplate(
   first_word: string,
   fontBold: Buffer<ArrayBufferLike>,
   showSlug: boolean = true,
+  hue = 200,
+  saturation = 100,
 ): Promise<Template> {
-  const { accentColor, textOnAccent: accentText } = getColorsAsHex();
+  const { accentColor, textOnAccent: accentText } = getColorsAsHex(
+    hue,
+    saturation,
+  );
 
   const offset = await measureTextWidth(`${first_word} `, fontBold, 20);
 
@@ -546,7 +553,10 @@ interface GenerateTicketProps {
   ticketSlugVisibleInPdf: boolean;
 }
 
-export async function generatePdf(ticket: GenerateTicketProps) {
+export async function generatePdf(
+  ticket: GenerateTicketProps,
+  instance: ResolvedInstance,
+) {
   if (!ticket) {
     throw new Error('Ticket no encontrado');
   }
@@ -571,12 +581,13 @@ export async function generatePdf(ticket: GenerateTicketProps) {
     ? ticket.dni
     : Number(ticket.dni).toLocaleString('es-ES');
 
-  const [firstWord, ...rest] =
-    process.env.NEXT_PUBLIC_INSTANCE_NAME!.split(' ');
+  const [firstWord, ...rest] = instance.name.split(' ');
   const template = await generateTicketTemplate(
     firstWord,
     fontBold,
     ticket.ticketSlugVisibleInPdf,
+    instance.hue,
+    instance.saturation,
   );
 
   const inputs = [
@@ -587,7 +598,7 @@ export async function generatePdf(ticket: GenerateTicketProps) {
       fullName: ticket.fullName,
       dni: normalizedDni,
       barcode: encryptString(ticket.id),
-      footer: `Para cualquier duda, reclamo o consulta comunicarse vía mail a ${process.env.INSTANCE_CONTACT_EMAIL}.\nMás información en ${process.env.INSTANCE_WEB_URL}.`,
+      footer: `Para cualquier duda, reclamo o consulta comunicarse vía mail a ${instance.contactEmail ?? ''}.\nMás información en ${instance.publicUrl}.`,
       emissionDate: formatInTimeZone(
         ticket.createdAt,
         'America/Argentina/Buenos_Aires',

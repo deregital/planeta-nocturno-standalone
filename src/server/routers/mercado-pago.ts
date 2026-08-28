@@ -11,13 +11,12 @@ export const createPreferenceSchema = z.object({
   ticketGroupId: z.string(),
 });
 
-export const mercadoPago = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN ?? '',
-});
-
 export const mercadoPagoRouter = router({
-  hasCredentials: adminProcedure.query(async () => {
-    return hasMercadoPagoCredentials();
+  hasCredentials: adminProcedure.query(({ ctx }) => {
+    return hasMercadoPagoCredentials(
+      ctx.instance.mercadoPagoAccessToken,
+      ctx.instance.mercadoPagoRefreshToken,
+    );
   }),
   createPreference: publicProcedure
     .input(createPreferenceSchema)
@@ -75,6 +74,14 @@ export const mercadoPagoRouter = router({
         throw new Error('ticketGroup no encontrado');
       }
 
+      if (!ctx.instance.mercadoPagoAccessToken) {
+        throw new Error('Mercado Pago no está configurado');
+      }
+
+      const mercadoPago = new MercadoPagoConfig({
+        accessToken: ctx.instance.mercadoPagoAccessToken,
+      });
+
       // Get discount percentage from organizer if exists
       let discountPercentage: number | null = null;
       if (group.invitedById) {
@@ -94,7 +101,7 @@ export const mercadoPagoRouter = router({
       }
 
       // calcular el precio total
-      const totalPrice = await calculateTotalPrice({
+      const totalPrice = await calculateTotalPrice(ctx.db, {
         ticketGroupId: input.ticketGroupId,
         discountPercentage,
       });
@@ -121,13 +128,13 @@ export const mercadoPagoRouter = router({
           external_reference: group.id,
           auto_return: 'approved',
           back_urls: {
-            success: `${process.env.INSTANCE_WEB_URL}/tickets/${group.id}`,
-            pending: `${process.env.INSTANCE_WEB_URL}/tickets/${group.id}`,
-            failure: `${process.env.INSTANCE_WEB_URL}/tickets/error`,
+            success: `${ctx.instance.publicUrl}/tickets/${group.id}`,
+            pending: `${ctx.instance.publicUrl}/tickets/${group.id}`,
+            failure: `${ctx.instance.publicUrl}/tickets/error`,
           },
           metadata: {
             ticket_group_id: group.id,
-            instance_url: process.env.INSTANCE_WEB_URL,
+            instance_url: ctx.instance.publicUrl,
           },
         },
       });

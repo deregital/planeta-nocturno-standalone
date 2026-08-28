@@ -1,7 +1,13 @@
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {
-  /* config options here */
+import { PHASE_PRODUCTION_BUILD } from 'next/constants';
+
+import { validateEnvironment } from '@/lib/config/environment';
+
+const config: NextConfig = {
+  outputFileTracingIncludes: {
+    '/*': ['./prisma/migrations/**/*'],
+  },
   images: {
     remotePatterns: [
       new URL(
@@ -36,4 +42,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default function nextConfig(phase: string): NextConfig {
+  if (phase === PHASE_PRODUCTION_BUILD) validateEnvironment(process.env);
+  return config;
+}

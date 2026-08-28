@@ -1,11 +1,11 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 
-import { type db } from '@/drizzle';
+import type { Db } from '@/drizzle';
 
 import { tag, userXTag } from '@/drizzle/schema';
 
 export async function getTagIdsOwnedByUser(
-  database: typeof db,
+  database: Db,
   userId: string,
 ): Promise<string[]> {
   const rows = await database
@@ -25,7 +25,7 @@ export function buildUserXTagsRelation(ownedTagIds: string[]) {
 }
 
 export async function assertTagOwnedByUser(
-  database: typeof db,
+  database: Db,
   tagId: string,
   userId: string,
 ) {

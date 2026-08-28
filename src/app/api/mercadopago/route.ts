@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { verifySignedRequest } from '@/server/security/signed-request';
+import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { sendMailService } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
@@ -32,8 +33,10 @@ export async function POST(request: Request) {
     );
   }
 
+  const { db, instance } = await resolveRequestContext(request.headers);
+
   // cambiar status de ticketGroup a pagado
-  await updateTicketGroupStatus(ticketGroupId, 'PAID');
+  await updateTicketGroupStatus(db, ticketGroupId, 'PAID');
 
   const group = await trpc.ticketGroup.getById(ticketGroupId);
 
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
 
   // enviar mail con los pdf de forma secuencial para evitar rate limits
   for (const pdf of pdfs) {
-    await sendMailService({
+    await sendMailService(instance, {
       eventName: group.event.name,
       receiver: pdf.ticket.mail,
       subject: `¡Llegaron tus tickets para ${group.event.name}!`,
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
   }
 
   if (group.event.emailNotification) {
-    await sendNotificationService({
+    await sendNotificationService(db, instance, {
       eventName: group.event.name,
       ticketGroupId: group.id,
       email: group.event.emailNotification,

@@ -1,0 +1,84 @@
+name: Database Migrations
+
+on:
+  push:
+    branches: [dev, master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to migrate
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+concurrency:
+  group: database-migrations-${{ inputs.environment || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      ALL_SECRETS: ${{ toJSON(secrets) }}
+      TARGET_ENVIRONMENT: ${{ inputs.environment || (github.ref_name == 'master' && 'prod' || 'dev') }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Migrate single-tenant databases
+        shell: bash
+        run: |
+          prefix="${TARGET_ENVIRONMENT^^}_DATABASE_URL_"
+          mapfile -t secret_names < <(
+            jq -r --arg prefix "$prefix" \
+              'keys[] | select(startswith($prefix))' <<< "$ALL_SECRETS"
+          )
+
+          for secret_name in "${secret_names[@]}"; do
+            database_url=$(jq -r --arg key "$secret_name" '.[$key] // empty' <<< "$ALL_SECRETS")
+            echo "Migrating single-tenant database: $secret_name"
+            DATABASE_URL="$database_url" ./node_modules/.bin/prisma migrate deploy
+          done
+
+      - name: Migrate multi-tenant installations
+        shell: bash
+        run: |
+          prefix="${TARGET_ENVIRONMENT^^}_CONTROL_DATABASE_URL_"
+          mapfile -t control_secret_names < <(
+            jq -r --arg prefix "$prefix" \
+              'keys[] | select(startswith($prefix))' <<< "$ALL_SECRETS"
+          )
+
+          for control_secret_name in "${control_secret_names[@]}"; do
+            instance_name="${control_secret_name#"$prefix"}"
+            neon_api_key_name="${TARGET_ENVIRONMENT^^}_NEON_API_KEY_${instance_name}"
+            neon_project_name_key="${TARGET_ENVIRONMENT^^}_NEON_PROJECT_NAME_${instance_name}"
+
+            control_database_url=$(jq -r --arg key "$control_secret_name" '.[$key] // empty' <<< "$ALL_SECRETS")
+            neon_api_key=$(jq -r --arg key "$neon_api_key_name" '.[$key] // empty' <<< "$ALL_SECRETS")
+            neon_project_name=$(jq -r --arg key "$neon_project_name_key" '.[$key] // empty' <<< "$ALL_SECRETS")
+
+            if [[ -z "$control_database_url" || -z "$neon_api_key" || -z "$neon_project_name" ]]; then
+              echo "Missing secrets for multi-tenant installation: $instance_name"
+              exit 1
+            fi
+
+            echo "Migrating Control DB: $instance_name"
+            CONTROL_DATABASE_URL="$control_database_url" \
+              ./node_modules/.bin/drizzle-kit migrate --config=drizzle.control.config.ts
+
+            echo "Migrating tenant databases: $instance_name"
+            CONTROL_DATABASE_URL="$control_database_url" \
+              NEON_API_KEY="$neon_api_key" \
+              NEON_PROJECT_NAME="$neon_project_name" \
+              node --conditions=react-server --import tsx scripts/migrate-multi-tenants.ts
+          done

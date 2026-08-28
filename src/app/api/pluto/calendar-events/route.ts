@@ -2,9 +2,8 @@ import { asc, and, eq, gte, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { db } from '@/drizzle';
-
 import { event, location } from '@/drizzle/schema';
+import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { verifySignedRequest } from '@/server/security/signed-request';
 import { getCalendarStatsByEventId } from '@/server/services/calendarEventStats';
 
@@ -17,12 +16,6 @@ const calendarEventsRequestSchema = z
     message: 'from must be before or equal to to',
     path: ['from'],
   });
-
-function getInstanceUrl() {
-  const rawUrl = process.env.INSTANCE_WEB_URL?.trim();
-  if (!rawUrl) return '';
-  return rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
-}
 
 function toIsoDateTime(value: string) {
   return new Date(value).toISOString();
@@ -48,6 +41,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const { db, instance } = await resolveRequestContext(request.headers);
     const events = await db
       .select({
         id: event.id,
@@ -75,15 +69,15 @@ export async function POST(request: Request) {
     for (const eventItem of events) {
       eventStats.set(
         eventItem.id,
-        await getCalendarStatsByEventId(eventItem.id),
+        await getCalendarStatsByEventId(db, eventItem.id),
       );
     }
 
     return NextResponse.json({
       success: true,
       instance: {
-        name: process.env.NEXT_PUBLIC_INSTANCE_NAME ?? 'Planeta Nocturno',
-        url: getInstanceUrl(),
+        name: instance.name,
+        url: instance.publicUrl,
       },
       events: events.map((eventItem) => ({
         id: eventItem.id,

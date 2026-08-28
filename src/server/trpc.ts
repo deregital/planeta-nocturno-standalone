@@ -2,10 +2,10 @@ import { type inferRouterOutputs, initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { z, ZodError } from 'zod';
 
-import { db } from '@/drizzle';
-
 import { type role as roleEnum } from '@/drizzle/schema';
-import { auth } from '@/server/auth';
+import { isTenantSessionValid } from '@/lib/auth/session-tenant';
+import { getSessionForInstance } from '@/server/auth';
+import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { type appRouter } from '@/server/routers/app';
 
 export function handleError(error: {
@@ -59,10 +59,12 @@ export function handleError(error: {
 }
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth();
+  const requestContext = await resolveRequestContext(opts.headers);
+  const session = await getSessionForInstance(requestContext.instance.slug);
 
   return {
     session,
+    ...requestContext,
     ...opts,
   };
 };
@@ -119,6 +121,14 @@ function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
       throw new TRPCError({ code: 'UNAUTHORIZED' });
     }
 
+    if (session.user.role === 'CONTROL_ADMIN') {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
+
+    if (!isTenantSessionValid(session, ctx.instance.slug)) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
+
     const adminIndex = levelsOfAccess.indexOf(level);
     const index = levelsOfAccess.indexOf(session.user.role);
 
@@ -128,8 +138,8 @@ function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
 
     return next({
       ctx: {
+        ...ctx,
         session: { ...session, user: session.user },
-        db: db,
       },
     });
   });
@@ -146,14 +156,7 @@ export const ticketingProcedure = genericProcedure('TICKETING');
 export const controlTicketingProcedure = genericProcedure('CONTROL_TICKETING');
 
 export const router = t.router;
-export const publicProcedure = t.procedure.use(({ next }) => {
-  return next({
-    ctx: {
-      fetch: fetch,
-      db: db,
-    },
-  });
-});
+export const publicProcedure = t.procedure;
 export const createCallerFactory = t.createCallerFactory;
 
 export type RouterOutput = inferRouterOutputs<typeof appRouter>;

@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786689849144,
+      "tag": "0000_control_initial_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787768217974,
+      "tag": "0001_mp_access_token_expiration",
+      "breakpoints": true
+    }
+  ]
+}

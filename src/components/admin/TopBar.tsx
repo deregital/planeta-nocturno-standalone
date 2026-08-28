@@ -20,6 +20,8 @@ import { trpc } from '@/server/trpc/client';
 
 export default function TopBar({ auth }: { auth: Session | null }) {
   const pathname = usePathname();
+  const tenantRole =
+    auth?.user.role === 'CONTROL_ADMIN' ? null : auth?.user.role;
   const { data: user } = trpc.user.getUnsensitiveInfoById.useQuery(
     auth?.user.id as string,
     { enabled: !!auth?.user.id },
@@ -83,7 +85,9 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                   <nav className='flex flex-col py-4 dark'>
                     {navRoutes.map((route, index) => (
                       <SideBarTile
-                        show={route.roles.includes(auth.user.role)}
+                        show={
+                          tenantRole ? route.roles.includes(tenantRole) : false
+                        }
                         key={index}
                         href={route.href}
                         icon={route.icon}

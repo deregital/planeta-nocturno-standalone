@@ -2,7 +2,6 @@
 
 import { SelectGroup } from '@radix-ui/react-select';
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import {
   ArrowDown,
@@ -34,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { dateOnlyToLocalDate, formatDateOnly } from '@/lib/date-only';
 import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
 import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
@@ -134,7 +134,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
       );
     },
     meta: {
-      exportValue: (row) => format(row.original.birthDate, 'dd/MM/yyyy'),
+      exportValue: (row) => formatDateOnly(row.original.birthDate),
       exportHeader: 'Fecha de Nacimiento',
     },
     sortingFn: (rowA, rowB, columnId) => {
@@ -144,7 +144,7 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     cell: ({ row }) => {
       const birthDate = row.original.birthDate;
-      return <p className='text-sm p-2'>{format(birthDate, 'dd/MM/yyyy')}</p>;
+      return <p className='text-sm p-2'>{formatDateOnly(birthDate)}</p>;
     },
   },
   {
@@ -467,7 +467,7 @@ export function DatabaseTable({
   const dataWithIdFilteredByMonth = useMemo(() => {
     return selectedMonth !== '0'
       ? dataWithId.filter((p) => {
-          const month = new Date(p.birthDate).getMonth() + 1;
+          const month = dateOnlyToLocalDate(p.birthDate).getMonth() + 1;
           return month === Number(selectedMonth);
         })
       : dataWithId;

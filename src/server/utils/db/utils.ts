@@ -1,12 +1,12 @@
 import { inArray, like, min, sql } from 'drizzle-orm';
 
-import { type db as database } from '@/drizzle';
+import type { Db } from '@/drizzle';
 
 import { emittedTicket, event } from '@/drizzle/schema';
 import { generateSlug, nextAvailableSlugInFamily } from '@/server/utils/utils';
 
 export async function getUniqueEventSlug(
-  db: typeof database,
+  db: Db,
   eventName: string,
 ): Promise<string> {
   const baseSlug = generateSlug(eventName);
@@ -62,7 +62,7 @@ export function getUniqueTicketTypeSlugsById(
 }
 
 export async function getBuyersCodeByDni(
-  db: typeof database,
+  db: Db,
   dnis: string[],
 ): Promise<{ dni: string; id: number }[] | null> {
   if (dnis.length === 0) return null;

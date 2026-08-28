@@ -1,13 +1,21 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool, type PoolConfig } from 'pg';
 
 import * as relations from '@/drizzle/relations';
 import * as models from '@/drizzle/schema';
 
-export const db = drizzle(process.env.DATABASE_URL!, {
-  schema: {
-    ...relations,
-    ...models,
-  },
-});
+export function createDb(
+  connectionString: string,
+  poolOptions?: Omit<PoolConfig, 'connectionString'>,
+) {
+  const pool = new Pool({ connectionString, ...poolOptions });
 
-export type Db = typeof db;
+  return drizzle(pool, {
+    schema: {
+      ...relations,
+      ...models,
+    },
+  });
+}
+
+export type Db = ReturnType<typeof createDb>;

@@ -1,21 +1,27 @@
+import type { ResolvedInstance } from '@/server/instance/resolve-instance';
+
 import { eq } from 'drizzle-orm';
 
-import { db } from '@/drizzle';
+import type { Db } from '@/drizzle';
 
 import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 import { formatCurrency } from '@/lib/utils';
 import { sendMailWithoutAttachments } from '@/server/services/mail';
 import { retryWithBackoff } from '@/server/utils/retry';
 
-export async function sendNotificationService({
-  eventName,
-  ticketGroupId,
-  email,
-}: {
-  eventName: string;
-  ticketGroupId: string;
-  email: string;
-}) {
+export async function sendNotificationService(
+  db: Db,
+  instance: ResolvedInstance,
+  {
+    eventName,
+    ticketGroupId,
+    email,
+  }: {
+    eventName: string;
+    ticketGroupId: string;
+    email: string;
+  },
+) {
   const ticketGroup = await db.query.ticketGroup.findFirst({
     where: eq(ticketGroupSchema.id, ticketGroupId),
     with: {
@@ -55,7 +61,7 @@ export async function sendNotificationService({
 
   const result = await retryWithBackoff(
     async () =>
-      await sendMailWithoutAttachments({
+      await sendMailWithoutAttachments(instance, {
         to: email,
         subject: `Ticket vendido - ${eventName}`,
         body: bodyText,

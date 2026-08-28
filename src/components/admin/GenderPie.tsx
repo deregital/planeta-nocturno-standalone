@@ -8,14 +8,18 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import { useInstance } from '@/components/instance/InstanceProvider';
 import { getColors } from '@/lib/get-colors';
 import { genderTranslation } from '@/lib/translations';
 
-const colors = getColors();
-
-const pieColors = [colors.accentColor, colors.accentLight, colors.buttonColor];
-
 export default function GenderPie({ data }: { data: Record<string, number> }) {
+  const instance = useInstance();
+  const colors = getColors(instance.hue, instance.saturation);
+  const pieColors = [
+    colors.accentColor,
+    colors.accentLight,
+    colors.buttonColor,
+  ];
   const chartData = Object.entries(data).map(([key, value]) => ({
     name: genderTranslation[key as keyof typeof genderTranslation] || key,
     value,
