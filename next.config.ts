@@ -10,7 +10,7 @@ const config: NextConfig = {
       './prisma/migrations/**/*',
       './prisma/schema.prisma',
       './node_modules/prisma/build/**/*',
-      './node_modules/@prisma/engines/**/*',
+      './node_modules/@prisma/**/*',
     ],
   },
   images: {
