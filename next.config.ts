@@ -11,6 +11,11 @@ const config: NextConfig = {
       './prisma/schema.prisma',
       './node_modules/prisma/build/**/*',
       './node_modules/@prisma/**/*',
+      './node_modules/@standard-schema/**/*',
+      './node_modules/effect/**/*',
+      './node_modules/empathic/**/*',
+      './node_modules/fast-check/**/*',
+      './node_modules/pure-rand/**/*',
     ],
   },
   images: {
