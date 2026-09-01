@@ -82,6 +82,7 @@ export default async function RootLayout({
           <InstanceProvider
             instance={{
               name: instance.name,
+              faviconUrl: instance.faviconUrl,
               publicUrl: instance.publicUrl,
               siteUrl: instance.siteUrl,
               hue: instance.hue,
