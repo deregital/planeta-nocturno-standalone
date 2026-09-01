@@ -40,7 +40,7 @@ export async function updateTenant(
   if (!(await canManageTenants())) {
     return {
       values,
-      errors: { general: 'No tenés permisos para editar páginas' },
+      errors: { general: 'No tenés permisos para editar plataformas' },
     };
   }
 
@@ -74,14 +74,17 @@ export async function updateTenant(
       .returning({ id: tenants.id });
 
     if (!updatedTenant) {
-      return { values, errors: { general: 'La página ya no existe' } };
+      return { values, errors: { general: 'La plataforma ya no existe' } };
     }
   } catch (error) {
     console.error('Unable to update tenant', {
       tenantId: data.tenantId,
       error,
     });
-    return { values, errors: { general: 'No se pudo actualizar la página' } };
+    return {
+      values,
+      errors: { general: 'No se pudo actualizar la plataforma' },
+    };
   }
 
   revalidatePath('/');
