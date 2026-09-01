@@ -126,7 +126,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className='pl-9'
-              placeholder='ID de Página, subdominio o creador'
+              placeholder='ID de Plataforma, subdominio o creador'
             />
           </div>
         </div>
@@ -165,7 +165,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
           <TableHeader>
             <TableRow>
               <SortableTableHead
-                label='ID de Página'
+                label='ID de Plataforma'
                 column='name'
                 sort={sort}
                 direction={direction}
@@ -247,8 +247,8 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
       {visibleTenants.length === 0 && (
         <p className='p-8 text-center text-sm text-gray-500'>
           {tenants.length === 0
-            ? 'Todavía no hay páginas registradas.'
-            : 'No hay páginas que coincidan con los filtros.'}
+            ? 'Todavía no hay plataformas registradas.'
+            : 'No hay plataformas que coincidan con los filtros.'}
         </p>
       )}
     </div>

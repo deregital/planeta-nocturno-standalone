@@ -35,7 +35,7 @@ export async function updateTenantLifecycle(
   formData: FormData,
 ): Promise<TenantLifecycleState> {
   if (!(await canManageTenants())) {
-    return { error: 'No tenés permisos para administrar páginas' };
+    return { error: 'No tenés permisos para administrar plataformas' };
   }
 
   const validation = lifecycleSchema.safeParse({
@@ -57,12 +57,12 @@ export async function updateTenantLifecycle(
     .limit(1);
 
   if (!tenant || tenant.status === 'deleted') {
-    return { error: 'La página ya no existe' };
+    return { error: 'La plataforma ya no existe' };
   }
 
   if (operation === 'suspend') {
     if (tenant.status !== 'active')
-      return { error: 'La página no está activa' };
+      return { error: 'La plataforma no está activa' };
 
     try {
       await getControlDb()
@@ -71,13 +71,13 @@ export async function updateTenantLifecycle(
         .where(and(eq(tenants.id, tenantId), eq(tenants.status, 'active')));
     } catch (error) {
       console.error('Unable to suspend tenant', { tenantId, error });
-      return { error: 'No se pudo suspender la página' };
+      return { error: 'No se pudo suspender la plataforma' };
     }
   }
 
   if (operation === 'activate') {
     if (tenant.status !== 'suspended' || !tenant.databaseName) {
-      return { error: 'La página no se puede activar' };
+      return { error: 'La plataforma no se puede activar' };
     }
 
     try {
@@ -87,7 +87,7 @@ export async function updateTenantLifecycle(
         .where(and(eq(tenants.id, tenantId), eq(tenants.status, 'suspended')));
     } catch (error) {
       console.error('Unable to activate tenant', { tenantId, error });
-      return { error: 'No se pudo activar la página' };
+      return { error: 'No se pudo activar la plataforma' };
     }
   }
 

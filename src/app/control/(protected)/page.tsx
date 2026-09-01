@@ -43,9 +43,9 @@ export default async function ControlHomePage() {
       <div className='flex items-end justify-between gap-4'>
         <div>
           <p className='text-sm font-medium text-accent'>
-            Administrador de páginas
+            Administrador de plataformas
           </p>
-          <h1 className='text-3xl font-bold text-gray-900'>Páginas</h1>
+          <h1 className='text-3xl font-bold text-gray-900'>Plataformas</h1>
           <p className='mt-1 text-sm text-gray-600'>
             {tenantList.length} registradas · {activeTenants} activas
           </p>
@@ -53,7 +53,7 @@ export default async function ControlHomePage() {
         <Button asChild>
           <Link href={'/tenants/new' as Route}>
             <Plus />
-            Nueva página
+            Nueva plataforma
           </Link>
         </Button>
       </div>

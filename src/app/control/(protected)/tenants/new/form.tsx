@@ -1,5 +1,6 @@
 'use client';
 
+import { Eye, EyeOff } from 'lucide-react';
 import { useActionState, useEffect, useState } from 'react';
 
 import TenantColorFields from '@/app/control/(protected)/tenants/color-fields';
@@ -70,7 +71,7 @@ export default function TenantForm({
       )}
 
       <fieldset className='grid gap-5 rounded-xl border border-stroke bg-white p-6 md:grid-cols-2'>
-        <legend className='px-2 text-lg font-semibold'>Página</legend>
+        <legend className='px-2 text-lg font-semibold'>Plataforma</legend>
 
         <FormField
           label='Nombre'
@@ -198,10 +199,10 @@ export default function TenantForm({
         </p>
         <Button type='submit' disabled={pending}>
           {pending
-            ? 'Preparando página...'
+            ? 'Preparando plataforma...'
             : retrying
               ? 'Reintentar creación'
-              : 'Crear página'}
+              : 'Crear plataforma'}
         </Button>
       </div>
     </form>
@@ -212,16 +213,40 @@ function FormField({
   label,
   name,
   error,
+  type,
   ...props
 }: React.ComponentProps<typeof Input> & {
   label: string;
   name: keyof TenantFormValues;
   error?: string;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === 'password';
+
   return (
     <div className='space-y-1'>
       <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} aria-invalid={Boolean(error)} {...props} />
+      <div className='relative'>
+        <Input
+          id={name}
+          name={name}
+          type={isPassword && showPassword ? 'text' : type}
+          className={isPassword ? 'pr-10' : undefined}
+          aria-invalid={Boolean(error)}
+          {...props}
+        />
+        {isPassword && (
+          <button
+            type='button'
+            onClick={() => setShowPassword((visible) => !visible)}
+            className='absolute top-1/2 right-2 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+            aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+            title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+          >
+            {showPassword ? <EyeOff /> : <Eye />}
+          </button>
+        )}
+      </div>
       <FieldError message={error} />
     </div>
   );

@@ -29,10 +29,10 @@ export default async function NewTenantPage({
 
       <div>
         <p className='text-sm font-medium text-accent'>
-          Administrador de páginas
+          Administrador de plataformas
         </p>
         <h1 className='text-3xl font-bold text-gray-900'>
-          {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva página'}
+          {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva plataforma'}
         </h1>
       </div>
 
