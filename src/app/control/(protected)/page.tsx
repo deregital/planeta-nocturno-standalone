@@ -1,5 +1,5 @@
-import { desc, eq, ne } from 'drizzle-orm';
-import { Plus } from 'lucide-react';
+import { and, desc, eq, isNull, ne } from 'drizzle-orm';
+import { Plus, Trash2 } from 'lucide-react';
 import { type Route } from 'next';
 import { headers } from 'next/headers';
 import Link from 'next/link';
@@ -25,13 +25,14 @@ export default async function ControlHomePage() {
       databaseName: tenants.databaseName,
       createdByUsername: controlAdmins.username,
       createdAt: tenants.createdAt,
+      recycledAt: tenants.deletedAt,
     })
     .from(tenants)
     .leftJoin(
       controlAdmins,
       eq(tenants.createdByControlAdminId, controlAdmins.id),
     )
-    .where(ne(tenants.status, 'deleted'))
+    .where(and(ne(tenants.status, 'deleted'), isNull(tenants.deletedAt)))
     .orderBy(desc(tenants.createdAt));
 
   const activeTenants = tenantList.filter(
@@ -50,12 +51,20 @@ export default async function ControlHomePage() {
             {tenantList.length} registradas · {activeTenants} activas
           </p>
         </div>
-        <Button asChild>
-          <Link href={'/tenants/new' as Route}>
-            <Plus />
-            Nueva plataforma
-          </Link>
-        </Button>
+        <div className='flex gap-2'>
+          <Button asChild variant='ghost'>
+            <Link href={'/trash' as Route}>
+              <Trash2 />
+              Papelera
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href={'/tenants/new' as Route}>
+              <Plus />
+              Nueva plataforma
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <TenantTable

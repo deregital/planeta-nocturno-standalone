@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -17,7 +17,7 @@ import {
 
 const lifecycleSchema = z.object({
   tenantId: z.coerce.number().int().positive(),
-  operation: z.enum(['suspend', 'activate', 'delete']),
+  operation: z.enum(['suspend', 'activate', 'recycle', 'restore', 'delete']),
 });
 
 export type TenantLifecycleStatus =
@@ -51,6 +51,7 @@ export async function updateTenantLifecycle(
       slug: tenants.slug,
       status: tenants.status,
       databaseName: tenants.databaseName,
+      deletedAt: tenants.deletedAt,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
@@ -76,7 +77,11 @@ export async function updateTenantLifecycle(
   }
 
   if (operation === 'activate') {
-    if (tenant.status !== 'suspended' || !tenant.databaseName) {
+    if (
+      tenant.status !== 'suspended' ||
+      !tenant.databaseName ||
+      tenant.deletedAt
+    ) {
       return { error: 'La plataforma no se puede activar' };
     }
 
@@ -84,10 +89,74 @@ export async function updateTenantLifecycle(
       await getControlDb()
         .update(tenants)
         .set({ status: 'active', updatedAt: new Date() })
-        .where(and(eq(tenants.id, tenantId), eq(tenants.status, 'suspended')));
+        .where(
+          and(
+            eq(tenants.id, tenantId),
+            eq(tenants.status, 'suspended'),
+            isNull(tenants.deletedAt),
+          ),
+        );
     } catch (error) {
       console.error('Unable to activate tenant', { tenantId, error });
       return { error: 'No se pudo activar la plataforma' };
+    }
+  }
+
+  if (operation === 'recycle') {
+    if (tenant.deletedAt) {
+      return { error: 'La plataforma ya está en la papelera' };
+    }
+    if (tenant.status !== 'active' && tenant.status !== 'suspended') {
+      return { error: 'La plataforma no se puede enviar a la papelera' };
+    }
+
+    try {
+      await getControlDb()
+        .update(tenants)
+        .set({
+          status: 'suspended',
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tenants.id, tenantId), isNull(tenants.deletedAt)));
+    } catch (error) {
+      console.error('Unable to recycle tenant', { tenantId, error });
+      return { error: 'No se pudo enviar la plataforma a la papelera' };
+    }
+  }
+
+  if (operation === 'restore') {
+    if (
+      tenant.status !== 'suspended' ||
+      !tenant.databaseName ||
+      !tenant.deletedAt
+    ) {
+      return { error: 'La plataforma no se puede restaurar' };
+    }
+
+    try {
+      const [restoredTenant] = await getControlDb()
+        .update(tenants)
+        .set({
+          status: 'active',
+          deletedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(tenants.id, tenantId),
+            eq(tenants.status, 'suspended'),
+            isNotNull(tenants.deletedAt),
+          ),
+        )
+        .returning({ id: tenants.id });
+
+      if (!restoredTenant) {
+        return { error: 'La plataforma ya no está en la papelera' };
+      }
+    } catch (error) {
+      console.error('Unable to restore tenant', { tenantId, error });
+      return { error: 'No se pudo restaurar la plataforma' };
     }
   }
 
@@ -132,6 +201,7 @@ export async function updateTenantLifecycle(
   }
 
   revalidatePath('/');
+  revalidatePath('/trash');
   return {};
 }
 

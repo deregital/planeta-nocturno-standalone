@@ -1,7 +1,15 @@
 'use client';
 
 import { useActionState } from 'react';
-import { LoaderCircle, Pause, Pencil, Play, RotateCcw } from 'lucide-react';
+import {
+  LoaderCircle,
+  Pause,
+  Pencil,
+  Play,
+  RotateCcw,
+  Trash2,
+  Undo2,
+} from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 
@@ -10,6 +18,7 @@ import {
   type TenantLifecycleStatus,
   updateTenantLifecycle,
 } from '@/app/control/(protected)/tenants/actions';
+import { ConfirmActionDialog } from '@/components/common/ConfirmActionDialog';
 import { Button } from '@/components/ui/button';
 
 export default function TenantActions({
@@ -17,16 +26,42 @@ export default function TenantActions({
   tenantName,
   status,
   databaseName,
+  recycled = false,
 }: {
   tenantId: number;
   tenantName: string;
   status: TenantLifecycleStatus;
   databaseName: string | null;
+  recycled?: boolean;
 }) {
   const [state, action, pending] = useActionState<
     TenantLifecycleState,
     FormData
   >(updateTenantLifecycle, {});
+
+  if (recycled) {
+    return (
+      <div className='space-y-1'>
+        <ConfirmActionDialog
+          action={action}
+          pending={pending}
+          title='Restaurar plataforma'
+          description={`${tenantName} saldrá de la papelera y volverá a estar activa y disponible.`}
+          confirmLabel='Restaurar plataforma'
+          triggerLabel='Restaurar plataforma'
+          triggerVariant='ghost'
+          confirmVariant='success'
+          fields={{
+            tenantId: String(tenantId),
+            operation: 'restore',
+          }}
+        >
+          <Undo2 />
+        </ConfirmActionDialog>
+        <ActionError message={state.error} />
+      </div>
+    );
+  }
 
   if (status === 'deleting') {
     return (
@@ -96,6 +131,22 @@ export default function TenantActions({
         {status === 'failed' && databaseName && (
           <span className='text-xs text-red-600'>Requiere revisión</span>
         )}
+        {(status === 'active' || status === 'suspended') && (
+          <ConfirmActionDialog
+            action={action}
+            pending={pending}
+            title='Enviar plataforma a la papelera'
+            description={`${tenantName} será suspendida y dejará de estar disponible. Podrás restaurarla posteriormente desde la papelera.`}
+            confirmLabel='Enviar a la papelera'
+            triggerLabel='Enviar a la papelera'
+            fields={{
+              tenantId: String(tenantId),
+              operation: 'recycle',
+            }}
+          >
+            <Trash2 />
+          </ConfirmActionDialog>
+        )}
         {/* La eliminación queda deshabilitada hasta que se publique esta función.
         {status !== 'provisioning' && (
           <LifecycleButton
@@ -128,7 +179,7 @@ function LifecycleButton({
 }: {
   action: (formData: FormData) => void;
   tenantId: number;
-  operation: 'suspend' | 'activate' | 'delete';
+  operation: 'suspend' | 'activate' | 'recycle' | 'restore' | 'delete';
   pending: boolean;
   label: string;
   destructive?: boolean;

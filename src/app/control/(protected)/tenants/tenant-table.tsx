@@ -64,10 +64,17 @@ type TenantRow = {
   databaseName: string | null;
   createdByUsername: string | null;
   createdAt: Date;
+  recycledAt: Date | null;
   publicUrl: string;
 };
 
-export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
+export default function TenantTable({
+  tenants,
+  recycled = false,
+}: {
+  tenants: TenantRow[];
+  recycled?: boolean;
+}) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [sort, setSort] = useState<SortColumn>('createdAt');
@@ -86,10 +93,14 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
     });
 
     return filtered.sort((first, second) => {
-      const comparison = compareTenants(first, second, sort);
+      const comparison =
+        recycled && sort === 'createdAt'
+          ? (first.recycledAt?.getTime() ?? 0) -
+            (second.recycledAt?.getTime() ?? 0)
+          : compareTenants(first, second, sort);
       return direction === 'asc' ? comparison : -comparison;
     });
-  }, [direction, query, sort, status, tenants]);
+  }, [direction, query, recycled, sort, status, tenants]);
 
   const hasCustomView =
     query !== '' ||
@@ -193,7 +204,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
                 onSort={toggleSort}
               />
               <SortableTableHead
-                label='Creado'
+                label={recycled ? 'En papelera desde' : 'Creado'}
                 column='createdAt'
                 sort={sort}
                 direction={direction}
@@ -207,15 +218,19 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
               <TableRow key={tenant.id}>
                 <TableCell className='font-medium'>{tenant.name}</TableCell>
                 <TableCell>
-                  <a
-                    href={`${tenant.publicUrl}/admin`}
-                    target='_blank'
-                    rel='noreferrer'
-                    className='inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline'
-                  >
-                    {tenant.slug}
-                    <ExternalLink className='size-3.5' />
-                  </a>
+                  {recycled ? (
+                    tenant.slug
+                  ) : (
+                    <a
+                      href={`${tenant.publicUrl}/admin`}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline'
+                    >
+                      {tenant.slug}
+                      <ExternalLink className='size-3.5' />
+                    </a>
+                  )}
                 </TableCell>
                 <TableCell>
                   <span
@@ -228,7 +243,11 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
                   {tenant.createdByUsername ?? 'Sin registrar'}
                 </TableCell>
                 <TableCell>
-                  {new Intl.DateTimeFormat('es-AR').format(tenant.createdAt)}
+                  {new Intl.DateTimeFormat('es-AR').format(
+                    recycled && tenant.recycledAt
+                      ? tenant.recycledAt
+                      : tenant.createdAt,
+                  )}
                 </TableCell>
                 <TableCell>
                   <TenantActions
@@ -236,6 +255,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
                     tenantName={tenant.name}
                     status={tenant.status}
                     databaseName={tenant.databaseName}
+                    recycled={recycled}
                   />
                 </TableCell>
               </TableRow>
@@ -247,7 +267,9 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
       {visibleTenants.length === 0 && (
         <p className='p-8 text-center text-sm text-gray-500'>
           {tenants.length === 0
-            ? 'Todavía no hay plataformas registradas.'
+            ? recycled
+              ? 'La papelera está vacía.'
+              : 'Todavía no hay plataformas registradas.'
             : 'No hay plataformas que coincidan con los filtros.'}
         </p>
       )}
