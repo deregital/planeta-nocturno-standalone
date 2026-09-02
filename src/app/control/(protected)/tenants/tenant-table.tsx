@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
 import { type TenantLifecycleStatus } from '@/app/control/(protected)/tenants/actions';
+import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -208,7 +208,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
                 <TableCell className='font-medium'>{tenant.name}</TableCell>
                 <TableCell>
                   <a
-                    href={tenant.publicUrl}
+                    href={`${tenant.publicUrl}/admin`}
                     target='_blank'
                     rel='noreferrer'
                     className='inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline'
