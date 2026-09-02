@@ -2,7 +2,6 @@
 
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
@@ -54,6 +53,14 @@ type TenantFormField = keyof TenantFormValues;
 export type TenantFormState = {
   values?: TenantFormValues;
   errors?: Partial<Record<TenantFormField | 'general', string>>;
+  credentials?: {
+    platformName: string;
+    slug: string;
+    username: string;
+    password: string;
+    email: string;
+    phoneNumber: string;
+  };
 };
 
 export type SubdomainAvailability = {
@@ -239,7 +246,16 @@ export async function createTenant(
   }
 
   revalidatePath('/');
-  redirect('/');
+  return {
+    credentials: {
+      platformName: data.name,
+      slug: data.slug,
+      username: data.adminUsername,
+      password: data.adminPassword,
+      email: data.adminEmail,
+      phoneNumber: data.adminPhoneNumber,
+    },
+  };
 }
 
 function getFormValues(formData: FormData): TenantFormValues {
