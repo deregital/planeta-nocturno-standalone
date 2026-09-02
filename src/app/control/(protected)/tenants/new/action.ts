@@ -24,6 +24,10 @@ const tenantCreationSchema = tenantMetadataSchema.extend({
   adminEmail: userSchema.shape.email,
   adminUsername: userSchema.shape.name,
   adminPassword: userSchema.shape.password,
+  adminDni: userSchema.shape.dni,
+  adminPhoneNumber: userSchema.shape.phoneNumber,
+  adminBirthDate: z.union([userSchema.shape.birthDate, z.literal('')]),
+  adminGender: z.union([userSchema.shape.gender, z.literal('')]),
 });
 
 export type TenantFormValues = {
@@ -39,6 +43,10 @@ export type TenantFormValues = {
   adminEmail: string;
   adminUsername: string;
   adminPassword: string;
+  adminDni: string;
+  adminPhoneNumber: string;
+  adminBirthDate: string;
+  adminGender: string;
 };
 
 type TenantFormField = keyof TenantFormValues;
@@ -210,6 +218,10 @@ export async function createTenant(
         password: data.adminPassword,
         email: data.adminEmail,
         fullName: data.adminFullName,
+        dni: data.adminDni,
+        phoneNumber: data.adminPhoneNumber,
+        birthDate: data.adminBirthDate,
+        gender: data.adminGender,
       },
     });
   } catch (error) {
@@ -246,6 +258,10 @@ function getFormValues(formData: FormData): TenantFormValues {
     adminEmail: value('adminEmail'),
     adminUsername: value('adminUsername'),
     adminPassword: String(formData.get('adminPassword') ?? ''),
+    adminDni: value('adminDni'),
+    adminPhoneNumber: value('adminPhoneNumber'),
+    adminBirthDate: value('adminBirthDate'),
+    adminGender: value('adminGender'),
   };
 }
 

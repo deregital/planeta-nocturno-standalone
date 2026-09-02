@@ -12,10 +12,14 @@ import {
   type TenantFormState,
   type TenantFormValues,
 } from '@/app/control/(protected)/tenants/new/action';
+import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
+import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+
+import 'react-phone-number-input/style.css';
 
 const emptyValues: TenantFormValues = {
   name: '',
@@ -29,6 +33,10 @@ const emptyValues: TenantFormValues = {
   adminEmail: '',
   adminUsername: '',
   adminPassword: '',
+  adminDni: '',
+  adminPhoneNumber: '',
+  adminBirthDate: '',
+  adminGender: '',
 };
 
 export default function TenantForm({
@@ -45,6 +53,9 @@ export default function TenantForm({
   const values = { ...emptyValues, ...initialValues, ...state.values };
   const retrying = Boolean(values.tenantId);
   const [slug, setSlug] = useState(values.slug);
+  const [adminPhoneNumber, setAdminPhoneNumber] = useState(
+    values.adminPhoneNumber,
+  );
   const [availability, setAvailability] = useState<
     SubdomainAvailability | { available: null; message: string }
   >({ available: null, message: '' });
@@ -164,12 +175,48 @@ export default function TenantForm({
           required
         />
         <FormField
+          label='DNI/Pasaporte'
+          name='adminDni'
+          defaultValue={values.adminDni}
+          error={state.errors?.adminDni}
+          required
+        />
+        <FormField
           label='Email'
           name='adminEmail'
           type='email'
           defaultValue={values.adminEmail}
           error={state.errors?.adminEmail}
           required
+        />
+        <PhoneInputWithLabel
+          label='Número de teléfono'
+          id='adminPhoneNumber'
+          name='adminPhoneNumber'
+          defaultCountry='AR'
+          value={adminPhoneNumber}
+          onChange={(value) => setAdminPhoneNumber(value ?? '')}
+          error={state.errors?.adminPhoneNumber}
+        />
+        <FormField
+          label='Fecha de nacimiento'
+          name='adminBirthDate'
+          type='date'
+          defaultValue={values.adminBirthDate}
+          error={state.errors?.adminBirthDate}
+        />
+        <SelectWithLabel
+          label='Género'
+          id='adminGender'
+          name='adminGender'
+          defaultValue={values.adminGender || undefined}
+          className='w-full'
+          values={[
+            { label: 'Masculino', value: 'male' },
+            { label: 'Femenino', value: 'female' },
+            { label: 'Otro', value: 'other' },
+          ]}
+          error={state.errors?.adminGender}
         />
         <FormField
           label='Nombre de usuario'
@@ -194,9 +241,6 @@ export default function TenantForm({
       )}
 
       <div className='flex items-center justify-end gap-4'>
-        <p className='text-sm text-gray-500'>
-          La creación puede tardar unos segundos.
-        </p>
         <Button type='submit' disabled={pending}>
           {pending
             ? 'Preparando plataforma...'

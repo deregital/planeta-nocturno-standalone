@@ -50,6 +50,7 @@ export function TicketTableWithTabs({
     },
     {
       enabled: !!ticketTypes,
+      refetchInterval: 30_000,
     },
   );
   const session = useSession();

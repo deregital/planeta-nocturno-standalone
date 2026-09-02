@@ -1,24 +1,23 @@
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import z from 'zod';
 
-export const phoneNumberSchema = z.string().refine(
-  (value) => {
-    // Allow empty string since the field is optional
-    if (!value || value.trim() === '') {
-      return true;
-    }
+export const phoneNumberSchema = z
+  .string()
+  .transform((value) => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return '';
 
-    if (value.startsWith('+5415')) {
-      const newNumber = value.replace(/^\+5415/, '+5411');
-      return isValidPhoneNumber(newNumber);
-    }
+    const internationalValue = trimmedValue.startsWith('+')
+      ? trimmedValue
+      : `+54${trimmedValue.replace(/\D/g, '').replace(/^0/, '')}`;
 
-    return isValidPhoneNumber(value);
-  },
-  {
+    return internationalValue.startsWith('+5415')
+      ? internationalValue.replace(/^\+5415/, '+5411')
+      : internationalValue;
+  })
+  .refine((value) => !value || isValidPhoneNumber(value), {
     message: 'El teléfono no es válido',
-  },
-);
+  });
 
 export const genderSchema = z.enum(['male', 'female', 'other'], {
   error: 'Seleccione un género válido',
