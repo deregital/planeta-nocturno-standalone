@@ -11,6 +11,8 @@ import { useMemo, useState } from 'react';
 
 import { type TenantLifecycleStatus } from '@/app/control/(protected)/tenants/actions';
 import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
+import EditableCommentsCell from '@/components/control/EditableCommentsCell';
+import EditableCustomIdCell from '@/components/control/EditableCustomIdCell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -52,12 +54,20 @@ const filterStatuses = [
   'suspended',
 ] as const satisfies readonly TenantLifecycleStatus[];
 
-type SortColumn = 'name' | 'slug' | 'status' | 'creator' | 'createdAt';
+type SortColumn =
+  | 'customId'
+  | 'name'
+  | 'slug'
+  | 'status'
+  | 'creator'
+  | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 type StatusFilter = 'all' | (typeof filterStatuses)[number];
 
 type TenantRow = {
   id: number;
+  customId: string | null;
+  comments: string | null;
   name: string;
   slug: string;
   status: TenantLifecycleStatus;
@@ -86,8 +96,13 @@ export default function TenantTable({
       const matchesStatus = status === 'all' || tenant.status === status;
       const matchesQuery =
         !normalizedQuery ||
-        [tenant.name, tenant.slug, tenant.createdByUsername ?? ''].some(
-          (value) => value.toLocaleLowerCase('es').includes(normalizedQuery),
+        [
+          tenant.customId ?? '',
+          tenant.name,
+          tenant.slug,
+          tenant.createdByUsername ?? '',
+        ].some((value) =>
+          value.toLocaleLowerCase('es').includes(normalizedQuery),
         );
       return matchesStatus && matchesQuery;
     });
@@ -177,6 +192,13 @@ export default function TenantTable({
             <TableRow>
               <SortableTableHead
                 label='ID de Plataforma'
+                column='customId'
+                sort={sort}
+                direction={direction}
+                onSort={toggleSort}
+              />
+              <SortableTableHead
+                label='Nombre'
                 column='name'
                 sort={sort}
                 direction={direction}
@@ -210,12 +232,19 @@ export default function TenantTable({
                 direction={direction}
                 onSort={toggleSort}
               />
+              {!recycled && <TableHead>Comentarios</TableHead>}
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {visibleTenants.map((tenant) => (
               <TableRow key={tenant.id}>
+                <TableCell>
+                  <EditableCustomIdCell
+                    tenantId={tenant.id}
+                    customId={tenant.customId}
+                  />
+                </TableCell>
                 <TableCell className='font-medium'>{tenant.name}</TableCell>
                 <TableCell>
                   {recycled ? (
@@ -249,6 +278,15 @@ export default function TenantTable({
                       : tenant.createdAt,
                   )}
                 </TableCell>
+                {!recycled && (
+                  <TableCell>
+                    <EditableCommentsCell
+                      tenantId={tenant.id}
+                      tenantName={tenant.name}
+                      comments={tenant.comments}
+                    />
+                  </TableCell>
+                )}
                 <TableCell>
                   <TenantActions
                     tenantId={tenant.id}
@@ -334,5 +372,5 @@ function getSortValue(
   column: Exclude<SortColumn, 'createdAt'>,
 ) {
   if (column === 'creator') return tenant.createdByUsername ?? '';
-  return tenant[column];
+  return tenant[column] ?? '';
 }

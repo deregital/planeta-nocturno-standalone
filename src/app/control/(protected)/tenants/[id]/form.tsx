@@ -34,6 +34,19 @@ export default function TenantEditForm({
       <fieldset className='grid gap-5 rounded-xl border border-stroke bg-white p-6 md:grid-cols-2'>
         <legend className='px-2 text-lg font-semibold'>Configuración</legend>
 
+        <div className='space-y-1 md:col-span-2'>
+          <Label htmlFor='customId'>ID personalizable</Label>
+          <Input
+            id='customId'
+            name='customId'
+            inputMode='numeric'
+            pattern='[0-9]*'
+            defaultValue={values.customId}
+            aria-invalid={Boolean(state.errors?.customId)}
+            className='max-w-40'
+          />
+          <FieldError message={state.errors?.customId} />
+        </div>
         <FormField
           label='Nombre'
           name='name'
@@ -69,6 +82,21 @@ export default function TenantEditForm({
           errors={state.errors}
         />
       </fieldset>
+
+      <section className='space-y-2 rounded-xl border border-stroke bg-white p-6'>
+        <Label htmlFor='comments' className='text-lg font-semibold'>
+          Comentarios
+        </Label>
+        <Textarea
+          id='comments'
+          name='comments'
+          defaultValue={values.comments}
+          aria-invalid={Boolean(state.errors?.comments)}
+          placeholder='Notas internas sobre la plataforma'
+          className='min-h-32'
+        />
+        <FieldError message={state.errors?.comments} />
+      </section>
 
       {state.errors?.general && (
         <p className='rounded-md bg-red-50 p-3 text-sm font-medium text-red-700'>

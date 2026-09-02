@@ -10,6 +10,8 @@ export default async function TenantTrashPage() {
   const recycledTenants = await getControlDb()
     .select({
       id: tenants.id,
+      customId: tenants.customId,
+      comments: tenants.comments,
       name: tenants.name,
       slug: tenants.slug,
       status: tenants.status,

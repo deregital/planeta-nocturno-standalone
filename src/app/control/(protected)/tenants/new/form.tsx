@@ -24,7 +24,9 @@ import { Textarea } from '@/components/ui/textarea';
 import 'react-phone-number-input/style.css';
 
 const emptyValues: TenantFormValues = {
+  customId: '',
   name: '',
+  comments: '',
   slug: '',
   description: '',
   contactEmail: '',
@@ -99,6 +101,14 @@ export default function TenantForm({
           <legend className='px-2 text-lg font-semibold'>Plataforma</legend>
 
           <FormField
+            label='ID personalizable'
+            name='customId'
+            inputMode='numeric'
+            pattern='[0-9]*'
+            defaultValue={values.customId}
+            error={state.errors?.customId}
+          />
+          <FormField
             label='Nombre'
             name='name'
             defaultValue={values.name}
@@ -153,6 +163,18 @@ export default function TenantForm({
                 {retrying ? 'Subdominio actual' : availability.message}
               </p>
             )}
+          </div>
+          <div className='space-y-1 md:col-span-2'>
+            <Label htmlFor='comments'>Comentarios</Label>
+            <Textarea
+              id='comments'
+              name='comments'
+              defaultValue={values.comments}
+              aria-invalid={Boolean(state.errors?.comments)}
+              placeholder='Notas internas sobre la plataforma'
+              className='min-h-28'
+            />
+            <FieldError message={state.errors?.comments} />
           </div>
           <div className='space-y-1 md:col-span-2'>
             <Label htmlFor='description'>Descripción</Label>

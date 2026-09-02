@@ -27,7 +27,9 @@ export default async function EditTenantPage({
   const [tenant] = await getControlDb()
     .select({
       id: tenants.id,
+      customId: tenants.customId,
       name: tenants.name,
+      comments: tenants.comments,
       slug: tenants.slug,
       description: tenants.description,
       contactEmail: tenants.contactEmail,
@@ -69,7 +71,9 @@ export default async function EditTenantPage({
         slug={tenant.slug}
         initialValues={{
           tenantId: String(tenant.id),
+          customId: tenant.customId ?? '',
           name: tenant.name,
+          comments: tenant.comments ?? '',
           description: tenant.description ?? '',
           contactEmail: tenant.contactEmail ?? '',
           faviconUrl: tenant.faviconUrl ?? '',

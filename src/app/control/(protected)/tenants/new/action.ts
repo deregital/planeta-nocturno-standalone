@@ -11,6 +11,12 @@ import {
   getControlAdminSession,
 } from '@/server/control/can-manage-tenants';
 import {
+  CUSTOM_ID_TAKEN_ERROR,
+  getCustomIdAvailabilityError,
+  isCustomIdUniqueViolation,
+  isUniqueViolation,
+} from '@/server/control/custom-id';
+import {
   tenantMetadataSchema,
   tenantSubdomainSchema,
 } from '@/server/schemas/control-tenant';
@@ -31,7 +37,9 @@ const tenantCreationSchema = tenantMetadataSchema.extend({
 
 export type TenantFormValues = {
   tenantId?: string;
+  customId: string;
   name: string;
+  comments: string;
   slug: string;
   description: string;
   contactEmail: string;
@@ -139,6 +147,16 @@ export async function createTenant(
   const retryTenantId = Number(values.tenantId);
   let tenantId: number;
 
+  const customIdError = await getCustomIdAvailabilityError(
+    data.customId,
+    Number.isInteger(retryTenantId) && retryTenantId > 0
+      ? retryTenantId
+      : undefined,
+  );
+  if (customIdError) {
+    return { values: safeValues, errors: { customId: customIdError } };
+  }
+
   try {
     if (Number.isInteger(retryTenantId) && retryTenantId > 0) {
       const [tenant] = await getControlDb()
@@ -174,7 +192,9 @@ export async function createTenant(
       await getControlDb()
         .update(tenants)
         .set({
+          customId: data.customId,
           name: data.name,
+          comments: data.comments,
           description: data.description,
           contactEmail: data.contactEmail,
           faviconUrl: data.faviconUrl,
@@ -188,7 +208,9 @@ export async function createTenant(
       const [tenant] = await getControlDb()
         .insert(tenants)
         .values({
+          customId: data.customId,
           name: data.name,
+          comments: data.comments,
           slug: data.slug,
           description: data.description,
           contactEmail: data.contactEmail,
@@ -203,6 +225,12 @@ export async function createTenant(
       tenantId = tenant.id;
     }
   } catch (error) {
+    if (isCustomIdUniqueViolation(error)) {
+      return {
+        values: safeValues,
+        errors: { customId: CUSTOM_ID_TAKEN_ERROR },
+      };
+    }
     if (isUniqueViolation(error)) {
       return {
         values: safeValues,
@@ -263,7 +291,9 @@ function getFormValues(formData: FormData): TenantFormValues {
 
   return {
     tenantId: value('tenantId') || undefined,
+    customId: value('customId'),
     name: value('name'),
+    comments: value('comments'),
     slug: value('slug').toLowerCase(),
     description: value('description'),
     contactEmail: value('contactEmail'),
@@ -279,13 +309,4 @@ function getFormValues(formData: FormData): TenantFormValues {
     adminBirthDate: value('adminBirthDate'),
     adminGender: value('adminGender'),
   };
-}
-
-function isUniqueViolation(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
 }

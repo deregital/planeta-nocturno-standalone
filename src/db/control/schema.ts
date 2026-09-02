@@ -33,8 +33,10 @@ export const controlAdmins = pgTable('control_admins', {
 
 export const tenants = pgTable('tenants', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  customId: varchar('custom_id', { length: 100 }).unique(),
   slug: varchar({ length: 63 }).notNull().unique(),
   name: varchar({ length: 255 }).notNull(),
+  comments: text(),
   description: text(),
   contactEmail: varchar('contact_email', { length: 320 }),
   faviconUrl: text('favicon_url'),

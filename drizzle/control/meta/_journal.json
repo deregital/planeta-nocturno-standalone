@@ -15,6 +15,13 @@
       "when": 1787768217974,
       "tag": "0001_mp_access_token_expiration",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788378759808,
+      "tag": "0002_short_manta",
+      "breakpoints": true
     }
   ]
 }

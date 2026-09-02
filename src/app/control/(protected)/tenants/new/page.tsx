@@ -42,7 +42,9 @@ export default async function NewTenantPage({
           retryTenant
             ? {
                 tenantId: String(retryTenant.id),
+                customId: retryTenant.customId ?? '',
                 name: retryTenant.name,
+                comments: retryTenant.comments ?? '',
                 slug: retryTenant.slug,
                 description: retryTenant.description ?? '',
                 contactEmail: retryTenant.contactEmail ?? '',
@@ -61,7 +63,9 @@ async function getRetryTenant(id: number) {
   const [tenant] = await getControlDb()
     .select({
       id: tenants.id,
+      customId: tenants.customId,
       name: tenants.name,
+      comments: tenants.comments,
       slug: tenants.slug,
       description: tenants.description,
       contactEmail: tenants.contactEmail,

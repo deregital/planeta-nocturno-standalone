@@ -2,18 +2,24 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { canManageTenants } from '@/server/control/can-manage-tenants';
+import {
+  CUSTOM_ID_TAKEN_ERROR,
+  getCustomIdAvailabilityError,
+  isCustomIdUniqueViolation,
+} from '@/server/control/custom-id';
 import { closeTenantDb } from '@/server/instance/get-instance-db';
 import {
   buildDeletedTenantDatabaseName,
   renameTenantDatabase,
 } from '@/server/neon/get-database-url';
+import { tenantMetadataSchema } from '@/server/schemas/control-tenant';
 
 const lifecycleSchema = z.object({
   tenantId: z.coerce.number().int().positive(),
@@ -29,6 +35,111 @@ export type TenantLifecycleStatus =
   | 'deleted';
 
 export type TenantLifecycleState = { error?: string };
+
+const customIdUpdateSchema = z.object({
+  tenantId: z.coerce.number().int().positive(),
+  customId: tenantMetadataSchema.shape.customId,
+});
+
+const commentsUpdateSchema = z.object({
+  tenantId: z.coerce.number().int().positive(),
+  comments: tenantMetadataSchema.shape.comments,
+});
+
+export type UpdateCustomIdState = { error?: string };
+export type UpdateTenantCommentsState = { error?: string; success?: boolean };
+
+export async function updateTenantComments(
+  _previousState: UpdateTenantCommentsState,
+  formData: FormData,
+): Promise<UpdateTenantCommentsState> {
+  if (!(await canManageTenants())) {
+    return { error: 'No tenés permisos para editar plataformas' };
+  }
+
+  const validation = commentsUpdateSchema.safeParse({
+    tenantId: formData.get('tenantId'),
+    comments: String(formData.get('comments') ?? '').trim(),
+  });
+  if (!validation.success) {
+    return {
+      error:
+        validation.error.issues[0]?.message ?? 'Los comentarios no son válidos',
+    };
+  }
+
+  const { tenantId, comments } = validation.data;
+
+  try {
+    const [updatedTenant] = await getControlDb()
+      .update(tenants)
+      .set({ comments, updatedAt: new Date() })
+      .where(and(eq(tenants.id, tenantId), ne(tenants.status, 'deleted')))
+      .returning({ id: tenants.id });
+
+    if (!updatedTenant) return { error: 'La plataforma ya no existe' };
+  } catch (error) {
+    console.error('Unable to update tenant comments', { tenantId, error });
+    return { error: 'No se pudieron actualizar los comentarios' };
+  }
+
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function updateTenantCustomId(
+  _previousState: UpdateCustomIdState,
+  formData: FormData,
+): Promise<UpdateCustomIdState> {
+  if (!(await canManageTenants())) {
+    return { error: 'No tenés permisos para editar plataformas' };
+  }
+
+  const validation = customIdUpdateSchema.safeParse({
+    tenantId: formData.get('tenantId'),
+    customId: String(formData.get('customId') ?? '').trim(),
+  });
+
+  if (!validation.success) {
+    return {
+      error:
+        validation.error.issues[0]?.message ??
+        'El ID personalizable no es válido',
+    };
+  }
+
+  const { tenantId, customId } = validation.data;
+
+  const availabilityError = await getCustomIdAvailabilityError(
+    customId,
+    tenantId,
+  );
+  if (availabilityError) {
+    return { error: availabilityError };
+  }
+
+  try {
+    const [updatedTenant] = await getControlDb()
+      .update(tenants)
+      .set({ customId, updatedAt: new Date() })
+      .where(and(eq(tenants.id, tenantId), ne(tenants.status, 'deleted')))
+      .returning({ id: tenants.id });
+
+    if (!updatedTenant) {
+      return { error: 'La plataforma ya no existe' };
+    }
+  } catch (error) {
+    if (isCustomIdUniqueViolation(error)) {
+      return { error: CUSTOM_ID_TAKEN_ERROR };
+    }
+    console.error('Unable to update tenant custom id', { tenantId, error });
+    return { error: 'No se pudo actualizar el ID personalizable' };
+  }
+
+  revalidatePath('/');
+  revalidatePath('/trash');
+  return {};
+}
 
 export async function updateTenantLifecycle(
   _previousState: TenantLifecycleState,
