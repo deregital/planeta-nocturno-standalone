@@ -1,5 +1,7 @@
 'use client';
 
+import type { ControlPermission } from '@/lib/control/permissions';
+
 import {
   ArrowDown,
   ArrowUp,
@@ -81,10 +83,13 @@ type TenantRow = {
 export default function TenantTable({
   tenants,
   recycled = false,
+  permissions,
 }: {
   tenants: TenantRow[];
   recycled?: boolean;
+  permissions: ControlPermission[];
 }) {
+  const canUpdate = permissions.includes('tenants:update');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [sort, setSort] = useState<SortColumn>('createdAt');
@@ -152,7 +157,7 @@ export default function TenantTable({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className='pl-9'
-              placeholder='ID de Plataforma, subdominio o creador'
+              placeholder='Buscar por ID, nombre o creador'
             />
           </div>
         </div>
@@ -243,6 +248,7 @@ export default function TenantTable({
                   <EditableCustomIdCell
                     tenantId={tenant.id}
                     customId={tenant.customId}
+                    canEdit={canUpdate}
                   />
                 </TableCell>
                 <TableCell className='font-medium'>{tenant.name}</TableCell>
@@ -284,6 +290,7 @@ export default function TenantTable({
                       tenantId={tenant.id}
                       tenantName={tenant.name}
                       comments={tenant.comments}
+                      canEdit={canUpdate}
                     />
                   </TableCell>
                 )}
@@ -294,6 +301,7 @@ export default function TenantTable({
                     status={tenant.status}
                     databaseName={tenant.databaseName}
                     recycled={recycled}
+                    permissions={permissions}
                   />
                 </TableCell>
               </TableRow>

@@ -8,7 +8,7 @@ import {
 import { z } from 'zod';
 
 import { normalizeRootDomain } from '@/lib/tenancy/host';
-import { canManageTenants } from '@/server/control/can-manage-tenants';
+import { requirePermission } from '@/server/control/can-manage-tenants';
 import { getS3Client, S3_BUCKET_NAME } from '@/server/s3/client';
 import { ensureControlCorsOrigin } from '@/server/s3/ensure-tenant-cors-origin';
 import { tenantSubdomainSchema } from '@/server/schemas/control-tenant';
@@ -30,7 +30,9 @@ const router: Router = {
       fileTypes: Object.keys(faviconExtensions),
       clientMetadataSchema: z.object({ slug: tenantSubdomainSchema }),
       onBeforeUpload: async ({ file, clientMetadata }) => {
-        if (!(await canManageTenants())) throw new Error('Unauthorized');
+        if (!(await requirePermission('tenants:update')).ok) {
+          throw new Error('Unauthorized');
+        }
 
         await ensureControlCorsOrigin();
         const extension = faviconExtensions[file.type];

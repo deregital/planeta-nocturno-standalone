@@ -1,12 +1,18 @@
 import { and, desc, eq, isNotNull, ne } from 'drizzle-orm';
+import { type Route } from 'next';
 import Link from 'next/link';
 
 import TenantTable from '@/app/control/(protected)/tenants/tenant-table';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins, tenants } from '@/db/control/schema';
+import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
 
 export default async function TenantTrashPage() {
+  const { permissions } = await requirePermissionOrRedirect(
+    'tenants:read',
+    '/' as Route,
+  );
   const recycledTenants = await getControlDb()
     .select({
       id: tenants.id,
@@ -36,7 +42,7 @@ export default async function TenantTrashPage() {
 
       <div>
         <p className='text-sm font-medium text-accent'>
-          Administrador de plataformas
+          Gestión de plataformas
         </p>
         <h1 className='text-3xl font-bold text-gray-900'>Papelera</h1>
         <p className='mt-1 text-sm text-gray-600'>
@@ -46,6 +52,7 @@ export default async function TenantTrashPage() {
 
       <TenantTable
         recycled
+        permissions={permissions}
         tenants={recycledTenants.map((tenant) => ({
           ...tenant,
           publicUrl: '',
