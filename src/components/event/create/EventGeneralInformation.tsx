@@ -418,9 +418,7 @@ export function EventGeneralInformation({
           </span>
         </section>
         <section>
-          <h3 className='text-accent-dark text-lg font-semibold'>
-            Ubicación y categoría
-          </h3>
+          <h3 className='text-accent-dark text-lg font-semibold'>Ubicación</h3>
           {action !== 'PREVIEW' && openLocationModal && (
             <div className='hidden'>
               <LocationModal
@@ -488,47 +486,6 @@ export function EventGeneralInformation({
             disabled={action === 'PREVIEW'}
           />
           <input type='hidden' name='locationId' value={event.locationId} />
-          <SelectWithLabel
-            label='Categoría'
-            id='categoryId'
-            divClassName='flex-1'
-            className='w-full'
-            required
-            values={
-              categories
-                ? categories
-                    .map((category) => ({
-                      label: category.name,
-                      value: category.id,
-                    }))
-                    .concat([
-                      {
-                        label: '+ Crear categoría',
-                        value: 'CREATE_NEW',
-                      },
-                    ])
-                : []
-            }
-            onValueChange={(value) => {
-              if (value === 'CREATE_NEW') {
-                setOpenCategoryModal(true);
-                return;
-              }
-
-              if (value === '') return;
-              handleChange('categoryId', value);
-            }}
-            error={error.categoryId}
-            defaultValue={event.categoryId}
-            value={event.categoryId}
-            readOnly={action === 'PREVIEW'}
-            disabled={action === 'PREVIEW'}
-          />
-          <input type='hidden' name='categoryId' value={event.categoryId} />
-          <p className='text-sm'>
-            La categoría del evento ayuda a organizar y filtrar eventos en el
-            sistema.
-          </p>
         </section>
         <section>
           <h3 className='text-accent-dark text-lg font-semibold'>Acceso</h3>
@@ -747,6 +704,56 @@ export function EventGeneralInformation({
               contentClassName='w-full ml-0 mt-0 border-none rounded-none'
               className='flex flex-col gap-2 bg-transparent p-0 pt-1 pb-3'
             >
+              <div className='flex flex-col gap-1.5 p-2 border-2 border-accent bg-accent-ultra-light rounded-md w-full'>
+                <SelectWithLabel
+                  label='Categoría'
+                  id='categoryId'
+                  divClassName='flex-1'
+                  className='w-full'
+                  values={[
+                    {
+                      label: 'Sin categoría',
+                      value: 'NONE',
+                    },
+                    ...(categories
+                      ? categories.map((category) => ({
+                          label: category.name,
+                          value: category.id,
+                        }))
+                      : []),
+                    {
+                      label: '+ Crear categoría',
+                      value: 'CREATE_NEW',
+                    },
+                  ]}
+                  onValueChange={(value) => {
+                    if (value === 'CREATE_NEW') {
+                      setOpenCategoryModal(true);
+                      return;
+                    }
+
+                    if (value === 'NONE' || value === '') {
+                      handleChange('categoryId', null);
+                      return;
+                    }
+
+                    handleChange('categoryId', value);
+                  }}
+                  error={error.categoryId}
+                  value={event.categoryId ?? 'NONE'}
+                  readOnly={action === 'PREVIEW'}
+                  disabled={action === 'PREVIEW'}
+                />
+                <input
+                  type='hidden'
+                  name='categoryId'
+                  value={event.categoryId ?? ''}
+                />
+                <p className='text-xs text-accent-dark/70'>
+                  Opcional. Ayuda a organizar y filtrar eventos.
+                </p>
+              </div>
+
               <div className='flex flex-col gap-1.5 p-2 border-2 border-accent bg-accent-ultra-light rounded-md w-full'>
                 <p className='text-sm text-accent-dark'>Notificaciones</p>
                 <Input

@@ -96,7 +96,7 @@ const initialState: EventState = {
     videoUrl: null,
     startingDate: new Date(),
     endingDate: new Date(),
-    categoryId: '',
+    categoryId: null,
     isActive: false,
     locationId: '',
     minAge: null,
