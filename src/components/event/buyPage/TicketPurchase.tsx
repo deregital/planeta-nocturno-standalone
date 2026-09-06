@@ -38,6 +38,8 @@ function TicketPurchase({
     isLoading,
   } = useEventTickets(eventId, ticketTypes);
 
+  const hasPaidTickets = ticketTypes.some((t) => (t.price ?? 0) > 0);
+
   return (
     <div className='rounded-[20px] border border-stroke p-6 bg-accent-ultra-light h-full flex flex-col font-sans'>
       {/* Encabezado */}
@@ -176,7 +178,11 @@ function TicketPurchase({
             quantity.every((q) => q.amount === 0)
           }
         >
-          {ticketsTypeAvailable ? 'COMPRAR' : 'AGOTADO'}
+          {ticketsTypeAvailable.length
+            ? hasPaidTickets
+              ? 'COMPRAR'
+              : 'ADQUIRIR'
+            : 'AGOTADO'}
         </Button>
       </div>
     </div>
