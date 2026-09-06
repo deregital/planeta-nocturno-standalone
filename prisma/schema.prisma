@@ -226,6 +226,7 @@ model TicketType {
   maxSellDate       DateTime?          @db.Timestamptz
   visibleInWeb      Boolean            @default(true)
   lowStockThreshold Int?
+  imageUrl          String?
 
   startingDate DateTime  @db.Timestamptz
   scanLimit    DateTime? @db.Timestamptz

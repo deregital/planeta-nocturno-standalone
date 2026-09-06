@@ -90,6 +90,7 @@ export const ticketType = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     lowStockThreshold: integer(),
+    imageUrl: text(),
     slug: text()
       .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),

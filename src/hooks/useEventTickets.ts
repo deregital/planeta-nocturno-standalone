@@ -17,7 +17,7 @@ export function useEventTickets(
     Array<
       Pick<
         TicketType,
-        'id' | 'maxPerPurchase' | 'name' | 'description' | 'price'
+        'id' | 'maxPerPurchase' | 'name' | 'description' | 'price' | 'imageUrl'
       > & { disabled: boolean; leftAvailable: number | null }
     >
   >([]);
@@ -59,6 +59,7 @@ export function useEventTickets(
           name: type.name,
           description: type.description,
           price: type.price,
+          imageUrl: type.imageUrl,
           disabled,
           maxPerPurchase,
           leftAvailable,

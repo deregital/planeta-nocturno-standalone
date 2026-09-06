@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { CircleHelp, Loader2, Pencil } from 'lucide-react';
+import Image from 'next/image';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { validateTicketType } from '@/app/(backoffice)/admin/event/create/actions';
@@ -8,6 +9,7 @@ import { type EventState } from '@/app/(backoffice)/admin/event/create/state';
 import { FormRow } from '@/components/common/FormRow';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
+import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,12 +21,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ticketTypesTranslation } from '@/lib/translations';
+import { generateS3Url } from '@/lib/utils-client';
 import { type CreateTicketTypeSchema } from '@/server/schemas/ticket-type';
 import { trpc } from '@/server/trpc/client';
 import { type TicketTypeCategory } from '@/server/types';
@@ -82,6 +86,7 @@ export default function TicketTypeModal({
         id: ticketType.id,
         visibleInWeb: ticketType.visibleInWeb,
         lowStockThreshold: ticketType.lowStockThreshold,
+        imageUrl: ticketType.imageUrl ?? null,
         organizers: ticketType.organizers || [],
         allowMultipleScans: ticketType.allowMultipleScans ?? false,
       };
@@ -99,6 +104,7 @@ export default function TicketTypeModal({
       id: crypto.randomUUID(),
       visibleInWeb: true,
       lowStockThreshold: null,
+      imageUrl: null,
       organizers: [],
       allowMultipleScans: false,
     };
@@ -280,38 +286,80 @@ export default function TicketTypeModal({
           onSubmit={handleSubmit}
           className='flex flex-col gap-4 justify-center max-md:pb-4'
         >
-          <FormRow>
-            <InputWithLabel
-              id='name'
-              name='name'
-              label='Nombre del ticket'
-              required
-              error={error.name}
-              value={editingTicketType.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-            />
-            <InputWithLabel
-              className='flex-none! [&>input]:w-6 [&>input]:self-center'
-              id='visibleInWeb'
-              name='visibleInWeb'
-              label='¿Visible en la web?'
-              type='checkbox'
-              error={error.visibleInWeb}
-              checked={editingTicketType.visibleInWeb}
-              onChange={(e) =>
-                handleInputChange('visibleInWeb', e.target.checked)
-              }
-            />
-          </FormRow>
-          <InputWithLabel
-            id='description'
-            name='description'
-            label='Descripción del ticket'
-            error={error.description}
-            required
-            value={editingTicketType.description}
-            onChange={(e) => handleInputChange('description', e.target.value)}
-          />
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-start'>
+            <div className='flex w-full shrink-0 flex-col gap-1 sm:w-32'>
+              <Label className='pl-1 text-accent'>Imagen</Label>
+              {editingTicketType.imageUrl ? (
+                <div className='flex flex-col items-start gap-1'>
+                  <div className='relative aspect-square w-full overflow-hidden rounded-md border border-stroke bg-muted/40'>
+                    <Image
+                      fill
+                      src={editingTicketType.imageUrl}
+                      className='object-cover'
+                      sizes='128px'
+                      alt='Imagen del tipo de ticket'
+                    />
+                  </div>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    className='h-auto px-1 text-xs text-accent'
+                    onClick={() => handleInputChange('imageUrl', null)}
+                  >
+                    Quitar
+                  </Button>
+                </div>
+              ) : (
+                <ImageUploader
+                  error={error.imageUrl ?? null}
+                  label='Subir'
+                  description='JPG, PNG'
+                  uploadErrorMessage='No se pudo agregar la imagen al ticket. Intentalo nuevamente.'
+                  className='[&_label]:px-1 [&_label]:py-4 [&_label_p]:text-xs [&_label_p]:max-w-none [&_label_p.font-bold]:font-medium [&_label_p.font-bold]:no-underline'
+                  onUploadComplete={(objectKey) => {
+                    handleInputChange('imageUrl', generateS3Url(objectKey));
+                  }}
+                />
+              )}
+            </div>
+            <div className='flex min-w-0 flex-1 flex-col gap-4'>
+              <FormRow>
+                <InputWithLabel
+                  id='name'
+                  name='name'
+                  label='Nombre del ticket'
+                  required
+                  error={error.name}
+                  value={editingTicketType.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                />
+                <InputWithLabel
+                  className='flex-none! [&>input]:w-6 [&>input]:self-center'
+                  id='visibleInWeb'
+                  name='visibleInWeb'
+                  label='¿Visible en la web?'
+                  type='checkbox'
+                  error={error.visibleInWeb}
+                  checked={editingTicketType.visibleInWeb}
+                  onChange={(e) =>
+                    handleInputChange('visibleInWeb', e.target.checked)
+                  }
+                />
+              </FormRow>
+              <InputWithLabel
+                id='description'
+                name='description'
+                label='Descripción del ticket'
+                error={error.description}
+                required
+                value={editingTicketType.description}
+                onChange={(e) =>
+                  handleInputChange('description', e.target.value)
+                }
+              />
+            </div>
+          </div>
           <FormRow className='md:flex-row flex-col'>
             <InputWithLabel
               id='price'
