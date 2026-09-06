@@ -6,10 +6,7 @@ import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import {
-  canManageTenants,
-  getControlAdminSession,
-} from '@/server/control/can-manage-tenants';
+import { requirePermission } from '@/server/control/can-manage-tenants';
 import {
   CUSTOM_ID_TAKEN_ERROR,
   getCustomIdAvailabilityError,
@@ -80,7 +77,7 @@ export async function checkSubdomainAvailability(
   value: string,
   tenantId?: string,
 ): Promise<SubdomainAvailability> {
-  if (!(await canManageTenants())) {
+  if (!(await requirePermission('tenants:create')).ok) {
     return { available: false, message: 'No se pudo comprobar el subdominio' };
   }
 
@@ -122,14 +119,16 @@ export async function createTenant(
 ): Promise<TenantFormState> {
   const values = getFormValues(formData);
   const safeValues = { ...values, adminPassword: '' };
-  const controlAdminSession = await getControlAdminSession();
+  const authz = await requirePermission('tenants:create');
 
-  if (!controlAdminSession) {
+  if (!authz.ok) {
     return {
       values: safeValues,
       errors: { general: 'No tenés permisos para crear plataformas' },
     };
   }
+
+  const controlAdminSession = authz.session;
 
   const validation = tenantCreationSchema.safeParse(values);
   if (!validation.success) {

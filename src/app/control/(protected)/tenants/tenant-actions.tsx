@@ -1,5 +1,7 @@
 'use client';
 
+import type { ControlPermission } from '@/lib/control/permissions';
+
 import { useActionState } from 'react';
 import {
   LoaderCircle,
@@ -27,19 +29,26 @@ export default function TenantActions({
   status,
   databaseName,
   recycled = false,
+  permissions,
 }: {
   tenantId: number;
   tenantName: string;
   status: TenantLifecycleStatus;
   databaseName: string | null;
   recycled?: boolean;
+  permissions: ControlPermission[];
 }) {
   const [state, action, pending] = useActionState<
     TenantLifecycleState,
     FormData
   >(updateTenantLifecycle, {});
 
+  const can = (permission: ControlPermission) =>
+    permissions.includes(permission);
+
   if (recycled) {
+    if (!can('tenants:restore')) return null;
+
     return (
       <div className='space-y-1'>
         <ConfirmActionDialog
@@ -64,38 +73,25 @@ export default function TenantActions({
   }
 
   if (status === 'deleting') {
-    return (
-      <div className='space-y-1'>
-        <LifecycleButton
-          action={action}
-          tenantId={tenantId}
-          operation='delete'
-          pending={pending}
-          label='Reintentar eliminación'
-          destructive
-          confirmMessage={deleteConfirmation(tenantName, databaseName)}
-        >
-          <RotateCcw />
-        </LifecycleButton>
-        <ActionError message={state.error} />
-      </div>
-    );
+    return <p className='text-xs text-gray-500'>Eliminación en curso…</p>;
   }
 
   return (
     <div className='space-y-1'>
       <div className='flex items-center gap-2'>
-        <Button asChild variant='ghost' size='icon'>
-          <Link
-            href={`/tenants/${tenantId}` as Route}
-            aria-label='Editar plataforma'
-            title='Editar plataforma'
-          >
-            <Pencil />
-          </Link>
-        </Button>
+        {can('tenants:update') && (
+          <Button asChild variant='ghost' size='icon'>
+            <Link
+              href={`/tenants/${tenantId}` as Route}
+              aria-label='Editar plataforma'
+              title='Editar plataforma'
+            >
+              <Pencil />
+            </Link>
+          </Button>
+        )}
 
-        {status === 'active' && (
+        {status === 'active' && can('tenants:suspend') && (
           <LifecycleButton
             action={action}
             tenantId={tenantId}
@@ -106,7 +102,7 @@ export default function TenantActions({
             <Pause />
           </LifecycleButton>
         )}
-        {status === 'suspended' && (
+        {status === 'suspended' && can('tenants:activate') && (
           <LifecycleButton
             action={action}
             tenantId={tenantId}
@@ -117,7 +113,7 @@ export default function TenantActions({
             <Play />
           </LifecycleButton>
         )}
-        {status === 'failed' && !databaseName && (
+        {status === 'failed' && !databaseName && can('tenants:create') && (
           <Button asChild variant='ghost' size='icon'>
             <Link
               href={`/tenants/new?retry=${tenantId}` as Route}
@@ -131,36 +127,23 @@ export default function TenantActions({
         {status === 'failed' && databaseName && (
           <span className='text-xs text-red-600'>Requiere revisión</span>
         )}
-        {(status === 'active' || status === 'suspended') && (
-          <ConfirmActionDialog
-            action={action}
-            pending={pending}
-            title='Enviar plataforma a la papelera'
-            description={`${tenantName} será suspendida y dejará de estar disponible. Podrás restaurarla posteriormente desde la papelera.`}
-            confirmLabel='Enviar a la papelera'
-            triggerLabel='Enviar a la papelera'
-            fields={{
-              tenantId: String(tenantId),
-              operation: 'recycle',
-            }}
-          >
-            <Trash2 />
-          </ConfirmActionDialog>
-        )}
-        {/* La eliminación queda deshabilitada hasta que se publique esta función.
-        {status !== 'provisioning' && (
-          <LifecycleButton
-            action={action}
-            tenantId={tenantId}
-            operation='delete'
-            pending={pending}
-            label='Eliminar plataforma'
-            destructive
-            confirmMessage={deleteConfirmation(tenantName, databaseName)}
-          >
-            <Trash2 />
-          </LifecycleButton>
-        )} */}
+        {(status === 'active' || status === 'suspended') &&
+          can('tenants:recycle') && (
+            <ConfirmActionDialog
+              action={action}
+              pending={pending}
+              title='Enviar plataforma a la papelera'
+              description={`${tenantName} será suspendida y dejará de estar disponible. Podrás restaurarla posteriormente desde la papelera.`}
+              confirmLabel='Enviar a la papelera'
+              triggerLabel='Enviar a la papelera'
+              fields={{
+                tenantId: String(tenantId),
+                operation: 'recycle',
+              }}
+            >
+              <Trash2 />
+            </ConfirmActionDialog>
+          )}
       </div>
       <ActionError message={state.error} />
     </div>
@@ -179,7 +162,7 @@ function LifecycleButton({
 }: {
   action: (formData: FormData) => void;
   tenantId: number;
-  operation: 'suspend' | 'activate' | 'recycle' | 'restore' | 'delete';
+  operation: 'suspend' | 'activate' | 'recycle' | 'restore';
   pending: boolean;
   label: string;
   destructive?: boolean;
@@ -209,13 +192,6 @@ function LifecycleButton({
       </Button>
     </form>
   );
-}
-
-function deleteConfirmation(tenantName: string, databaseName: string | null) {
-  const databaseMessage = databaseName
-    ? ` La base ${databaseName} se conservará con el sufijo _deleted.`
-    : '';
-  return `¿Eliminar ${tenantName}? La plataforma dejará de estar disponible.${databaseMessage}`;
 }
 
 function ActionError({ message }: { message?: string }) {

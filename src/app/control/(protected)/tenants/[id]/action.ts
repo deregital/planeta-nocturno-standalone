@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import { canManageTenants } from '@/server/control/can-manage-tenants';
+import { requirePermission } from '@/server/control/can-manage-tenants';
 import {
   CUSTOM_ID_TAKEN_ERROR,
   getCustomIdAvailabilityError,
@@ -44,7 +44,7 @@ export async function updateTenant(
 ): Promise<TenantEditState> {
   const values = getFormValues(formData);
 
-  if (!(await canManageTenants())) {
+  if (!(await requirePermission('tenants:update')).ok) {
     return {
       values,
       errors: { general: 'No tenés permisos para editar plataformas' },

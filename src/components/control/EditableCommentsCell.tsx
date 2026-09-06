@@ -21,10 +21,12 @@ export default function EditableCommentsCell({
   tenantId,
   tenantName,
   comments,
+  canEdit = true,
 }: {
   tenantId: number;
   tenantName: string;
   comments: string | null;
+  canEdit?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(updateTenantComments, {});
@@ -35,12 +37,27 @@ export default function EditableCommentsCell({
 
   const summary = comments?.trim();
 
+  if (!canEdit) {
+    return (
+      <div className='flex max-w-56 items-center gap-1.5'>
+        <MessageSquareText className='size-4 shrink-0 text-gray-400' />
+        <span
+          className={
+            summary ? 'truncate text-sm text-gray-700' : 'text-sm text-gray-400'
+          }
+        >
+          {summary || 'Sin comentarios'}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
           type='button'
-          className='group flex max-w-56 items-center gap-1.5 text-left cursor-pointer'
+          className='group flex max-w-56 cursor-pointer items-center gap-1.5 text-left'
           aria-label={`Editar comentarios de ${tenantName}`}
         >
           <MessageSquareText className='size-4 shrink-0 text-gray-400' />

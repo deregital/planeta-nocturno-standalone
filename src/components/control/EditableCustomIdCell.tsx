@@ -9,9 +9,11 @@ import { Input } from '@/components/ui/input';
 export default function EditableCustomIdCell({
   tenantId,
   customId,
+  canEdit = true,
 }: {
   tenantId: number;
   customId: string | null;
+  canEdit?: boolean;
 }) {
   const savedValue = customId ?? '';
   const [editing, setEditing] = useState(false);
@@ -26,14 +28,16 @@ export default function EditableCustomIdCell({
     return (
       <div className='flex min-w-0 items-center gap-1.5'>
         <span className='font-medium'>{customId ?? '—'}</span>
-        <button
-          type='button'
-          onClick={() => setEditing(true)}
-          className='cursor-pointer inline-flex shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-accent'
-          aria-label='Editar ID personalizable'
-        >
-          <Pencil className='size-3.5' />
-        </button>
+        {canEdit && (
+          <button
+            type='button'
+            onClick={() => setEditing(true)}
+            className='inline-flex shrink-0 cursor-pointer rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-accent'
+            aria-label='Editar ID personalizable'
+          >
+            <Pencil className='size-3.5' />
+          </button>
+        )}
       </div>
     );
   }

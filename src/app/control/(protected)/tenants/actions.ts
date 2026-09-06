@@ -1,24 +1,18 @@
 'use server';
 
-import { randomUUID } from 'node:crypto';
-
 import { and, eq, isNotNull, isNull, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import { canManageTenants } from '@/server/control/can-manage-tenants';
+import { LIFECYCLE_PERMISSIONS } from '@/lib/control/permissions';
+import { requirePermission } from '@/server/control/can-manage-tenants';
 import {
   CUSTOM_ID_TAKEN_ERROR,
   getCustomIdAvailabilityError,
   isCustomIdUniqueViolation,
 } from '@/server/control/custom-id';
-import { closeTenantDb } from '@/server/instance/get-instance-db';
-import {
-  buildDeletedTenantDatabaseName,
-  renameTenantDatabase,
-} from '@/server/neon/get-database-url';
 import { tenantMetadataSchema } from '@/server/schemas/control-tenant';
 
 const lifecycleSchema = z.object({
@@ -53,7 +47,7 @@ export async function updateTenantComments(
   _previousState: UpdateTenantCommentsState,
   formData: FormData,
 ): Promise<UpdateTenantCommentsState> {
-  if (!(await canManageTenants())) {
+  if (!(await requirePermission('tenants:update')).ok) {
     return { error: 'No tenés permisos para editar plataformas' };
   }
 
@@ -91,7 +85,7 @@ export async function updateTenantCustomId(
   _previousState: UpdateCustomIdState,
   formData: FormData,
 ): Promise<UpdateCustomIdState> {
-  if (!(await canManageTenants())) {
+  if (!(await requirePermission('tenants:update')).ok) {
     return { error: 'No tenés permisos para editar plataformas' };
   }
 
@@ -145,10 +139,6 @@ export async function updateTenantLifecycle(
   _previousState: TenantLifecycleState,
   formData: FormData,
 ): Promise<TenantLifecycleState> {
-  if (!(await canManageTenants())) {
-    return { error: 'No tenés permisos para administrar plataformas' };
-  }
-
   const validation = lifecycleSchema.safeParse({
     tenantId: formData.get('tenantId'),
     operation: formData.get('operation'),
@@ -156,6 +146,15 @@ export async function updateTenantLifecycle(
   if (!validation.success) return { error: 'Operación inválida' };
 
   const { tenantId, operation } = validation.data;
+
+  if (operation === 'delete') {
+    return { error: 'La eliminación definitiva no está disponible por ahora' };
+  }
+
+  const lifecyclePermission = LIFECYCLE_PERMISSIONS[operation];
+  if (!(await requirePermission(lifecyclePermission)).ok) {
+    return { error: 'No tenés permisos para esta acción' };
+  }
   const [tenant] = await getControlDb()
     .select({
       id: tenants.id,
@@ -271,53 +270,7 @@ export async function updateTenantLifecycle(
     }
   }
 
-  if (operation === 'delete') {
-    if (tenant.status === 'provisioning') {
-      return { error: 'Esperá a que termine el aprovisionamiento' };
-    }
-
-    try {
-      await getControlDb()
-        .update(tenants)
-        .set({ status: 'deleting', updatedAt: new Date() })
-        .where(eq(tenants.id, tenantId));
-
-      const deletedDatabaseName = tenant.databaseName
-        ? buildDeletedTenantDatabaseName(tenant.databaseName)
-        : null;
-
-      if (tenant.databaseName && deletedDatabaseName) {
-        await closeTenantDb(tenant.databaseName);
-        await renameTenantDatabase(tenant.databaseName, deletedDatabaseName);
-      }
-
-      await getControlDb()
-        .update(tenants)
-        .set({
-          slug: buildDeletedTenantSlug(tenant.id, tenant.slug),
-          status: 'deleted',
-          databaseName: deletedDatabaseName,
-          deletedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(tenants.id, tenantId));
-    } catch (error) {
-      console.error('Unable to soft delete tenant', { tenantId, error });
-      revalidatePath('/');
-      return {
-        error:
-          'No se pudo completar la eliminación. Si quedó bloqueado, podés reintentar.',
-      };
-    }
-  }
-
   revalidatePath('/');
   revalidatePath('/trash');
   return {};
-}
-
-function buildDeletedTenantSlug(tenantId: number, slug: string) {
-  const prefix = `deleted-${tenantId}-`;
-  const suffix = `-${randomUUID().slice(0, 8)}`;
-  return `${prefix}${slug.slice(0, 63 - prefix.length - suffix.length)}${suffix}`;
 }

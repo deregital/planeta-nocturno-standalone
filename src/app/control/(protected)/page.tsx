@@ -13,8 +13,15 @@ import {
   getRequestHost,
   normalizeRootDomain,
 } from '@/lib/tenancy/host';
+import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import { getControlLandingPath } from '@/server/control/landing-path';
 
 export default async function ControlHomePage() {
+  const landingPath = (await getControlLandingPath()) as Route;
+  const { permissions } = await requirePermissionOrRedirect(
+    'tenants:read',
+    landingPath === '/' ? ('/users' as Route) : landingPath,
+  );
   const requestHeaders = new Headers(await headers());
   const tenantList = await getControlDb()
     .select({
@@ -46,7 +53,7 @@ export default async function ControlHomePage() {
       <div className='flex items-end justify-between gap-4'>
         <div>
           <p className='text-sm font-medium text-accent'>
-            Administrador de plataformas
+            Gestión de plataformas
           </p>
           <h1 className='text-3xl font-bold text-gray-900'>Plataformas</h1>
           <p className='mt-1 text-sm text-gray-600'>
@@ -60,16 +67,19 @@ export default async function ControlHomePage() {
               Papelera
             </Link>
           </Button>
-          <Button asChild>
-            <Link href={'/tenants/new' as Route}>
-              <Plus />
-              Nueva plataforma
-            </Link>
-          </Button>
+          {permissions.includes('tenants:create') && (
+            <Button asChild>
+              <Link href={'/tenants/new' as Route}>
+                <Plus />
+                Nueva plataforma
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
       <TenantTable
+        permissions={permissions}
         tenants={tenantList.map((tenant) => ({
           ...tenant,
           publicUrl: getTenantPublicUrl(tenant.slug, requestHeaders),

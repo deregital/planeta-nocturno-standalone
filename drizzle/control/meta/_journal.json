@@ -22,6 +22,13 @@
       "when": 1788378759808,
       "tag": "0002_short_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788666723182,
+      "tag": "0003_control_rbac",
+      "breakpoints": true
     }
   ]
 }
