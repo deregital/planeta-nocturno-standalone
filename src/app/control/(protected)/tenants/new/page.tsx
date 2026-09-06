@@ -1,4 +1,5 @@
 import { and, eq, isNull } from 'drizzle-orm';
+import { type Route } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -6,6 +7,7 @@ import TenantForm from '@/app/control/(protected)/tenants/new/form';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
+import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
 
 export const maxDuration = 60;
 
@@ -14,6 +16,7 @@ export default async function NewTenantPage({
 }: {
   searchParams: Promise<{ retry?: string }>;
 }) {
+  await requirePermissionOrRedirect('tenants:create', '/' as Route);
   const retryParam = (await searchParams).retry;
   const retryId = Number(retryParam);
   if (retryParam && (!Number.isInteger(retryId) || retryId <= 0)) notFound();
@@ -29,10 +32,10 @@ export default async function NewTenantPage({
 
       <div>
         <p className='text-sm font-medium text-accent'>
-          Administrador de páginas
+          Gestión de plataformas
         </p>
         <h1 className='text-3xl font-bold text-gray-900'>
-          {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva página'}
+          {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva plataforma'}
         </h1>
       </div>
 
@@ -42,7 +45,9 @@ export default async function NewTenantPage({
           retryTenant
             ? {
                 tenantId: String(retryTenant.id),
+                customId: retryTenant.customId ?? '',
                 name: retryTenant.name,
+                comments: retryTenant.comments ?? '',
                 slug: retryTenant.slug,
                 description: retryTenant.description ?? '',
                 contactEmail: retryTenant.contactEmail ?? '',
@@ -61,7 +66,9 @@ async function getRetryTenant(id: number) {
   const [tenant] = await getControlDb()
     .select({
       id: tenants.id,
+      customId: tenants.customId,
       name: tenants.name,
+      comments: tenants.comments,
       slug: tenants.slug,
       description: tenants.description,
       contactEmail: tenants.contactEmail,

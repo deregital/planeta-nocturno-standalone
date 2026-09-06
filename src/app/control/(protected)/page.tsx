@@ -1,5 +1,5 @@
-import { desc, eq, ne } from 'drizzle-orm';
-import { Plus } from 'lucide-react';
+import { and, desc, eq, isNull, ne } from 'drizzle-orm';
+import { Plus, Trash2 } from 'lucide-react';
 import { type Route } from 'next';
 import { headers } from 'next/headers';
 import Link from 'next/link';
@@ -13,25 +13,35 @@ import {
   getRequestHost,
   normalizeRootDomain,
 } from '@/lib/tenancy/host';
+import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import { getControlLandingPath } from '@/server/control/landing-path';
 
 export default async function ControlHomePage() {
+  const landingPath = (await getControlLandingPath()) as Route;
+  const { permissions } = await requirePermissionOrRedirect(
+    'tenants:read',
+    landingPath === '/' ? ('/users' as Route) : landingPath,
+  );
   const requestHeaders = new Headers(await headers());
   const tenantList = await getControlDb()
     .select({
       id: tenants.id,
+      customId: tenants.customId,
+      comments: tenants.comments,
       name: tenants.name,
       slug: tenants.slug,
       status: tenants.status,
       databaseName: tenants.databaseName,
       createdByUsername: controlAdmins.username,
       createdAt: tenants.createdAt,
+      recycledAt: tenants.deletedAt,
     })
     .from(tenants)
     .leftJoin(
       controlAdmins,
       eq(tenants.createdByControlAdminId, controlAdmins.id),
     )
-    .where(ne(tenants.status, 'deleted'))
+    .where(and(ne(tenants.status, 'deleted'), isNull(tenants.deletedAt)))
     .orderBy(desc(tenants.createdAt));
 
   const activeTenants = tenantList.filter(
@@ -43,22 +53,33 @@ export default async function ControlHomePage() {
       <div className='flex items-end justify-between gap-4'>
         <div>
           <p className='text-sm font-medium text-accent'>
-            Administrador de páginas
+            Gestión de plataformas
           </p>
-          <h1 className='text-3xl font-bold text-gray-900'>Páginas</h1>
+          <h1 className='text-3xl font-bold text-gray-900'>Plataformas</h1>
           <p className='mt-1 text-sm text-gray-600'>
             {tenantList.length} registradas · {activeTenants} activas
           </p>
         </div>
-        <Button asChild>
-          <Link href={'/tenants/new' as Route}>
-            <Plus />
-            Nueva página
-          </Link>
-        </Button>
+        <div className='flex gap-2'>
+          <Button asChild variant='ghost'>
+            <Link href={'/trash' as Route}>
+              <Trash2 />
+              Papelera
+            </Link>
+          </Button>
+          {permissions.includes('tenants:create') && (
+            <Button asChild>
+              <Link href={'/tenants/new' as Route}>
+                <Plus />
+                Nueva plataforma
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <TenantTable
+        permissions={permissions}
         tenants={tenantList.map((tenant) => ({
           ...tenant,
           publicUrl: getTenantPublicUrl(tenant.slug, requestHeaders),

@@ -14,6 +14,8 @@ export function ImageUploader({
   label,
   accept = 'image/*',
   metadata,
+  className,
+  uploadErrorMessage = 'No se pudo subir la imagen. Intentalo nuevamente.',
 }: {
   onUploadComplete: (objectKey: string) => void;
   error: string | null;
@@ -28,6 +30,9 @@ export function ImageUploader({
   label?: string;
   accept?: string;
   metadata?: Record<string, unknown>;
+  className?: string;
+  /** Mensaje cuando falla la subida a S3 o el procesamiento. */
+  uploadErrorMessage?: string;
   description?:
     | {
         fileTypes?: string;
@@ -41,7 +46,18 @@ export function ImageUploader({
   const { control } = useUploadFiles({
     route,
     onUploadComplete: ({ files }) => {
-      onUploadComplete(files[0].objectKey);
+      try {
+        onUploadComplete(files[0].objectKey);
+        setLocalError(null);
+      } catch {
+        setLocalError(uploadErrorMessage);
+      }
+    },
+    onUploadFail: () => {
+      setLocalError(uploadErrorMessage);
+    },
+    onError: () => {
+      setLocalError(uploadErrorMessage);
     },
   });
 
@@ -67,9 +83,7 @@ export function ImageUploader({
               setLocalError(null);
               control.upload([finalFile], options);
             } catch {
-              setLocalError(
-                'No se pudo procesar la imagen. Intentalo nuevamente.',
-              );
+              setLocalError(uploadErrorMessage);
             }
           })();
         });
@@ -80,12 +94,12 @@ export function ImageUploader({
       setLocalError(null);
       control.upload([toUpload], options);
     } catch {
-      setLocalError('No se pudo procesar la imagen. Intentalo nuevamente.');
+      setLocalError(uploadErrorMessage);
     }
   }
 
   return (
-    <div>
+    <div className={cn(className)}>
       <UploadDropzone
         description={
           descriptionProp ?? {
@@ -101,7 +115,7 @@ export function ImageUploader({
         className={cn((error || localError) && 'border-2 border-red-500')}
       />
       {(error || localError) && (
-        <p className='text-red-500 font-bold text-sm'>
+        <p className='text-red-500 font-bold text-xs pl-1'>
           {[error, localError].filter(Boolean).join('. ')}
         </p>
       )}

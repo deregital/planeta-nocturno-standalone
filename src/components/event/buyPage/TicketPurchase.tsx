@@ -1,5 +1,6 @@
 'use client';
 import { format } from 'date-fns';
+import Image from 'next/image';
 import { startTransition, useActionState } from 'react';
 
 import { handlePurchase as handlePurchaseAction } from '@/app/(client)/event/[slug]/actions';
@@ -37,6 +38,8 @@ function TicketPurchase({
     isLoading,
   } = useEventTickets(eventId, ticketTypes);
 
+  const hasPaidTickets = ticketTypes.some((t) => (t.price ?? 0) > 0);
+
   return (
     <div className='rounded-[20px] border border-stroke p-6 bg-accent-ultra-light h-full flex flex-col font-sans'>
       {/* Encabezado */}
@@ -63,34 +66,49 @@ function TicketPurchase({
               key={type.id}
               className='flex flex-col gap-2 sm:flex-row sm:items-center border-b border-stroke/50 pb-4 sm:border-none sm:pb-0'
             >
-              <div className='flex-1 min-w-0'>
-                <div className='text-base sm:text-base font-medium flex items-baseline gap-2'>
-                  {type.name}
-                  {(() => {
-                    const original = ticketTypes.find((t) => t.id === type.id);
-                    if (
-                      original?.startingDate &&
-                      new Date(original.startingDate).getTime() !==
-                        new Date(eventStartingDate).getTime()
-                    ) {
-                      return (
-                        <span className='text-accent-dark/60 text-xs font-normal'>
-                          {`(Inicio ${format(new Date(original.startingDate), 'HH:mm')} hs)`}
-                        </span>
+              <div className='flex flex-1 min-w-0 gap-3 items-start'>
+                {type.imageUrl ? (
+                  <div className='relative size-14 sm:size-16 shrink-0 overflow-hidden rounded-md bg-muted/40'>
+                    <Image
+                      fill
+                      src={type.imageUrl}
+                      alt={type.name}
+                      className='object-cover'
+                      sizes='64px'
+                    />
+                  </div>
+                ) : null}
+                <div className='min-w-0 flex-1'>
+                  <div className='text-base sm:text-base font-medium flex items-baseline gap-2'>
+                    {type.name}
+                    {(() => {
+                      const original = ticketTypes.find(
+                        (t) => t.id === type.id,
                       );
-                    }
-                  })()}
+                      if (
+                        original?.startingDate &&
+                        new Date(original.startingDate).getTime() !==
+                          new Date(eventStartingDate).getTime()
+                      ) {
+                        return (
+                          <span className='text-accent-dark/60 text-xs font-normal'>
+                            {`(Inicio ${format(new Date(original.startingDate), 'HH:mm')} hs)`}
+                          </span>
+                        );
+                      }
+                    })()}
+                  </div>
+                  {type.description && (
+                    <p className='text-accent-dark/70 text-xs sm:text-sm mt-0.5 leading-snug'>
+                      {type.description}
+                    </p>
+                  )}
+                  {!type.disabled && type.leftAvailable && (
+                    <span className='text-red-500 font-medium text-xs sm:text-sm'>
+                      ¡Quedan {type.leftAvailable} tickets!
+                    </span>
+                  )}
                 </div>
-                {type.description && (
-                  <p className='text-accent-dark/70 text-xs sm:text-sm mt-0.5 leading-snug'>
-                    {type.description}
-                  </p>
-                )}
-                {!type.disabled && type.leftAvailable && (
-                  <span className='text-red-500 font-medium text-xs sm:text-sm'>
-                    ¡Quedan {type.leftAvailable} tickets!
-                  </span>
-                )}
               </div>
               <div className='flex items-center justify-between sm:contents'>
                 <div className='text-black font-normal sm:text-center w-auto sm:w-24 sm:shrink-0'>
@@ -160,7 +178,11 @@ function TicketPurchase({
             quantity.every((q) => q.amount === 0)
           }
         >
-          {ticketsTypeAvailable ? 'COMPRAR' : 'AGOTADO'}
+          {ticketsTypeAvailable.length
+            ? hasPaidTickets
+              ? 'COMPRAR'
+              : 'ADQUIRIR'
+            : 'AGOTADO'}
         </Button>
       </div>
     </div>

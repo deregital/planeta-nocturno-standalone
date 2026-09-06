@@ -126,6 +126,7 @@ export function InvitationTicketTypeAction({
           maxPerPurchase: 1,
           maxSellDate: null,
           organizers: [],
+          imageUrl: null,
         });
       }
 

@@ -4,6 +4,7 @@ import { createContext, useContext } from 'react';
 
 export type PublicInstance = {
   name: string;
+  faviconUrl: string | null;
   publicUrl: string;
   siteUrl: string;
   hue: number;

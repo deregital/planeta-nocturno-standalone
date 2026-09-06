@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "migrate": "npx prisma migrate deploy && npx drizzle-kit pull && tsx src/drizzle/fix-bad-sql.js",
+    "migrate:tenants": "node --conditions=react-server --import tsx scripts/migrate-multi-tenants.ts",
     "control:generate": "drizzle-kit generate --config=drizzle.control.config.ts",
     "control:migrate": "drizzle-kit migrate --config=drizzle.control.config.ts",
+    "control:seed-admin": "tsx scripts/seed-control-admin.ts",
     "dev": "next dev --turbopack --experimental-https",
     "build": "next build",
     "start": "next start",

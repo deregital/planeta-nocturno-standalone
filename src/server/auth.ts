@@ -134,13 +134,33 @@ export async function getSessionForInstance(tenantSlug: string | null) {
   return isTenantSessionValid(session, tenantSlug) ? session : null;
 }
 
+async function controlAdminExists(adminId: string) {
+  const [admin] = await getControlDb()
+    .select({ id: controlAdmins.id })
+    .from(controlAdmins)
+    .where(eq(controlAdmins.id, adminId))
+    .limit(1);
+  return Boolean(admin);
+}
+
+/** Cierra sesión si el JWT de control apunta a un admin que ya no existe. */
+export async function clearStaleControlSession() {
+  const rawSession = await nextAuth.auth();
+  if (!rawSession || !isControlSessionValid(rawSession)) return false;
+  if (await controlAdminExists(rawSession.user.id)) return false;
+  await signOut({ redirectTo: '/login' });
+  return true;
+}
+
 export async function auth() {
   const session = await nextAuth.auth();
   if (!session) return null;
 
   const requestHeaders = new Headers(await headers());
   if (isControlRequest(requestHeaders)) {
-    return isControlSessionValid(session) ? session : null;
+    if (!isControlSessionValid(session)) return null;
+    if (!(await controlAdminExists(session.user.id))) return null;
+    return session;
   }
 
   try {
