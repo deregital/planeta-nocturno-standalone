@@ -16,6 +16,9 @@ export function EventInvitationTypeAction({
   const event = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers);
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const updateTicketType = useCreateEventStore(
+    (state) => state.updateTicketType,
+  );
   const addOrganizerTicketType = useCreateEventStore(
     (state) => state.addOrganizerTicketType,
   );
@@ -31,6 +34,37 @@ export function EventInvitationTypeAction({
         'Debes seleccionar al menos un organizador en modo invitación',
       );
       return;
+    }
+
+    if (event.inviteCondition === 'INVITATION') {
+      const totalInvitationTickets = organizers.reduce(
+        (total, organizer) =>
+          total +
+          ('ticketAmount' in organizer ? (organizer.ticketAmount ?? 0) : 0),
+        0,
+      );
+
+      if (totalInvitationTickets < 1) {
+        toast.error(
+          'Debes asignar al menos un ticket entre los organizadores.',
+        );
+        return;
+      }
+
+      const invitationTicketType = ticketTypes.find(
+        (ticketType) =>
+          ticketType.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
+      );
+
+      if (!invitationTicketType?.id) {
+        toast.error('No se encontró el ticket único del evento.');
+        return;
+      }
+
+      updateTicketType(invitationTicketType.id, {
+        ...invitationTicketType,
+        maxAvailable: totalInvitationTickets,
+      });
     }
 
     // Asegurarse de que el ticket de organizador existe
