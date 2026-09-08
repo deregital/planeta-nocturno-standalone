@@ -57,7 +57,7 @@ export function TicketGroupTable({
               {type.ticketType.price ? (
                 <p>${type.ticketType.price}</p>
               ) : (
-                <p className='text-green-700 font-semibold'>GRATUITO</p>
+                <p className='text-green-700 font-semibold'>SIN CARGO</p>
               )}
             </div>
             <div className='text-black text-right py-4 border-b border-stroke/50'>

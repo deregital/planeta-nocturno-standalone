@@ -179,7 +179,7 @@ export default function CheckoutClient({
 
   const formattedDate = format(
     new Date(ticketGroup.event.startingDate),
-    "EEEE d 'de' MMMM 'de' yyyy - 'Apertura' HH:mm 'hs'",
+    "EEEE d 'de' MMMM 'de' yyyy - 'Inicio' HH:mm 'hs'",
     { locale: es },
   );
 

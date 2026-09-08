@@ -123,7 +123,7 @@ function TicketPurchase({
                         .replace(/\$\s*/, '$')}
                     </p>
                   ) : (
-                    <p className='text-accent'>GRATUITO</p>
+                    <p className='text-accent'>SIN CARGO</p>
                   )}
                 </div>
                 <div className='flex justify-end sm:w-24 sm:shrink-0'>
