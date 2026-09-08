@@ -6,11 +6,15 @@ import TenantTable from '@/app/control/(protected)/tenants/tenant-table';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins, tenants } from '@/db/control/schema';
-import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import { requireAnyPermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import {
+  TENANT_READ_PERMISSIONS,
+  tenantVisibilityFilter,
+} from '@/server/control/tenant-access';
 
 export default async function TenantTrashPage() {
-  const { permissions } = await requirePermissionOrRedirect(
-    'tenants:read',
+  const { permissions, session } = await requireAnyPermissionOrRedirect(
+    TENANT_READ_PERMISSIONS,
     '/' as Route,
   );
   const recycledTenants = await getControlDb()
@@ -31,7 +35,13 @@ export default async function TenantTrashPage() {
       controlAdmins,
       eq(tenants.createdByControlAdminId, controlAdmins.id),
     )
-    .where(and(isNotNull(tenants.deletedAt), ne(tenants.status, 'deleted')))
+    .where(
+      and(
+        isNotNull(tenants.deletedAt),
+        ne(tenants.status, 'deleted'),
+        tenantVisibilityFilter(session.user.id, permissions),
+      ),
+    )
     .orderBy(desc(tenants.deletedAt));
 
   return (

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 
 const statusLabels = {
   provisioning: 'Preparando',
@@ -23,7 +24,10 @@ export default async function EditTenantPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePermissionOrRedirect('tenants:update', '/' as Route);
+  const { permissions, session } = await requirePermissionOrRedirect(
+    'tenants:update',
+    '/' as Route,
+  );
   const tenantId = Number((await params).id);
   if (!Number.isInteger(tenantId) || tenantId <= 0) notFound();
 
@@ -43,7 +47,13 @@ export default async function EditTenantPage({
       databaseName: tenants.databaseName,
     })
     .from(tenants)
-    .where(and(eq(tenants.id, tenantId), ne(tenants.status, 'deleted')))
+    .where(
+      and(
+        eq(tenants.id, tenantId),
+        ne(tenants.status, 'deleted'),
+        tenantVisibilityFilter(session.user.id, permissions),
+      ),
+    )
     .limit(1);
 
   if (!tenant) notFound();

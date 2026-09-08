@@ -14,6 +14,7 @@ import {
   isCustomIdUniqueViolation,
 } from '@/server/control/custom-id';
 import { tenantMetadataSchema } from '@/server/schemas/control-tenant';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 
 const lifecycleSchema = z.object({
   tenantId: z.coerce.number().int().positive(),
@@ -47,7 +48,8 @@ export async function updateTenantComments(
   _previousState: UpdateTenantCommentsState,
   formData: FormData,
 ): Promise<UpdateTenantCommentsState> {
-  if (!(await requirePermission('tenants:update')).ok) {
+  const authz = await requirePermission('tenants:update');
+  if (!authz.ok) {
     return { error: 'No tenés permisos para editar plataformas' };
   }
 
@@ -68,7 +70,13 @@ export async function updateTenantComments(
     const [updatedTenant] = await getControlDb()
       .update(tenants)
       .set({ comments, updatedAt: new Date() })
-      .where(and(eq(tenants.id, tenantId), ne(tenants.status, 'deleted')))
+      .where(
+        and(
+          eq(tenants.id, tenantId),
+          ne(tenants.status, 'deleted'),
+          tenantVisibilityFilter(authz.session.user.id, authz.permissions),
+        ),
+      )
       .returning({ id: tenants.id });
 
     if (!updatedTenant) return { error: 'La plataforma ya no existe' };
@@ -85,7 +93,8 @@ export async function updateTenantCustomId(
   _previousState: UpdateCustomIdState,
   formData: FormData,
 ): Promise<UpdateCustomIdState> {
-  if (!(await requirePermission('tenants:update')).ok) {
+  const authz = await requirePermission('tenants:update');
+  if (!authz.ok) {
     return { error: 'No tenés permisos para editar plataformas' };
   }
 
@@ -116,7 +125,13 @@ export async function updateTenantCustomId(
     const [updatedTenant] = await getControlDb()
       .update(tenants)
       .set({ customId, updatedAt: new Date() })
-      .where(and(eq(tenants.id, tenantId), ne(tenants.status, 'deleted')))
+      .where(
+        and(
+          eq(tenants.id, tenantId),
+          ne(tenants.status, 'deleted'),
+          tenantVisibilityFilter(authz.session.user.id, authz.permissions),
+        ),
+      )
       .returning({ id: tenants.id });
 
     if (!updatedTenant) {
@@ -152,7 +167,8 @@ export async function updateTenantLifecycle(
   }
 
   const lifecyclePermission = LIFECYCLE_PERMISSIONS[operation];
-  if (!(await requirePermission(lifecyclePermission)).ok) {
+  const authz = await requirePermission(lifecyclePermission);
+  if (!authz.ok) {
     return { error: 'No tenés permisos para esta acción' };
   }
   const [tenant] = await getControlDb()
@@ -164,7 +180,12 @@ export async function updateTenantLifecycle(
       deletedAt: tenants.deletedAt,
     })
     .from(tenants)
-    .where(eq(tenants.id, tenantId))
+    .where(
+      and(
+        eq(tenants.id, tenantId),
+        tenantVisibilityFilter(authz.session.user.id, authz.permissions),
+      ),
+    )
     .limit(1);
 
   if (!tenant || tenant.status === 'deleted') {

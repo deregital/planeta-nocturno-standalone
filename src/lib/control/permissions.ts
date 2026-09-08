@@ -1,5 +1,6 @@
 export const CONTROL_PERMISSIONS = [
   'tenants:read',
+  'tenants:read_all',
   'tenants:create',
   'tenants:update',
   'tenants:suspend',
@@ -19,7 +20,8 @@ export const CONTROL_PERMISSIONS = [
 export type ControlPermission = (typeof CONTROL_PERMISSIONS)[number];
 
 export const CONTROL_PERMISSION_LABELS: Record<ControlPermission, string> = {
-  'tenants:read': 'Ver plataformas',
+  'tenants:read': 'Ver sus propias plataformas',
+  'tenants:read_all': 'Ver todas las plataformas',
   'tenants:create': 'Crear plataformas',
   'tenants:update': 'Editar plataformas',
   'tenants:suspend': 'Suspender plataformas',

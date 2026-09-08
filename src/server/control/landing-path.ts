@@ -11,7 +11,12 @@ export async function getControlLandingPath(
 ): Promise<Route> {
   const resolved = permissions ?? (await getControlAdminPermissions()) ?? [];
 
-  if (resolved.includes('tenants:read')) return '/';
+  if (
+    resolved.includes('tenants:read') ||
+    resolved.includes('tenants:read_all')
+  ) {
+    return '/';
+  }
   if (resolved.includes('admins:read')) return '/users' as Route;
   if (resolved.includes('roles:read')) return '/roles' as Route;
   return '/login';

@@ -19,6 +19,7 @@ INSERT INTO "control_roles" ("id", "name", "description", "is_system") VALUES
 	('aaaaaaaa-bbbb-4ccc-8ddd-000000000001', 'super_admin', 'Acceso completo al panel central', true);--> statement-breakpoint
 INSERT INTO "control_role_permissions" ("role_id", "permission") VALUES
 	('aaaaaaaa-bbbb-4ccc-8ddd-000000000001', 'tenants:read'),
+	('aaaaaaaa-bbbb-4ccc-8ddd-000000000001', 'tenants:read_all'),
 	('aaaaaaaa-bbbb-4ccc-8ddd-000000000001', 'tenants:create'),
 	('aaaaaaaa-bbbb-4ccc-8ddd-000000000001', 'tenants:update'),
 	('aaaaaaaa-bbbb-4ccc-8ddd-000000000001', 'tenants:suspend'),

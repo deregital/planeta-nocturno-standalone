@@ -20,7 +20,9 @@ export default async function ProtectedControlLayout({
   }
 
   const permissions = (await getControlAdminPermissions()) ?? [];
-  const canReadTenants = permissions.includes('tenants:read');
+  const canReadTenants =
+    permissions.includes('tenants:read') ||
+    permissions.includes('tenants:read_all');
   const canReadAdmins = permissions.includes('admins:read');
   const canReadRoles = permissions.includes('roles:read');
 

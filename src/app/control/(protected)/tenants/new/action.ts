@@ -1,6 +1,6 @@
 'use server';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -13,6 +13,7 @@ import {
   isCustomIdUniqueViolation,
   isUniqueViolation,
 } from '@/server/control/custom-id';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 import {
   tenantMetadataSchema,
   tenantSubdomainSchema,
@@ -166,7 +167,15 @@ export async function createTenant(
           databaseName: tenants.databaseName,
         })
         .from(tenants)
-        .where(eq(tenants.id, retryTenantId))
+        .where(
+          and(
+            eq(tenants.id, retryTenantId),
+            tenantVisibilityFilter(
+              controlAdminSession.user.id,
+              authz.permissions,
+            ),
+          ),
+        )
         .limit(1);
 
       if (!tenant || tenant.slug !== data.slug || tenant.status !== 'failed') {
@@ -201,7 +210,15 @@ export async function createTenant(
           saturation: data.saturation,
           updatedAt: new Date(),
         })
-        .where(eq(tenants.id, tenant.id));
+        .where(
+          and(
+            eq(tenants.id, tenant.id),
+            tenantVisibilityFilter(
+              controlAdminSession.user.id,
+              authz.permissions,
+            ),
+          ),
+        );
       tenantId = tenant.id;
     } else {
       const [tenant] = await getControlDb()

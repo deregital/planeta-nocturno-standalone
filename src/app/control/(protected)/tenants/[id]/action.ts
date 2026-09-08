@@ -13,6 +13,7 @@ import {
   getCustomIdAvailabilityError,
   isCustomIdUniqueViolation,
 } from '@/server/control/custom-id';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 import { tenantMetadataSchema } from '@/server/schemas/control-tenant';
 
 const tenantEditSchema = tenantMetadataSchema.extend({
@@ -44,7 +45,8 @@ export async function updateTenant(
 ): Promise<TenantEditState> {
   const values = getFormValues(formData);
 
-  if (!(await requirePermission('tenants:update')).ok) {
+  const authz = await requirePermission('tenants:update');
+  if (!authz.ok) {
     return {
       values,
       errors: { general: 'No tenés permisos para editar plataformas' },
@@ -87,7 +89,13 @@ export async function updateTenant(
         saturation: data.saturation,
         updatedAt: new Date(),
       })
-      .where(and(eq(tenants.id, data.tenantId), ne(tenants.status, 'deleted')))
+      .where(
+        and(
+          eq(tenants.id, data.tenantId),
+          ne(tenants.status, 'deleted'),
+          tenantVisibilityFilter(authz.session.user.id, authz.permissions),
+        ),
+      )
       .returning({ id: tenants.id });
 
     if (!updatedTenant) {

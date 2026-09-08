@@ -1,0 +1,11 @@
+---
+description: Require migrations for database-backed changes
+alwaysApply: true
+---
+
+# Database migrations
+
+- Whenever a change adds or modifies database-backed schema, permissions, roles, seed data, or required persisted values, include the corresponding migration in the same change.
+- Add migrations to the correct migration system and update its metadata or journal when required.
+- Ensure the migration works both for existing deployments and clean environments.
+- Do not treat runtime defaults, application constants, or seed scripts as substitutes for a deployable migration.

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 
 export const maxDuration = 60;
 
@@ -16,12 +17,17 @@ export default async function NewTenantPage({
 }: {
   searchParams: Promise<{ retry?: string }>;
 }) {
-  await requirePermissionOrRedirect('tenants:create', '/' as Route);
+  const { permissions, session } = await requirePermissionOrRedirect(
+    'tenants:create',
+    '/' as Route,
+  );
   const retryParam = (await searchParams).retry;
   const retryId = Number(retryParam);
   if (retryParam && (!Number.isInteger(retryId) || retryId <= 0)) notFound();
 
-  const retryTenant = retryParam ? await getRetryTenant(retryId) : null;
+  const retryTenant = retryParam
+    ? await getRetryTenant(retryId, session.user.id, permissions)
+    : null;
   if (retryParam && !retryTenant) notFound();
 
   return (
@@ -62,7 +68,11 @@ export default async function NewTenantPage({
   );
 }
 
-async function getRetryTenant(id: number) {
+async function getRetryTenant(
+  id: number,
+  adminId: string,
+  permissions: Parameters<typeof tenantVisibilityFilter>[1],
+) {
   const [tenant] = await getControlDb()
     .select({
       id: tenants.id,
@@ -82,6 +92,7 @@ async function getRetryTenant(id: number) {
         eq(tenants.id, id),
         eq(tenants.status, 'failed'),
         isNull(tenants.databaseName),
+        tenantVisibilityFilter(adminId, permissions),
       ),
     )
     .limit(1);

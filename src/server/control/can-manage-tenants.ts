@@ -90,11 +90,40 @@ export async function requirePermission(
   return { ok: true, session, permissions };
 }
 
+export async function requireAnyPermission(
+  requiredPermissions: readonly ControlPermission[],
+): Promise<
+  | { ok: true; session: Session; permissions: ControlPermission[] }
+  | { ok: false }
+> {
+  const session = await getControlAdminSession();
+  if (!session) return { ok: false };
+
+  const permissions = await getControlAdminPermissions(session.user.id);
+  if (
+    !permissions ||
+    !requiredPermissions.some((permission) => permissions.includes(permission))
+  ) {
+    return { ok: false };
+  }
+
+  return { ok: true, session, permissions };
+}
+
 export async function requirePermissionOrRedirect(
   permission: ControlPermission,
   fallbackPath: Route = '/',
 ) {
   const result = await requirePermission(permission);
+  if (!result.ok) redirect(fallbackPath);
+  return result;
+}
+
+export async function requireAnyPermissionOrRedirect(
+  permissions: readonly ControlPermission[],
+  fallbackPath: Route = '/',
+) {
+  const result = await requireAnyPermission(permissions);
   if (!result.ok) redirect(fallbackPath);
   return result;
 }

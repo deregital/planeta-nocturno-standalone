@@ -13,13 +13,17 @@ import {
   getRequestHost,
   normalizeRootDomain,
 } from '@/lib/tenancy/host';
-import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import { requireAnyPermissionOrRedirect } from '@/server/control/can-manage-tenants';
 import { getControlLandingPath } from '@/server/control/landing-path';
+import {
+  TENANT_READ_PERMISSIONS,
+  tenantVisibilityFilter,
+} from '@/server/control/tenant-access';
 
 export default async function ControlHomePage() {
   const landingPath = (await getControlLandingPath()) as Route;
-  const { permissions } = await requirePermissionOrRedirect(
-    'tenants:read',
+  const { permissions, session } = await requireAnyPermissionOrRedirect(
+    TENANT_READ_PERMISSIONS,
     landingPath === '/' ? ('/users' as Route) : landingPath,
   );
   const requestHeaders = new Headers(await headers());
@@ -41,7 +45,13 @@ export default async function ControlHomePage() {
       controlAdmins,
       eq(tenants.createdByControlAdminId, controlAdmins.id),
     )
-    .where(and(ne(tenants.status, 'deleted'), isNull(tenants.deletedAt)))
+    .where(
+      and(
+        ne(tenants.status, 'deleted'),
+        isNull(tenants.deletedAt),
+        tenantVisibilityFilter(session.user.id, permissions),
+      ),
+    )
     .orderBy(desc(tenants.createdAt));
 
   const activeTenants = tenantList.filter(
