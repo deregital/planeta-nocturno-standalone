@@ -488,7 +488,9 @@ export function EventGeneralInformation({
           <input type='hidden' name='locationId' value={event.locationId} />
         </section>
         <section>
-          <h3 className='text-accent-dark text-lg font-semibold'>Acceso</h3>
+          <h3 className='text-accent-dark text-lg font-semibold'>
+            Usuarios autorizados a escanear y emitir tickets - Acceso
+          </h3>
           <div>
             {action !== 'PREVIEW' && (
               <SelectableComboBox
@@ -597,7 +599,7 @@ export function EventGeneralInformation({
                       Edad mínima
                     </span>
                     <span className='text-xs text-accent-dark/70'>
-                      Requiere una edad mínima para comprar.
+                      Edad mínima requerida para la compra.
                     </span>
                   </span>
                 </label>
@@ -660,7 +662,7 @@ export function EventGeneralInformation({
                     Campo &quot;Invita&quot;
                   </span>
                   <span className='text-xs text-accent-dark/70'>
-                    Pide quién invitó al comprador.
+                    Pide quién invitó al comprador (como opcional).
                   </span>
                 </span>
               </label>

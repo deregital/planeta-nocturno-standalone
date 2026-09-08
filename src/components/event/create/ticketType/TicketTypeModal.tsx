@@ -10,6 +10,12 @@ import { FormRow } from '@/components/common/FormRow';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -275,7 +281,7 @@ export default function TicketTypeModal({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className='max-w-xl! w-full md:max-w-3xl! lg:max-w-4xl! max-md:top-4 max-md:w-[calc(100%-2rem)] max-md:max-w-[calc(100%-2rem)] max-md:max-h-[calc(100dvh-2rem)] max-md:translate-y-0 max-md:overflow-y-auto'>
+      <DialogContent className='max-w-xl! w-full md:max-w-3xl! lg:max-w-4xl! max-h-[calc(100dvh-2rem)] overflow-y-auto max-md:top-4 max-md:w-[calc(100%-2rem)] max-md:max-w-[calc(100%-2rem)] max-md:translate-y-0'>
         <DialogHeader className='max-md:pr-8'>
           <DialogTitle className='text-left'>
             Crear ticket de tipo {text}
@@ -390,229 +396,249 @@ export default function TicketTypeModal({
               }
             />
           </FormRow>
-          <FormRow className='md:flex-row flex-col'>
-            <div className='flex w-full'>
-              {hasStartingDate ? (
-                <InputDateWithLabel
-                  id='startingDate'
-                  name='startingDate'
-                  label='Inicio de escaneo de tickets'
-                  error={error.startingDate}
-                  selected={editingTicketType.startingDate ?? undefined}
-                  dateType='datetime-local'
-                  min={
-                    event.startingDate
-                      ? format(event.startingDate, "yyyy-MM-dd'T'HH:mm")
-                      : undefined
-                  }
-                  max={
-                    event.endingDate
-                      ? format(event.endingDate, "yyyy-MM-dd'T'HH:mm")
-                      : undefined
-                  }
-                  onChange={(date) => {
-                    handleInputChange('startingDate', date);
-                  }}
-                  className='w-full '
-                />
-              ) : (
+          <Accordion type='multiple' className='w-full'>
+            <AccordionItem value='ticket-advanced' className='border-none'>
+              <AccordionTrigger
+                className='bg-transparent text-accent-dark px-0 py-2.5 text-sm font-semibold hover:no-underline hover:bg-transparent'
+                chevronClassName='text-accent-dark'
+              >
+                Configuración adicional
+              </AccordionTrigger>
+              <AccordionContent
+                contentClassName='w-full ml-0 mt-0 border-none rounded-none'
+                className='flex flex-col gap-3 bg-transparent p-0 pt-1 pb-1'
+              >
+                <div className='flex w-full'>
+                  {hasStartingDate ? (
+                    <InputDateWithLabel
+                      id='startingDate'
+                      name='startingDate'
+                      label='Inicio de escaneo de tickets'
+                      error={error.startingDate}
+                      selected={editingTicketType.startingDate ?? undefined}
+                      dateType='datetime-local'
+                      min={
+                        event.startingDate
+                          ? format(event.startingDate, "yyyy-MM-dd'T'HH:mm")
+                          : undefined
+                      }
+                      max={
+                        event.endingDate
+                          ? format(event.endingDate, "yyyy-MM-dd'T'HH:mm")
+                          : undefined
+                      }
+                      onChange={(date) => {
+                        handleInputChange('startingDate', date);
+                      }}
+                      className='w-full '
+                    />
+                  ) : (
+                    <InputWithLabel
+                      id='startingDate'
+                      name='startingDate'
+                      label='Inicio de escaneo de tickets'
+                      type='text'
+                      error={error.startingDate}
+                      value={
+                        editingTicketType.startingDate
+                          ? `${format(
+                              editingTicketType.startingDate,
+                              'dd/MM/yyyy HH:mm b',
+                            )} (Inicio del evento)`
+                          : ''
+                      }
+                      className='w-full text-accent/50'
+                      readOnly
+                    />
+                  )}
+                  <InputWithLabel
+                    label='¿Tiene?'
+                    id='startingDateEnabled'
+                    type='checkbox'
+                    className='[&>input]:w-6 items-center'
+                    name='startingDateEnabled'
+                    checked={hasStartingDate}
+                    onChange={(e) => {
+                      handleStartingDateToggle(e.target.checked);
+                    }}
+                  />
+                </div>
+
+                <div className='flex w-full'>
+                  {hasScanLimit ? (
+                    <InputDateWithLabel
+                      id='scanLimit'
+                      name='scanLimit'
+                      label='Finalización de escaneo de tickets'
+                      error={error.scanLimit}
+                      selected={editingTicketType.scanLimit ?? undefined}
+                      dateType='datetime-local'
+                      onChange={(date) => {
+                        handleInputChange('scanLimit', date);
+                      }}
+                      className='w-full'
+                    />
+                  ) : (
+                    <InputWithLabel
+                      id='scanLimit'
+                      name='scanLimit'
+                      label='Finalización de escaneo de tickets'
+                      type='text'
+                      error={error.scanLimit}
+                      value={
+                        editingTicketType.scanLimit
+                          ? `${format(
+                              editingTicketType.scanLimit,
+                              'dd/MM/yyyy HH:mm b',
+                            )} (Fin del evento)`
+                          : ''
+                      }
+                      className='w-full text-accent/50'
+                      readOnly
+                    />
+                  )}
+                  <InputWithLabel
+                    label='¿Tiene?'
+                    id='scanLimitEnabled'
+                    type='checkbox'
+                    className='[&>input]:w-6 items-center'
+                    name='scanLimitEnabled'
+                    checked={hasScanLimit}
+                    onChange={(e) => {
+                      handleScanLimitToggle(e.target.checked);
+                    }}
+                  />
+                </div>
+
+                <div className='flex w-full'>
+                  {hasMaxSellDate ? (
+                    <InputDateWithLabel
+                      id='maxSellDate'
+                      name='maxSellDate'
+                      label='Finalización de venta de tickets'
+                      error={error.maxSellDate}
+                      selected={editingTicketType.maxSellDate ?? undefined}
+                      dateType='datetime-local'
+                      onChange={(date) => {
+                        handleInputChange('maxSellDate', date);
+                      }}
+                      className='w-full'
+                    />
+                  ) : (
+                    <InputWithLabel
+                      id='maxSellDate'
+                      name='maxSellDate'
+                      label='Finalización de venta de tickets'
+                      type='text'
+                      error={error.maxSellDate}
+                      value={
+                        editingTicketType.maxSellDate
+                          ? `${format(
+                              editingTicketType.maxSellDate,
+                              'dd/MM/yyyy HH:mm b',
+                            )} (Fin del evento)`
+                          : ''
+                      }
+                      className='w-full text-accent/50'
+                      readOnly
+                    />
+                  )}
+                  <InputWithLabel
+                    label='¿Tiene?'
+                    id='maxSellDateEnabled'
+                    type='checkbox'
+                    className='[&>input]:w-6 items-center data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600'
+                    name='maxSellDateEnabled'
+                    checked={hasMaxSellDate}
+                    onChange={(e) => {
+                      handleMaxSellDateToggle(e.target.checked);
+                    }}
+                  />
+                </div>
+
+                <label
+                  htmlFor='allowMultipleScans'
+                  className='flex w-full items-center gap-3 cursor-pointer'
+                >
+                  <span className='flex-1 text-sm text-accent pl-1'>
+                    ¿Escaneo múltiple? (Permite volver a escanear un mismo
+                    ticket)
+                  </span>
+                  <input
+                    id='allowMultipleScans'
+                    type='checkbox'
+                    name='allowMultipleScans'
+                    checked={editingTicketType.allowMultipleScans}
+                    onChange={(e) => {
+                      handleInputChange('allowMultipleScans', e.target.checked);
+                    }}
+                    className='size-6 shrink-0 cursor-pointer accent-accent'
+                  />
+                </label>
+
                 <InputWithLabel
-                  id='startingDate'
-                  name='startingDate'
-                  label='Inicio de escaneo de tickets'
-                  type='text'
-                  error={error.startingDate}
-                  value={
-                    editingTicketType.startingDate
-                      ? `${format(
-                          editingTicketType.startingDate,
-                          'dd/MM/yyyy HH:mm b',
-                        )} (Inicio del evento)`
-                      : ''
-                  }
-                  className='w-full text-accent/50'
-                  readOnly
-                />
-              )}
-              <InputWithLabel
-                label='¿Tiene?'
-                id='startingDateEnabled'
-                type='checkbox'
-                className='[&>input]:w-6 items-center'
-                name='startingDateEnabled'
-                checked={hasStartingDate}
-                onChange={(e) => {
-                  handleStartingDateToggle(e.target.checked);
-                }}
-              />
-            </div>
-            <div className='flex w-full'>
-              {hasScanLimit ? (
-                <InputDateWithLabel
-                  id='scanLimit'
-                  name='scanLimit'
-                  label='Finalización de escaneo de tickets'
-                  error={error.scanLimit}
-                  selected={editingTicketType.scanLimit ?? undefined}
-                  dateType='datetime-local'
-                  onChange={(date) => {
-                    handleInputChange('scanLimit', date);
-                  }}
+                  id='maxPerPurchase'
+                  name='maxPerPurchase'
                   className='w-full'
-                />
-              ) : (
-                <InputWithLabel
-                  id='scanLimit'
-                  name='scanLimit'
-                  label='Finalización de escaneo de tickets'
-                  type='text'
-                  error={error.scanLimit}
-                  value={
-                    editingTicketType.scanLimit
-                      ? `${format(
-                          editingTicketType.scanLimit,
-                          'dd/MM/yyyy HH:mm b',
-                        )} (Fin del evento)`
-                      : ''
-                  }
-                  className='w-full text-accent/50'
-                  readOnly
-                />
-              )}
-              <InputWithLabel
-                label='¿Tiene?'
-                id='scanLimitEnabled'
-                type='checkbox'
-                className='[&>input]:w-6 items-center'
-                name='scanLimitEnabled'
-                checked={hasScanLimit}
-                onChange={(e) => {
-                  handleScanLimitToggle(e.target.checked);
-                }}
-              />
-            </div>
-          </FormRow>
-          <FormRow className='md:flex-row flex-col'>
-            <div className='flex w-full'>
-              {hasMaxSellDate ? (
-                <InputDateWithLabel
-                  id='maxSellDate'
-                  name='maxSellDate'
-                  label='Finalización de venta de tickets'
-                  error={error.maxSellDate}
-                  selected={editingTicketType.maxSellDate ?? undefined}
-                  dateType='datetime-local'
-                  onChange={(date) => {
-                    handleInputChange('maxSellDate', date);
-                  }}
-                  className='w-full'
-                />
-              ) : (
-                <InputWithLabel
-                  id='maxSellDate'
-                  name='maxSellDate'
-                  label='Finalización de venta de tickets'
-                  type='text'
-                  error={error.maxSellDate}
-                  value={
-                    editingTicketType.maxSellDate
-                      ? `${format(
-                          editingTicketType.maxSellDate,
-                          'dd/MM/yyyy HH:mm b',
-                        )} (Fin del evento)`
-                      : ''
-                  }
-                  className='w-full text-accent/50'
-                  readOnly
-                />
-              )}
-              <InputWithLabel
-                label='¿Tiene?'
-                id='maxSellDateEnabled'
-                type='checkbox'
-                className='[&>input]:w-6 items-center data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600'
-                name='maxSellDateEnabled'
-                checked={hasMaxSellDate}
-                onChange={(e) => {
-                  handleMaxSellDateToggle(e.target.checked);
-                }}
-              />
-            </div>
-            <div className='flex w-full flex-col gap-1'>
-              <InputWithLabel
-                label='¿Escaneo múltiple? (Permite volver a escanear un mismo ticket)'
-                id='allowMultipleScans'
-                type='checkbox'
-                className='[&>input]:w-6 items-center'
-                name='allowMultipleScans'
-                checked={editingTicketType.allowMultipleScans}
-                onChange={(e) => {
-                  handleInputChange('allowMultipleScans', e.target.checked);
-                }}
-              />
-            </div>
-          </FormRow>
-          <FormRow className='md:flex-row flex-col'>
-            <InputWithLabel
-              id='maxPerPurchase'
-              name='maxPerPurchase'
-              className='w-full'
-              label='Cantidad maxima de tickets por venta'
-              type='number'
-              error={error.maxPerPurchase}
-              value={editingTicketType.maxPerPurchase}
-              onChange={(e) =>
-                handleInputChange('maxPerPurchase', Number(e.target.value))
-              }
-            />
-            <div className='flex'>
-              {hasLowStockThreshold ? (
-                <InputWithLabel
-                  id='lowStockThreshold'
-                  name='lowStockThreshold'
-                  label='Cantidad de tickets para mostrar baja disponibilidad'
+                  label='Cantidad maxima de tickets por venta'
                   type='number'
-                  min={0}
-                  max={editingTicketType.maxAvailable}
-                  error={error.lowStockThreshold}
-                  value={editingTicketType.lowStockThreshold ?? 0}
-                  className='w-full'
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const numericValue =
-                      Number(value) === 0 ? null : Number(value);
-                    handleInputChange('lowStockThreshold', numericValue);
-                  }}
-                />
-              ) : (
-                <InputWithLabel
-                  id='lowStockThreshold'
-                  name='lowStockThreshold'
-                  label='Cantidad de tickets para mostrar baja disponibilidad'
-                  type='number'
-                  error={error.lowStockThreshold}
-                  value={
-                    editingTicketType.lowStockThreshold
-                      ? editingTicketType.lowStockThreshold
-                      : 0
+                  error={error.maxPerPurchase}
+                  value={editingTicketType.maxPerPurchase}
+                  onChange={(e) =>
+                    handleInputChange('maxPerPurchase', Number(e.target.value))
                   }
-                  className='w-full text-accent/50'
-                  readOnly
                 />
-              )}
-              <InputWithLabel
-                label='¿Tiene?'
-                id='lowStockThresholdEnabled'
-                type='checkbox'
-                className='[&>input]:w-6 items-center self-end'
-                name='lowStockThresholdEnabled'
-                checked={hasLowStockThreshold}
-                onChange={(e) => {
-                  handleLowStockThresholdToggle(e.target.checked);
-                }}
-              />
-            </div>
-          </FormRow>
+
+                <div className='flex w-full'>
+                  {hasLowStockThreshold ? (
+                    <InputWithLabel
+                      id='lowStockThreshold'
+                      name='lowStockThreshold'
+                      label='Cantidad de tickets para mostrar baja disponibilidad'
+                      type='number'
+                      min={0}
+                      max={editingTicketType.maxAvailable}
+                      error={error.lowStockThreshold}
+                      value={editingTicketType.lowStockThreshold ?? 0}
+                      className='w-full'
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const numericValue =
+                          Number(value) === 0 ? null : Number(value);
+                        handleInputChange('lowStockThreshold', numericValue);
+                      }}
+                    />
+                  ) : (
+                    <InputWithLabel
+                      id='lowStockThreshold'
+                      name='lowStockThreshold'
+                      label='Cantidad de tickets para mostrar baja disponibilidad'
+                      type='number'
+                      error={error.lowStockThreshold}
+                      value={
+                        editingTicketType.lowStockThreshold
+                          ? editingTicketType.lowStockThreshold
+                          : 0
+                      }
+                      className='w-full text-accent/50'
+                      readOnly
+                    />
+                  )}
+                  <InputWithLabel
+                    label='¿Tiene?'
+                    id='lowStockThresholdEnabled'
+                    type='checkbox'
+                    className='[&>input]:w-6 items-center self-end'
+                    name='lowStockThresholdEnabled'
+                    checked={hasLowStockThreshold}
+                    onChange={(e) => {
+                      handleLowStockThresholdToggle(e.target.checked);
+                    }}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <DialogFooter className='flex flex-col! gap-4'>
             <p className='text-sm text-accent'>

@@ -50,6 +50,11 @@ export default function PreviewEvent({ back }: { back: () => void }) {
   );
 
   const handleSubmit = async ({ isActive }: { isActive: boolean }) => {
+    if (!event.inviteCondition) {
+      toast.error('Elegí el tipo de evento antes de continuar.');
+      return;
+    }
+
     const buttonType = isActive ? 'publish' : 'draft';
     setActiveButton(buttonType);
     try {
@@ -57,7 +62,7 @@ export default function PreviewEvent({ back }: { back: () => void }) {
         event: {
           ...event,
           isActive,
-          inviteCondition: event.inviteCondition as InviteCondition,
+          inviteCondition: event.inviteCondition,
         },
         ticketTypes,
         organizersInput: organizers,

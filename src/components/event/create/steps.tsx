@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import GoBack from '@/components/common/GoBack';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import { EventInvitationTypeAction } from '@/components/event/create/EventInvitationTypeAction';
@@ -22,6 +23,9 @@ import { cn } from '@/lib/utils';
 
 export function Steps() {
   const [currentStep, setCurrentStep] = useState(1);
+  const inviteCondition = useCreateEventStore(
+    (state) => state.event.inviteCondition,
+  );
 
   const goBack = () => setCurrentStep((prev) => prev - 1);
   const goNext = () => setCurrentStep((prev) => prev + 1);
@@ -32,15 +36,21 @@ export function Steps() {
       component: <EventGeneralInformation action='CREATE' next={goNext} />,
     },
     {
-      title: 'Organizadores',
-      component: <EventInvitationTypeAction next={goNext} back={goBack} />,
-    },
-    {
       title: 'Tickets',
       component: (
         <TicketTypeAction action='CREATE' back={goBack} next={goNext} />
       ),
     },
+    ...(inviteCondition === 'SIMPLE'
+      ? []
+      : [
+          {
+            title: 'Organizadores',
+            component: (
+              <EventInvitationTypeAction next={goNext} back={goBack} />
+            ),
+          },
+        ]),
     {
       title: 'Revisión y publicación',
       component: <PreviewEvent back={goBack} />,
