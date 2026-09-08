@@ -53,9 +53,15 @@ export const eventSchema = z.object({
   locationId: z.uuid({
     error: 'La ubicación es requerida',
   }),
-  categoryId: z.uuid({
-    error: 'La categoría es requerida',
-  }),
+  categoryId: z
+    .union([
+      z.null(),
+      z.literal(''),
+      z.uuid({
+        error: 'La categoría no es válida',
+      }),
+    ])
+    .transform((value) => (value === '' ? null : value)),
   authorizedUsers: z
     .object({
       id: z.uuid(),
