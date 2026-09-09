@@ -73,10 +73,12 @@ export default function Client({
         })),
       });
       setOrganizers(
-        mapEventOrganizersToSchema(
-          event.eventXorganizers,
-          event.inviteCondition as InviteCondition,
-        ),
+        event.inviteCondition === 'SIMPLE'
+          ? []
+          : mapEventOrganizersToSchema(
+              event.eventXorganizers,
+              event.inviteCondition as InviteCondition,
+            ),
       );
       setTicketTypes(
         event.ticketTypes.map((t) => ({
@@ -148,7 +150,7 @@ export default function Client({
         inviteCondition: event.inviteCondition as InviteCondition,
       },
       ticketTypes: ticketTypesState,
-      organizersInput: organizers,
+      organizersInput: event.inviteCondition === 'SIMPLE' ? [] : organizers,
       sendOrganizerTicketEmail,
       questions: questions.filter((question) => question.text.trim() !== ''),
     });
@@ -163,11 +165,13 @@ export default function Client({
         <h1 className='text-4xl font-bold'>Editar Evento</h1>
       </div>
       <EventGeneralInformation action='EDIT' externalErrors={error} />
-      <section className='my-4'>
-        <h3 className='text-2xl text-accent font-bold'>Organizadores</h3>
-        <EventOrganizers type={event.inviteCondition} />
-      </section>
-      <section className='mb-4' id='ticket-types'>
+      {event.inviteCondition !== 'SIMPLE' && (
+        <section className='my-4'>
+          <h3 className='text-2xl text-accent font-bold'>Organizadores</h3>
+          <EventOrganizers type={event.inviteCondition} />
+        </section>
+      )}
+      <section className='my-4' id='ticket-types'>
         <h3 className='text-2xl text-accent font-bold'>Tickets</h3>
         <TicketTypeAction action='EDIT' />
       </section>

@@ -3,7 +3,6 @@
 import { Check, Copy, Mail } from 'lucide-react';
 import { useState } from 'react';
 
-import { type UserFirstTimeCredentials } from '@/app/(backoffice)/admin/users/create/actions';
 import { Instagram } from '@/components/icons/Instagram';
 import { WhatsApp } from '@/components/icons/WhatsApp';
 import {
@@ -13,11 +12,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
+type ShareableCredentials = {
+  username: string;
+  password: string;
+  email: string;
+  phoneNumber: string;
+  instagram?: string | null;
+};
+
 type CredentialsModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  credentials: UserFirstTimeCredentials;
-  type: 'user' | 'organizer';
+  credentials: ShareableCredentials;
+  type: 'user' | 'organizer' | 'platform';
+  loginUrl?: string;
 };
 
 export function CredentialsModal({
@@ -25,22 +33,34 @@ export function CredentialsModal({
   onOpenChange,
   credentials,
   type,
+  loginUrl: providedLoginUrl,
 }: CredentialsModalProps) {
   const [copied, setCopied] = useState(false);
 
-  const loginUrl = `${window.location.origin}/login`;
+  const loginUrl = providedLoginUrl ?? `${window.location.origin}/login`;
+  const entityName =
+    type === 'organizer'
+      ? 'organizador'
+      : type === 'platform'
+        ? 'administrador'
+        : 'usuario';
+  const title =
+    type === 'organizer'
+      ? 'Organizador creado'
+      : type === 'platform'
+        ? 'Plataforma creada'
+        : 'Usuario creado';
 
   const credentialsText = `Ingresá desde el siguiente enlace:\n${loginUrl}\n\nCredenciales:\nUsuario: ${credentials.username}\nContraseña: ${credentials.password}`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(credentialsText);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(credentialsText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareMessage = encodeURIComponent(
-    `Ingresá desde el siguiente enlace:\n${loginUrl}\n\nCredenciales:\nUsuario: ${credentials.username}\nContraseña: ${credentials.password}`,
-  );
+  const shareMessage = encodeURIComponent(credentialsText);
+  const whatsappNumber = credentials.phoneNumber.replace(/\D/g, '');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -50,14 +70,12 @@ export function CredentialsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <DialogHeader>
-          <DialogTitle>
-            {type === 'organizer' ? 'Organizador creado' : 'Usuario creado'}
-          </DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className='space-y-4'>
           <p className='text-sm text-gray-600'>
             Las credenciales han sido creadas exitosamente. Podés compartirlas
-            con el {type === 'organizer' ? 'organizador' : 'usuario'}.{' '}
+            con el {entityName}.{' '}
             <span className='font-bold'>
               Una vez cerrado este diálogo, no podrás volver a ver las
               credenciales.
@@ -66,9 +84,18 @@ export function CredentialsModal({
 
           <div
             onClick={handleCopy}
+            role='button'
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') void handleCopy();
+            }}
             className='cursor-pointer rounded-lg border border-gray-300 bg-gray-50 p-4 font-mono text-sm transition-colors hover:bg-gray-100 hover:border-gray-400 flex items-start justify-between gap-3'
           >
             <div className='flex-1 space-y-1 whitespace-pre-line'>
+              <div>
+                <span className='text-gray-600'>URL: </span>
+                <span className='break-all text-gray-900'>{loginUrl}</span>
+              </div>
               <div>
                 <span className='text-gray-600'>Usuario: </span>
                 <span className='text-gray-900'>{credentials.username}</span>
@@ -89,8 +116,9 @@ export function CredentialsModal({
             <p className='text-sm font-medium'>Compartir credenciales:</p>
             <div className='flex gap-4 justify-center'>
               <a
-                href={`https://wa.me/${credentials.phoneNumber}?text=${shareMessage}`}
+                href={`https://wa.me/${whatsappNumber}?text=${shareMessage}`}
                 target='_blank'
+                rel='noreferrer'
               >
                 <div className='flex items-center justify-center p-4 rounded-full bg-[#00C500] hover:brightness-110 transition-all cursor-pointer'>
                   <WhatsApp />
@@ -99,6 +127,7 @@ export function CredentialsModal({
               <a
                 href={`mailto:${credentials.email}?subject=Credenciales de acceso&body=${shareMessage}`}
                 target='_blank'
+                rel='noreferrer'
               >
                 <div className='flex items-center justify-center p-4 rounded-full bg-[#DA0004] hover:brightness-110 transition-all cursor-pointer text-white'>
                   <Mail />
@@ -108,6 +137,7 @@ export function CredentialsModal({
                 <a
                   href={`https://ig.me/m/${credentials.instagram}?text=${shareMessage}`}
                   target='_blank'
+                  rel='noreferrer'
                 >
                   <div
                     className='flex items-center justify-center p-4 rounded-full transition-all cursor-pointer text-white hover:brightness-110'

@@ -1,5 +1,7 @@
 'use client';
 
+import type { ControlPermission } from '@/lib/control/permissions';
+
 import {
   ArrowDown,
   ArrowUp,
@@ -9,8 +11,10 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
 import { type TenantLifecycleStatus } from '@/app/control/(protected)/tenants/actions';
+import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
+import EditableCommentsCell from '@/components/control/EditableCommentsCell';
+import EditableCustomIdCell from '@/components/control/EditableCustomIdCell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -52,22 +56,40 @@ const filterStatuses = [
   'suspended',
 ] as const satisfies readonly TenantLifecycleStatus[];
 
-type SortColumn = 'name' | 'slug' | 'status' | 'creator' | 'createdAt';
+type SortColumn =
+  | 'customId'
+  | 'name'
+  | 'slug'
+  | 'status'
+  | 'creator'
+  | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 type StatusFilter = 'all' | (typeof filterStatuses)[number];
 
 type TenantRow = {
   id: number;
+  customId: string | null;
+  comments: string | null;
   name: string;
   slug: string;
   status: TenantLifecycleStatus;
   databaseName: string | null;
   createdByUsername: string | null;
   createdAt: Date;
+  recycledAt: Date | null;
   publicUrl: string;
 };
 
-export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
+export default function TenantTable({
+  tenants,
+  recycled = false,
+  permissions,
+}: {
+  tenants: TenantRow[];
+  recycled?: boolean;
+  permissions: ControlPermission[];
+}) {
+  const canUpdate = permissions.includes('tenants:update');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [sort, setSort] = useState<SortColumn>('createdAt');
@@ -79,17 +101,26 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
       const matchesStatus = status === 'all' || tenant.status === status;
       const matchesQuery =
         !normalizedQuery ||
-        [tenant.name, tenant.slug, tenant.createdByUsername ?? ''].some(
-          (value) => value.toLocaleLowerCase('es').includes(normalizedQuery),
+        [
+          tenant.customId ?? '',
+          tenant.name,
+          tenant.slug,
+          tenant.createdByUsername ?? '',
+        ].some((value) =>
+          value.toLocaleLowerCase('es').includes(normalizedQuery),
         );
       return matchesStatus && matchesQuery;
     });
 
     return filtered.sort((first, second) => {
-      const comparison = compareTenants(first, second, sort);
+      const comparison =
+        recycled && sort === 'createdAt'
+          ? (first.recycledAt?.getTime() ?? 0) -
+            (second.recycledAt?.getTime() ?? 0)
+          : compareTenants(first, second, sort);
       return direction === 'asc' ? comparison : -comparison;
     });
-  }, [direction, query, sort, status, tenants]);
+  }, [direction, query, recycled, sort, status, tenants]);
 
   const hasCustomView =
     query !== '' ||
@@ -126,7 +157,7 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className='pl-9'
-              placeholder='ID de Página, subdominio o creador'
+              placeholder='Buscar por ID, nombre o creador'
             />
           </div>
         </div>
@@ -165,7 +196,14 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
           <TableHeader>
             <TableRow>
               <SortableTableHead
-                label='ID de Página'
+                label='ID de Plataforma'
+                column='customId'
+                sort={sort}
+                direction={direction}
+                onSort={toggleSort}
+              />
+              <SortableTableHead
+                label='Nombre'
                 column='name'
                 sort={sort}
                 direction={direction}
@@ -193,29 +231,41 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
                 onSort={toggleSort}
               />
               <SortableTableHead
-                label='Creado'
+                label={recycled ? 'En papelera desde' : 'Creado'}
                 column='createdAt'
                 sort={sort}
                 direction={direction}
                 onSort={toggleSort}
               />
+              {!recycled && <TableHead>Comentarios</TableHead>}
               <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {visibleTenants.map((tenant) => (
               <TableRow key={tenant.id}>
+                <TableCell>
+                  <EditableCustomIdCell
+                    tenantId={tenant.id}
+                    customId={tenant.customId}
+                    canEdit={canUpdate}
+                  />
+                </TableCell>
                 <TableCell className='font-medium'>{tenant.name}</TableCell>
                 <TableCell>
-                  <a
-                    href={tenant.publicUrl}
-                    target='_blank'
-                    rel='noreferrer'
-                    className='inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline'
-                  >
-                    {tenant.slug}
-                    <ExternalLink className='size-3.5' />
-                  </a>
+                  {recycled ? (
+                    tenant.slug
+                  ) : (
+                    <a
+                      href={`${tenant.publicUrl}/admin`}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='inline-flex items-center gap-1 text-accent underline-offset-4 hover:underline'
+                    >
+                      {tenant.slug}
+                      <ExternalLink className='size-3.5' />
+                    </a>
+                  )}
                 </TableCell>
                 <TableCell>
                   <span
@@ -228,14 +278,30 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
                   {tenant.createdByUsername ?? 'Sin registrar'}
                 </TableCell>
                 <TableCell>
-                  {new Intl.DateTimeFormat('es-AR').format(tenant.createdAt)}
+                  {new Intl.DateTimeFormat('es-AR').format(
+                    recycled && tenant.recycledAt
+                      ? tenant.recycledAt
+                      : tenant.createdAt,
+                  )}
                 </TableCell>
+                {!recycled && (
+                  <TableCell>
+                    <EditableCommentsCell
+                      tenantId={tenant.id}
+                      tenantName={tenant.name}
+                      comments={tenant.comments}
+                      canEdit={canUpdate}
+                    />
+                  </TableCell>
+                )}
                 <TableCell>
                   <TenantActions
                     tenantId={tenant.id}
                     tenantName={tenant.name}
                     status={tenant.status}
                     databaseName={tenant.databaseName}
+                    recycled={recycled}
+                    permissions={permissions}
                   />
                 </TableCell>
               </TableRow>
@@ -247,8 +313,10 @@ export default function TenantTable({ tenants }: { tenants: TenantRow[] }) {
       {visibleTenants.length === 0 && (
         <p className='p-8 text-center text-sm text-gray-500'>
           {tenants.length === 0
-            ? 'Todavía no hay páginas registradas.'
-            : 'No hay páginas que coincidan con los filtros.'}
+            ? recycled
+              ? 'La papelera está vacía.'
+              : 'Todavía no hay plataformas registradas.'
+            : 'No hay plataformas que coincidan con los filtros.'}
         </p>
       )}
     </div>
@@ -312,5 +380,5 @@ function getSortValue(
   column: Exclude<SortColumn, 'createdAt'>,
 ) {
   if (column === 'creator') return tenant.createdByUsername ?? '';
-  return tenant[column];
+  return tenant[column] ?? '';
 }

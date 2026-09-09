@@ -1,13 +1,9 @@
-import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { inviteCondition } from '@/drizzle/schema';
 import { inviteConditionTranslation } from '@/lib/translations';
-import { type InviteCondition } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export function EventInvitationTypeAction({
@@ -19,31 +15,56 @@ export function EventInvitationTypeAction({
 }) {
   const event = useCreateEventStore((state) => state.event);
   const organizers = useCreateEventStore((state) => state.organizers);
-  const resetOrganizers = useCreateEventStore((state) => state.resetOrganizers);
-  const setTicketTypes = useCreateEventStore((state) => state.setTicketTypes);
-  const setEvent = useCreateEventStore((state) => state.setEvent);
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
+  const updateTicketType = useCreateEventStore(
+    (state) => state.updateTicketType,
+  );
   const addOrganizerTicketType = useCreateEventStore(
     (state) => state.addOrganizerTicketType,
   );
 
-  const [tab, setTab] = useState<InviteCondition | null>(
-    event.inviteCondition ?? null,
-  );
-
-  function handleChange(value: InviteCondition) {
-    setTab(value);
-    setEvent({ inviteCondition: value });
-    resetOrganizers();
-    setTicketTypes([]);
-  }
-
   function handleNext() {
-    if (tab === 'INVITATION' && organizers.length === 0) {
+    if (!event.inviteCondition) {
+      toast.error('Elegí el tipo de evento en el paso Tickets.');
+      return;
+    }
+
+    if (event.inviteCondition === 'INVITATION' && organizers.length === 0) {
       toast.error(
         'Debes seleccionar al menos un organizador en modo invitación',
       );
       return;
+    }
+
+    if (event.inviteCondition === 'INVITATION') {
+      const totalInvitationTickets = organizers.reduce(
+        (total, organizer) =>
+          total +
+          ('ticketAmount' in organizer ? (organizer.ticketAmount ?? 0) : 0),
+        0,
+      );
+
+      if (totalInvitationTickets < 1) {
+        toast.error(
+          'Debes asignar al menos un ticket entre los organizadores.',
+        );
+        return;
+      }
+
+      const invitationTicketType = ticketTypes.find(
+        (ticketType) =>
+          ticketType.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
+      );
+
+      if (!invitationTicketType?.id) {
+        toast.error('No se encontró el ticket único del evento.');
+        return;
+      }
+
+      updateTicketType(invitationTicketType.id, {
+        ...invitationTicketType,
+        maxAvailable: totalInvitationTickets,
+      });
     }
 
     // Asegurarse de que el ticket de organizador existe
@@ -59,92 +80,24 @@ export function EventInvitationTypeAction({
 
   return (
     <div className='flex w-full min-w-0 max-w-full flex-col gap-4'>
-      {tab === null && (
-        <div className='flex flex-col gap-4 w-full'>
-          <Button
-            className='h-32 text-xl! w-full'
-            variant={'outline'}
-            onClick={() =>
-              handleChange(inviteCondition.enumValues[2] as InviteCondition)
-            }
-          >
-            <span className='flex flex-col items-center justify-between gap-4'>
-              Simple
-              <span className='text-sm'>
-                ¡Recomendado si es tu primera vez!
-              </span>
-            </span>
-          </Button>
-          <div className='flex gap-4 w-full'>
-            <Button
-              key={inviteCondition.enumValues[0]}
-              className='h-32 text-xl! flex-1'
-              variant={'outline'}
-              onClick={() =>
-                handleChange(inviteCondition.enumValues[0] as InviteCondition)
-              }
-            >
-              {inviteConditionTranslation[inviteCondition.enumValues[0]]}
-            </Button>
-            <Button
-              key={inviteCondition.enumValues[1]}
-              className='h-32 text-xl! flex-1'
-              variant={'outline'}
-              onClick={() =>
-                handleChange(inviteCondition.enumValues[1] as InviteCondition)
-              }
-            >
-              {inviteConditionTranslation[inviteCondition.enumValues[1]]}
-            </Button>
-          </div>
-        </div>
-      )}
-      {tab !== null && (
-        <Tabs
-          onValueChange={(value) => handleChange(value as InviteCondition)}
-          value={tab}
-          className='w-full min-w-0 max-w-full overflow-x-hidden'
-        >
-          <TabsList className='flex-1 w-full max-w-full mx-auto overflow-x-auto [scrollbar-width:thin] justify-start'>
-            <TabsTrigger
-              className='flex-1'
-              value={inviteCondition.enumValues[0]}
-            >
-              {inviteConditionTranslation[inviteCondition.enumValues[0]]}
-            </TabsTrigger>
-            <TabsTrigger
-              className='flex-1'
-              value={inviteCondition.enumValues[1]}
-            >
-              {inviteConditionTranslation[inviteCondition.enumValues[1]]}
-            </TabsTrigger>
-            <TabsTrigger
-              className='flex-1'
-              value={inviteCondition.enumValues[2]}
-            >
-              {inviteConditionTranslation[inviteCondition.enumValues[2]]}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent
-            className='min-w-0'
-            value={inviteCondition.enumValues[0]}
-          >
-            <EventOrganizers type={tab} />
-          </TabsContent>
-          <TabsContent
-            className='min-w-0'
-            value={inviteCondition.enumValues[1]}
-          >
-            <EventOrganizers type={tab} />
-          </TabsContent>
-          <TabsContent value={inviteCondition.enumValues[2]}>
-            <div className='flex justify-center items-center h-44'>
-              Seleccionando esta opción se agregará un atributo
-              &quot;Invita:&quot; en la ticketera. En el cual se debe ingresar
-              el nombre del organizador que invita.
+      {event.inviteCondition ? (
+        <>
+          <p className='text-sm text-accent-dark/70'>
+            Tipo de evento:{' '}
+            <strong>{inviteConditionTranslation[event.inviteCondition]}</strong>
+          </p>
+          {event.inviteCondition === 'SIMPLE' ? (
+            <div className='flex min-h-44 items-center justify-center text-center'>
+              El evento Simple no requiere configurar organizadores.
             </div>
-          </TabsContent>
-        </Tabs>
+          ) : (
+            <EventOrganizers type={event.inviteCondition} />
+          )}
+        </>
+      ) : (
+        <p className='text-center text-sm text-accent-dark/70'>
+          Elegí primero el tipo de evento en el paso Tickets.
+        </p>
       )}
       <div className='flex w-full gap-4'>
         {back && (
@@ -152,11 +105,9 @@ export function EventInvitationTypeAction({
             Volver
           </Button>
         )}
-        {tab !== null && (
-          <Button className='flex-1' variant={'accent'} onClick={handleNext}>
-            Continuar
-          </Button>
-        )}
+        <Button className='flex-1' variant={'accent'} onClick={handleNext}>
+          Continuar
+        </Button>
       </div>
     </div>
   );

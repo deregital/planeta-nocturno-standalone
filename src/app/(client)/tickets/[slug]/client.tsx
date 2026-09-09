@@ -77,15 +77,15 @@ export default function TicketsClient({
         title='Volver al inicio'
         className='absolute top-24 md:left-26 left-4'
       />
-      <Card className='max-w-md mx-auto text-center shadow-lg m-4'>
+      <Card className='max-w-md mx-auto text-center shadow-lg m-4 min-w-96'>
         <CardHeader>
           <CardTitle className='text-2xl font-bold'>
-            ¡Gracias por su compra!
+            ¡Ya podés descargar tus tickets!
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className='text-muted-foreground'>
-            Ya podés descargar tus tickets. También fueron enviados a tu email.
+            También fueron enviados a tu email.
           </p>
         </CardContent>
         <CardFooter className='justify-center'>

@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (isControlRequest(requestHeaders)) {
     return {
       title: 'Administración central',
-      description: 'Gestión central de instancias y páginas',
+      description: 'Gestión central de instancias y plataformas',
     };
   }
 
@@ -82,6 +82,7 @@ export default async function RootLayout({
           <InstanceProvider
             instance={{
               name: instance.name,
+              faviconUrl: instance.faviconUrl,
               publicUrl: instance.publicUrl,
               siteUrl: instance.siteUrl,
               hue: instance.hue,

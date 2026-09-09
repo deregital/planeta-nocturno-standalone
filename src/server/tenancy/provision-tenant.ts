@@ -1,13 +1,10 @@
 import 'server-only';
 
-import type { z } from 'zod';
-
-import { randomUUID } from 'node:crypto';
-
 import { hash } from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
@@ -22,12 +19,21 @@ import {
 import { ensureTenantCorsOrigin } from '@/server/s3/ensure-tenant-cors-origin';
 import { migrateTenantDatabase } from '@/server/tenancy/migrate-tenant-database';
 
-const tenantAdminSchema = userSchema.pick({
-  name: true,
-  password: true,
-  email: true,
-  fullName: true,
-});
+const tenantAdminSchema = userSchema
+  .pick({
+    name: true,
+    password: true,
+    email: true,
+    fullName: true,
+    dni: true,
+    phoneNumber: true,
+    birthDate: true,
+    gender: true,
+  })
+  .extend({
+    birthDate: userSchema.shape.birthDate.or(z.literal('')),
+    gender: userSchema.shape.gender.or(z.literal('')),
+  });
 
 const provisionedTenantFields = {
   id: tenants.id,
@@ -150,10 +156,10 @@ async function createTenantAdmin(
         email: admin.email,
         fullName: admin.fullName,
         role: 'ADMIN',
-        gender: 'other',
-        phoneNumber: '',
-        dni: `pending-${randomUUID()}`,
-        birthDate: '1900-01-01T00:00:00.000Z',
+        gender: admin.gender || 'other',
+        phoneNumber: admin.phoneNumber,
+        dni: admin.dni,
+        birthDate: admin.birthDate || '1900-01-01T00:00:00.000Z',
       });
   } finally {
     await pool.end();

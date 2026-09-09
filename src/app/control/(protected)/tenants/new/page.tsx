@@ -1,4 +1,5 @@
 import { and, eq, isNull } from 'drizzle-orm';
+import { type Route } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -6,6 +7,8 @@ import TenantForm from '@/app/control/(protected)/tenants/new/form';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
+import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 
 export const maxDuration = 60;
 
@@ -14,11 +17,17 @@ export default async function NewTenantPage({
 }: {
   searchParams: Promise<{ retry?: string }>;
 }) {
+  const { permissions, session } = await requirePermissionOrRedirect(
+    'tenants:create',
+    '/' as Route,
+  );
   const retryParam = (await searchParams).retry;
   const retryId = Number(retryParam);
   if (retryParam && (!Number.isInteger(retryId) || retryId <= 0)) notFound();
 
-  const retryTenant = retryParam ? await getRetryTenant(retryId) : null;
+  const retryTenant = retryParam
+    ? await getRetryTenant(retryId, session.user.id, permissions)
+    : null;
   if (retryParam && !retryTenant) notFound();
 
   return (
@@ -29,10 +38,10 @@ export default async function NewTenantPage({
 
       <div>
         <p className='text-sm font-medium text-accent'>
-          Administrador de páginas
+          Gestión de plataformas
         </p>
         <h1 className='text-3xl font-bold text-gray-900'>
-          {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva página'}
+          {retryTenant ? `Reintentar ${retryTenant.name}` : 'Nueva plataforma'}
         </h1>
       </div>
 
@@ -42,7 +51,9 @@ export default async function NewTenantPage({
           retryTenant
             ? {
                 tenantId: String(retryTenant.id),
+                customId: retryTenant.customId ?? '',
                 name: retryTenant.name,
+                comments: retryTenant.comments ?? '',
                 slug: retryTenant.slug,
                 description: retryTenant.description ?? '',
                 contactEmail: retryTenant.contactEmail ?? '',
@@ -57,11 +68,17 @@ export default async function NewTenantPage({
   );
 }
 
-async function getRetryTenant(id: number) {
+async function getRetryTenant(
+  id: number,
+  adminId: string,
+  permissions: Parameters<typeof tenantVisibilityFilter>[1],
+) {
   const [tenant] = await getControlDb()
     .select({
       id: tenants.id,
+      customId: tenants.customId,
       name: tenants.name,
+      comments: tenants.comments,
       slug: tenants.slug,
       description: tenants.description,
       contactEmail: tenants.contactEmail,
@@ -75,6 +92,7 @@ async function getRetryTenant(id: number) {
         eq(tenants.id, id),
         eq(tenants.status, 'failed'),
         isNull(tenants.databaseName),
+        tenantVisibilityFilter(adminId, permissions),
       ),
     )
     .limit(1);

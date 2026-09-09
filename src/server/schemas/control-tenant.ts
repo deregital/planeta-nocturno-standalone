@@ -3,7 +3,17 @@ import { z } from 'zod';
 import { isReservedTenantSlug } from '@/lib/tenancy/host';
 
 export const tenantMetadataSchema = z.object({
+  customId: z
+    .string()
+    .trim()
+    .max(100, 'El ID personalizable no puede superar los 100 caracteres')
+    .regex(/^\d*$/, 'El ID personalizable solo puede contener números')
+    .transform((value) => value || null),
   name: z.string().trim().min(1, 'El nombre es requerido').max(255),
+  comments: z
+    .string()
+    .trim()
+    .transform((value) => value || null),
   description: z
     .string()
     .trim()

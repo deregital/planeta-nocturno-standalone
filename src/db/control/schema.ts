@@ -1,7 +1,10 @@
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -18,11 +21,38 @@ export const tenantStatus = pgEnum('tenant_status', [
   'deleted',
 ]);
 
+export const controlRoles = pgTable('control_roles', {
+  id: uuid().primaryKey().defaultRandom(),
+  name: varchar({ length: 100 }).notNull().unique(),
+  description: text(),
+  isSystem: boolean('is_system').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const controlRolePermissions = pgTable(
+  'control_role_permissions',
+  {
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => controlRoles.id, { onDelete: 'cascade' }),
+    permission: varchar({ length: 64 }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.roleId, table.permission] })],
+);
+
 export const controlAdmins = pgTable('control_admins', {
   id: uuid().primaryKey().defaultRandom(),
   username: varchar({ length: 100 }).notNull().unique(),
   email: varchar({ length: 320 }).notNull().unique(),
   password: text().notNull(),
+  roleId: uuid('role_id')
+    .notNull()
+    .references(() => controlRoles.id, { onDelete: 'restrict' }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -33,8 +63,10 @@ export const controlAdmins = pgTable('control_admins', {
 
 export const tenants = pgTable('tenants', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  customId: varchar('custom_id', { length: 100 }).unique(),
   slug: varchar({ length: 63 }).notNull().unique(),
   name: varchar({ length: 255 }).notNull(),
+  comments: text(),
   description: text(),
   contactEmail: varchar('contact_email', { length: 320 }),
   faviconUrl: text('favicon_url'),
@@ -60,3 +92,25 @@ export const tenants = pgTable('tenants', {
     .defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
+
+export const controlRolesRelations = relations(controlRoles, ({ many }) => ({
+  permissions: many(controlRolePermissions),
+  admins: many(controlAdmins),
+}));
+
+export const controlRolePermissionsRelations = relations(
+  controlRolePermissions,
+  ({ one }) => ({
+    role: one(controlRoles, {
+      fields: [controlRolePermissions.roleId],
+      references: [controlRoles.id],
+    }),
+  }),
+);
+
+export const controlAdminsRelations = relations(controlAdmins, ({ one }) => ({
+  role: one(controlRoles, {
+    fields: [controlAdmins.roleId],
+    references: [controlRoles.id],
+  }),
+}));

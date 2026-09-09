@@ -1,16 +1,19 @@
 'use server';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
+import { requirePermission } from '@/server/control/can-manage-tenants';
 import {
-  canManageTenants,
-  getControlAdminSession,
-} from '@/server/control/can-manage-tenants';
+  CUSTOM_ID_TAKEN_ERROR,
+  getCustomIdAvailabilityError,
+  isCustomIdUniqueViolation,
+  isUniqueViolation,
+} from '@/server/control/custom-id';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 import {
   tenantMetadataSchema,
   tenantSubdomainSchema,
@@ -24,11 +27,17 @@ const tenantCreationSchema = tenantMetadataSchema.extend({
   adminEmail: userSchema.shape.email,
   adminUsername: userSchema.shape.name,
   adminPassword: userSchema.shape.password,
+  adminDni: userSchema.shape.dni,
+  adminPhoneNumber: userSchema.shape.phoneNumber,
+  adminBirthDate: z.union([userSchema.shape.birthDate, z.literal('')]),
+  adminGender: z.union([userSchema.shape.gender, z.literal('')]),
 });
 
 export type TenantFormValues = {
   tenantId?: string;
+  customId: string;
   name: string;
+  comments: string;
   slug: string;
   description: string;
   contactEmail: string;
@@ -39,6 +48,10 @@ export type TenantFormValues = {
   adminEmail: string;
   adminUsername: string;
   adminPassword: string;
+  adminDni: string;
+  adminPhoneNumber: string;
+  adminBirthDate: string;
+  adminGender: string;
 };
 
 type TenantFormField = keyof TenantFormValues;
@@ -46,6 +59,14 @@ type TenantFormField = keyof TenantFormValues;
 export type TenantFormState = {
   values?: TenantFormValues;
   errors?: Partial<Record<TenantFormField | 'general', string>>;
+  credentials?: {
+    platformName: string;
+    slug: string;
+    username: string;
+    password: string;
+    email: string;
+    phoneNumber: string;
+  };
 };
 
 export type SubdomainAvailability = {
@@ -57,7 +78,7 @@ export async function checkSubdomainAvailability(
   value: string,
   tenantId?: string,
 ): Promise<SubdomainAvailability> {
-  if (!(await canManageTenants())) {
+  if (!(await requirePermission('tenants:create')).ok) {
     return { available: false, message: 'No se pudo comprobar el subdominio' };
   }
 
@@ -99,14 +120,16 @@ export async function createTenant(
 ): Promise<TenantFormState> {
   const values = getFormValues(formData);
   const safeValues = { ...values, adminPassword: '' };
-  const controlAdminSession = await getControlAdminSession();
+  const authz = await requirePermission('tenants:create');
 
-  if (!controlAdminSession) {
+  if (!authz.ok) {
     return {
       values: safeValues,
-      errors: { general: 'No tenés permisos para crear páginas' },
+      errors: { general: 'No tenés permisos para crear plataformas' },
     };
   }
+
+  const controlAdminSession = authz.session;
 
   const validation = tenantCreationSchema.safeParse(values);
   if (!validation.success) {
@@ -124,6 +147,16 @@ export async function createTenant(
   const retryTenantId = Number(values.tenantId);
   let tenantId: number;
 
+  const customIdError = await getCustomIdAvailabilityError(
+    data.customId,
+    Number.isInteger(retryTenantId) && retryTenantId > 0
+      ? retryTenantId
+      : undefined,
+  );
+  if (customIdError) {
+    return { values: safeValues, errors: { customId: customIdError } };
+  }
+
   try {
     if (Number.isInteger(retryTenantId) && retryTenantId > 0) {
       const [tenant] = await getControlDb()
@@ -134,13 +167,23 @@ export async function createTenant(
           databaseName: tenants.databaseName,
         })
         .from(tenants)
-        .where(eq(tenants.id, retryTenantId))
+        .where(
+          and(
+            eq(tenants.id, retryTenantId),
+            tenantVisibilityFilter(
+              controlAdminSession.user.id,
+              authz.permissions,
+            ),
+          ),
+        )
         .limit(1);
 
       if (!tenant || tenant.slug !== data.slug || tenant.status !== 'failed') {
         return {
           values: safeValues,
-          errors: { general: 'La página no está disponible para reintentar' },
+          errors: {
+            general: 'La plataforma no está disponible para reintentar',
+          },
         };
       }
 
@@ -157,7 +200,9 @@ export async function createTenant(
       await getControlDb()
         .update(tenants)
         .set({
+          customId: data.customId,
           name: data.name,
+          comments: data.comments,
           description: data.description,
           contactEmail: data.contactEmail,
           faviconUrl: data.faviconUrl,
@@ -165,13 +210,23 @@ export async function createTenant(
           saturation: data.saturation,
           updatedAt: new Date(),
         })
-        .where(eq(tenants.id, tenant.id));
+        .where(
+          and(
+            eq(tenants.id, tenant.id),
+            tenantVisibilityFilter(
+              controlAdminSession.user.id,
+              authz.permissions,
+            ),
+          ),
+        );
       tenantId = tenant.id;
     } else {
       const [tenant] = await getControlDb()
         .insert(tenants)
         .values({
+          customId: data.customId,
           name: data.name,
+          comments: data.comments,
           slug: data.slug,
           description: data.description,
           contactEmail: data.contactEmail,
@@ -186,6 +241,12 @@ export async function createTenant(
       tenantId = tenant.id;
     }
   } catch (error) {
+    if (isCustomIdUniqueViolation(error)) {
+      return {
+        values: safeValues,
+        errors: { customId: CUSTOM_ID_TAKEN_ERROR },
+      };
+    }
     if (isUniqueViolation(error)) {
       return {
         values: safeValues,
@@ -196,7 +257,7 @@ export async function createTenant(
     console.error('Unable to save tenant', { slug: data.slug, error });
     return {
       values: safeValues,
-      errors: { general: 'No se pudo guardar la página' },
+      errors: { general: 'No se pudo guardar la plataforma' },
     };
   }
 
@@ -208,6 +269,10 @@ export async function createTenant(
         password: data.adminPassword,
         email: data.adminEmail,
         fullName: data.adminFullName,
+        dni: data.adminDni,
+        phoneNumber: data.adminPhoneNumber,
+        birthDate: data.adminBirthDate,
+        gender: data.adminGender,
       },
     });
   } catch (error) {
@@ -225,7 +290,16 @@ export async function createTenant(
   }
 
   revalidatePath('/');
-  redirect('/');
+  return {
+    credentials: {
+      platformName: data.name,
+      slug: data.slug,
+      username: data.adminUsername,
+      password: data.adminPassword,
+      email: data.adminEmail,
+      phoneNumber: data.adminPhoneNumber,
+    },
+  };
 }
 
 function getFormValues(formData: FormData): TenantFormValues {
@@ -233,7 +307,9 @@ function getFormValues(formData: FormData): TenantFormValues {
 
   return {
     tenantId: value('tenantId') || undefined,
+    customId: value('customId'),
     name: value('name'),
+    comments: value('comments'),
     slug: value('slug').toLowerCase(),
     description: value('description'),
     contactEmail: value('contactEmail'),
@@ -244,14 +320,9 @@ function getFormValues(formData: FormData): TenantFormValues {
     adminEmail: value('adminEmail'),
     adminUsername: value('adminUsername'),
     adminPassword: String(formData.get('adminPassword') ?? ''),
+    adminDni: value('adminDni'),
+    adminPhoneNumber: value('adminPhoneNumber'),
+    adminBirthDate: value('adminBirthDate'),
+    adminGender: value('adminGender'),
   };
-}
-
-function isUniqueViolation(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
 }

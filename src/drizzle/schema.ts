@@ -90,6 +90,7 @@ export const ticketType = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     lowStockThreshold: integer(),
+    imageUrl: text(),
     slug: text()
       .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),
@@ -255,7 +256,7 @@ export const event = pgTable(
     isDeleted: boolean().default(false).notNull(),
     isActive: boolean().default(false).notNull(),
     locationId: uuid().notNull(),
-    categoryId: uuid().notNull(),
+    categoryId: uuid(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -282,7 +283,7 @@ export const event = pgTable(
       name: 'event_categoryId_fkey',
     })
       .onUpdate('cascade')
-      .onDelete('restrict'),
+      .onDelete('set null'),
     foreignKey({
       columns: [table.folderId],
       foreignColumns: [eventFolder.id],

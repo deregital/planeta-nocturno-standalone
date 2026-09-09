@@ -145,8 +145,8 @@ model Event {
   locationId String    @db.Uuid
   location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id])
 
-  categoryId String        @db.Uuid
-  category   EventCategory @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id])
+  categoryId String?        @db.Uuid
+  category   EventCategory? @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id], onDelete: SetNull)
 
   folderId String?      @db.Uuid
   folder   EventFolder? @relation("EVENT_FOLDER_X_EVENT", fields: [folderId], references: [id])
@@ -226,6 +226,7 @@ model TicketType {
   maxSellDate       DateTime?          @db.Timestamptz
   visibleInWeb      Boolean            @default(true)
   lowStockThreshold Int?
+  imageUrl          String?
 
   startingDate DateTime  @db.Timestamptz
   scanLimit    DateTime? @db.Timestamptz
