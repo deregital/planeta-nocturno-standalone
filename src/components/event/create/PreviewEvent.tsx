@@ -11,6 +11,7 @@ import TicketTypeList from '@/components/event/create/ticketType/TicketTypeList'
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/server/trpc/client';
 import { type InviteCondition } from '@/server/types';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export default function PreviewEvent({ back }: { back: () => void }) {
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
@@ -50,6 +51,37 @@ export default function PreviewEvent({ back }: { back: () => void }) {
   );
 
   const handleSubmit = async ({ isActive }: { isActive: boolean }) => {
+    if (!event.inviteCondition) {
+      toast.error('Elegí el tipo de evento antes de continuar.');
+      return;
+    }
+
+    let ticketTypesForSubmit = ticketTypes;
+
+    if (event.inviteCondition === 'INVITATION') {
+      const totalInvitationTickets = organizers.reduce(
+        (total, organizer) =>
+          total +
+          (organizer.type === 'INVITATION' ? (organizer.ticketAmount ?? 0) : 0),
+        0,
+      );
+
+      if (totalInvitationTickets < 1) {
+        toast.error(
+          'Debes asignar al menos un ticket entre los organizadores.',
+        );
+        return;
+      }
+
+      ticketTypesForSubmit = ticketTypes.map((ticketType) => ({
+        ...ticketType,
+        maxAvailable:
+          ticketType.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim()
+            ? organizers.length
+            : totalInvitationTickets,
+      }));
+    }
+
     const buttonType = isActive ? 'publish' : 'draft';
     setActiveButton(buttonType);
     try {
@@ -57,9 +89,9 @@ export default function PreviewEvent({ back }: { back: () => void }) {
         event: {
           ...event,
           isActive,
-          inviteCondition: event.inviteCondition as InviteCondition,
+          inviteCondition: event.inviteCondition,
         },
-        ticketTypes,
+        ticketTypes: ticketTypesForSubmit,
         organizersInput: organizers,
         sendOrganizerTicketEmail,
         questions: questions.filter((question) => question.text.trim() !== ''),

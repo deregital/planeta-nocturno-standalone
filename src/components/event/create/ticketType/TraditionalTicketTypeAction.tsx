@@ -55,15 +55,17 @@ export function TraditionalTicketTypeAction({
       )}
       <h2 className='text-2xl text-center'>Agregar nuevo ticket</h2>
       <div className='flex items-center justify-center gap-4 my-8 flex-wrap'>
-        {ticketTypeCategory.enumValues.map((category) => (
-          <TicketTypeModal
-            action='CREATE'
-            maxAvailableLeft={maxAvailableLeft}
-            key={category}
-            category={category}
-            mercadoPagoEnabled={hasMercadoPagoCredentials}
-          />
-        ))}
+        {ticketTypeCategory.enumValues
+          .filter((category) => category !== 'TABLE')
+          .map((category) => (
+            <TicketTypeModal
+              action='CREATE'
+              maxAvailableLeft={maxAvailableLeft}
+              key={category}
+              category={category}
+              mercadoPagoEnabled={hasMercadoPagoCredentials}
+            />
+          ))}
       </div>
       <Separator className='my-6 bg-stroke' />
       <TicketTypeList

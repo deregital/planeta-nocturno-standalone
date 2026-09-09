@@ -7,7 +7,13 @@ import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import { canManageTenants } from '@/server/control/can-manage-tenants';
+import { requirePermission } from '@/server/control/can-manage-tenants';
+import {
+  CUSTOM_ID_TAKEN_ERROR,
+  getCustomIdAvailabilityError,
+  isCustomIdUniqueViolation,
+} from '@/server/control/custom-id';
+import { tenantVisibilityFilter } from '@/server/control/tenant-access';
 import { tenantMetadataSchema } from '@/server/schemas/control-tenant';
 
 const tenantEditSchema = tenantMetadataSchema.extend({
@@ -16,7 +22,9 @@ const tenantEditSchema = tenantMetadataSchema.extend({
 
 export type TenantEditValues = {
   tenantId: string;
+  customId: string;
   name: string;
+  comments: string;
   description: string;
   contactEmail: string;
   faviconUrl: string;
@@ -37,10 +45,11 @@ export async function updateTenant(
 ): Promise<TenantEditState> {
   const values = getFormValues(formData);
 
-  if (!(await canManageTenants())) {
+  const authz = await requirePermission('tenants:update');
+  if (!authz.ok) {
     return {
       values,
-      errors: { general: 'No tenés permisos para editar páginas' },
+      errors: { general: 'No tenés permisos para editar plataformas' },
     };
   }
 
@@ -58,11 +67,21 @@ export async function updateTenant(
 
   const data = validation.data;
 
+  const customIdError = await getCustomIdAvailabilityError(
+    data.customId,
+    data.tenantId,
+  );
+  if (customIdError) {
+    return { values, errors: { customId: customIdError } };
+  }
+
   try {
     const [updatedTenant] = await getControlDb()
       .update(tenants)
       .set({
+        customId: data.customId,
         name: data.name,
+        comments: data.comments,
         description: data.description,
         contactEmail: data.contactEmail,
         faviconUrl: data.faviconUrl,
@@ -70,18 +89,33 @@ export async function updateTenant(
         saturation: data.saturation,
         updatedAt: new Date(),
       })
-      .where(and(eq(tenants.id, data.tenantId), ne(tenants.status, 'deleted')))
+      .where(
+        and(
+          eq(tenants.id, data.tenantId),
+          ne(tenants.status, 'deleted'),
+          tenantVisibilityFilter(authz.session.user.id, authz.permissions),
+        ),
+      )
       .returning({ id: tenants.id });
 
     if (!updatedTenant) {
-      return { values, errors: { general: 'La página ya no existe' } };
+      return { values, errors: { general: 'La plataforma ya no existe' } };
     }
   } catch (error) {
+    if (isCustomIdUniqueViolation(error)) {
+      return {
+        values,
+        errors: { customId: CUSTOM_ID_TAKEN_ERROR },
+      };
+    }
     console.error('Unable to update tenant', {
       tenantId: data.tenantId,
       error,
     });
-    return { values, errors: { general: 'No se pudo actualizar la página' } };
+    return {
+      values,
+      errors: { general: 'No se pudo actualizar la plataforma' },
+    };
   }
 
   revalidatePath('/');
@@ -93,7 +127,9 @@ function getFormValues(formData: FormData): TenantEditValues {
 
   return {
     tenantId: value('tenantId'),
+    customId: value('customId'),
     name: value('name'),
+    comments: value('comments'),
     description: value('description'),
     contactEmail: value('contactEmail'),
     faviconUrl: value('faviconUrl'),

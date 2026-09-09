@@ -30,6 +30,15 @@ export const ticketTypeSchema = z.object({
         'La cantidad de tickets para mostrar baja disponibilidad debe ser mayor o igual a 0',
     })
     .nullable(),
+  imageUrl: z
+    .union([
+      z.null(),
+      z.url({
+        error: 'La URL de la imagen no es válida',
+      }),
+    ])
+    .optional()
+    .transform((val) => val ?? null),
   organizers: z
     .array(z.uuid())
     .nullable()

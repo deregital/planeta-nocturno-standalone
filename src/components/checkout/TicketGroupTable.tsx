@@ -27,13 +27,14 @@ export function TicketGroupTable({
   // Calculate service fee over the subtotal (pre-discount)
   const serviceFeePrice =
     subtotalPrice * (Number(ticketGroup.event.serviceFee ?? 0) / 100);
+  const totalPrice = subtotalWithDiscount + serviceFeePrice;
+  const showPriceSummary = totalPrice > 0;
+  const showServiceFee = serviceFeePrice > 0;
 
   const subtotalPriceString = formatCurrency(subtotalPrice);
   const subtotalWithDiscountString = formatCurrency(subtotalWithDiscount);
   const serviceFeeString = formatCurrency(serviceFeePrice);
-  const totalPriceString = formatCurrency(
-    subtotalWithDiscount + serviceFeePrice,
-  );
+  const totalPriceString = formatCurrency(totalPrice);
 
   return (
     <div className='flex flex-col justify-center items-center border border-stroke p-4 rounded-xl w-full sm:w-xl md:w-2xl'>
@@ -56,7 +57,7 @@ export function TicketGroupTable({
               {type.ticketType.price ? (
                 <p>${type.ticketType.price}</p>
               ) : (
-                <p className='text-green-700 font-semibold'>GRATUITO</p>
+                <p className='text-green-700 font-semibold'>SIN CARGO</p>
               )}
             </div>
             <div className='text-black text-right py-4 border-b border-stroke/50'>
@@ -65,34 +66,40 @@ export function TicketGroupTable({
           </React.Fragment>
         ))}
       </div>
-      <div className='w-full flex-col flex items-end mt-4 [&>div]:w-full [&>div]:md:w-3/5 [&>div]:min-w-44 [&>div]:flex [&>div]:justify-between'>
-        <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
-          <p>Subtotal:</p>
-          {hasDiscount ? (
-            <p className='line-through text-gray-500'>{subtotalPriceString}</p>
-          ) : (
-            <p>{subtotalPriceString}</p>
-          )}
-        </div>
-
-        {hasDiscount && (
+      {showPriceSummary && (
+        <div className='w-full flex-col flex items-end mt-4 [&>div]:w-full [&>div]:md:w-3/5 [&>div]:min-w-44 [&>div]:flex [&>div]:justify-between'>
           <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
-            <p>Subtotal con descuento:</p>
-            <p className='text-green-600 font-semibold'>
-              {subtotalWithDiscountString}
-            </p>
+            <p>Subtotal:</p>
+            {hasDiscount ? (
+              <p className='line-through text-gray-500'>
+                {subtotalPriceString}
+              </p>
+            ) : (
+              <p>{subtotalPriceString}</p>
+            )}
           </div>
-        )}
-        <div className='mb-3 [&>p]:text-end [&>p]:text-lg'>
-          <p>Costo de servicio:</p>
-          <p>{serviceFeeString}</p>
+
+          {hasDiscount && (
+            <div className='my-3 [&>p]:text-end [&>p]:text-lg'>
+              <p>Subtotal con descuento:</p>
+              <p className='text-green-600 font-semibold'>
+                {subtotalWithDiscountString}
+              </p>
+            </div>
+          )}
+          {showServiceFee && (
+            <div className='mb-3 [&>p]:text-end [&>p]:text-lg'>
+              <p>Costo de servicio:</p>
+              <p>{serviceFeeString}</p>
+            </div>
+          )}
+          <Separator className='flex bg-stroke data-[orientation=horizontal]:min-w-44 data-[orientation=horizontal]:w-full data-[orientation=horizontal]:md:w-3/5' />
+          <div className='mt-3 [&>p]:text-end [&>p]:text-lg'>
+            <p>Total:</p>
+            <p>{totalPriceString}</p>
+          </div>
         </div>
-        <Separator className='flex bg-stroke data-[orientation=horizontal]:min-w-44 data-[orientation=horizontal]:w-full data-[orientation=horizontal]:md:w-3/5' />
-        <div className='mt-3 [&>p]:text-end [&>p]:text-lg'>
-          <p>Total:</p>
-          <p>{totalPriceString}</p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
