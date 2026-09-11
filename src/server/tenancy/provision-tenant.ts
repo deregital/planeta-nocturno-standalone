@@ -29,6 +29,7 @@ const tenantAdminSchema = userSchema
     phoneNumber: true,
     birthDate: true,
     gender: true,
+    instagram: true,
   })
   .extend({
     birthDate: userSchema.shape.birthDate.or(z.literal('')),
@@ -160,6 +161,7 @@ async function createTenantAdmin(
         phoneNumber: admin.phoneNumber,
         dni: admin.dni,
         birthDate: admin.birthDate || '1900-01-01T00:00:00.000Z',
+        instagram: admin.instagram,
       });
   } finally {
     await pool.end();

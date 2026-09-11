@@ -19,6 +19,7 @@ import SelectWithLabel from '@/components/common/SelectWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 
 import 'react-phone-number-input/style.css';
@@ -41,6 +42,7 @@ const emptyValues: TenantFormValues = {
   adminPhoneNumber: '',
   adminBirthDate: '',
   adminGender: '',
+  adminInstagram: '',
 };
 
 export default function TenantForm({
@@ -99,6 +101,10 @@ export default function TenantForm({
 
         <fieldset className='grid gap-5 rounded-xl border border-stroke bg-white p-6 md:grid-cols-2'>
           <legend className='px-2 text-lg font-semibold'>Plataforma</legend>
+          <p className='md:col-span-2 text-sm text-gray-500'>
+            Los campos marcados con <span className='text-red-500'>*</span> son
+            obligatorios.
+          </p>
 
           <FormField
             label='ID personalizable'
@@ -123,7 +129,10 @@ export default function TenantForm({
             error={state.errors?.contactEmail}
           />
           <div className='space-y-1 md:col-span-2'>
-            <Label htmlFor='slug'>Subdominio</Label>
+            <Label htmlFor='slug'>
+              Subdominio
+              <span className='text-red-500'>*</span>
+            </Label>
             <div className='flex items-center rounded-md border border-stroke bg-white focus-within:border-ring aria-invalid:border-red-500'>
               <Input
                 id='slug'
@@ -204,6 +213,10 @@ export default function TenantForm({
           <legend className='px-2 text-lg font-semibold'>
             Administrador inicial
           </legend>
+          <p className='md:col-span-2 text-sm text-gray-500'>
+            Los campos marcados con <span className='text-red-500'>*</span> son
+            obligatorios.
+          </p>
 
           <FormField
             label='Nombre completo'
@@ -256,6 +269,17 @@ export default function TenantForm({
             ]}
             error={state.errors?.adminGender}
           />
+          <FormField
+            label='Instagram'
+            name='adminInstagram'
+            defaultValue={values.adminInstagram}
+            error={state.errors?.adminInstagram}
+            placeholder='@usuario'
+            maxLength={30}
+          />
+
+          <Separator className='md:col-span-2 bg-gray-300' />
+
           <FormField
             label='Nombre de usuario'
             name='adminUsername'
@@ -312,6 +336,7 @@ function FormField({
   name,
   error,
   type,
+  required,
   ...props
 }: React.ComponentProps<typeof Input> & {
   label: string;
@@ -323,7 +348,10 @@ function FormField({
 
   return (
     <div className='space-y-1'>
-      <Label htmlFor={name}>{label}</Label>
+      <Label htmlFor={name} className='gap-[2px]'>
+        {label}
+        {required && <span className='text-red-500'>*</span>}
+      </Label>
       <div className='relative'>
         <Input
           id={name}
@@ -331,6 +359,7 @@ function FormField({
           type={isPassword && showPassword ? 'text' : type}
           className={isPassword ? 'pr-10' : undefined}
           aria-invalid={Boolean(error)}
+          required={required}
           {...props}
         />
         {isPassword && (
