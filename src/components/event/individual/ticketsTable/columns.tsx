@@ -1002,7 +1002,7 @@ export function generateTicketColumns({
     );
   }
 
-  if (event.inviteCondition !== 'SIMPLE' && !event.hasSimpleInvitation) {
+  if (!event.hasSimpleInvitation) {
     columns = columns.filter((col) => col.id !== 'invitedBySimple');
   }
 

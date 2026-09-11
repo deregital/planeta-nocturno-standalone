@@ -528,8 +528,7 @@ export default function CheckoutClient({
           </div>
         )}
         <Separator className='my-4' />
-        {(ticketGroup.event.hasSimpleInvitation ||
-          ticketGroup.event.inviteCondition === 'SIMPLE') && (
+        {ticketGroup.event.hasSimpleInvitation && (
           <InputWithLabel
             name={'invitedBySimple'}
             id={'invitedBySimple'}
