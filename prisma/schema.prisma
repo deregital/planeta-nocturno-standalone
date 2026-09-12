@@ -333,8 +333,11 @@ model EmittedTicket {
   eventId String @db.Uuid
   event   Event? @relation("EVENT_X_EMITTED_TICKET", fields: [eventId], references: [id])
 
+  shortId Int
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@unique([eventId, shortId])
   @@map("emittedTicket")
 }
 
