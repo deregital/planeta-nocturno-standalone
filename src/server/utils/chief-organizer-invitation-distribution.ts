@@ -19,6 +19,7 @@ import {
 } from '@/lib/chief-organizer-event';
 import { type OrganizerInvitationSchema } from '@/server/schemas/organizer';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
+import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
 import { generateSlug } from '@/server/utils/utils';
 
@@ -482,6 +483,7 @@ async function addChiefOrganizerToEvent(
     ticketTypeId: organizerTicketType.id,
     ticketGroupId: updatedTicketGroup.id,
     eventId: event.id,
+    shortId: (await allocateEmittedTicketShortIds(tx, event.id, 1))[0]!,
   });
 
   if (ticketAmount > 0) {

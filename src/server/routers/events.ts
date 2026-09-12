@@ -73,6 +73,7 @@ import {
   presentismoPDFSchemaGroupedTicketType,
 } from '@/server/utils/presentismo-pdf';
 import { generatePdf } from '@/server/utils/ticket-template';
+import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
 import {
   generateSlug,
@@ -772,6 +773,11 @@ export const eventsRouter = router({
                 .returning();
 
               let idx = 1;
+              const organizerShortIds = await allocateEmittedTicketShortIds(
+                tx,
+                eventCreated.id,
+                organizersInput.length,
+              );
               for (const organizer of organizersInput) {
                 const org = organizers.find((o) => o.id === organizer.id);
                 if (!org) {
@@ -793,6 +799,7 @@ export const eventsRouter = router({
                     ticketTypeId: organizerTicketType.id,
                     ticketGroupId: organizerTicketGroup.id,
                     eventId: eventCreated.id,
+                    shortId: organizerShortIds[idx - 1]!,
                   })
                   .returning({
                     id: emittedTicket.id,
@@ -1237,6 +1244,11 @@ export const eventsRouter = router({
                   .returning();
 
                 // Crear entradas de organizador
+                const organizerShortIds = await allocateEmittedTicketShortIds(
+                  tx,
+                  eventUpdated.id,
+                  addedOrganizers.length,
+                );
                 const emittedTickets = await tx
                   .insert(emittedTicket)
                   .values(
@@ -1254,6 +1266,7 @@ export const eventsRouter = router({
                       ),
                       ticketTypeId: organizerTicketType.id,
                       eventId: eventUpdated.id,
+                      shortId: organizerShortIds[idx]!,
                     })),
                   )
                   .returning();
@@ -1336,6 +1349,8 @@ export const eventsRouter = router({
                     .where(eq(ticketGroup.id, currentOrganizerGroup!.id))
                     .returning();
 
+                  const [organizerEmittedShortId] =
+                    await allocateEmittedTicketShortIds(tx, eventUpdated.id, 1);
                   const [organizerEmittedTicket] = await tx
                     .insert(emittedTicket)
                     .values({
@@ -1352,6 +1367,7 @@ export const eventsRouter = router({
                       ticketTypeId: organizerTicketType.id,
                       ticketGroupId: updatedTicketGroup.id,
                       eventId: eventUpdated.id,
+                      shortId: organizerEmittedShortId!,
                     })
                     .returning({
                       id: emittedTicket.id,

@@ -63,6 +63,8 @@ export function SearchTickets({
         ticket.mail,
         ticket.phoneNumber,
         ticket.ticketGroup.invitedBy,
+        String(ticket.shortId),
+        ticket.buyerCode,
       ].filter(Boolean);
 
       return searchableFields.some((field) => {

@@ -89,14 +89,42 @@ export function generateTicketColumns({
     RouterOutputs['emittedTickets']['getByEventId'][number]
   >[] = [
     {
-      id: 'buyerCode',
-      accessorKey: 'buyerCode',
-      header: ({ column }) => {
+      id: 'shortId',
+      accessorKey: 'shortId',
+      header: () => {
         return <div className='mx-auto w-full'>ID</div>;
       },
       minSize: 50,
       size: 50,
       maxSize: 50,
+      enableResizing: false,
+      cell: ({ row }) => {
+        return (
+          <div className='flex items-center justify-center gap-2 text-sm'>
+            <span>{row.original.shortId}</span>
+          </div>
+        );
+      },
+      meta: {
+        exportValue: (row) => String(row.original.shortId),
+        exportHeader: 'ID',
+      },
+    },
+    {
+      id: 'buyerCode',
+      accessorKey: 'buyerCode',
+      header: () => {
+        return (
+          <div className='mx-auto w-full'>
+            {event.inviteCondition === 'INVITATION'
+              ? 'ID invitación'
+              : 'ID del comprador'}
+          </div>
+        );
+      },
+      minSize: 70,
+      size: 90,
+      maxSize: 120,
       enableResizing: false,
       cell: ({ row }) => {
         return (
@@ -107,7 +135,10 @@ export function generateTicketColumns({
       },
       meta: {
         exportValue: (row) => row.original.buyerCode,
-        exportHeader: 'ID',
+        exportHeader:
+          event.inviteCondition === 'INVITATION'
+            ? 'ID invitación'
+            : 'ID del comprador',
       },
     },
     {
