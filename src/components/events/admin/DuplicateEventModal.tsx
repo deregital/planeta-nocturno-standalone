@@ -15,6 +15,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { trpc } from '@/server/trpc/client';
 
 export default function DuplicateEventModal({
@@ -49,11 +54,16 @@ export default function DuplicateEventModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {!hideTrigger && (
-        <DialogTrigger asChild>
-          <Button variant={'ghost'} size={'icon'}>
-            <CopyIcon className='w-4 h-4 text-on-accent' />
-          </Button>
-        </DialogTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button variant={'ghost'} size={'icon'}>
+                <CopyIcon className='w-4 h-4 text-on-accent' />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Duplicar evento</TooltipContent>
+        </Tooltip>
       )}
       <DialogContent>
         <DialogTitle className='text-lg font-bold'>

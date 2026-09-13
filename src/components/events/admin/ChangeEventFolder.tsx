@@ -21,6 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { trpc } from '@/server/trpc/client';
 
 export default function ChangeEventFolder({
@@ -82,11 +87,20 @@ export default function ChangeEventFolder({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {!hideTrigger && (
-        <DialogTrigger asChild>
-          <Button variant={'ghost'} size={'icon'} className='text-on-accent'>
-            <Folder />
-          </Button>
-        </DialogTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant={'ghost'}
+                size={'icon'}
+                className='text-on-accent'
+              >
+                <Folder />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Cambiar carpeta</TooltipContent>
+        </Tooltip>
       )}
       <DialogContent>
         <DialogHeader>
