@@ -28,6 +28,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { lightenColor } from '@/lib/utils-client';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -48,6 +53,7 @@ export default function EventCardHorizontal({
   const session = useSession();
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [activateSure, setActivateSure] = useState(false);
 
   const isAdmin = session.data?.user.role === 'ADMIN';
 
@@ -60,52 +66,125 @@ export default function EventCardHorizontal({
   const exportXlsxByTicketType =
     trpc.events.exportXlsxByTicketType.useMutation();
 
+  const toggleActivate = trpc.events.toggleActivate.useMutation();
+
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
+  const manageHref = `/admin/event/${event.slug}`;
+
+  const handleActivate = () => {
+    if (!activateSure) {
+      setActivateSure(true);
+      return;
+    }
+
+    toggleActivate.mutate(
+      { id: event.id, isActive: true },
+      {
+        onError: (error) => {
+          toast.error(error.message);
+          setActivateSure(false);
+        },
+        onSuccess: () => {
+          setActivateSure(false);
+          router.refresh();
+        },
+      },
+    );
+  };
+
+  const handleCardClick = () => {
+    if (!showActions) return;
+    router.push(manageHref);
+  };
 
   return (
     <Card
       variant={'accent'}
       className={cn(
-        'flex flex-row py-2 rounded-lg min-h-14',
+        'flex flex-row items-center rounded-lg py-2',
+        'h-20 sm:h-auto sm:min-h-14',
         !showActions && 'border-accent-light py-4',
       )}
       style={{
         backgroundColor: lighterColor || undefined,
       }}
     >
-      <CardContent className='flex w-full justify-between px-4 text-on-accent'>
-        <div className='flex sm:flex-row flex-col sm:gap-4 gap-2 sm:items-center'>
-          <div className='flex flex-row items-center gap-2'>
-            {event.isActive && <BadgeCheck className='text-on-accent' />}
-            <CardTitle>{event.name}</CardTitle>
+      <CardContent className='flex w-full min-w-0 items-center justify-between gap-2 px-4 text-on-accent'>
+        <div
+          role={showActions ? 'link' : undefined}
+          tabIndex={showActions ? 0 : undefined}
+          onClick={showActions ? handleCardClick : undefined}
+          onKeyDown={
+            showActions
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleCardClick();
+                  }
+                }
+              : undefined
+          }
+          className={cn(
+            'flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4',
+            showActions && 'cursor-pointer',
+          )}
+        >
+          <div className='flex min-w-0 items-center gap-2'>
+            {event.isActive && (
+              <BadgeCheck className='size-4 shrink-0 text-on-accent' />
+            )}
+            <CardTitle className='truncate'>{event.name}</CardTitle>
           </div>
-          <p className='text-sm'>
-            {format(event.startingDate, 'dd/MM/yyyy HH:mm')} -{' '}
-            {event.location.address}
+          <p className='truncate text-sm'>
+            {format(event.startingDate, 'dd/MM/yyyy HH:mm')}
+            <span className='hidden sm:inline'>
+              {' '}
+              - {event.location.address}
+            </span>
           </p>
         </div>
         {showActions && (
-          <div className='flex flex-row gap-0.5 items-center'>
+          <div className='flex shrink-0 flex-row items-center gap-0.5'>
             {event.inviteCondition !== 'INVITATION' && (
-              <Button
-                variant={'ghost'}
-                size={'icon'}
-                asChild
-                className='hidden sm:inline-flex'
-              >
-                <Link href={`/event/${event.slug}`} target='_blank'>
-                  <Link2 className='w-4 h-4 text-on-accent' />
-                </Link>
-              </Button>
+              <>
+                {!event.isActive && (
+                  <Button
+                    variant='success'
+                    size='sm'
+                    disabled={toggleActivate.isPending}
+                    onClick={handleActivate}
+                    className='mr-1'
+                  >
+                    {activateSure ? '¿Estás seguro?' : 'Activar'}
+                  </Button>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={'ghost'}
+                      size={'icon'}
+                      asChild
+                      className='hidden sm:inline-flex'
+                    >
+                      <Link href={`/event/${event.slug}`} target='_blank'>
+                        <Link2 className='w-4 h-4 text-on-accent' />
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Ver evento</TooltipContent>
+                </Tooltip>
+              </>
             )}
-            <Button variant={'ghost'} size={'icon'} asChild>
-              <Link
-                href={`/admin/event/${event.slug}`}
-                aria-disabled={!isAdmin}
-              >
-                <Calendar className='w-4 h-4 text-on-accent' />
-              </Link>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant={'ghost'} size={'icon'} asChild>
+                  <Link href={manageHref} aria-disabled={!isAdmin}>
+                    <Calendar className='w-4 h-4 text-on-accent' />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Gestionar evento</TooltipContent>
+            </Tooltip>
             {isAdmin && (
               <>
                 <div className='hidden sm:block'>
@@ -121,14 +200,21 @@ export default function EventCardHorizontal({
                   onOpenChange={setDuplicateDialogOpen}
                   hideTrigger
                 />
-                <Button
-                  variant={'ghost'}
-                  className='text-on-accent'
-                  disabled={!isAdmin}
-                  onClick={() => router.push(`/admin/event/edit/${event.slug}`)}
-                >
-                  <Pencil />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={'ghost'}
+                      className='text-on-accent'
+                      disabled={!isAdmin}
+                      onClick={() =>
+                        router.push(`/admin/event/edit/${event.slug}`)
+                      }
+                    >
+                      <Pencil />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Editar evento</TooltipContent>
+                </Tooltip>
                 <div className='hidden sm:block'>
                   <ChangeEventFolder
                     eventId={event.id}
@@ -143,15 +229,20 @@ export default function EventCardHorizontal({
                   hideTrigger
                 />
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant={'ghost'}
-                      size={'icon'}
-                      className='text-on-accent'
-                    >
-                      <MoreVertical className='w-4 h-4' />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant={'ghost'}
+                          size={'icon'}
+                          className='text-on-accent'
+                        >
+                          <MoreVertical className='w-4 h-4' />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Más opciones</TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent align='end'>
                     {event.inviteCondition !== 'INVITATION' && (
                       <DropdownMenuItem
