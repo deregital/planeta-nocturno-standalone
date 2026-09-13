@@ -1,10 +1,48 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { type RouterOutputs } from '@/server/routers/app';
+
+const SEARCH_FIELDS = [
+  { id: 'shortId', label: 'ID' },
+  { id: 'fullName', label: 'Nombre' },
+  { id: 'dni', label: 'DNI' },
+  { id: 'mail', label: 'Email' },
+  { id: 'phoneNumber', label: 'Teléfono' },
+  { id: 'invitedBy', label: 'Organizador' },
+] as const;
+
+type SearchFieldId = (typeof SEARCH_FIELDS)[number]['id'];
+type Ticket = RouterOutputs['emittedTickets']['getByEventId'][number];
+
+const ALL_SEARCH_FIELDS: SearchFieldId[] = SEARCH_FIELDS.map(
+  (field) => field.id,
+);
+
+function getTicketFieldValue(ticket: Ticket, field: SearchFieldId) {
+  const values: Record<SearchFieldId, string | null | undefined> = {
+    shortId: String(ticket.shortId),
+    fullName: ticket.fullName,
+    dni: ticket.dni,
+    mail: ticket.mail,
+    phoneNumber: ticket.phoneNumber,
+    invitedBy: ticket.ticketGroup.invitedBy,
+  };
+
+  return values[field];
+}
 
 interface SearchTicketsProps {
   tickets: RouterOutputs['emittedTickets']['getByEventId'] | undefined;
@@ -26,8 +64,12 @@ export function SearchTickets({
   onClearOrganizerFilter,
 }: SearchTicketsProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFields, setSelectedFields] =
+    useState<SearchFieldId[]>(ALL_SEARCH_FIELDS);
   const prevExternalValue = useRef<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isAllSelected = selectedFields.length === ALL_SEARCH_FIELDS.length;
 
   useEffect(() => {
     if (window.innerWidth >= 768) {
@@ -35,7 +77,23 @@ export function SearchTickets({
     }
   }, []);
 
-  // Filter tickets based on search term
+  const placeholder = useMemo(() => {
+    if (isAllSelected) {
+      return 'Buscar por ID, nombre, DNI, email, teléfono u organizador...';
+    }
+
+    const labels = SEARCH_FIELDS.filter((field) =>
+      selectedFields.includes(field.id),
+    ).map((field) => field.label.toLowerCase());
+
+    if (labels.length === 1) {
+      return `Buscar por ${labels[0]}...`;
+    }
+
+    const lastLabel = labels.at(-1);
+    return `Buscar por ${labels.slice(0, -1).join(', ')} o ${lastLabel}...`;
+  }, [isAllSelected, selectedFields]);
+
   const filteredTickets = useMemo(() => {
     if (!tickets) return tickets;
 
@@ -50,39 +108,30 @@ export function SearchTickets({
 
     if (!searchTerm.trim()) return tickets;
 
-    return tickets.filter((ticket) => {
-      const searchLower = searchTerm
-        .toLowerCase()
-        .trim()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+    const searchLower = searchTerm
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
 
-      const searchableFields = [
-        ticket.fullName,
-        ticket.dni,
-        ticket.mail,
-        ticket.phoneNumber,
-        ticket.ticketGroup.invitedBy,
-        String(ticket.shortId),
-        ticket.buyerCode,
-      ].filter(Boolean);
+    return tickets.filter((ticket) =>
+      selectedFields.some((field) => {
+        const value = getTicketFieldValue(ticket, field);
+        if (!value) return false;
 
-      return searchableFields.some((field) => {
-        const normalizedField = String(field)
+        return String(value)
           .toLowerCase()
           .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-        return normalizedField.includes(searchLower);
-      });
-    });
-  }, [tickets, searchTerm, externalFilterInvitedByIds]);
+          .replace(/[\u0300-\u036f]/g, '')
+          .includes(searchLower);
+      }),
+    );
+  }, [tickets, searchTerm, selectedFields, externalFilterInvitedByIds]);
 
-  // Notify parent component of filtered tickets
   useEffect(() => {
     onFilteredTicketsChange(filteredTickets);
   }, [filteredTickets, onFilteredTicketsChange]);
 
-  // Sync external search value - only set when it comes from outside (card click)
   useEffect(() => {
     if (
       externalSearchValue !== undefined &&
@@ -98,17 +147,75 @@ export function SearchTickets({
     onClearOrganizerFilter?.();
   };
 
+  const handleToggleAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedFields(ALL_SEARCH_FIELDS);
+    }
+  };
+
+  const handleToggleField = (fieldId: SearchFieldId, checked: boolean) => {
+    setSelectedFields((current) => {
+      if (checked) {
+        return ALL_SEARCH_FIELDS.filter(
+          (id) => current.includes(id) || id === fieldId,
+        );
+      }
+
+      const next = current.filter((id) => id !== fieldId);
+      return next.length === 0 ? ALL_SEARCH_FIELDS : next;
+    });
+  };
+
   return (
     <div className='w-[calc(100vw-16px)] md:w-[calc(100vw-16px-var(--sidebar-width))] mt-4 mb-4 mx-auto'>
-      <div className='relative max-w-md mx-auto'>
-        <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
+      <div className='relative mx-auto flex max-w-md'>
+        <Search className='pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-gray-400' />
         <Input
           ref={inputRef}
-          placeholder='Buscar por nombre, DNI, email, teléfono u organizador...'
+          placeholder={placeholder}
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className='pl-10'
+          className='rounded-r-none pl-10'
         />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              aria-label='Campos de búsqueda'
+              className='h-9 w-9 shrink-0 rounded-l-none border border-l-0 border-stroke bg-white hover:bg-accent/5'
+            >
+              <ChevronDown className='size-4' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='end' className='w-44'>
+            <DropdownMenuItem
+              onSelect={(event) => event.preventDefault()}
+              onClick={() => handleToggleAll(!isAllSelected)}
+            >
+              <Checkbox
+                checked={isAllSelected}
+                className='pointer-events-none'
+              />
+              Todos
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {SEARCH_FIELDS.map((field) => {
+              const checked = selectedFields.includes(field.id);
+              return (
+                <DropdownMenuItem
+                  key={field.id}
+                  onSelect={(event) => event.preventDefault()}
+                  onClick={() => handleToggleField(field.id, !checked)}
+                >
+                  <Checkbox checked={checked} className='pointer-events-none' />
+                  {field.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
