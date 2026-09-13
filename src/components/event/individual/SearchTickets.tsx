@@ -1,10 +1,62 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { type RouterOutputs } from '@/server/routers/app';
+
+const SEARCH_FIELDS = [
+  { id: 'id', label: 'ID' },
+  { id: 'fullName', label: 'Nombre' },
+  { id: 'dni', label: 'DNI' },
+  { id: 'mail', label: 'Email' },
+  { id: 'phoneNumber', label: 'Teléfono' },
+  { id: 'invitedBy', label: 'Organizador' },
+] as const;
+
+type SearchFieldId = (typeof SEARCH_FIELDS)[number]['id'];
+type Ticket = RouterOutputs['emittedTickets']['getByEventId'][number];
+
+const ALL_FIELD_IDS: SearchFieldId[] = SEARCH_FIELDS.map((field) => field.id);
+const PLACEHOLDER =
+  'Buscar por ID, nombre, DNI, email, teléfono u organizador...';
+
+function normalize(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function getFieldValues(ticket: Ticket, field: SearchFieldId): string[] {
+  switch (field) {
+    case 'id':
+      return [String(ticket.shortId), ticket.buyerCode].filter(
+        (value): value is string => Boolean(value),
+      );
+    case 'fullName':
+      return ticket.fullName ? [ticket.fullName] : [];
+    case 'dni':
+      return ticket.dni ? [ticket.dni] : [];
+    case 'mail':
+      return ticket.mail ? [ticket.mail] : [];
+    case 'phoneNumber':
+      return ticket.phoneNumber ? [ticket.phoneNumber] : [];
+    case 'invitedBy':
+      return ticket.ticketGroup.invitedBy ? [ticket.ticketGroup.invitedBy] : [];
+  }
+}
 
 interface SearchTicketsProps {
   tickets: RouterOutputs['emittedTickets']['getByEventId'] | undefined;
@@ -26,8 +78,13 @@ export function SearchTickets({
   onClearOrganizerFilter,
 }: SearchTicketsProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFields, setSelectedFields] = useState(
+    () => new Set<SearchFieldId>(ALL_FIELD_IDS),
+  );
   const prevExternalValue = useRef<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isAllSelected = selectedFields.size === ALL_FIELD_IDS.length;
 
   useEffect(() => {
     if (window.innerWidth >= 768) {
@@ -35,7 +92,6 @@ export function SearchTickets({
     }
   }, []);
 
-  // Filter tickets based on search term
   const filteredTickets = useMemo(() => {
     if (!tickets) return tickets;
 
@@ -50,39 +106,21 @@ export function SearchTickets({
 
     if (!searchTerm.trim()) return tickets;
 
-    return tickets.filter((ticket) => {
-      const searchLower = searchTerm
-        .toLowerCase()
-        .trim()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+    const term = normalize(searchTerm);
 
-      const searchableFields = [
-        ticket.fullName,
-        ticket.dni,
-        ticket.mail,
-        ticket.phoneNumber,
-        ticket.ticketGroup.invitedBy,
-        String(ticket.shortId),
-        ticket.buyerCode,
-      ].filter(Boolean);
+    return tickets.filter((ticket) =>
+      [...selectedFields].some((field) =>
+        getFieldValues(ticket, field).some((value) =>
+          normalize(value).includes(term),
+        ),
+      ),
+    );
+  }, [tickets, searchTerm, selectedFields, externalFilterInvitedByIds]);
 
-      return searchableFields.some((field) => {
-        const normalizedField = String(field)
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-        return normalizedField.includes(searchLower);
-      });
-    });
-  }, [tickets, searchTerm, externalFilterInvitedByIds]);
-
-  // Notify parent component of filtered tickets
   useEffect(() => {
     onFilteredTicketsChange(filteredTickets);
   }, [filteredTickets, onFilteredTicketsChange]);
 
-  // Sync external search value - only set when it comes from outside (card click)
   useEffect(() => {
     if (
       externalSearchValue !== undefined &&
@@ -98,17 +136,72 @@ export function SearchTickets({
     onClearOrganizerFilter?.();
   };
 
+  const handleToggleAll = () => {
+    setSelectedFields(isAllSelected ? new Set() : new Set(ALL_FIELD_IDS));
+  };
+
+  const handleToggleField = (fieldId: SearchFieldId) => {
+    setSelectedFields((current) => {
+      const next = new Set(current);
+      if (next.has(fieldId)) {
+        next.delete(fieldId);
+      } else {
+        next.add(fieldId);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className='w-[calc(100vw-16px)] md:w-[calc(100vw-16px-var(--sidebar-width))] mt-4 mb-4 mx-auto'>
-      <div className='relative max-w-md mx-auto'>
-        <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
+      <div className='relative mx-auto flex max-w-md'>
+        <Search className='pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-gray-400' />
         <Input
           ref={inputRef}
-          placeholder='Buscar por nombre, DNI, email, teléfono u organizador...'
+          placeholder={PLACEHOLDER}
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className='pl-10'
+          className='rounded-r-none pl-10'
         />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              aria-label='Campos de búsqueda'
+              className='h-9 w-9 shrink-0 rounded-l-none border border-l-0 border-stroke bg-white hover:bg-accent/5'
+            >
+              <ChevronDown className='size-4' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='end' className='w-44'>
+            <DropdownMenuItem
+              onSelect={(event) => event.preventDefault()}
+              onClick={handleToggleAll}
+            >
+              <Checkbox
+                checked={isAllSelected}
+                className='pointer-events-none'
+              />
+              Todos
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {SEARCH_FIELDS.map((field) => {
+              const checked = selectedFields.has(field.id);
+              return (
+                <DropdownMenuItem
+                  key={field.id}
+                  onSelect={(event) => event.preventDefault()}
+                  onClick={() => handleToggleField(field.id)}
+                >
+                  <Checkbox checked={checked} className='pointer-events-none' />
+                  {field.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
