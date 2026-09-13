@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { type Route } from 'next';
 
 import ChangeEventFolder from '@/components/events/admin/ChangeEventFolder';
 import DuplicateEventModal from '@/components/events/admin/DuplicateEventModal';
@@ -94,7 +95,7 @@ export default function EventCardHorizontal({
 
   const handleCardClick = () => {
     if (!showActions) return;
-    router.push(manageHref);
+    router.push(manageHref as Route<string>);
   };
 
   return (
@@ -178,7 +179,10 @@ export default function EventCardHorizontal({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant={'ghost'} size={'icon'} asChild>
-                  <Link href={manageHref} aria-disabled={!isAdmin}>
+                  <Link
+                    href={manageHref as Route<string>}
+                    aria-disabled={!isAdmin}
+                  >
                     <Calendar className='w-4 h-4 text-on-accent' />
                   </Link>
                 </Button>
