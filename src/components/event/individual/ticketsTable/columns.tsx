@@ -114,13 +114,7 @@ export function generateTicketColumns({
       id: 'buyerCode',
       accessorKey: 'buyerCode',
       header: () => {
-        return (
-          <div className='mx-auto w-full'>
-            {event.inviteCondition === 'INVITATION'
-              ? 'ID invitación'
-              : 'ID del comprador'}
-          </div>
-        );
+        return <div className='mx-auto w-full'>ID</div>;
       },
       minSize: 70,
       size: 90,
@@ -135,10 +129,7 @@ export function generateTicketColumns({
       },
       meta: {
         exportValue: (row) => row.original.buyerCode,
-        exportHeader:
-          event.inviteCondition === 'INVITATION'
-            ? 'ID invitación'
-            : 'ID del comprador',
+        exportHeader: 'ID',
       },
     },
     {
@@ -1025,6 +1016,12 @@ export function generateTicketColumns({
 
   if (!event.hasQuestions) {
     columns = columns.filter((col) => col.id !== 'formulario');
+  }
+
+  if (event.inviteCondition === 'INVITATION') {
+    columns = columns.filter((col) => col.id !== 'shortId');
+  } else {
+    columns = columns.filter((col) => col.id !== 'buyerCode');
   }
 
   if (event.inviteCondition === 'SIMPLE') {
