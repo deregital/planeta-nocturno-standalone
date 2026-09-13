@@ -4,10 +4,6 @@ export type EventFilters = {
 
 export type EventSearchable = {
   name: string;
-  location?: {
-    name?: string | null;
-    address?: string | null;
-  } | null;
 };
 
 function normalizeText(value: string) {
@@ -27,21 +23,8 @@ export function eventMatchesFilters(
   filters: EventFilters,
 ) {
   const query = filters.query?.trim();
-  if (query) {
-    const normalizedQuery = normalizeText(query);
-    const searchableFields = [
-      event.name,
-      event.location?.name,
-      event.location?.address,
-    ].filter(Boolean);
-
-    const matchesQuery = searchableFields.some((field) =>
-      normalizeText(String(field)).includes(normalizedQuery),
-    );
-
-    if (!matchesQuery) {
-      return false;
-    }
+  if (query && !normalizeText(event.name).includes(normalizeText(query))) {
+    return false;
   }
 
   return true;
