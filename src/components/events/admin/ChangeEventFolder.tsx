@@ -1,5 +1,6 @@
 'use client';
 import { Folder } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -41,7 +42,7 @@ export default function ChangeEventFolder({
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
 }) {
-  const utils = trpc.useUtils();
+  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = openProp ?? internalOpen;
   const setOpen = onOpenChangeProp ?? setInternalOpen;
@@ -62,7 +63,7 @@ export default function ChangeEventFolder({
     onSuccess: () => {
       toast.success('Carpeta cambiada correctamente');
       setOpen(false);
-      utils.events.getAll.invalidate();
+      router.refresh();
     },
     onError: (error) => {
       toast.error(error.message);
