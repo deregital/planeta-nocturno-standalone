@@ -32,7 +32,7 @@ export default async function MercadoPagoOAuth() {
   const authUrl = getMercadoPagoAuthUrl(instance.publicUrl);
 
   return (
-    <Card className='mx-4 bg-accent-ultra-light'>
+    <Card className='rounded-md border border-stroke bg-accent-ultra-light'>
       <CardHeader className='flex flex-row items-center gap-3'>
         <MercadoPago />
         <div className='flex flex-col gap-1'>
