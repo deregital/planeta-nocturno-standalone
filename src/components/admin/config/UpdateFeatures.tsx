@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { handleUpdate } from '@/app/(backoffice)/admin/settings/action';
@@ -16,6 +16,27 @@ import {
 } from '@/server/constants/feature-keys';
 import { trpc } from '@/server/trpc/client';
 
+type FeatureDraft = {
+  enabled: boolean;
+  value: string;
+};
+
+function buildDrafts(
+  features: { key: string; enabled: boolean; value: string | null }[],
+): Record<FeatureKey, FeatureDraft> {
+  return Object.values(FEATURE_KEYS).reduce(
+    (acc, featureKey) => {
+      const feature = features.find((f) => f.key === featureKey);
+      acc[featureKey] = {
+        enabled: feature?.enabled ?? false,
+        value: feature?.value ?? '',
+      };
+      return acc;
+    },
+    {} as Record<FeatureKey, FeatureDraft>,
+  );
+}
+
 export default function UpdateFeatures() {
   const [state, action, isPending] = useActionState(handleUpdate, {
     success: false,
@@ -23,6 +44,20 @@ export default function UpdateFeatures() {
 
   const { data: features } = trpc.feature.getAll.useQuery();
   const utils = trpc.useUtils();
+  const [drafts, setDrafts] = useState<Record<FeatureKey, FeatureDraft> | null>(
+    null,
+  );
+  const [baseline, setBaseline] = useState<Record<
+    FeatureKey,
+    FeatureDraft
+  > | null>(null);
+
+  useEffect(() => {
+    if (!features) return;
+    const next = buildDrafts(features);
+    setDrafts(next);
+    setBaseline(next);
+  }, [features]);
 
   useEffect(() => {
     if (state.success) {
@@ -33,61 +68,86 @@ export default function UpdateFeatures() {
     }
   }, [state, utils]);
 
-  if (features?.length === 0) return null;
+  if (!features || features.length === 0 || !drafts || !baseline) return null;
 
-  // Poner un Skeleton para cuando SI haya features
+  const isDirty = Object.values(FEATURE_KEYS).some((featureKey) => {
+    const draft = drafts[featureKey];
+    const initial = baseline[featureKey];
+    return draft.enabled !== initial.enabled || draft.value !== initial.value;
+  });
+
   return (
-    features && (
-      <form action={action} className='flex flex-col gap-6 p-6'>
-        {Object.values(FEATURE_KEYS).map((featureKey, index) => {
-          const typedKey = featureKey as FeatureKey;
-          const configRaw = FEATURE_CONFIG[typedKey];
-          if (!configRaw) return null;
+    <form
+      action={action}
+      className='flex flex-col gap-6 rounded-md border border-stroke bg-accent-ultra-light p-6'
+    >
+      {Object.values(FEATURE_KEYS).map((featureKey, index) => {
+        const typedKey = featureKey as FeatureKey;
+        const configRaw = FEATURE_CONFIG[typedKey];
+        if (!configRaw) return null;
 
-          const config = configRaw as FeatureConfig;
-          const feature = features?.find((f) => f.key === typedKey);
-          const error = state.errors?.[index];
+        const config = configRaw as FeatureConfig;
+        const draft = drafts[typedKey];
+        const error = state.errors?.[index];
 
-          return (
-            <div key={typedKey} className='flex flex-col gap-2'>
-              <div className='grid grid-cols-3 gap-4 max-w-3xl'>
-                <Label
-                  htmlFor={`${typedKey}-enabled`}
-                  className='text-lg font-medium col-span-2'
-                >
-                  {config.label}
-                </Label>
+        return (
+          <div key={typedKey} className='flex flex-col gap-2'>
+            <div className='grid max-w-3xl grid-cols-3 gap-4'>
+              <Label
+                htmlFor={`${typedKey}-enabled`}
+                className='col-span-2 text-lg font-medium'
+              >
+                {config.label}
+              </Label>
 
-                <div className='flex gap-4 justify-end items-center'>
-                  <InputFromSchema
-                    id={`${typedKey}-value`}
-                    name={`${typedKey}-value`}
-                    field={config.validator}
-                    defaultValue={
-                      state.formData?.[index]?.value ?? feature?.value ?? ''
-                    }
-                    className='w-24'
-                  />
-                  <Switch
-                    className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
-                    id={`${typedKey}-enabled`}
-                    name={`${typedKey}-enabled`}
-                    defaultChecked={feature?.enabled ?? false}
-                  />
-                </div>
+              <div className='flex items-center justify-end gap-4'>
+                <InputFromSchema
+                  id={`${typedKey}-value`}
+                  name={`${typedKey}-value`}
+                  field={config.validator}
+                  value={draft.value}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setDrafts((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            [typedKey]: { ...prev[typedKey], value },
+                          }
+                        : prev,
+                    );
+                  }}
+                  className='w-24'
+                />
+                <Switch
+                  className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
+                  id={`${typedKey}-enabled`}
+                  name={`${typedKey}-enabled`}
+                  checked={draft.enabled}
+                  onCheckedChange={(enabled) => {
+                    setDrafts((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            [typedKey]: { ...prev[typedKey], enabled },
+                          }
+                        : prev,
+                    );
+                  }}
+                />
               </div>
-              {error?.value && (
-                <p className='text-sm text-red-500 font-bold ml-4'>
-                  {error.value}
-                </p>
-              )}
             </div>
-          );
-        })}
-        <Button type='submit' disabled={isPending} className='w-fit'>
-          Actualizar
-        </Button>
-      </form>
-    )
+            {error?.value && (
+              <p className='ml-4 text-sm font-bold text-red-500'>
+                {error.value}
+              </p>
+            )}
+          </div>
+        );
+      })}
+      <Button type='submit' disabled={isPending || !isDirty} className='w-fit'>
+        Actualizar
+      </Button>
+    </form>
   );
 }
