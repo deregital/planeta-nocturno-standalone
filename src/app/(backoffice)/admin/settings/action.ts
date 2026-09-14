@@ -51,6 +51,7 @@ export async function handleUpdate(
 
     await trpc.feature.update(rawData);
     revalidatePath('/admin/settings');
+    revalidatePath('/');
 
     return {
       formData: rawData,
