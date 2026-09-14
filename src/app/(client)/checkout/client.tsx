@@ -202,9 +202,14 @@ export default function CheckoutClient({
     discountPercentage,
   });
 
+  const isSingleFreeTicket =
+    ticketGroup.ticketTypePerGroups.length === 1 &&
+    ticketGroup.ticketTypePerGroups[0].amount === 1 &&
+    ticketGroup.ticketTypePerGroups[0].ticketType.category === 'FREE';
+
   return (
     <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
-      <div className='flex justify-baseline w-full'>
+      <div className='hidden sm:flex justify-baseline w-full'>
         <GoBack />
       </div>
       <div className='flex flex-col md:flex-row justify-between items-center w-full sm:w-xl md:w-2xl'>
@@ -225,14 +230,16 @@ export default function CheckoutClient({
         </div>
       </div>
 
-      <TicketGroupTable
-        ticketGroup={ticketGroup}
-        discountPercentage={
-          validateOrganizerCode.data?.valid
-            ? validateOrganizerCode.data.discountPercentage
-            : null
-        }
-      />
+      {!isSingleFreeTicket && (
+        <TicketGroupTable
+          ticketGroup={ticketGroup}
+          discountPercentage={
+            validateOrganizerCode.data?.valid
+              ? validateOrganizerCode.data.discountPercentage
+              : null
+          }
+        />
+      )}
 
       <form
         action={action}
