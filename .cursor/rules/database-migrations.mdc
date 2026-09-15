@@ -9,3 +9,7 @@ alwaysApply: true
 - Add migrations to the correct migration system and update its metadata or journal when required.
 - Ensure the migration works both for existing deployments and clean environments.
 - Do not treat runtime defaults, application constants, or seed scripts as substitutes for a deployable migration.
+- Tenant databases are migrated fleet-wide while each tenant instance runs its own pinned
+  application version, so a migration must not break the version already deployed. Never add a
+  `NOT NULL` column without a way for the database to fill it on its own (`DEFAULT`, `SERIAL`, or a
+  `BEFORE INSERT` trigger): an older instance omits the column and its inserts fail with 23502.
