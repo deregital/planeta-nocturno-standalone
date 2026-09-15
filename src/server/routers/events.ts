@@ -31,6 +31,7 @@ import {
   location as locationSchema,
   ticketGroup,
   ticketType,
+  ticketTypePerGroup,
   ticketTypeXOrganizers,
   ticketXorganizer,
   user,
@@ -986,6 +987,20 @@ export const eventsRouter = router({
               )
               .map((type) => type.id);
             if (deletedTicketTypesIds.length > 0) {
+              // ticketTypePerGroup and emittedTicket both RESTRICT ticketType deletes.
+              await tx
+                .delete(ticketTypePerGroup)
+                .where(
+                  inArray(
+                    ticketTypePerGroup.ticketTypeId,
+                    deletedTicketTypesIds,
+                  ),
+                );
+              await tx
+                .delete(emittedTicket)
+                .where(
+                  inArray(emittedTicket.ticketTypeId, deletedTicketTypesIds),
+                );
               await tx
                 .delete(ticketType)
                 .where(inArray(ticketType.id, deletedTicketTypesIds));
