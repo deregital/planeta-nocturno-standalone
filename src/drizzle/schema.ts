@@ -653,6 +653,7 @@ export const ticketXorganizer = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     shortId: integer().notNull(),
+    shared: boolean().default(false).notNull(),
   },
   (table) => [
     index('ticketXOrganizer_code_idx').using(
