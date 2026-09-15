@@ -1,16 +1,16 @@
-import type z from 'zod';
+import z from 'zod';
 
 export const FEATURE_KEYS = {
-  // EXAMPLE: 'example-feature',
+  TICKETERA: 'ticketera',
 } as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[keyof typeof FEATURE_KEYS];
 
 export const FEATURE_CONFIG = {
-  // [FEATURE_KEYS.EXAMPLE]: {
-  //   label: 'Example feature',
-  //   validator: z.string(),
-  // },
+  [FEATURE_KEYS.TICKETERA]: {
+    label: 'Habilitar ticketera',
+    validator: z.null(),
+  },
 } as const satisfies Record<FeatureKey, FeatureConfig>;
 
 export type FeatureConfig = { label: string; validator: z.ZodType };

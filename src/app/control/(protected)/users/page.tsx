@@ -44,17 +44,19 @@ export default async function ControlUsersPage() {
     .orderBy(desc(controlAdmins.createdAt));
 
   return (
-    <div className='space-y-6'>
-      <div className='flex items-end justify-between gap-4'>
-        <div>
+    <div className='min-w-0 space-y-6'>
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
+        <div className='min-w-0'>
           <p className='text-sm font-medium text-accent'>Panel central</p>
-          <h1 className='text-3xl font-bold text-gray-900'>Usuarios</h1>
+          <h1 className='text-2xl font-bold text-gray-900 sm:text-3xl'>
+            Usuarios
+          </h1>
           <p className='mt-1 text-sm text-gray-600'>
             Quién puede entrar a este panel ({admins.length})
           </p>
         </div>
         {canCreate && (
-          <Button asChild>
+          <Button asChild className='w-full sm:w-auto'>
             <Link href={'/users/new' as Route}>
               <Plus />
               Nuevo usuario
@@ -63,45 +65,51 @@ export default async function ControlUsersPage() {
         )}
       </div>
 
-      <div className='overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Usuario</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Rol</TableHead>
-              <TableHead>Creado</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {admins.map((admin) => (
-              <TableRow key={admin.id}>
-                <TableCell className='font-medium'>{admin.username}</TableCell>
-                <TableCell>{admin.email}</TableCell>
-                <TableCell>{formatRoleName(admin.roleName)}</TableCell>
-                <TableCell>
-                  {new Intl.DateTimeFormat('es-AR').format(admin.createdAt)}
-                </TableCell>
-                <TableCell>
-                  <div className='flex items-center gap-2'>
-                    {canUpdate && (
-                      <Button asChild variant='ghost' size='sm'>
-                        <Link href={`/users/${admin.id}` as Route}>Editar</Link>
-                      </Button>
-                    )}
-                    {canDelete && session?.user.id !== admin.id && (
-                      <DeleteControlAdminButton
-                        adminId={admin.id}
-                        username={admin.username}
-                      />
-                    )}
-                  </div>
-                </TableCell>
+      <div className='min-w-0 overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
+        <div className='overflow-x-auto'>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Usuario</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Creado</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {admins.map((admin) => (
+                <TableRow key={admin.id}>
+                  <TableCell className='font-medium'>
+                    {admin.username}
+                  </TableCell>
+                  <TableCell>{admin.email}</TableCell>
+                  <TableCell>{formatRoleName(admin.roleName)}</TableCell>
+                  <TableCell>
+                    {new Intl.DateTimeFormat('es-AR').format(admin.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    <div className='flex items-center gap-2'>
+                      {canUpdate && (
+                        <Button asChild variant='ghost' size='sm'>
+                          <Link href={`/users/${admin.id}` as Route}>
+                            Editar
+                          </Link>
+                        </Button>
+                      )}
+                      {canDelete && session?.user.id !== admin.id && (
+                        <DeleteControlAdminButton
+                          adminId={admin.id}
+                          username={admin.username}
+                        />
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
         {admins.length === 0 && (
           <p className='p-8 text-center text-sm text-gray-500'>
             Todavía no hay usuarios.

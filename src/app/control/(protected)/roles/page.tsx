@@ -64,17 +64,19 @@ export default async function ControlRolesPage() {
   }
 
   return (
-    <div className='space-y-6'>
-      <div className='flex items-end justify-between gap-4'>
-        <div>
+    <div className='min-w-0 space-y-6'>
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
+        <div className='min-w-0'>
           <p className='text-sm font-medium text-accent'>Panel central</p>
-          <h1 className='text-3xl font-bold text-gray-900'>Roles</h1>
+          <h1 className='text-2xl font-bold text-gray-900 sm:text-3xl'>
+            Roles
+          </h1>
           <p className='mt-1 text-sm text-gray-600'>
             Qué puede hacer cada tipo de usuario ({roles.length})
           </p>
         </div>
         {canCreate && (
-          <Button asChild>
+          <Button asChild className='w-full sm:w-auto'>
             <Link href={'/roles/new' as Route}>
               <Plus />
               Nuevo rol
@@ -83,66 +85,68 @@ export default async function ControlRolesPage() {
         )}
       </div>
 
-      <div className='overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Descripción</TableHead>
-              <TableHead>Permisos</TableHead>
-              <TableHead>Usuarios</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {roles.map((role) => {
-              const isSuperAdmin = role.name === SUPER_ADMIN_ROLE_NAME;
-              return (
-                <TableRow key={role.id}>
-                  <TableCell className='font-medium'>
-                    {formatRoleName(role.name)}
-                    {isSuperAdmin && (
-                      <span className='ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600'>
-                        completo
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className='max-w-xs truncate text-sm text-gray-600'>
-                    {role.description || '—'}
-                  </TableCell>
-                  <TableCell>
-                    {isSuperAdmin
-                      ? 'Todos'
-                      : (permissionCountByRole.get(role.id) ?? 0)}
-                  </TableCell>
-                  <TableCell>{role.adminCount}</TableCell>
-                  <TableCell>
-                    <div className='flex items-center gap-2'>
-                      {canUpdate && !isSuperAdmin && (
-                        <Button asChild variant='ghost' size='sm'>
-                          <Link href={`/roles/${role.id}` as Route}>
-                            Editar
-                          </Link>
-                        </Button>
-                      )}
-                      {canDelete && !isSuperAdmin && !role.isSystem && (
-                        <DeleteControlRoleButton
-                          roleId={role.id}
-                          roleName={formatRoleName(role.name)}
-                        />
-                      )}
+      <div className='min-w-0 overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
+        <div className='overflow-x-auto'>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Permisos</TableHead>
+                <TableHead>Usuarios</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {roles.map((role) => {
+                const isSuperAdmin = role.name === SUPER_ADMIN_ROLE_NAME;
+                return (
+                  <TableRow key={role.id}>
+                    <TableCell className='font-medium'>
+                      {formatRoleName(role.name)}
                       {isSuperAdmin && (
-                        <span className='text-xs text-gray-500'>
-                          No editable
+                        <span className='ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600'>
+                          completo
                         </span>
                       )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell className='max-w-xs truncate text-sm text-gray-600'>
+                      {role.description || '—'}
+                    </TableCell>
+                    <TableCell>
+                      {isSuperAdmin
+                        ? 'Todos'
+                        : (permissionCountByRole.get(role.id) ?? 0)}
+                    </TableCell>
+                    <TableCell>{role.adminCount}</TableCell>
+                    <TableCell>
+                      <div className='flex items-center gap-2'>
+                        {canUpdate && !isSuperAdmin && (
+                          <Button asChild variant='ghost' size='sm'>
+                            <Link href={`/roles/${role.id}` as Route}>
+                              Editar
+                            </Link>
+                          </Button>
+                        )}
+                        {canDelete && !isSuperAdmin && !role.isSystem && (
+                          <DeleteControlRoleButton
+                            roleId={role.id}
+                            roleName={formatRoleName(role.name)}
+                          />
+                        )}
+                        {isSuperAdmin && (
+                          <span className='text-xs text-gray-500'>
+                            No editable
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

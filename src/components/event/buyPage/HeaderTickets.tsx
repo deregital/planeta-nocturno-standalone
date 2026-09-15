@@ -1,8 +1,8 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
 import { MapPin } from 'lucide-react';
-import Image from 'next/image';
 
+import { ExpandableImage } from '@/components/common/ExpandableImage';
 import { type RouterOutputs } from '@/server/routers/app';
 
 function HeaderTickets({
@@ -30,6 +30,8 @@ function HeaderTickets({
     ? event.coverImageUrl
     : '/Foto.png';
 
+  const coverAlt = `Portada de ${event.name}`;
+
   return (
     <div className='relative w-full md:pr-36 lg:pr-44'>
       {/* Lado izquierdo - Nombre del evento y fecha */}
@@ -46,14 +48,12 @@ function HeaderTickets({
                 {formattedDate}
               </p>
             </div>
-            <div className='relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg sm:w-24 md:hidden'>
-              <Image
-                alt={`Portada de ${event.name}`}
-                src={backgroundImageUrl}
-                fill
-                className='object-cover'
-              />
-            </div>
+            <ExpandableImage
+              src={backgroundImageUrl}
+              alt={coverAlt}
+              className='relative aspect-square w-20 shrink-0 overflow-hidden rounded-lg sm:w-24 md:hidden'
+              sizes='96px'
+            />
           </div>
         </div>
         <div className='col-span-1 flex items-center justify-start overflow-hidden border-stroke px-4 py-2 md:border-l md:px-3 md:py-3 lg:px-4 lg:py-4 md:min-w-0'>
@@ -79,14 +79,13 @@ function HeaderTickets({
       {/* Portada en desktop */}
       <div className='pointer-events-none absolute inset-y-0 right-0 z-1 hidden w-36 bg-white md:flex lg:w-44'>
         <div className='pointer-events-auto flex h-full w-full items-center justify-end pr-0 pl-2 py-3 lg:pl-3 lg:py-4'>
-          <div className='relative aspect-square w-28 max-w-full overflow-hidden rounded-l-xl rounded-r-none border border-stroke/80 shadow-sm ring-1 ring-black/6 lg:w-32'>
-            <Image
-              alt={`Portada de ${event.name}`}
-              src={backgroundImageUrl}
-              fill
-              className='object-cover'
-            />
-          </div>
+          <ExpandableImage
+            src={backgroundImageUrl}
+            alt={coverAlt}
+            className='relative aspect-square w-28 max-w-full overflow-hidden rounded-l-xl rounded-r-none border border-stroke/80 shadow-sm ring-1 ring-black/6 lg:w-32'
+            sizes='128px'
+            priority
+          />
         </div>
       </div>
     </div>

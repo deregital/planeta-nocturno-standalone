@@ -30,6 +30,7 @@ import {
 } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { getBuyersCodeByDni } from '@/server/utils/db/utils';
+import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { generatePdf } from '@/server/utils/ticket-template';
 import {
   canRegisterScan,
@@ -91,6 +92,12 @@ export const emittedTicketsRouter = router({
             slug = generateSlug(`${ticketType?.name} 0`);
           }
 
+          const [shortId] = await allocateEmittedTicketShortIds(
+            tx,
+            input.eventId,
+            1,
+          );
+
           const [ticketCreated] = await tx
             .insert(emittedTicket)
             .values({
@@ -98,6 +105,7 @@ export const emittedTicketsRouter = router({
               birthDate: dateToDateOnlyString(input.birthDate),
               ticketGroupId: ticketGroupCreated.id,
               slug,
+              shortId: shortId!,
             })
             .returning();
 
@@ -144,72 +152,101 @@ export const emittedTicketsRouter = router({
         // <TicketTypeId, Count>
         const newTicketCounts = new Map<string, number>();
 
-        const values = input.map((ticket) => {
-          const ticketTypeData = ticketTypes.get(ticket.ticketTypeId);
-          if (!ticketTypeData) {
-            throw new Error(
-              `TicketType con ID: ${ticket.ticketTypeId} no encontrado`,
+        const res = await ctx.db.transaction(async (tx) => {
+          const countByEventId = new Map<string, number>();
+          for (const ticket of input) {
+            const eventId = ticket.eventId ?? '';
+            countByEventId.set(eventId, (countByEventId.get(eventId) ?? 0) + 1);
+          }
+
+          const shortIdQueues = new Map<string, number[]>();
+          for (const [eventId, countForEvent] of countByEventId) {
+            shortIdQueues.set(
+              eventId,
+              await allocateEmittedTicketShortIds(tx, eventId, countForEvent),
             );
           }
 
-          const currentNewCount = newTicketCounts.get(ticket.ticketTypeId) || 0;
-          const nextNewCount = currentNewCount + 1;
-          newTicketCounts.set(ticket.ticketTypeId, nextNewCount);
+          const values = input.map((ticket) => {
+            const ticketTypeData = ticketTypes.get(ticket.ticketTypeId);
+            if (!ticketTypeData) {
+              throw new Error(
+                `TicketType con ID: ${ticket.ticketTypeId} no encontrado`,
+              );
+            }
 
-          const totalCount = ticketTypeData.existingCount + nextNewCount;
-          const slug = generateSlug(`${ticketTypeData.name} ${totalCount}`);
+            const currentNewCount =
+              newTicketCounts.get(ticket.ticketTypeId) || 0;
+            const nextNewCount = currentNewCount + 1;
+            newTicketCounts.set(ticket.ticketTypeId, nextNewCount);
 
-          return {
-            ...ticket,
-            birthDate: dateToDateOnlyString(ticket.birthDate),
-            slug,
-            eventId: ticket.eventId ?? '',
-          };
-        });
+            const totalCount = ticketTypeData.existingCount + nextNewCount;
+            const slug = generateSlug(`${ticketTypeData.name} ${totalCount}`);
+            const eventId = ticket.eventId ?? '';
+            const queue = shortIdQueues.get(eventId);
+            const shortId = queue?.shift();
+            if (shortId === undefined) {
+              throw new Error(
+                `No se pudo asignar shortId para eventId: ${eventId}`,
+              );
+            }
 
-        const res = await ctx.db
-          .insert(emittedTicket)
-          .values(values)
-          .returning();
-
-        if (!res) throw 'Error al crear ticket/s';
-
-        // Si hay tickets creados, verificar si hay un ticketXorganizer asociado al ticketGroup
-        // y actualizar su ticketId con el primer ticket creado (modo INVITATION)
-        if (res.length > 0 && input.length > 0) {
-          const firstTicketGroupId = input[0].ticketGroupId;
-
-          // Buscar el ticketGroup para obtener el organizerId
-          const group = await ctx.db.query.ticketGroup.findFirst({
-            where: eq(ticketGroup.id, firstTicketGroupId),
-            columns: {
-              invitedById: true,
-            },
+            return {
+              ...ticket,
+              birthDate: dateToDateOnlyString(ticket.birthDate),
+              slug,
+              eventId,
+              shortId,
+            };
           });
 
-          // Si el ticketGroup tiene un organizerId asociado, buscar el ticketXorganizer
-          if (group?.invitedById) {
-            const ticketXOrg = await ctx.db.query.ticketXorganizer.findFirst({
-              where: and(
-                eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
-                eq(ticketXorganizer.organizerId, group.invitedById),
-              ),
+          const inserted = await tx
+            .insert(emittedTicket)
+            .values(values)
+            .returning();
+
+          if (!inserted) throw 'Error al crear ticket/s';
+
+          // Si hay tickets creados, verificar si hay un ticketXorganizer asociado al ticketGroup
+          // y actualizar su ticketId con el primer ticket creado (modo INVITATION)
+          if (inserted.length > 0 && input.length > 0) {
+            const firstTicketGroupId = input[0].ticketGroupId;
+
+            // Buscar el ticketGroup para obtener el organizerId
+            const group = await tx.query.ticketGroup.findFirst({
+              where: eq(ticketGroup.id, firstTicketGroupId),
+              columns: {
+                invitedById: true,
+              },
             });
 
-            // Si existe y no tiene ticketId asignado, actualizarlo con el primer ticket
-            if (ticketXOrg && !ticketXOrg.ticketId) {
-              await ctx.db
-                .update(ticketXorganizer)
-                .set({ ticketId: res[0].id })
-                .where(
-                  and(
-                    eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
-                    eq(ticketXorganizer.organizerId, group.invitedById),
-                  ),
-                );
+            // Si el ticketGroup tiene un organizerId asociado, buscar el ticketXorganizer
+            if (group?.invitedById) {
+              const ticketXOrg = await tx.query.ticketXorganizer.findFirst({
+                where: and(
+                  eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
+                  eq(ticketXorganizer.organizerId, group.invitedById),
+                ),
+              });
+
+              // Si existe y no tiene ticketId asignado, actualizarlo con el primer ticket
+              if (ticketXOrg && !ticketXOrg.ticketId) {
+                await tx
+                  .update(ticketXorganizer)
+                  .set({ ticketId: inserted[0].id })
+                  .where(
+                    and(
+                      eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
+                      eq(ticketXorganizer.organizerId, group.invitedById),
+                    ),
+                  );
+              }
             }
           }
-        }
+
+          return inserted;
+        });
+
         return res;
       } catch (error) {
         throw new Error('Error al crear ticket/s', { cause: error });

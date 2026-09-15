@@ -45,16 +45,18 @@ export default async function TenantTrashPage() {
     .orderBy(desc(tenants.deletedAt));
 
   return (
-    <div className='space-y-6'>
+    <div className='min-w-0 space-y-6'>
       <Button asChild variant='ghost'>
         <Link href='/'>← Volver</Link>
       </Button>
 
-      <div>
+      <div className='min-w-0'>
         <p className='text-sm font-medium text-accent'>
           Gestión de plataformas
         </p>
-        <h1 className='text-3xl font-bold text-gray-900'>Papelera</h1>
+        <h1 className='text-2xl font-bold text-gray-900 sm:text-3xl'>
+          Papelera
+        </h1>
         <p className='mt-1 text-sm text-gray-600'>
           {recycledTenants.length} plataformas suspendidas
         </p>

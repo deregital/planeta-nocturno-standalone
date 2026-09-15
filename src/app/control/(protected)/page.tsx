@@ -59,26 +59,28 @@ export default async function ControlHomePage() {
   ).length;
 
   return (
-    <div className='space-y-6'>
-      <div className='flex items-end justify-between gap-4'>
-        <div>
+    <div className='min-w-0 space-y-6'>
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
+        <div className='min-w-0'>
           <p className='text-sm font-medium text-accent'>
             Gestión de plataformas
           </p>
-          <h1 className='text-3xl font-bold text-gray-900'>Plataformas</h1>
+          <h1 className='text-2xl font-bold text-gray-900 sm:text-3xl'>
+            Plataformas
+          </h1>
           <p className='mt-1 text-sm text-gray-600'>
             {tenantList.length} registradas · {activeTenants} activas
           </p>
         </div>
-        <div className='flex gap-2'>
-          <Button asChild variant='ghost'>
+        <div className='flex flex-wrap gap-2'>
+          <Button asChild variant='ghost' className='flex-1 sm:flex-none'>
             <Link href={'/trash' as Route}>
               <Trash2 />
               Papelera
             </Link>
           </Button>
           {permissions.includes('tenants:create') && (
-            <Button asChild>
+            <Button asChild className='flex-1 sm:flex-none'>
               <Link href={'/tenants/new' as Route}>
                 <Plus />
                 Nueva plataforma

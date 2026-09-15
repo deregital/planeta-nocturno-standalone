@@ -146,23 +146,23 @@ export default function TenantTable({
   }
 
   return (
-    <div className='overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
-      <div className='grid gap-3 border-b border-stroke p-4 md:grid-cols-[minmax(240px,1fr)_200px_auto] md:items-end'>
-        <div className='grid gap-1 text-sm font-medium text-gray-700'>
+    <div className='min-w-0 overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
+      <div className='grid gap-3 border-b border-stroke p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_200px_auto] lg:items-end'>
+        <div className='grid min-w-0 gap-1 text-sm font-medium text-gray-700 sm:col-span-2 lg:col-span-1'>
           <label htmlFor='page-filter'>Filtrar</label>
-          <div className='relative'>
+          <div className='relative min-w-0'>
             <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400' />
             <Input
               id='page-filter'
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className='pl-9'
+              className='w-full min-w-0 pl-9'
               placeholder='Buscar por ID, nombre o creador'
             />
           </div>
         </div>
 
-        <div className='grid gap-1 text-sm font-medium text-gray-700'>
+        <div className='grid min-w-0 gap-1 text-sm font-medium text-gray-700'>
           <label htmlFor='status-filter'>Estado</label>
           <Select
             value={status}
@@ -182,16 +182,21 @@ export default function TenantTable({
           </Select>
         </div>
 
-        <div>
+        <div className='flex sm:justify-end lg:justify-start'>
           {hasCustomView && (
-            <Button type='button' variant='ghost' onClick={clearView}>
+            <Button
+              type='button'
+              variant='ghost'
+              className='w-full sm:w-auto'
+              onClick={clearView}
+            >
               Limpiar
             </Button>
           )}
         </div>
       </div>
 
-      <div className='overflow-x-auto'>
+      <div className='-mx-px overflow-x-auto'>
         <Table>
           <TableHeader>
             <TableRow>
