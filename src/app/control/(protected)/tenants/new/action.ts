@@ -31,6 +31,16 @@ const tenantCreationSchema = tenantMetadataSchema.extend({
   adminPhoneNumber: userSchema.shape.phoneNumber,
   adminBirthDate: z.union([userSchema.shape.birthDate, z.literal('')]),
   adminGender: z.union([userSchema.shape.gender, z.literal('')]),
+  adminInstagram: z
+    .string()
+    .max(30, {
+      error: 'El Instagram debe ser menor o igual a 30 caracteres',
+    })
+    .transform((value) => {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      return trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+    }),
 });
 
 export type TenantFormValues = {
@@ -52,6 +62,7 @@ export type TenantFormValues = {
   adminPhoneNumber: string;
   adminBirthDate: string;
   adminGender: string;
+  adminInstagram: string;
 };
 
 type TenantFormField = keyof TenantFormValues;
@@ -66,6 +77,7 @@ export type TenantFormState = {
     password: string;
     email: string;
     phoneNumber: string;
+    instagram?: string | null;
   };
 };
 
@@ -273,6 +285,7 @@ export async function createTenant(
         phoneNumber: data.adminPhoneNumber,
         birthDate: data.adminBirthDate,
         gender: data.adminGender,
+        instagram: data.adminInstagram,
       },
     });
   } catch (error) {
@@ -298,6 +311,7 @@ export async function createTenant(
       password: data.adminPassword,
       email: data.adminEmail,
       phoneNumber: data.adminPhoneNumber,
+      instagram: data.adminInstagram,
     },
   };
 }
@@ -324,5 +338,6 @@ function getFormValues(formData: FormData): TenantFormValues {
     adminPhoneNumber: value('adminPhoneNumber'),
     adminBirthDate: value('adminBirthDate'),
     adminGender: value('adminGender'),
+    adminInstagram: value('adminInstagram'),
   };
 }

@@ -1,9 +1,9 @@
 'use client';
 import { format } from 'date-fns';
-import Image from 'next/image';
 import { startTransition, useActionState } from 'react';
 
 import { handlePurchase as handlePurchaseAction } from '@/app/(client)/event/[slug]/actions';
+import { ExpandableImage } from '@/components/common/ExpandableImage';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -68,15 +68,12 @@ function TicketPurchase({
             >
               <div className='flex flex-1 min-w-0 gap-3 items-start'>
                 {type.imageUrl ? (
-                  <div className='relative size-14 sm:size-16 shrink-0 overflow-hidden rounded-md bg-muted/40'>
-                    <Image
-                      fill
-                      src={type.imageUrl}
-                      alt={type.name}
-                      className='object-cover'
-                      sizes='64px'
-                    />
-                  </div>
+                  <ExpandableImage
+                    src={type.imageUrl}
+                    alt={type.name}
+                    className='relative size-14 sm:size-16 shrink-0 overflow-hidden rounded-md bg-muted/40'
+                    sizes='64px'
+                  />
                 ) : null}
                 <div className='min-w-0 flex-1'>
                   <div className='text-base sm:text-base font-medium flex items-baseline gap-2'>

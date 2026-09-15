@@ -146,8 +146,14 @@ export const emittedTicket = pgTable(
       .notNull(),
     eventId: uuid().notNull(),
     slug: text().notNull(),
+    shortId: integer().notNull(),
   },
   (table) => [
+    uniqueIndex('emittedTicket_eventId_shortId_key').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+      table.shortId.asc().nullsLast().op('int4_ops'),
+    ),
     foreignKey({
       columns: [table.scannedByUserId],
       foreignColumns: [user.id],
@@ -647,6 +653,7 @@ export const ticketXorganizer = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     shortId: integer().notNull(),
+    shared: boolean().default(false).notNull(),
   },
   (table) => [
     index('ticketXOrganizer_code_idx').using(

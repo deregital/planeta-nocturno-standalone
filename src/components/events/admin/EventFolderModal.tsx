@@ -1,6 +1,7 @@
 'use client';
 import Color from 'color';
 import { Folder, Pencil } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -43,6 +44,7 @@ export default function EventFolderModal({
   folder,
   disabled,
 }: EventFolderModalProps) {
+  const router = useRouter();
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
@@ -97,8 +99,8 @@ export default function EventFolderModal({
       toast.success('Carpeta creada correctamente');
       setErrors({});
       setOpen(false);
-      utils.events.getAll.invalidate();
       utils.eventFolder.getAll.invalidate();
+      router.refresh();
     },
   });
   const updateFolder = trpc.eventFolder.update.useMutation({
@@ -110,8 +112,8 @@ export default function EventFolderModal({
       toast.success('Carpeta editada correctamente');
       setErrors({});
       setOpen(false);
-      utils.events.getAll.invalidate();
       utils.eventFolder.getAll.invalidate();
+      router.refresh();
     },
   });
   const deleteFolder = trpc.eventFolder.delete.useMutation({
@@ -125,7 +127,8 @@ export default function EventFolderModal({
       toast.success('Carpeta eliminada correctamente');
       setErrors({});
       setOpen(false);
-      utils.events.getAll.invalidate();
+      utils.eventFolder.getAll.invalidate();
+      router.refresh();
     },
   });
 

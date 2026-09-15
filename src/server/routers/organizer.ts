@@ -59,8 +59,40 @@ export const organizerRouter = router({
         id: row.code,
         shortId: row.shortId,
         code: row.code,
+        shared: row.shared,
         createdAt: row.createdAt,
       }));
+    }),
+  setCodeShared: organizerProcedure
+    .input(
+      z.object({
+        eventId: eventSchema.shape.id,
+        code: z.string().min(1),
+        shared: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updated = await ctx.db
+        .update(ticketXorganizer)
+        .set({ shared: input.shared })
+        .where(
+          and(
+            eq(ticketXorganizer.eventId, input.eventId),
+            eq(ticketXorganizer.code, input.code),
+            eq(ticketXorganizer.organizerId, ctx.session.user.id),
+            isNull(ticketXorganizer.ticketId),
+          ),
+        )
+        .returning({
+          code: ticketXorganizer.code,
+          shared: ticketXorganizer.shared,
+        });
+
+      if (updated.length === 0) {
+        throw new Error('Código de invitación no encontrado');
+      }
+
+      return updated[0];
     }),
   getMyCode: organizerProcedure.query(async ({ ctx }) => {
     const code = await ctx.db.query.user.findFirst({

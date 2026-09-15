@@ -9,5 +9,11 @@ export async function InvitationTicketTableWrapper({
   eventSlug: string;
 }) {
   const codes = await trpc.organizer.getMyCodesNotUsed(eventId);
-  return <InvitationTicketTable eventSlug={eventSlug} codes={codes} />;
+  return (
+    <InvitationTicketTable
+      eventId={eventId}
+      eventSlug={eventSlug}
+      codes={codes}
+    />
+  );
 }

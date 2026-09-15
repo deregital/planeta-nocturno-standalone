@@ -11,7 +11,6 @@ export default async function Page() {
 
   return (
     <div className='flex flex-col gap-4 py-4'>
-      <UpdateFeatures />
       <section className='mb-4 space-y-4'>
         <div className='flex justify-between items-center px-4'>
           <h2 className='text-3xl font-bold text-accent'>Usuarios</h2>
@@ -26,7 +25,11 @@ export default async function Page() {
       </section>
       <LocationList />
       <CategoryList />
-      <section className='mb-4 space-y-4'>
+      <section className='mb-4 mx-4 space-y-4'>
+        <h2 className='text-2xl font-bold'>Configuraciones adicionales</h2>
+        <UpdateFeatures />
+      </section>
+      <section className='mb-4 mx-4 space-y-4'>
         <MercadoPagoOAuth />
       </section>
     </div>
