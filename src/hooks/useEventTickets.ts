@@ -27,49 +27,57 @@ export function useEventTickets(
 
   useEffect(() => {
     if (!ticketGroups || isLoading) return;
-    setTicketsAvailable(
-      ticketTypes.map((type) => {
-        const ticketTypeEmitted = ticketGroups.reduce((acum, current) => {
-          return (
-            acum +
-            (current.ticketTypePerGroups.find(
-              (t) => t.ticketType.id === type.id,
-            )?.amount || 0)
-          );
-        }, 0);
 
-        const disabled = ticketTypeEmitted >= type.maxAvailable;
+    const availableTypes = ticketTypes.map((type) => {
+      const ticketTypeEmitted = ticketGroups.reduce((acum, current) => {
+        return (
+          acum +
+          (current.ticketTypePerGroups.find((t) => t.ticketType.id === type.id)
+            ?.amount || 0)
+        );
+      }, 0);
 
-        const available = type.maxAvailable - ticketTypeEmitted;
+      const disabled = ticketTypeEmitted >= type.maxAvailable;
 
-        const leftAvailable =
-          type.lowStockThreshold === null
-            ? null
-            : available <= type.lowStockThreshold
-              ? available
-              : null;
+      const available = type.maxAvailable - ticketTypeEmitted;
 
-        const maxPerPurchase =
-          type.maxAvailable - ticketTypeEmitted < type.maxPerPurchase
-            ? type.maxAvailable - ticketTypeEmitted
-            : type.maxPerPurchase;
+      const leftAvailable =
+        type.lowStockThreshold === null
+          ? null
+          : available <= type.lowStockThreshold
+            ? available
+            : null;
 
-        return {
-          id: type.id,
-          name: type.name,
-          description: type.description,
-          price: type.price,
-          imageUrl: type.imageUrl,
-          disabled,
-          maxPerPurchase,
-          leftAvailable,
-        };
-      }),
-    );
+      const maxPerPurchase =
+        type.maxAvailable - ticketTypeEmitted < type.maxPerPurchase
+          ? type.maxAvailable - ticketTypeEmitted
+          : type.maxPerPurchase;
+
+      return {
+        id: type.id,
+        name: type.name,
+        description: type.description,
+        price: type.price,
+        imageUrl: type.imageUrl,
+        disabled,
+        maxPerPurchase,
+        leftAvailable,
+      };
+    });
+
+    setTicketsAvailable(availableTypes);
+
+    // Si hay un solo tipo de ticket free y disponible, preseleccionar 1
+    const shouldDefaultSelectOne =
+      availableTypes.length === 1 &&
+      (availableTypes[0].price ?? 0) === 0 &&
+      !availableTypes[0].disabled &&
+      availableTypes[0].maxPerPurchase >= 1;
+
     setQuantity(
-      ticketTypes.map((type) => ({
+      availableTypes.map((type) => ({
         ticketTypeId: type.id,
-        amount: 0,
+        amount: shouldDefaultSelectOne ? 1 : 0,
       })),
     );
   }, [eventId, isLoading, ticketGroups, ticketTypes]);
