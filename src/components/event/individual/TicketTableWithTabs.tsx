@@ -128,6 +128,7 @@ export function TicketTableWithTabs({
       <SearchTickets
         tickets={tickets}
         onFilteredTicketsChange={setFilteredTickets}
+        role={session.data?.user.role as Role | undefined}
         externalSearchValue={externalSearchValue}
         externalFilterInvitedByIds={externalFilterInvitedByIds}
         onClearOrganizerFilter={onClearOrganizerFilter}
