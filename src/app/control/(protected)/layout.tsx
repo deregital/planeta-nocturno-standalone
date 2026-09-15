@@ -35,7 +35,7 @@ export default async function ProtectedControlLayout({
   }
 
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div className='min-h-screen overflow-x-hidden bg-gray-50'>
       <ControlHeader
         homeHref={homeHref}
         userName={session.user.name}
@@ -44,7 +44,9 @@ export default async function ProtectedControlLayout({
         canReadRoles={canReadRoles}
         signOutAction={signOutAction}
       />
-      <main className='mx-auto w-full max-w-7xl p-6'>{children}</main>
+      <main className='mx-auto w-full min-w-0 max-w-7xl p-4 sm:p-6'>
+        {children}
+      </main>
     </div>
   );
 }

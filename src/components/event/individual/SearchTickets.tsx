@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { type RouterOutputs } from '@/server/routers/app';
+import { type Role } from '@/server/types';
 
 const SEARCH_FIELDS = [
   { id: 'id', label: 'ID' },
@@ -27,10 +28,6 @@ const SEARCH_FIELDS = [
 type SearchFieldId = (typeof SEARCH_FIELDS)[number]['id'];
 type Ticket = RouterOutputs['emittedTickets']['getByEventId'][number];
 
-const ALL_FIELD_IDS: SearchFieldId[] = SEARCH_FIELDS.map((field) => field.id);
-const PLACEHOLDER =
-  'Buscar por ID, nombre, DNI, email, teléfono u organizador...';
-
 function normalize(value: string) {
   return value
     .toLowerCase()
@@ -42,9 +39,7 @@ function normalize(value: string) {
 function getFieldValues(ticket: Ticket, field: SearchFieldId): string[] {
   switch (field) {
     case 'id':
-      return [String(ticket.shortId), ticket.buyerCode].filter(
-        (value): value is string => Boolean(value),
-      );
+      return [String(ticket.shortId)];
     case 'fullName':
       return ticket.fullName ? [ticket.fullName] : [];
     case 'dni':
@@ -58,6 +53,20 @@ function getFieldValues(ticket: Ticket, field: SearchFieldId): string[] {
   }
 }
 
+function getAvailableFields(role: Role | undefined) {
+  if (role === 'ORGANIZER') {
+    return SEARCH_FIELDS.filter((field) => field.id !== 'invitedBy');
+  }
+  return SEARCH_FIELDS;
+}
+
+function getPlaceholder(role: Role | undefined) {
+  if (role === 'ORGANIZER') {
+    return 'Buscar por ID, nombre, DNI, email o teléfono...';
+  }
+  return 'Buscar por ID, nombre, DNI, email, teléfono u organizador...';
+}
+
 interface SearchTicketsProps {
   tickets: RouterOutputs['emittedTickets']['getByEventId'] | undefined;
   onFilteredTicketsChange: (
@@ -65,6 +74,7 @@ interface SearchTicketsProps {
       | RouterOutputs['emittedTickets']['getByEventId']
       | undefined,
   ) => void;
+  role?: Role;
   externalSearchValue?: string;
   externalFilterInvitedByIds?: string[];
   onClearOrganizerFilter?: () => void;
@@ -73,18 +83,37 @@ interface SearchTicketsProps {
 export function SearchTickets({
   tickets,
   onFilteredTicketsChange,
+  role,
   externalSearchValue,
   externalFilterInvitedByIds,
   onClearOrganizerFilter,
 }: SearchTicketsProps) {
+  const availableFields = useMemo(() => getAvailableFields(role), [role]);
+  const availableFieldIds = useMemo(
+    () => availableFields.map((field) => field.id),
+    [availableFields],
+  );
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFields, setSelectedFields] = useState(
-    () => new Set<SearchFieldId>(ALL_FIELD_IDS),
+    () => new Set<SearchFieldId>(availableFieldIds),
   );
   const prevExternalValue = useRef<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isAllSelected = selectedFields.size === ALL_FIELD_IDS.length;
+  const isAllSelected = availableFieldIds.every((id) => selectedFields.has(id));
+
+  useEffect(() => {
+    setSelectedFields((current) => {
+      const next = new Set(
+        [...current].filter((id) => availableFieldIds.includes(id)),
+      );
+      if (next.size === 0) {
+        return new Set(availableFieldIds);
+      }
+      return next;
+    });
+  }, [availableFieldIds]);
 
   useEffect(() => {
     if (window.innerWidth >= 768) {
@@ -107,15 +136,22 @@ export function SearchTickets({
     if (!searchTerm.trim()) return tickets;
 
     const term = normalize(searchTerm);
+    const fields = availableFieldIds.filter((id) => selectedFields.has(id));
 
     return tickets.filter((ticket) =>
-      [...selectedFields].some((field) =>
+      fields.some((field) =>
         getFieldValues(ticket, field).some((value) =>
           normalize(value).includes(term),
         ),
       ),
     );
-  }, [tickets, searchTerm, selectedFields, externalFilterInvitedByIds]);
+  }, [
+    tickets,
+    searchTerm,
+    selectedFields,
+    availableFieldIds,
+    externalFilterInvitedByIds,
+  ]);
 
   useEffect(() => {
     onFilteredTicketsChange(filteredTickets);
@@ -137,7 +173,7 @@ export function SearchTickets({
   };
 
   const handleToggleAll = () => {
-    setSelectedFields(isAllSelected ? new Set() : new Set(ALL_FIELD_IDS));
+    setSelectedFields(isAllSelected ? new Set() : new Set(availableFieldIds));
   };
 
   const handleToggleField = (fieldId: SearchFieldId) => {
@@ -158,7 +194,7 @@ export function SearchTickets({
         <Search className='pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-gray-400' />
         <Input
           ref={inputRef}
-          placeholder={PLACEHOLDER}
+          placeholder={getPlaceholder(role)}
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
           className='rounded-r-none pl-10'
@@ -187,7 +223,7 @@ export function SearchTickets({
               Todos
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {SEARCH_FIELDS.map((field) => {
+            {availableFields.map((field) => {
               const checked = selectedFields.has(field.id);
               return (
                 <DropdownMenuItem
