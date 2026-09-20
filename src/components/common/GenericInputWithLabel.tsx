@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 interface GenericInputWithLabelProps {
-  label: string;
+  label?: string;
   id: string;
   className?: string;
   children: React.ReactElement;
@@ -29,10 +29,12 @@ export default function GenericInputWithLabel({
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <Label htmlFor={id} className='pl-1 text-accent gap-[2px]'>
-        {label}
-        {required && <span className='text-red-500'>*</span>}
-      </Label>
+      {label !== undefined && (
+        <Label htmlFor={id} className='pl-1 text-accent gap-[2px]'>
+          {label || '\u00A0'}
+          {required && <span className='text-red-500'>*</span>}
+        </Label>
+      )}
       {
         React.cloneElement(children, {
           // @ts-expect-error the class name is not in the props
