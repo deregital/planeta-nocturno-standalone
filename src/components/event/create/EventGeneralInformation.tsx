@@ -286,6 +286,28 @@ export function EventGeneralInformation({
               value={event.description ?? ''}
               readOnly={action === 'PREVIEW'}
               disabled={action === 'PREVIEW'}
+              toolbarEnd={
+                <label
+                  htmlFor='descriptionTitleVisible'
+                  className='flex cursor-pointer items-center gap-1.5 px-1.5'
+                >
+                  <input
+                    id='descriptionTitleVisible'
+                    type='checkbox'
+                    name='descriptionTitleVisible'
+                    disabled={action === 'PREVIEW'}
+                    checked={event.descriptionTitleVisible}
+                    onChange={(e) => {
+                      if (action === 'PREVIEW') return;
+                      handleChange('descriptionTitleVisible', e.target.checked);
+                    }}
+                    className='size-3.5 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed'
+                  />
+                  <span className='whitespace-nowrap text-xs text-accent-dark'>
+                    Mostrar en ticketera
+                  </span>
+                </label>
+              }
             />
           </div>
           {action === 'PREVIEW' && (

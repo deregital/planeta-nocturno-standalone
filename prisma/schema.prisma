@@ -157,11 +157,12 @@ model Event {
   organizers      EventXOrganizer[] @relation("EVENT_X_ORGANIZER")
   inviteCondition InviteCondition   @default(TRADITIONAL)
 
-  extraTicketData        Boolean @default(true)
-  serviceFee             Float?
-  emailNotification      String?
-  ticketSlugVisibleInPdf Boolean @default(false)
-  hasSimpleInvitation    Boolean @default(false)
+  extraTicketData          Boolean @default(true)
+  serviceFee               Float?
+  emailNotification        String?
+  ticketSlugVisibleInPdf   Boolean @default(false)
+  hasSimpleInvitation      Boolean @default(false)
+  descriptionTitleVisible  Boolean @default(true)
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 

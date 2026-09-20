@@ -107,6 +107,7 @@ const initialState: EventState = {
     emailNotification: null,
     ticketSlugVisibleInPdf: false,
     hasSimpleInvitation: false,
+    descriptionTitleVisible: true,
   },
   ticketTypes: [],
   organizers: [],

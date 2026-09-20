@@ -10,17 +10,24 @@ import { type RouterOutputs } from '@/server/routers/app';
 interface InformationEventProps {
   description: RouterOutputs['events']['getById']['description'];
   videoUrl?: RouterOutputs['events']['getById']['videoUrl'];
+  descriptionTitleVisible?: RouterOutputs['events']['getById']['descriptionTitleVisible'];
 }
 
-function InformationEvent({ description, videoUrl }: InformationEventProps) {
+function InformationEvent({
+  description,
+  videoUrl,
+  descriptionTitleVisible = true,
+}: InformationEventProps) {
   const hasVideo = Boolean(videoUrl && parseVideoEmbedUrl(videoUrl));
 
   return (
     <div className='mb-2 w-full bg-white md:mb-0 md:h-[calc(100%-16px)]'>
       <div className='flex flex-col p-2 md:items-center md:px-4 md:py-6'>
-        <h2 className='mb-2 text-sm font-bold text-black md:mb-3 md:text-base md:text-center'>
-          Descripción del evento
-        </h2>
+        {descriptionTitleVisible && (
+          <h2 className='mb-2 text-sm font-bold text-black md:mb-3 md:text-base md:text-center'>
+            Descripción del evento
+          </h2>
+        )}
         <div className='w-full md:hidden'>
           {description.length > 100 ? (
             <details className='group'>

@@ -121,6 +121,7 @@ function OrganizerDistributionSaveButton({
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
         hasSimpleInvitation: event.hasSimpleInvitation,
+        descriptionTitleVisible: event.descriptionTitleVisible,
         inviteCondition: event.inviteCondition as InviteCondition,
         authorizedUsers: event.eventXUsers.map((e) => ({
           id: e.user.id,

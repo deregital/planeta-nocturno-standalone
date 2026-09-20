@@ -54,6 +54,7 @@ export default function Client({
               <InformationEvent
                 description={event.description}
                 videoUrl={event.videoUrl}
+                descriptionTitleVisible={event.descriptionTitleVisible}
               />
             </div>
           </div>
