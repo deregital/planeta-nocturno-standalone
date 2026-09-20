@@ -84,6 +84,7 @@ export const eventSchema = z.object({
     .transform((v) => (v === '' ? null : v)),
   ticketSlugVisibleInPdf: z.boolean(),
   hasSimpleInvitation: z.boolean(),
+  descriptionTitleVisible: z.boolean(),
 });
 
 export const createEventSchema = eventSchema.omit({

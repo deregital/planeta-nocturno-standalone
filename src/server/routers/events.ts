@@ -647,6 +647,7 @@ export const eventsRouter = router({
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
         hasSimpleInvitation: event.hasSimpleInvitation,
+        descriptionTitleVisible: event.descriptionTitleVisible,
       };
 
       const { eventCreated, ticketTypesCreated } = await ctx.db.transaction(
@@ -961,6 +962,7 @@ export const eventsRouter = router({
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
         hasSimpleInvitation: event.hasSimpleInvitation,
+        descriptionTitleVisible: event.descriptionTitleVisible,
       };
 
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(

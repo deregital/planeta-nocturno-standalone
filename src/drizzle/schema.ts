@@ -273,6 +273,7 @@ export const event = pgTable(
     ticketSlugVisibleInPdf: boolean().default(false).notNull(),
     folderId: uuid(),
     hasSimpleInvitation: boolean().default(false).notNull(),
+    descriptionTitleVisible: boolean().default(true).notNull(),
     videoUrl: text(),
   },
   (table) => [
