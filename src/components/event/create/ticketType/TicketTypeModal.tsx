@@ -410,8 +410,8 @@ export default function TicketTypeModal({
           <Accordion type='multiple' className='w-full'>
             <AccordionItem value='ticket-advanced' className='border-none'>
               <AccordionTrigger
-                className='bg-transparent text-accent-dark px-0 py-2.5 text-sm font-semibold hover:no-underline hover:bg-transparent'
-                chevronClassName='text-accent-dark'
+                className='w-fit flex-none cursor-pointer justify-start gap-2 rounded-md bg-accent-ultra-light hover:bg-accent-light/20 px-3 py-2 text-base font-semibold text-accent-dark hover:no-underline'
+                chevronClassName='size-5 text-accent-dark'
               >
                 Configuración adicional
               </AccordionTrigger>
@@ -459,7 +459,7 @@ export default function TicketTypeModal({
                     label='¿Tiene?'
                     id='startingDateEnabled'
                     type='checkbox'
-                    className='[&>input]:w-6 items-center'
+                    className='w-16 shrink-0 [&>input]:w-6 items-center'
                     name='startingDateEnabled'
                     checked={hasStartingDate}
                     onChange={(e) => {
@@ -498,7 +498,7 @@ export default function TicketTypeModal({
                     label='¿Tiene?'
                     id='scanLimitEnabled'
                     type='checkbox'
-                    className='[&>input]:w-6 items-center'
+                    className='w-16 shrink-0 [&>input]:w-6 items-center'
                     name='scanLimitEnabled'
                     checked={hasScanLimit}
                     onChange={(e) => {
@@ -537,7 +537,7 @@ export default function TicketTypeModal({
                     label='¿Tiene?'
                     id='maxSellDateEnabled'
                     type='checkbox'
-                    className='[&>input]:w-6 items-center data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600'
+                    className='w-16 shrink-0 [&>input]:w-6 items-center data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600'
                     name='maxSellDateEnabled'
                     checked={hasMaxSellDate}
                     onChange={(e) => {
@@ -546,25 +546,25 @@ export default function TicketTypeModal({
                   />
                 </div>
 
-                <label
-                  htmlFor='allowMultipleScans'
-                  className='flex w-full items-center gap-3 cursor-pointer'
-                >
-                  <span className='flex-1 text-sm text-accent pl-1'>
+                <div className='flex w-full items-center'>
+                  <label
+                    htmlFor='allowMultipleScans'
+                    className='w-full cursor-pointer pl-1 text-sm font-medium leading-none text-accent'
+                  >
                     ¿Escaneo múltiple? (Permite volver a escanear un mismo
                     ticket)
-                  </span>
-                  <input
+                  </label>
+                  <InputWithLabel
                     id='allowMultipleScans'
                     type='checkbox'
+                    className='w-16 shrink-0 [&>input]:w-6 items-center'
                     name='allowMultipleScans'
                     checked={editingTicketType.allowMultipleScans}
                     onChange={(e) => {
                       handleInputChange('allowMultipleScans', e.target.checked);
                     }}
-                    className='size-6 shrink-0 cursor-pointer accent-accent'
                   />
-                </label>
+                </div>
 
                 <InputWithLabel
                   id='maxPerPurchase'
@@ -618,7 +618,7 @@ export default function TicketTypeModal({
                     label='¿Tiene?'
                     id='lowStockThresholdEnabled'
                     type='checkbox'
-                    className='[&>input]:w-6 items-center self-end'
+                    className='w-16 shrink-0 [&>input]:w-6 items-center self-end'
                     name='lowStockThresholdEnabled'
                     checked={hasLowStockThreshold}
                     onChange={(e) => {

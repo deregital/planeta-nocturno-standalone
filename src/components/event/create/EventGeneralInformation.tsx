@@ -590,8 +590,8 @@ export function EventGeneralInformation({
         <Accordion type='multiple' className='w-full'>
           <AccordionItem value='buyer-extra-data' className='border-none'>
             <AccordionTrigger
-              className='bg-transparent text-accent-dark px-0 py-2.5 text-sm font-semibold hover:no-underline hover:bg-transparent'
-              chevronClassName='text-accent-dark'
+              className='w-fit flex-none cursor-pointer justify-start gap-2 rounded-md bg-accent-ultra-light hover:bg-accent-light/20 px-3 py-2 mb-2 text-base font-semibold text-accent-dark hover:no-underline'
+              chevronClassName='size-5 text-accent-dark'
             >
               Solicitar datos adicionales al comprador
             </AccordionTrigger>
@@ -719,8 +719,8 @@ export function EventGeneralInformation({
 
           <AccordionItem value='event-extra-config' className='border-none'>
             <AccordionTrigger
-              className='bg-transparent text-accent-dark px-0 py-2.5 text-sm font-semibold hover:no-underline hover:bg-transparent'
-              chevronClassName='text-accent-dark'
+              className='w-fit flex-none cursor-pointer justify-start gap-2 rounded-md bg-accent-ultra-light hover:bg-accent-light/20 px-3 py-2 text-base font-semibold text-accent-dark hover:no-underline'
+              chevronClassName='size-5 text-accent-dark'
             >
               Configuración adicional del evento
             </AccordionTrigger>
