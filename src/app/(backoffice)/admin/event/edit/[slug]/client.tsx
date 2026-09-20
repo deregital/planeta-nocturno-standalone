@@ -65,8 +65,8 @@ export default function Client({
     if (event) {
       setEvent({
         ...event,
-        startingDate: new Date(event.startingDate),
-        endingDate: new Date(event.endingDate),
+        startingDate: event.startingDate ? new Date(event.startingDate) : null,
+        endingDate: event.endingDate ? new Date(event.endingDate) : null,
         authorizedUsers: event.eventXUsers.map((e) => ({
           id: e.user.id,
           name: e.user.name,
@@ -83,9 +83,9 @@ export default function Client({
       setTicketTypes(
         event.ticketTypes.map((t) => ({
           ...t,
-          startingDate: new Date(t.startingDate),
-          maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : new Date(),
-          scanLimit: t.scanLimit ? new Date(t.scanLimit) : new Date(),
+          startingDate: t.startingDate ? new Date(t.startingDate) : null,
+          maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : null,
+          scanLimit: t.scanLimit ? new Date(t.scanLimit) : null,
           allowMultipleScans: t.allowMultipleScans ?? false,
           organizers:
             'ticketTypeXOrganizers' in t && t.ticketTypeXOrganizers

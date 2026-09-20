@@ -188,10 +188,10 @@ export function generateTicketColumns({
             ? formatInTimeZone(
                 new Date(row.original.scannedAt),
                 'America/Argentina/Buenos_Aires',
-                'HH:mm:ss',
+                'dd/MM/yyyy HH:mm:ss',
               )
             : '-',
-        exportHeader: 'Hora de ingreso',
+        exportHeader: 'Fecha de ingreso',
       },
       header: ({ column }) => {
         return (
@@ -204,7 +204,7 @@ export function generateTicketColumns({
                 : column.toggleSorting(column.getIsSorted() === 'asc')
             }
           >
-            Hora de ingreso
+            Fecha de ingreso
             {column.getIsSorted() ? (
               <ArrowDownAZ
                 className={cn(column.getIsSorted() === 'asc' && 'rotate-180')}
@@ -215,9 +215,9 @@ export function generateTicketColumns({
           </Button>
         );
       },
-      minSize: 50,
-      size: 50,
-      maxSize: 50,
+      minSize: 70,
+      size: 90,
+      maxSize: 110,
       enableResizing: false,
       cell: ({ row }) => <TicketEntryTimeCell ticket={row.original} />,
     },

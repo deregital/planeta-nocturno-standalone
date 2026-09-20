@@ -24,7 +24,7 @@ function TicketPurchase({
   ticketTypes: NonNullable<RouterOutputs['events']['getBySlug']>['ticketTypes'];
   eventId: string;
   invitedBy: string | null;
-  eventStartingDate: string;
+  eventStartingDate: string | null;
 }) {
   const [, handlePurchase, pending] = useActionState(
     handlePurchaseAction,
@@ -84,12 +84,13 @@ function TicketPurchase({
                       );
                       if (
                         original?.startingDate &&
-                        new Date(original.startingDate).getTime() !==
-                          new Date(eventStartingDate).getTime()
+                        (!eventStartingDate ||
+                          new Date(original.startingDate).getTime() !==
+                            new Date(eventStartingDate).getTime())
                       ) {
                         return (
                           <span className='text-accent-dark/60 text-xs font-normal'>
-                            {`(Inicio ${format(new Date(original.startingDate), 'HH:mm')} hs)`}
+                            {`(Inicio ${format(new Date(original.startingDate), 'dd/MM HH:mm')} hs)`}
                           </span>
                         );
                       }

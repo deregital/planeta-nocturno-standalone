@@ -2,7 +2,7 @@ import { type Font } from '@pdfme/common';
 import { generate } from '@pdfme/generator';
 import { barcodes, line, table, text } from '@pdfme/schemas';
 import { TRPCError } from '@trpc/server';
-import { isAfter, isBefore, startOfYesterday } from 'date-fns';
+import { startOfYesterday } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   and,
@@ -15,6 +15,7 @@ import {
   isNull,
   lt,
   not,
+  or,
   sql,
 } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -37,6 +38,11 @@ import {
   user,
 } from '@/drizzle/schema';
 import { dateOnlyToLocalDate } from '@/lib/date-only';
+import {
+  isEventPast,
+  isEventUpcoming,
+  toNullableIsoString,
+} from '@/lib/event-dates';
 import { genderTranslation } from '@/lib/translations';
 import {
   createEventSchema,
@@ -129,12 +135,12 @@ export const eventsRouter = router({
           name: folder.name,
           color: folder.color,
           events: folder.events.filter((event) =>
-            isBefore(event.endingDate, new Date()),
+            isEventPast(event.endingDate),
           ),
         };
       }),
       withoutFolders: eventsWithoutFolders.filter((event) =>
-        isBefore(event.endingDate, new Date()),
+        isEventPast(event.endingDate),
       ),
     };
 
@@ -145,12 +151,12 @@ export const eventsRouter = router({
           name: folder.name,
           color: folder.color,
           events: folder.events.filter((event) =>
-            isAfter(event.endingDate, new Date()),
+            isEventUpcoming(event.endingDate),
           ),
         };
       }),
       withoutFolders: eventsWithoutFolders.filter((event) =>
-        isAfter(event.endingDate, new Date()),
+        isEventUpcoming(event.endingDate),
       ),
     };
 
@@ -176,7 +182,10 @@ export const eventsRouter = router({
         authorizedEventIds
           ? inArray(eventSchema.id, authorizedEventIds)
           : undefined,
-        gte(eventSchema.startingDate, startOfYesterday().toISOString()),
+        or(
+          isNull(eventSchema.startingDate),
+          gte(eventSchema.startingDate, startOfYesterday().toISOString()),
+        ),
       ),
       columns: {
         id: true,
@@ -276,12 +285,12 @@ export const eventsRouter = router({
             name: folder.name,
             color: folder.color,
             events: folder.events.filter((event) =>
-              isBefore(event.endingDate, new Date()),
+              isEventPast(event.endingDate),
             ),
           };
         }),
         withoutFolders: eventsWithoutFolders.filter((event) =>
-          isBefore(event.endingDate, new Date()),
+          isEventPast(event.endingDate),
         ),
       };
 
@@ -292,12 +301,12 @@ export const eventsRouter = router({
             name: folder.name,
             color: folder.color,
             events: folder.events.filter((event) =>
-              isAfter(event.endingDate, new Date()),
+              isEventUpcoming(event.endingDate),
             ),
           };
         }),
         withoutFolders: eventsWithoutFolders.filter((event) =>
-          isAfter(event.endingDate, new Date()),
+          isEventUpcoming(event.endingDate),
         ),
       };
 
@@ -310,7 +319,10 @@ export const eventsRouter = router({
       where: and(
         eq(eventSchema.isActive, true),
         eq(eventSchema.isDeleted, false),
-        gt(eventSchema.endingDate, new Date().toISOString()),
+        or(
+          isNull(eventSchema.endingDate),
+          gt(eventSchema.endingDate, new Date().toISOString()),
+        ),
       ),
       with: {
         ticketTypes: true,
@@ -634,8 +646,8 @@ export const eventsRouter = router({
         description: event.description,
         coverImageUrl: event.coverImageUrl,
         videoUrl: event.videoUrl,
-        startingDate: event.startingDate.toISOString(),
-        endingDate: event.endingDate.toISOString(),
+        startingDate: toNullableIsoString(event.startingDate),
+        endingDate: toNullableIsoString(event.endingDate),
         minAge: event.minAge,
         isActive: event.isActive,
         slug: uniqueEventSlug,
@@ -681,9 +693,11 @@ export const eventsRouter = router({
 
                     return {
                       ...rest,
-                      maxSellDate: ticketType.maxSellDate?.toISOString(),
-                      startingDate: ticketType.startingDate?.toISOString(),
-                      scanLimit: ticketType.scanLimit?.toISOString(),
+                      maxSellDate:
+                        ticketType.maxSellDate?.toISOString() ?? null,
+                      startingDate:
+                        ticketType.startingDate?.toISOString() ?? null,
+                      scanLimit: ticketType.scanLimit?.toISOString() ?? null,
                       sortOrder: index + 1,
                       slug: ticketTypeSlug,
                       eventId: eventCreated.id,
@@ -846,6 +860,8 @@ export const eventsRouter = router({
                       eventName: organizerEmittedTicket.event.name,
                       startingDate:
                         organizerEmittedTicket.ticketType.startingDate,
+                      eventStartingDate:
+                        organizerEmittedTicket.event.startingDate,
                       eventLocation:
                         organizerEmittedTicket.event.location.address,
                       fullName: organizerEmittedTicket.fullName,
@@ -950,8 +966,8 @@ export const eventsRouter = router({
         description: event.description,
         coverImageUrl: event.coverImageUrl,
         videoUrl: event.videoUrl,
-        startingDate: event.startingDate.toISOString(),
-        endingDate: event.endingDate.toISOString(),
+        startingDate: toNullableIsoString(event.startingDate),
+        endingDate: toNullableIsoString(event.endingDate),
         minAge: event.minAge,
         isActive: event.isActive,
         slug: event.slug,
@@ -1223,7 +1239,7 @@ export const eventsRouter = router({
                     visibleInWeb: false,
                     slug: generateSlug(ORGANIZER_TICKET_TYPE_NAME),
                     eventId: eventUpdated.id,
-                    startingDate: eventUpdated.startingDate,
+                    startingDate: eventUpdated.startingDate ?? null,
                     sortOrder:
                       Math.max(...ticketTypesDB.map((tt) => tt.sortOrder), 0) +
                       1,
@@ -1310,6 +1326,7 @@ export const eventsRouter = router({
                         slug: emittedTicket.slug,
                         eventName: eventUpdated.name,
                         startingDate: organizerTicketType.startingDate,
+                        eventStartingDate: eventUpdated.startingDate,
                         fullName: org.fullName,
                         dni: org.dni,
                         createdAt: emittedTicket.createdAt,
@@ -1418,6 +1435,8 @@ export const eventsRouter = router({
                         eventName: organizerEmittedTicketFull.event.name,
                         startingDate:
                           organizerEmittedTicketFull.ticketType.startingDate,
+                        eventStartingDate:
+                          organizerEmittedTicketFull.event.startingDate,
                         eventLocation:
                           organizerEmittedTicketFull.event.location.address,
                         fullName: organizerEmittedTicketFull.fullName,
@@ -1739,9 +1758,9 @@ export const eventsRouter = router({
                   .update(ticketType)
                   .set({
                     ...rest,
-                    maxSellDate: type.maxSellDate?.toISOString(),
-                    startingDate: type.startingDate?.toISOString(),
-                    scanLimit: type.scanLimit?.toISOString(),
+                    maxSellDate: type.maxSellDate?.toISOString() ?? null,
+                    startingDate: type.startingDate?.toISOString() ?? null,
+                    scanLimit: type.scanLimit?.toISOString() ?? null,
                     sortOrder: temporarySortOrder,
                     slug: ticketTypeSlug,
                     eventId: eventUpdated.id,
@@ -1773,9 +1792,9 @@ export const eventsRouter = router({
                 .insert(ticketType)
                 .values({
                   ...rest,
-                  maxSellDate: type.maxSellDate?.toISOString(),
-                  startingDate: type.startingDate?.toISOString(),
-                  scanLimit: type.scanLimit?.toISOString(),
+                  maxSellDate: type.maxSellDate?.toISOString() ?? null,
+                  startingDate: type.startingDate?.toISOString() ?? null,
+                  scanLimit: type.scanLimit?.toISOString() ?? null,
                   sortOrder: temporarySortOrder,
                   slug: ticketTypeSlug,
                   eventId: eventUpdated.id,
@@ -2005,11 +2024,13 @@ export const eventsRouter = router({
           qr: `${ctx.instance.publicUrl}/admin/event/${event.slug}`,
           ubicacion: event.location.address,
           nombre: event.name,
-          fecha: formatInTimeZone(
-            event.startingDate,
-            'America/Argentina/Buenos_Aires',
-            'dd/MM/yyyy',
-          ),
+          fecha: event.startingDate
+            ? formatInTimeZone(
+                event.startingDate,
+                'America/Argentina/Buenos_Aires',
+                'dd/MM/yyyy',
+              )
+            : 'Sin fecha',
           datos: tickets.map((ticket) => [
             ticket.fullName,
             ticket.ticketType.name,
@@ -2201,11 +2222,13 @@ export const eventsRouter = router({
           qr: `${ctx.instance.publicUrl}/admin/event/${event.slug}`,
           ubicacion: event.location.address,
           nombre: event.name,
-          fecha: formatInTimeZone(
-            event.startingDate,
-            'America/Argentina/Buenos_Aires',
-            'dd/MM/yyyy',
-          ),
+          fecha: event.startingDate
+            ? formatInTimeZone(
+                event.startingDate,
+                'America/Argentina/Buenos_Aires',
+                'dd/MM/yyyy',
+              )
+            : 'Sin fecha',
           ...tickets.reduce(
             (acc, ticket) => {
               acc[`datos_${ticket.ticketType}`] = ticket.tickets.map(

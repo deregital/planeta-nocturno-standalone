@@ -135,8 +135,8 @@ model Event {
   coverImageUrl String
   videoUrl      String?
   slug          String
-  startingDate  DateTime @db.Timestamptz
-  endingDate    DateTime @db.Timestamptz
+  startingDate  DateTime? @db.Timestamptz
+  endingDate    DateTime? @db.Timestamptz
   minAge        Int?
 
   isDeleted Boolean @default(false)
@@ -229,7 +229,7 @@ model TicketType {
   lowStockThreshold Int?
   imageUrl          String?
 
-  startingDate DateTime  @db.Timestamptz
+  startingDate DateTime? @db.Timestamptz
   scanLimit    DateTime? @db.Timestamptz
 
   allowMultipleScans Boolean @default(false)

@@ -35,12 +35,8 @@ export const eventSchema = z.object({
       error: 'Solo se admiten videos de YouTube',
     }),
 
-  startingDate: z.date({
-    error: 'La fecha de inicio es requerida',
-  }),
-  endingDate: z.date({
-    error: 'La fecha de fin es requerida',
-  }),
+  startingDate: z.date().nullable(),
+  endingDate: z.date().nullable(),
 
   minAge: z
     .number()

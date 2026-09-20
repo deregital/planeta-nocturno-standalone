@@ -137,10 +137,12 @@ export default function EventCardHorizontal({
             <CardTitle className='truncate'>{event.name}</CardTitle>
           </div>
           <p className='truncate text-sm'>
-            {format(event.startingDate, 'dd/MM/yyyy HH:mm')}
+            {event.startingDate
+              ? format(event.startingDate, 'dd/MM/yyyy HH:mm')
+              : null}
             <span className='hidden sm:inline'>
-              {' '}
-              - {event.location.address}
+              {event.startingDate ? ' - ' : ''}
+              {event.location.address}
             </span>
           </p>
         </div>
