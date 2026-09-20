@@ -94,7 +94,7 @@ export const ticketType = pgTable(
     slug: text()
       .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),
-    startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    startingDate: timestamp({ withTimezone: true, mode: 'string' }),
     sortOrder: integer().default(0).notNull(),
     allowMultipleScans: boolean().default(false).notNull(),
   },
@@ -256,8 +256,8 @@ export const event = pgTable(
     description: text().notNull(),
     coverImageUrl: text().notNull(),
     slug: text().notNull(),
-    startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-    endingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    startingDate: timestamp({ withTimezone: true, mode: 'string' }),
+    endingDate: timestamp({ withTimezone: true, mode: 'string' }),
     minAge: integer(),
     isDeleted: boolean().default(false).notNull(),
     isActive: boolean().default(false).notNull(),

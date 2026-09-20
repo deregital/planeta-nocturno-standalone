@@ -1,5 +1,4 @@
 'use client';
-import { isAfter } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 
 import ErrorCard from '@/components/common/ErrorCard';
@@ -7,6 +6,7 @@ import GoBack from '@/components/common/GoBack';
 import HeaderTickets from '@/components/event/buyPage/HeaderTickets';
 import InformationEvent from '@/components/event/buyPage/InformationEvent';
 import TicketPurchase from '@/components/event/buyPage/TicketPurchase';
+import { isEventFinished } from '@/lib/event-dates';
 import { type RouterOutputs } from '@/server/routers/app';
 import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
@@ -19,7 +19,7 @@ export default function Client({
 
   const organizerCode = searchParams.get(ORGANIZER_CODE_QUERY_PARAM);
 
-  if (!isAfter(new Date(event.endingDate), new Date())) {
+  if (isEventFinished(event.endingDate)) {
     return (
       <ErrorCard
         title='Evento finalizado'

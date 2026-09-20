@@ -11,7 +11,7 @@ type InputDateWithLabelProps = Omit<
 > & {
   label: string;
   id: string;
-  onChange?: (date: Date) => void;
+  onChange?: (date: Date | null) => void;
   error?: string;
   selected?: Date;
   dateType?: 'date' | 'datetime-local';
@@ -163,12 +163,15 @@ export default function InputDateWithLabel({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
-    if (value) {
-      const date = parseInputDate(value, dateType);
-      if (date) {
-        isUserInput.current = true;
-        onChange?.(date);
-      }
+    if (!value) {
+      isUserInput.current = true;
+      onChange?.(null);
+      return;
+    }
+    const date = parseInputDate(value, dateType);
+    if (date) {
+      isUserInput.current = true;
+      onChange?.(date);
     }
   };
 

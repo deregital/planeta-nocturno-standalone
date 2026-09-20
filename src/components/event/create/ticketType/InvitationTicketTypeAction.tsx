@@ -106,7 +106,7 @@ export function InvitationTicketTypeAction({
         addTicketType({
           id: crypto.randomUUID(),
           category: 'FREE',
-          startingDate: event.startingDate,
+          startingDate: event.startingDate ?? null,
           scanLimit: null,
           visibleInWeb: true,
           lowStockThreshold: null,

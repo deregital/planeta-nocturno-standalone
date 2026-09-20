@@ -78,6 +78,9 @@ export default function TicketTypeModal({
 
   // Initialize editing state based on props
   function getInitialState(): CreateTicketTypeSchema {
+    const defaultStartingDate = event.startingDate ?? null;
+    const defaultEndDate = event.endingDate ?? null;
+
     if (ticketType) {
       return {
         name: ticketType.name || '',
@@ -85,9 +88,9 @@ export default function TicketTypeModal({
         price: ticketType.price,
         maxPerPurchase: ticketType.maxPerPurchase || 6,
         maxAvailable: ticketType.maxAvailable || 0,
-        maxSellDate: ticketType.maxSellDate || event.endingDate,
-        scanLimit: ticketType.scanLimit || event.endingDate,
-        startingDate: ticketType.startingDate || event.startingDate,
+        maxSellDate: ticketType.maxSellDate ?? null,
+        scanLimit: ticketType.scanLimit ?? null,
+        startingDate: ticketType.startingDate ?? null,
         category,
         id: ticketType.id,
         visibleInWeb: ticketType.visibleInWeb,
@@ -103,9 +106,9 @@ export default function TicketTypeModal({
       price: category === 'FREE' ? 0 : null,
       maxPerPurchase: 6,
       maxAvailable: 0,
-      maxSellDate: event.endingDate,
-      scanLimit: event.endingDate,
-      startingDate: event.startingDate,
+      maxSellDate: defaultEndDate,
+      scanLimit: defaultEndDate,
+      startingDate: defaultStartingDate,
       category,
       id: crypto.randomUUID(),
       visibleInWeb: true,
@@ -119,25 +122,29 @@ export default function TicketTypeModal({
   const [editingTicketType, setEditingTicketType] =
     useState<CreateTicketTypeSchema>(getInitialState);
 
-  useEffect(() => {
-    setEditingTicketType(getInitialState());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event.startingDate, event.endingDate]);
-
-  const [hasScanLimit, setHasScanLimit] = useState(
-    ticketType?.scanLimit !== event.endingDate,
+  const [hasStartingDate, setHasStartingDate] = useState(() =>
+    Boolean(getInitialState().startingDate),
   );
-  const [hasMaxSellDate, setHasMaxSellDate] = useState(
-    ticketType?.maxSellDate !== event.endingDate,
+  const [hasScanLimit, setHasScanLimit] = useState(() =>
+    Boolean(getInitialState().scanLimit),
   );
-  const [hasStartingDate, setHasStartingDate] = useState(
-    ticketType?.startingDate !== event.startingDate,
+  const [hasMaxSellDate, setHasMaxSellDate] = useState(() =>
+    Boolean(getInitialState().maxSellDate),
   );
 
   const [hasLowStockThreshold, setHasLowStockThreshold] = useState(
     ticketType?.lowStockThreshold !== undefined &&
       ticketType?.lowStockThreshold !== null,
   );
+
+  useEffect(() => {
+    const initial = getInitialState();
+    setEditingTicketType(initial);
+    setHasStartingDate(Boolean(initial.startingDate));
+    setHasScanLimit(Boolean(initial.scanLimit));
+    setHasMaxSellDate(Boolean(initial.maxSellDate));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.startingDate, event.endingDate]);
 
   function handleInputChange<T extends keyof CreateTicketTypeSchema>(
     field: T,
@@ -149,34 +156,28 @@ export default function TicketTypeModal({
     }));
   }
 
+  function handleStartingDateToggle(checked: boolean) {
+    setHasStartingDate(checked);
+    setEditingTicketType((prev) => ({
+      ...prev,
+      startingDate: checked ? (event.startingDate ?? new Date()) : null,
+    }));
+  }
+
   function handleScanLimitToggle(checked: boolean) {
     setHasScanLimit(checked);
-    if (!checked) {
-      setEditingTicketType((prev) => ({
-        ...prev,
-        scanLimit: event.endingDate,
-      }));
-    }
+    setEditingTicketType((prev) => ({
+      ...prev,
+      scanLimit: checked ? (event.endingDate ?? new Date()) : null,
+    }));
   }
 
   function handleMaxSellDateToggle(checked: boolean) {
     setHasMaxSellDate(checked);
-    if (!checked) {
-      setEditingTicketType((prev) => ({
-        ...prev,
-        maxSellDate: event.endingDate,
-      }));
-    }
-  }
-
-  function handleStartingDateToggle(checked: boolean) {
-    setHasStartingDate(checked);
-    if (!checked) {
-      setEditingTicketType((prev) => ({
-        ...prev,
-        startingDate: event.startingDate,
-      }));
-    }
+    setEditingTicketType((prev) => ({
+      ...prev,
+      maxSellDate: checked ? (event.endingDate ?? new Date()) : null,
+    }));
   }
 
   function handleLowStockThresholdToggle(checked: boolean) {
@@ -193,8 +194,15 @@ export default function TicketTypeModal({
     e.preventDefault();
     setIsSubmitting(true);
 
+    const payload: CreateTicketTypeSchema = {
+      ...editingTicketType,
+      startingDate: hasStartingDate ? editingTicketType.startingDate : null,
+      scanLimit: hasScanLimit ? editingTicketType.scanLimit : null,
+      maxSellDate: hasMaxSellDate ? editingTicketType.maxSellDate : null,
+    };
+
     const validation = await validateTicketType(
-      editingTicketType,
+      payload,
       event.startingDate,
       event.endingDate,
       maxAvailableLeftReal,
@@ -226,12 +234,15 @@ export default function TicketTypeModal({
   const handleOpenChange = (open: boolean) => {
     setOpen(open);
     setError({});
-    if (!open) {
-      // Reset to initial state when closing
-      setEditingTicketType(getInitialState());
-      setHasScanLimit(ticketType?.scanLimit !== event.endingDate);
-      setHasMaxSellDate(ticketType?.maxSellDate !== event.endingDate);
-    }
+    const initial = getInitialState();
+    setEditingTicketType(initial);
+    setHasStartingDate(Boolean(initial.startingDate));
+    setHasScanLimit(Boolean(initial.scanLimit));
+    setHasMaxSellDate(Boolean(initial.maxSellDate));
+    setHasLowStockThreshold(
+      ticketType?.lowStockThreshold !== undefined &&
+        ticketType?.lowStockThreshold !== null,
+    );
   };
 
   const createTrigger = (
@@ -430,7 +441,7 @@ export default function TicketTypeModal({
                       onChange={(date) => {
                         handleInputChange('startingDate', date);
                       }}
-                      className='w-full '
+                      className='w-full'
                     />
                   ) : (
                     <InputWithLabel
@@ -439,14 +450,7 @@ export default function TicketTypeModal({
                       label='Inicio de escaneo de tickets'
                       type='text'
                       error={error.startingDate}
-                      value={
-                        editingTicketType.startingDate
-                          ? `${format(
-                              editingTicketType.startingDate,
-                              'dd/MM/yyyy HH:mm b',
-                            )} (Inicio del evento)`
-                          : ''
-                      }
+                      value='Sin límite'
                       className='w-full text-accent/50'
                       readOnly
                     />
@@ -485,14 +489,7 @@ export default function TicketTypeModal({
                       label='Finalización de escaneo de tickets'
                       type='text'
                       error={error.scanLimit}
-                      value={
-                        editingTicketType.scanLimit
-                          ? `${format(
-                              editingTicketType.scanLimit,
-                              'dd/MM/yyyy HH:mm b',
-                            )} (Fin del evento)`
-                          : ''
-                      }
+                      value='Sin límite'
                       className='w-full text-accent/50'
                       readOnly
                     />
@@ -531,14 +528,7 @@ export default function TicketTypeModal({
                       label='Finalización de venta de tickets'
                       type='text'
                       error={error.maxSellDate}
-                      value={
-                        editingTicketType.maxSellDate
-                          ? `${format(
-                              editingTicketType.maxSellDate,
-                              'dd/MM/yyyy HH:mm b',
-                            )} (Fin del evento)`
-                          : ''
-                      }
+                      value='Sin límite'
                       className='w-full text-accent/50'
                       readOnly
                     />
@@ -651,18 +641,28 @@ export default function TicketTypeModal({
                 .format(editingTicketType.price ?? 0)
                 .replace(/\$\s*/, '$')}).`}
               {editingTicketType.visibleInWeb ? (
-                <>
-                  {' '}
-                  Solo se puede vender por la WEB hasta el día{' '}
-                  <b>
-                    {format(editingTicketType.maxSellDate!, 'dd/MM/yyyy p')}
-                  </b>
-                </>
+                editingTicketType.maxSellDate ? (
+                  <>
+                    {' '}
+                    Solo se puede vender por la WEB hasta el día{' '}
+                    <b>
+                      {format(editingTicketType.maxSellDate, 'dd/MM/yyyy p')}
+                    </b>
+                  </>
+                ) : (
+                  <> Se puede vender por la WEB sin fecha límite</>
+                )
               ) : (
                 <>Solo puede venderse en PUERTA</>
               )}
-              {`, y es válida para ingresar hasta el día `}
-              <b>{format(editingTicketType.scanLimit!, 'dd/MM/yyyy p')}</b>
+              {editingTicketType.scanLimit ? (
+                <>
+                  {`, y es válida para ingresar hasta el día `}
+                  <b>{format(editingTicketType.scanLimit, 'dd/MM/yyyy p')}</b>
+                </>
+              ) : (
+                <>, y no tiene límite de ingreso</>
+              )}
               {`. Solo se
               pueden vender `}
               <b>{editingTicketType.maxAvailable}</b>

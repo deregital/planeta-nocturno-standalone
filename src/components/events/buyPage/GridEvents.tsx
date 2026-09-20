@@ -31,7 +31,8 @@ function GridEvents() {
       })
       .filter((event) => {
         if (!selectedDateRange) return true;
-        return isWithinInterval(event.startingDate, {
+        if (!event.startingDate) return false;
+        return isWithinInterval(new Date(event.startingDate), {
           start: selectedDateRange?.from,
           end: selectedDateRange?.to,
         });

@@ -14,7 +14,7 @@ export function LastScanCard({
           {formatInTimeZone(
             new Date(lastScan.ticket.scannedAt),
             'America/Argentina/Buenos_Aires',
-            'HH:mm:ss',
+            'dd/MM HH:mm:ss',
           )}
         </div>
       )}

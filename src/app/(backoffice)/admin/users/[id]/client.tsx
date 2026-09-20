@@ -38,16 +38,20 @@ const eventColumns: StrictColumnDef<RecentEvent>[] = [
     header: 'Fecha',
     cell: ({ row }) => (
       <div>
-        {format(new Date(row.original.startingDate), 'dd/MM/yyyy HH:mm', {
-          locale: es,
-        })}
+        {row.original.startingDate
+          ? format(new Date(row.original.startingDate), 'dd/MM/yyyy HH:mm', {
+              locale: es,
+            })
+          : ''}
       </div>
     ),
     meta: {
       exportValue: (row) =>
-        format(new Date(row.original.startingDate), 'dd/MM/yyyy HH:mm', {
-          locale: es,
-        }),
+        row.original.startingDate
+          ? format(new Date(row.original.startingDate), 'dd/MM/yyyy HH:mm', {
+              locale: es,
+            })
+          : '',
       exportHeader: 'Fecha',
     },
   },

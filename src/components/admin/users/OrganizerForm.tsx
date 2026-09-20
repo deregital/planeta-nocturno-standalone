@@ -115,6 +115,7 @@ export function OrganizerForm({
         error={errors?.birthDate}
         selected={parseDateOnly(internalState?.birthDate ?? '') ?? undefined}
         onChange={(date) => {
+          if (!date) return;
           handleChange('birthDate', date.toISOString());
         }}
       />
