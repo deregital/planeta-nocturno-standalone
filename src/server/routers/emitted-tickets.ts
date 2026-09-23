@@ -412,6 +412,7 @@ export const emittedTicketsRouter = router({
         {
           eventName: ticket.ticketGroup.event.name,
           startingDate: ticket.ticketType.startingDate,
+          eventStartingDate: ticket.ticketGroup.event.startingDate,
           eventLocation: ticket.ticketGroup.event.location?.address ?? '',
           ticketType: ticket.ticketType.name,
           createdAt: ticket.createdAt,
@@ -777,6 +778,7 @@ export const emittedTicketsRouter = router({
         {
           eventName: ticket.ticketGroup.event.name,
           startingDate: ticket.ticketType.startingDate,
+          eventStartingDate: ticket.ticketGroup.event.startingDate,
           eventLocation: ticket.ticketGroup.event.location?.address ?? '',
           ticketType: ticket.ticketType.name,
           createdAt: ticket.createdAt,

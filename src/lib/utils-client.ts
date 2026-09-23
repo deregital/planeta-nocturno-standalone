@@ -103,9 +103,10 @@ export function lightenColor(color: string, percent: number): string {
 }
 
 export function isWithin24Hours(event: {
-  startingDate: string;
-  endingDate: string;
+  startingDate: string | null;
+  endingDate: string | null;
 }) {
+  if (!event.startingDate || !event.endingDate) return false;
   const now = new Date();
   return (
     parseISO(event.endingDate) >= subHours(now, 24) &&

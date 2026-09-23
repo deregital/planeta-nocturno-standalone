@@ -13,6 +13,7 @@ import { PrintEventQr } from '@/components/event/individual/PrintEventQr';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
 import { SurveyAnswersTable } from '@/components/event/individual/SurveyAnswersTable';
+import { TicketRaffle } from '@/components/event/individual/TicketRaffle';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
@@ -103,15 +104,24 @@ async function EventDetails({ slug }: { slug: string }) {
                 />
               </div>
             )}
+            <div className='md:order-5 order-7'>
+              <TicketRaffle
+                tickets={tickets.map((ticket) => ({
+                  shortId: ticket.shortId,
+                  fullName: ticket.fullName,
+                  dni: ticket.dni,
+                }))}
+              />
+            </div>
             {isAdmin &&
               (event.inviteCondition === 'TRADITIONAL' ||
                 event.inviteCondition === 'SIMPLE') && (
-                <div className='md:order-5 order-5'>
+                <div className='md:order-6 order-5'>
                   <ToggleActivateButton event={event} />
                 </div>
               )}
             {isAdmin && event.inviteCondition === 'INVITATION' && (
-              <div className='md:order-6 order-6'>
+              <div className='md:order-7 order-6'>
                 <OrganizerDistribution event={event} />
               </div>
             )}

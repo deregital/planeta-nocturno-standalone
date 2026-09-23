@@ -109,8 +109,8 @@ function OrganizerDistributionSaveButton({
         description: event.description,
         coverImageUrl: event.coverImageUrl,
         videoUrl: event.videoUrl,
-        startingDate: new Date(event.startingDate),
-        endingDate: new Date(event.endingDate),
+        startingDate: event.startingDate ? new Date(event.startingDate) : null,
+        endingDate: event.endingDate ? new Date(event.endingDate) : null,
         minAge: event.minAge,
         isActive: event.isActive,
         slug: event.slug,
@@ -121,6 +121,7 @@ function OrganizerDistributionSaveButton({
         emailNotification: event.emailNotification,
         ticketSlugVisibleInPdf: event.ticketSlugVisibleInPdf,
         hasSimpleInvitation: event.hasSimpleInvitation,
+        descriptionTitleVisible: event.descriptionTitleVisible,
         inviteCondition: event.inviteCondition as InviteCondition,
         authorizedUsers: event.eventXUsers.map((e) => ({
           id: e.user.id,
@@ -129,9 +130,9 @@ function OrganizerDistributionSaveButton({
       },
       ticketTypes: event.ticketTypes.map((t) => ({
         ...t,
-        startingDate: new Date(t.startingDate),
-        maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : new Date(),
-        scanLimit: t.scanLimit ? new Date(t.scanLimit) : new Date(),
+        startingDate: t.startingDate ? new Date(t.startingDate) : null,
+        maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : null,
+        scanLimit: t.scanLimit ? new Date(t.scanLimit) : null,
         allowMultipleScans: t.allowMultipleScans ?? false,
         organizers:
           'ticketTypeXOrganizers' in t && t.ticketTypeXOrganizers

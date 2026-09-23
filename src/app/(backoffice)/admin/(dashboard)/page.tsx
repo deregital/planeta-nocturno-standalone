@@ -78,7 +78,9 @@ export default function Dashboard() {
                     setFilterMode(value as FilterMode);
                     if (value === 'event' && allEvents.length > 0) {
                       const lastOccurredEvent = allEvents.find((event) =>
-                        isBefore(event.endingDate, today),
+                        event.endingDate
+                          ? isBefore(event.endingDate, today)
+                          : false,
                       );
                       if (lastOccurredEvent) {
                         setEventId(lastOccurredEvent.id);

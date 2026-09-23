@@ -10,20 +10,14 @@ function HeaderTickets({
 }: {
   event: NonNullable<RouterOutputs['events']['getBySlug']>;
 }) {
-  // Formatear la fecha
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return formatInTimeZone(
-      date,
-      'America/Argentina/Buenos_Aires',
-      "EEEE d 'de' MMMM yyyy - 'inicio' HH:mm 'hs'",
-      {
-        locale: es,
-      },
-    );
-  };
-
-  const formattedDate = formatDate(event.startingDate);
+  const formattedDate = event.startingDate
+    ? formatInTimeZone(
+        new Date(event.startingDate),
+        'America/Argentina/Buenos_Aires',
+        "EEEE d 'de' MMMM yyyy - 'inicio' HH:mm 'hs'",
+        { locale: es },
+      )
+    : null;
 
   // URL de la imagen de fondo para móviles
   const backgroundImageUrl = event.coverImageUrl
@@ -44,9 +38,11 @@ function HeaderTickets({
                   {event.name}
                 </span>
               </h1>
-              <p className='mt-2 max-w-full text-pretty text-sm capitalize text-black md:text-accent lg:text-base'>
-                {formattedDate}
-              </p>
+              {formattedDate && (
+                <p className='mt-2 max-w-full text-pretty text-sm capitalize text-black md:text-accent lg:text-base'>
+                  {formattedDate}
+                </p>
+              )}
             </div>
             <ExpandableImage
               src={backgroundImageUrl}
@@ -67,9 +63,9 @@ function HeaderTickets({
             <div className='min-w-0 text-sm md:text-xs lg:text-sm'>
               <p
                 className='font-semibold text-black line-clamp-3 md:line-clamp-2'
-                title={event.location.address}
+                title={event.location?.address ?? undefined}
               >
-                {event.location.address}
+                {event.location?.address ?? '-'}
               </p>
             </div>
           </div>

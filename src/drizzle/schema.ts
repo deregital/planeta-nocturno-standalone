@@ -94,7 +94,7 @@ export const ticketType = pgTable(
     slug: text()
       .default(sql`upper(substr(md5((random())::text), 1, 6))`)
       .notNull(),
-    startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    startingDate: timestamp({ withTimezone: true, mode: 'string' }),
     sortOrder: integer().default(0).notNull(),
     allowMultipleScans: boolean().default(false).notNull(),
   },
@@ -256,12 +256,12 @@ export const event = pgTable(
     description: text().notNull(),
     coverImageUrl: text().notNull(),
     slug: text().notNull(),
-    startingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
-    endingDate: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    startingDate: timestamp({ withTimezone: true, mode: 'string' }),
+    endingDate: timestamp({ withTimezone: true, mode: 'string' }),
     minAge: integer(),
     isDeleted: boolean().default(false).notNull(),
     isActive: boolean().default(false).notNull(),
-    locationId: uuid().notNull(),
+    locationId: uuid(),
     categoryId: uuid(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -273,6 +273,7 @@ export const event = pgTable(
     ticketSlugVisibleInPdf: boolean().default(false).notNull(),
     folderId: uuid(),
     hasSimpleInvitation: boolean().default(false).notNull(),
+    descriptionTitleVisible: boolean().default(true).notNull(),
     videoUrl: text(),
   },
   (table) => [
@@ -282,7 +283,7 @@ export const event = pgTable(
       name: 'event_locationId_fkey',
     })
       .onUpdate('cascade')
-      .onDelete('restrict'),
+      .onDelete('set null'),
     foreignKey({
       columns: [table.categoryId],
       foreignColumns: [eventCategory.id],

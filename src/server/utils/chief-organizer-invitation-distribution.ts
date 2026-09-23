@@ -435,14 +435,18 @@ async function addChiefOrganizerToEvent(
   tx: Transaction,
   event: {
     id: string;
-    startingDate: string;
+    startingDate: string | null;
     name: string;
     ticketSlugVisibleInPdf: boolean;
   },
   organizerInput: OrganizerInvitationSchema,
   organizersDBCount: number,
   currentOrganizerGroup: { id: string; amountTickets: number },
-  organizerTicketType: { id: string; startingDate: string; name: string },
+  organizerTicketType: {
+    id: string;
+    startingDate: string | null;
+    name: string;
+  },
 ) {
   const ticketAmount = getTicketAmount(organizerInput);
   const org = await tx.query.user.findFirst({
@@ -839,7 +843,7 @@ export async function applyChiefOrganizerInvitationDistribution(
           visibleInWeb: false,
           slug: generateSlug(ORGANIZER_TICKET_TYPE_NAME),
           eventId,
-          startingDate: event.startingDate,
+          startingDate: event.startingDate ?? null,
           sortOrder:
             Math.max(...ticketTypesDB.map((tt) => tt.sortOrder), 0) + 1,
         })

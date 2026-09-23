@@ -177,11 +177,13 @@ export default function CheckoutClient({
     }));
   };
 
-  const formattedDate = format(
-    new Date(ticketGroup.event.startingDate),
-    "EEEE d 'de' MMMM 'de' yyyy - 'Inicio' HH:mm 'hs'",
-    { locale: es },
-  );
+  const formattedDate = ticketGroup.event.startingDate
+    ? format(
+        new Date(ticketGroup.event.startingDate),
+        "EEEE d 'de' MMMM 'de' yyyy - 'Inicio' HH:mm 'hs'",
+        { locale: es },
+      )
+    : null;
 
   const discountPercentage =
     validateOrganizerCode.data?.valid &&
@@ -215,9 +217,11 @@ export default function CheckoutClient({
       <div className='flex flex-col md:flex-row justify-between items-center w-full sm:w-xl md:w-2xl'>
         <div className='flex flex-col'>
           <p className='text-2xl'>{ticketGroup.event.name}</p>
-          <p className='text-lg font-medium text-accent'>
-            {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
-          </p>
+          {formattedDate && (
+            <p className='text-lg font-medium text-accent'>
+              {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
+            </p>
+          )}
         </div>
         <div className='hidden md:flex w-24 h-24 rounded-md overflow-hidden'>
           <Image

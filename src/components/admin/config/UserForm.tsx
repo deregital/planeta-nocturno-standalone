@@ -139,6 +139,7 @@ export function UserForm({
             : undefined
         }
         onChange={(date) => {
+          if (!date) return;
           handleChange('birthDate', date.toISOString());
         }}
       />
