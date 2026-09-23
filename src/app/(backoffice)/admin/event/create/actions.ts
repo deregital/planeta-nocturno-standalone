@@ -54,7 +54,11 @@ export async function validateGeneralInformation(
     };
   }
 
-  if (differenceInMinutes(event.endingDate, event.startingDate) <= 0) {
+  if (
+    event.startingDate &&
+    event.endingDate &&
+    differenceInMinutes(event.endingDate, event.startingDate) <= 0
+  ) {
     return {
       success: false,
       data: event,
@@ -71,8 +75,8 @@ export async function validateGeneralInformation(
 
 export async function validateTicketType(
   ticketType: CreateTicketTypeSchema,
-  eventStartDate: Date,
-  eventEndDate: Date,
+  eventStartDate: Date | null,
+  eventEndDate: Date | null,
   maxAvailableLeft: number,
 ) {
   const validation = createTicketTypeSchema.safeParse(ticketType);
@@ -105,8 +109,12 @@ export async function validateTicketType(
     };
   }
 
-  // Validate scanLimit is not after event end
-  if (validation.data.scanLimit && validation.data.scanLimit > eventEndDate) {
+  // Validate scanLimit is not after event end (only when the event has an end date)
+  if (
+    eventEndDate &&
+    validation.data.scanLimit &&
+    validation.data.scanLimit > eventEndDate
+  ) {
     errors.scanLimit = {
       errors: [
         'La fecha de finalización de escaneo de tickets no puede ser mayor a la fecha de finalización del evento',
@@ -114,8 +122,9 @@ export async function validateTicketType(
     };
   }
 
-  // Validate maxSellDate is not after event end
+  // Validate maxSellDate is not after event end (only when the event has an end date)
   if (
+    eventEndDate &&
     validation.data.maxSellDate &&
     validation.data.maxSellDate > eventEndDate
   ) {

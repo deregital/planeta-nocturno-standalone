@@ -140,7 +140,7 @@ async function EventPage({ params, searchParams }: EventPageProps) {
 
     filteredTicketTypes = filteredTicketTypes.filter(
       (ticketType) =>
-        ticketType.maxSellDate &&
+        !ticketType.maxSellDate ||
         isAfter(new Date(ticketType.maxSellDate), new Date()),
     );
 

@@ -128,7 +128,7 @@ export async function generateTicketTemplate(
       opacity: 1,
       strikethrough: false,
       underline: false,
-      required: true,
+      required: false,
       readOnly: false,
     },
     {
@@ -541,7 +541,10 @@ export async function generateTicketTemplate(
 
 interface GenerateTicketProps {
   eventName: string;
-  startingDate: string;
+  /** Fecha de inicio de escaneo del ticket type (puede ser null). */
+  startingDate: string | null;
+  /** Fallback: fecha de inicio del evento. */
+  eventStartingDate?: string | null;
   eventLocation: string;
   fullName: string;
   dni: string;
@@ -553,6 +556,23 @@ interface GenerateTicketProps {
   ticketSlugVisibleInPdf: boolean;
 }
 
+function formatTicketStartingDateLabel(startingDate: string): string {
+  const formattedTime = formatInTimeZone(
+    startingDate,
+    'America/Argentina/Buenos_Aires',
+    'HH:mm',
+  );
+  const formattedDateRaw = formatInTimeZone(
+    startingDate,
+    'America/Argentina/Buenos_Aires',
+    "EEEE d 'de' MMMM 'de' yyyy",
+    { locale: es },
+  );
+  const formattedDate =
+    formattedDateRaw.charAt(0).toUpperCase() + formattedDateRaw.slice(1);
+  return `${formattedDate} - ${formattedTime} hs`;
+}
+
 export async function generatePdf(
   ticket: GenerateTicketProps,
   instance: ResolvedInstance,
@@ -561,19 +581,13 @@ export async function generatePdf(
     throw new Error('Ticket no encontrado');
   }
 
-  const formattedTime = formatInTimeZone(
-    ticket.startingDate,
-    'America/Argentina/Buenos_Aires',
-    'HH:mm',
-  );
-  const formattedDateRaw = formatInTimeZone(
-    ticket.startingDate,
-    'America/Argentina/Buenos_Aires',
-    "EEEE d 'de' MMMM 'de' yyyy",
-    { locale: es },
-  );
-  const formattedDate =
-    formattedDateRaw.charAt(0).toUpperCase() + formattedDateRaw.slice(1);
+  const resolvedStartingDate =
+    ticket.startingDate ?? ticket.eventStartingDate ?? null;
+  // pdfme no acepta string vacío en campos de texto; un espacio mantiene el layout.
+  const startingDateLabel = resolvedStartingDate
+    ? formatTicketStartingDateLabel(resolvedStartingDate)
+    : ' ';
+  const eventLocationLabel = ticket.eventLocation.trim() || ' ';
 
   const { fontBold, fontSemiBold, fontLight } = await getDMSansFonts();
 
@@ -593,12 +607,12 @@ export async function generatePdf(
   const inputs = [
     {
       eventName: ticket.eventName,
-      startingDate: `${formattedDate} - ${formattedTime} hs`,
-      eventLocation: ticket.eventLocation,
+      startingDate: startingDateLabel,
+      eventLocation: eventLocationLabel,
       fullName: ticket.fullName,
       dni: normalizedDni,
       barcode: encryptString(ticket.id),
-      footer: `Para cualquier duda, reclamo o consulta comunicarse vía mail a ${instance.contactEmail ?? ''}.\nMás información en ${instance.publicUrl}.`,
+      footer: `Ante cualquier duda comunicarse al mail ${instance.contactEmail ?? ''}.\nMás información en ${instance.publicUrl}.`,
       emissionDate: formatInTimeZone(
         ticket.createdAt,
         'America/Argentina/Buenos_Aires',

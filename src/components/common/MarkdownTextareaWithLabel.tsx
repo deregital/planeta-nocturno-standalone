@@ -39,6 +39,7 @@ interface MarkdownTextareaWithLabelProps
   error?: string;
   hint?: string;
   showPreview?: boolean;
+  toolbarEnd?: React.ReactNode;
 }
 
 export default function MarkdownTextareaWithLabel({
@@ -48,6 +49,7 @@ export default function MarkdownTextareaWithLabel({
   error,
   hint,
   showPreview = true,
+  toolbarEnd,
   disabled,
   readOnly,
   onChange,
@@ -132,36 +134,45 @@ export default function MarkdownTextareaWithLabel({
         error={error}
       >
         <div className='flex w-full flex-col gap-1'>
-          {isEditable && (
+          {(isEditable || toolbarEnd) && (
             <div className='flex items-center gap-1 rounded-md border border-stroke bg-accent-ultra-light/40 p-1'>
-              {FORMAT_TOOLBAR_ITEMS.map(({ format, icon: Icon, label }) => (
-                <Button
-                  key={format}
-                  type='button'
-                  variant='ghost'
-                  size='icon'
-                  className='size-8 text-accent'
-                  aria-label={label}
-                  title={label}
-                  onClick={() => applyFormat(format)}
-                >
-                  <Icon className='size-4' />
-                </Button>
-              ))}
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon'
-                className='size-8 text-accent'
-                aria-label='Enlace'
-                title='Enlace'
-                onClick={openLinkDialog}
-              >
-                <Link2 className='size-4' />
-              </Button>
-              <span className='ml-1 hidden text-xs text-accent-dark/60 sm:inline'>
-                Seleccioná texto y usá los botones para formatear
-              </span>
+              {isEditable && (
+                <>
+                  {FORMAT_TOOLBAR_ITEMS.map(({ format, icon: Icon, label }) => (
+                    <Button
+                      key={format}
+                      type='button'
+                      variant='ghost'
+                      size='icon'
+                      className='size-8 text-accent'
+                      aria-label={label}
+                      title={label}
+                      onClick={() => applyFormat(format)}
+                    >
+                      <Icon className='size-4' />
+                    </Button>
+                  ))}
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    className='size-8 text-accent'
+                    aria-label='Enlace'
+                    title='Enlace'
+                    onClick={openLinkDialog}
+                  >
+                    <Link2 className='size-4' />
+                  </Button>
+                  <span className='ml-1 hidden text-xs text-accent-dark/60 sm:inline'>
+                    Seleccioná texto y usá los botones para formatear
+                  </span>
+                </>
+              )}
+              {toolbarEnd && (
+                <div className='ml-auto flex shrink-0 items-center'>
+                  {toolbarEnd}
+                </div>
+              )}
             </div>
           )}
           <Textarea

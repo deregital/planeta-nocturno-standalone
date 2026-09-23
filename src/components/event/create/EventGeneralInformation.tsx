@@ -1,7 +1,6 @@
 'use client';
 
-import { addDays, format } from 'date-fns';
-import { toDate } from 'date-fns-tz';
+import { format } from 'date-fns';
 import Image from 'next/image';
 import { useCallback, useRef, useState } from 'react';
 import Resizer from 'react-image-file-resizer';
@@ -30,6 +29,7 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatEventDateRange } from '@/lib/event-dates';
 import { cn } from '@/lib/utils';
 import { generateS3Url } from '@/lib/utils-client';
 import { trpc } from '@/server/trpc/client';
@@ -67,14 +67,6 @@ function prepareEventCoverFile(file: File): Promise<File> {
       reject(e instanceof Error ? e : new Error('Resize falló'));
     }
   });
-}
-
-function isBeforeHoursAndMinutes(date1: Date, date2: Date) {
-  return (
-    date1.getHours() < date2.getHours() ||
-    (date1.getHours() === date2.getHours() &&
-      date1.getMinutes() < date2.getMinutes())
-  );
 }
 
 type EventGeneralInformationProps =
@@ -286,6 +278,28 @@ export function EventGeneralInformation({
               value={event.description ?? ''}
               readOnly={action === 'PREVIEW'}
               disabled={action === 'PREVIEW'}
+              toolbarEnd={
+                <label
+                  htmlFor='descriptionTitleVisible'
+                  className='flex cursor-pointer items-center gap-1.5 px-1.5'
+                >
+                  <input
+                    id='descriptionTitleVisible'
+                    type='checkbox'
+                    name='descriptionTitleVisible'
+                    disabled={action === 'PREVIEW'}
+                    checked={event.descriptionTitleVisible}
+                    onChange={(e) => {
+                      if (action === 'PREVIEW') return;
+                      handleChange('descriptionTitleVisible', e.target.checked);
+                    }}
+                    className='size-3.5 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed'
+                  />
+                  <span className='whitespace-nowrap text-xs text-accent-dark'>
+                    Mostrar título en ticketera
+                  </span>
+                </label>
+              }
             />
           </div>
           {action === 'PREVIEW' && (
@@ -311,111 +325,116 @@ export function EventGeneralInformation({
           )}
         </section>
         <section>
-          <h3 className='text-accent-dark text-lg font-semibold'>
-            Fecha y hora
-          </h3>
-          <div className='flex flex-col gap-2 md:flex-row!'>
-            <InputDateWithLabel
-              label='Fecha'
-              id='eventDate'
-              selected={event.startingDate}
-              className='flex-1 max-h-min'
-              required
-              onChange={(date) => {
-                const startingDate = date;
-
-                const endingDate = new Date(
-                  isBeforeHoursAndMinutes(event.endingDate, event.startingDate)
-                    ? addDays(startingDate, 1)
-                    : startingDate,
-                );
-
-                startingDate.setHours(event.startingDate.getHours());
-                startingDate.setMinutes(event.startingDate.getMinutes());
-                endingDate.setHours(event.endingDate.getHours());
-                endingDate.setMinutes(event.endingDate.getMinutes());
-
-                handleChange('startingDate', startingDate);
-                handleChange('endingDate', endingDate);
-
-                setError({ eventDate: '' });
-              }}
-              error={error.eventDate}
-              disabled={action === 'PREVIEW'}
-            />
-            <InputWithLabel
-              label='Inicio'
-              id='startTime'
-              type='time'
-              required
-              className='flex-1'
-              placeholder='Hora de inicio'
-              name='startTime'
-              value={format(event.startingDate, 'HH:mm')}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  return;
+          <div className='flex flex-wrap items-center justify-between gap-2'>
+            <h3 className='text-accent-dark text-lg font-semibold'>
+              Fecha y hora
+            </h3>
+            <label
+              htmlFor='hasEventDate'
+              className='flex cursor-pointer items-center gap-1.5'
+            >
+              <input
+                id='hasEventDate'
+                type='checkbox'
+                name='hasEventDate'
+                disabled={action === 'PREVIEW'}
+                checked={
+                  event.startingDate !== null || event.endingDate !== null
                 }
-
-                const [hours, minutes] = e.target.value.split(':');
-                const newDate = toDate(event.startingDate, {});
-                newDate.setHours(parseInt(hours), parseInt(minutes));
-
-                // if the new date is before the ending date, substract a day from the ending date
-                if (isBeforeHoursAndMinutes(newDate, event.endingDate)) {
-                  const newEndingDate = new Date(newDate);
-                  newEndingDate.setHours(event.endingDate.getHours());
-                  newEndingDate.setMinutes(event.endingDate.getMinutes());
-                  handleChange('endingDate', newEndingDate);
-                } else {
-                  const newEndingDate = addDays(event.startingDate, 1);
-                  newEndingDate.setHours(event.endingDate.getHours());
-                  newEndingDate.setMinutes(event.endingDate.getMinutes());
-                  handleChange('endingDate', newEndingDate);
-                }
-
-                handleChange('startingDate', newDate);
-              }}
-              error={error.startingDate}
-              readOnly={action === 'PREVIEW'}
-              disabled={action === 'PREVIEW'}
-            />
-            <InputWithLabel
-              label='Finalización'
-              id='endTime'
-              type='time'
-              required
-              className='flex-1'
-              placeholder='Hora de finalización'
-              name='endTime'
-              value={format(event.endingDate, 'HH:mm')}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  return;
-                }
-
-                const [hours, minutes] = e.target.value.split(':');
-                const newDate = toDate(event.startingDate, {});
-                newDate.setHours(parseInt(hours), parseInt(minutes));
-
-                if (isBeforeHoursAndMinutes(newDate, event.startingDate)) {
-                  newDate.setDate(newDate.getDate() + 1);
-                }
-
-                handleChange('endingDate', newDate);
-              }}
-              error={error.endingDate}
-              readOnly={action === 'PREVIEW'}
-              disabled={action === 'PREVIEW'}
-            />
+                onChange={(e) => {
+                  if (action === 'PREVIEW') return;
+                  if (e.target.checked) {
+                    const startingDate = new Date();
+                    const endingDate = new Date(startingDate);
+                    endingDate.setHours(endingDate.getHours() + 4);
+                    setEvent({ startingDate, endingDate });
+                  } else {
+                    setEvent({ startingDate: null, endingDate: null });
+                  }
+                  setError((prev) => ({
+                    ...prev,
+                    startingDate: '',
+                    endingDate: '',
+                  }));
+                }}
+                className='size-3.5 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed'
+              />
+              <span className='whitespace-nowrap text-xs text-accent-dark'>
+                ¿Tiene fecha?
+              </span>
+            </label>
           </div>
-          <span className='text-xs text-accent-dark ml-2'>
-            El evento comenzará el{' '}
-            <b>{format(event.startingDate, 'dd/MM/yyyy')}</b> a las{' '}
-            <b>{format(event.startingDate, 'HH:mm a')}</b> y finalizará el{' '}
-            <b>{format(event.endingDate, 'dd/MM/yyyy')}</b> a las{' '}
-            <b>{format(event.endingDate, 'HH:mm a')}</b>
-          </span>
+          {(event.startingDate !== null || event.endingDate !== null) && (
+            <>
+              <div className='flex flex-col gap-2 md:flex-row!'>
+                <InputDateWithLabel
+                  label='Inicio'
+                  id='startingDate'
+                  dateType='datetime-local'
+                  selected={event.startingDate ?? undefined}
+                  className='flex-1 max-h-min'
+                  onChange={(date) => {
+                    handleChange('startingDate', date);
+                    setError((prev) => ({
+                      ...prev,
+                      startingDate: '',
+                      endingDate: '',
+                    }));
+                  }}
+                  error={error.startingDate}
+                  disabled={action === 'PREVIEW'}
+                  readOnly={action === 'PREVIEW'}
+                />
+                <InputDateWithLabel
+                  label='Finalización'
+                  id='endingDate'
+                  dateType='datetime-local'
+                  selected={event.endingDate ?? undefined}
+                  className='flex-1 max-h-min'
+                  min={
+                    event.startingDate
+                      ? format(event.startingDate, "yyyy-MM-dd'T'HH:mm")
+                      : undefined
+                  }
+                  onChange={(date) => {
+                    handleChange('endingDate', date);
+                    setError((prev) => ({ ...prev, endingDate: '' }));
+                  }}
+                  error={error.endingDate}
+                  disabled={action === 'PREVIEW'}
+                  readOnly={action === 'PREVIEW'}
+                />
+              </div>
+              {formatEventDateRange(
+                event.startingDate,
+                event.endingDate,
+                format,
+              ) && (
+                <span className='text-xs text-accent-dark ml-2'>
+                  El evento{' '}
+                  {event.startingDate ? (
+                    <>
+                      comenzará el{' '}
+                      <b>{format(event.startingDate, 'dd/MM/yyyy')}</b> a las{' '}
+                      <b>{format(event.startingDate, 'HH:mm')}</b>
+                    </>
+                  ) : (
+                    'no tiene fecha de inicio'
+                  )}
+                  {event.endingDate ? (
+                    <>
+                      {' '}
+                      y finalizará el{' '}
+                      <b>{format(event.endingDate, 'dd/MM/yyyy')}</b> a las{' '}
+                      <b>{format(event.endingDate, 'HH:mm')}</b>
+                    </>
+                  ) : (
+                    <> y no tiene fecha de finalización</>
+                  )}
+                </span>
+              )}
+            </>
+          )}
         </section>
         <section>
           <h3 className='text-accent-dark text-lg font-semibold'>Ubicación</h3>
@@ -454,38 +473,45 @@ export function EventGeneralInformation({
             id='locationId'
             divClassName='flex-1'
             className='w-full'
-            required
-            values={
-              locations
-                ? locations
-                    .map((location) => ({
-                      label: `${location.name} (${location.address})`,
-                      value: location.id,
-                    }))
-                    .concat([
-                      {
-                        label: '+ Crear locación',
-                        value: 'CREATE_NEW',
-                      },
-                    ])
-                : []
-            }
+            values={[
+              {
+                label: 'Sin locación',
+                value: 'NONE',
+              },
+              ...(locations
+                ? locations.map((location) => ({
+                    label: `${location.name} (${location.address})`,
+                    value: location.id,
+                  }))
+                : []),
+              {
+                label: '+ Crear locación',
+                value: 'CREATE_NEW',
+              },
+            ]}
             onValueChange={(value) => {
               if (value === 'CREATE_NEW') {
                 setOpenLocationModal(true);
                 return;
               }
 
-              if (value === '') return;
+              if (value === 'NONE' || value === '') {
+                handleChange('locationId', null);
+                return;
+              }
+
               handleChange('locationId', value);
             }}
             error={error.locationId}
-            defaultValue={event.locationId}
-            value={event.locationId}
+            value={event.locationId ?? 'NONE'}
             readOnly={action === 'PREVIEW'}
             disabled={action === 'PREVIEW'}
           />
-          <input type='hidden' name='locationId' value={event.locationId} />
+          <input
+            type='hidden'
+            name='locationId'
+            value={event.locationId ?? ''}
+          />
         </section>
         <section>
           <h3 className='text-accent-dark text-lg font-semibold'>
@@ -560,16 +586,20 @@ export function EventGeneralInformation({
           </div>
           <p className='text-sm'>
             Los usuarios &quot;Acceso&quot; podrán{' '}
-            <span className='font-bold'>ver el evento</span> hasta la fecha de
-            finalización, <span className='font-bold'>emitir tickets</span> y{' '}
+            <span className='font-bold'>ver el evento</span>
+            {event.endingDate
+              ? ' hasta la fecha de finalización'
+              : ' mientras el evento esté activo'}
+            , <span className='font-bold'>emitir tickets</span> y{' '}
             <span className='font-bold'>escanear tickets</span>.
           </p>
         </section>
+        <h3 className='text-accent-dark text-lg font-semibold'>Opcionales</h3>
         <Accordion type='multiple' className='w-full'>
           <AccordionItem value='buyer-extra-data' className='border-none'>
             <AccordionTrigger
-              className='bg-transparent text-accent-dark px-0 py-2.5 text-sm font-semibold hover:no-underline hover:bg-transparent'
-              chevronClassName='text-accent-dark'
+              className='w-fit flex-none cursor-pointer justify-start gap-2 rounded-md bg-accent-ultra-light hover:bg-accent-light/20 px-3 py-2 mb-2 text-base font-semibold text-accent-dark hover:no-underline'
+              chevronClassName='size-5 text-accent-dark'
             >
               Solicitar datos adicionales al comprador
             </AccordionTrigger>
@@ -697,8 +727,8 @@ export function EventGeneralInformation({
 
           <AccordionItem value='event-extra-config' className='border-none'>
             <AccordionTrigger
-              className='bg-transparent text-accent-dark px-0 py-2.5 text-sm font-semibold hover:no-underline hover:bg-transparent'
-              chevronClassName='text-accent-dark'
+              className='w-fit flex-none cursor-pointer justify-start gap-2 rounded-md bg-accent-ultra-light hover:bg-accent-light/20 px-3 py-2 text-base font-semibold text-accent-dark hover:no-underline'
+              chevronClassName='size-5 text-accent-dark'
             >
               Configuración adicional del evento
             </AccordionTrigger>

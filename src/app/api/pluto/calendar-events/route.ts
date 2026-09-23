@@ -1,4 +1,4 @@
-import { asc, and, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -59,6 +59,8 @@ export async function POST(request: Request) {
         and(
           eq(event.isActive, true),
           eq(event.isDeleted, false),
+          isNotNull(event.startingDate),
+          isNotNull(event.endingDate),
           lte(event.startingDate, body.to),
           gte(event.endingDate, body.from),
         ),
@@ -83,8 +85,8 @@ export async function POST(request: Request) {
         id: eventItem.id,
         slug: eventItem.slug,
         name: eventItem.name,
-        startingDate: toIsoDateTime(eventItem.startingDate),
-        endingDate: toIsoDateTime(eventItem.endingDate),
+        startingDate: toIsoDateTime(eventItem.startingDate!),
+        endingDate: toIsoDateTime(eventItem.endingDate!),
         locationName: eventItem.locationName,
         locationAddress: eventItem.locationAddress,
         coverImageUrl: eventItem.coverImageUrl,

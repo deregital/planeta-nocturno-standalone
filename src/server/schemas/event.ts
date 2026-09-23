@@ -35,12 +35,8 @@ export const eventSchema = z.object({
       error: 'Solo se admiten videos de YouTube',
     }),
 
-  startingDate: z.date({
-    error: 'La fecha de inicio es requerida',
-  }),
-  endingDate: z.date({
-    error: 'La fecha de fin es requerida',
-  }),
+  startingDate: z.date().nullable(),
+  endingDate: z.date().nullable(),
 
   minAge: z
     .number()
@@ -50,9 +46,15 @@ export const eventSchema = z.object({
     .nullable(),
   isActive: z.boolean().default(false),
 
-  locationId: z.uuid({
-    error: 'La ubicación es requerida',
-  }),
+  locationId: z
+    .union([
+      z.null(),
+      z.literal(''),
+      z.uuid({
+        error: 'La ubicación no es válida',
+      }),
+    ])
+    .transform((value) => (value === '' ? null : value)),
   categoryId: z
     .union([
       z.null(),
@@ -84,6 +86,7 @@ export const eventSchema = z.object({
     .transform((v) => (v === '' ? null : v)),
   ticketSlugVisibleInPdf: z.boolean(),
   hasSimpleInvitation: z.boolean(),
+  descriptionTitleVisible: z.boolean(),
 });
 
 export const createEventSchema = eventSchema.omit({

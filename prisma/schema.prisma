@@ -135,15 +135,15 @@ model Event {
   coverImageUrl String
   videoUrl      String?
   slug          String
-  startingDate  DateTime @db.Timestamptz
-  endingDate    DateTime @db.Timestamptz
+  startingDate  DateTime? @db.Timestamptz
+  endingDate    DateTime? @db.Timestamptz
   minAge        Int?
 
   isDeleted Boolean @default(false)
   isActive  Boolean @default(false)
 
-  locationId String    @db.Uuid
-  location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id])
+  locationId String?   @db.Uuid
+  location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id], onDelete: SetNull)
 
   categoryId String?        @db.Uuid
   category   EventCategory? @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id], onDelete: SetNull)
@@ -157,11 +157,12 @@ model Event {
   organizers      EventXOrganizer[] @relation("EVENT_X_ORGANIZER")
   inviteCondition InviteCondition   @default(TRADITIONAL)
 
-  extraTicketData        Boolean @default(true)
-  serviceFee             Float?
-  emailNotification      String?
-  ticketSlugVisibleInPdf Boolean @default(false)
-  hasSimpleInvitation    Boolean @default(false)
+  extraTicketData          Boolean @default(true)
+  serviceFee               Float?
+  emailNotification        String?
+  ticketSlugVisibleInPdf   Boolean @default(false)
+  hasSimpleInvitation      Boolean @default(false)
+  descriptionTitleVisible  Boolean @default(true)
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
@@ -228,7 +229,7 @@ model TicketType {
   lowStockThreshold Int?
   imageUrl          String?
 
-  startingDate DateTime  @db.Timestamptz
+  startingDate DateTime? @db.Timestamptz
   scanLimit    DateTime? @db.Timestamptz
 
   allowMultipleScans Boolean @default(false)

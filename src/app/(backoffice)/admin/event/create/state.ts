@@ -88,17 +88,21 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   return next;
 }
 
+const initialStartingDate = new Date();
+const initialEndingDate = new Date(initialStartingDate);
+initialEndingDate.setHours(initialEndingDate.getHours() + 4);
+
 const initialState: EventState = {
   event: {
     name: '',
     description: '',
     coverImageUrl: '',
     videoUrl: null,
-    startingDate: new Date(),
-    endingDate: new Date(),
+    startingDate: initialStartingDate,
+    endingDate: initialEndingDate,
     categoryId: null,
     isActive: false,
-    locationId: '',
+    locationId: null,
     minAge: null,
     authorizedUsers: [],
     inviteCondition: null,
@@ -107,6 +111,7 @@ const initialState: EventState = {
     emailNotification: null,
     ticketSlugVisibleInPdf: false,
     hasSimpleInvitation: false,
+    descriptionTitleVisible: true,
   },
   ticketTypes: [],
   organizers: [],
@@ -189,7 +194,7 @@ export const createEventStore = (initState: EventState = initialState) => {
                 maxAvailable,
                 maxPerPurchase: 1,
                 category: 'FREE',
-                startingDate: state.event.startingDate,
+                startingDate: state.event.startingDate ?? null,
                 lowStockThreshold: null,
                 imageUrl: null,
                 maxSellDate: null,
@@ -407,7 +412,7 @@ export const createEventStore = (initState: EventState = initialState) => {
               maxAvailable,
               maxPerPurchase: 1,
               category: 'FREE',
-              startingDate: state.event.startingDate,
+              startingDate: state.event.startingDate ?? null,
               lowStockThreshold: null,
               imageUrl: null,
               maxSellDate: null,

@@ -485,7 +485,8 @@ export const ticketGroupRouter = router({
         {
           eventName: ticket.ticketGroup.event.name,
           startingDate: ticket.ticketType.startingDate,
-          eventLocation: ticket.ticketGroup.event.location.address,
+          eventStartingDate: ticket.ticketGroup.event.startingDate,
+          eventLocation: ticket.ticketGroup.event.location?.address ?? '',
           createdAt: ticket.createdAt,
           dni: ticket.dni,
           fullName: ticket.fullName,
@@ -556,6 +557,7 @@ export const ticketGroupRouter = router({
             {
               eventName: group.event.name,
               startingDate: ticket.ticketType.startingDate,
+              eventStartingDate: group.event.startingDate,
               eventLocation: group.event.location?.address ?? '',
               createdAt: ticket.createdAt,
               dni: ticket.dni,
