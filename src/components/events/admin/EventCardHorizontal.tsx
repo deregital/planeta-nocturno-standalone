@@ -141,8 +141,8 @@ export default function EventCardHorizontal({
               ? format(event.startingDate, 'dd/MM/yyyy HH:mm')
               : null}
             <span className='hidden sm:inline'>
-              {event.startingDate ? ' - ' : ''}
-              {event.location.address}
+              {event.startingDate && event.location?.address ? ' - ' : ''}
+              {event.location?.address}
             </span>
           </p>
         </div>

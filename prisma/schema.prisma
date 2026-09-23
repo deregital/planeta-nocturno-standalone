@@ -142,8 +142,8 @@ model Event {
   isDeleted Boolean @default(false)
   isActive  Boolean @default(false)
 
-  locationId String    @db.Uuid
-  location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id])
+  locationId String?   @db.Uuid
+  location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id], onDelete: SetNull)
 
   categoryId String?        @db.Uuid
   category   EventCategory? @relation("EVENT_X_CATEGORY", fields: [categoryId], references: [id], onDelete: SetNull)

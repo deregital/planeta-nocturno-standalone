@@ -296,7 +296,7 @@ export function EventGeneralInformation({
                     className='size-3.5 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed'
                   />
                   <span className='whitespace-nowrap text-xs text-accent-dark'>
-                    Mostrar en ticketera
+                    Mostrar título en ticketera
                   </span>
                 </label>
               }
@@ -473,38 +473,45 @@ export function EventGeneralInformation({
             id='locationId'
             divClassName='flex-1'
             className='w-full'
-            required
-            values={
-              locations
-                ? locations
-                    .map((location) => ({
-                      label: `${location.name} (${location.address})`,
-                      value: location.id,
-                    }))
-                    .concat([
-                      {
-                        label: '+ Crear locación',
-                        value: 'CREATE_NEW',
-                      },
-                    ])
-                : []
-            }
+            values={[
+              {
+                label: 'Sin locación',
+                value: 'NONE',
+              },
+              ...(locations
+                ? locations.map((location) => ({
+                    label: `${location.name} (${location.address})`,
+                    value: location.id,
+                  }))
+                : []),
+              {
+                label: '+ Crear locación',
+                value: 'CREATE_NEW',
+              },
+            ]}
             onValueChange={(value) => {
               if (value === 'CREATE_NEW') {
                 setOpenLocationModal(true);
                 return;
               }
 
-              if (value === '') return;
+              if (value === 'NONE' || value === '') {
+                handleChange('locationId', null);
+                return;
+              }
+
               handleChange('locationId', value);
             }}
             error={error.locationId}
-            defaultValue={event.locationId}
-            value={event.locationId}
+            value={event.locationId ?? 'NONE'}
             readOnly={action === 'PREVIEW'}
             disabled={action === 'PREVIEW'}
           />
-          <input type='hidden' name='locationId' value={event.locationId} />
+          <input
+            type='hidden'
+            name='locationId'
+            value={event.locationId ?? ''}
+          />
         </section>
         <section>
           <h3 className='text-accent-dark text-lg font-semibold'>
@@ -587,6 +594,7 @@ export function EventGeneralInformation({
             <span className='font-bold'>escanear tickets</span>.
           </p>
         </section>
+        <h3 className='text-accent-dark text-lg font-semibold'>Opcionales</h3>
         <Accordion type='multiple' className='w-full'>
           <AccordionItem value='buyer-extra-data' className='border-none'>
             <AccordionTrigger

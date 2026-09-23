@@ -88,17 +88,21 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   return next;
 }
 
+const initialStartingDate = new Date();
+const initialEndingDate = new Date(initialStartingDate);
+initialEndingDate.setHours(initialEndingDate.getHours() + 4);
+
 const initialState: EventState = {
   event: {
     name: '',
     description: '',
     coverImageUrl: '',
     videoUrl: null,
-    startingDate: null,
-    endingDate: null,
+    startingDate: initialStartingDate,
+    endingDate: initialEndingDate,
     categoryId: null,
     isActive: false,
-    locationId: '',
+    locationId: null,
     minAge: null,
     authorizedUsers: [],
     inviteCondition: null,

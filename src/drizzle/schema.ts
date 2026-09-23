@@ -261,7 +261,7 @@ export const event = pgTable(
     minAge: integer(),
     isDeleted: boolean().default(false).notNull(),
     isActive: boolean().default(false).notNull(),
-    locationId: uuid().notNull(),
+    locationId: uuid(),
     categoryId: uuid(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -283,7 +283,7 @@ export const event = pgTable(
       name: 'event_locationId_fkey',
     })
       .onUpdate('cascade')
-      .onDelete('restrict'),
+      .onDelete('set null'),
     foreignKey({
       columns: [table.categoryId],
       foreignColumns: [eventCategory.id],

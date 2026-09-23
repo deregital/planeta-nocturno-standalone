@@ -46,9 +46,15 @@ export const eventSchema = z.object({
     .nullable(),
   isActive: z.boolean().default(false),
 
-  locationId: z.uuid({
-    error: 'La ubicación es requerida',
-  }),
+  locationId: z
+    .union([
+      z.null(),
+      z.literal(''),
+      z.uuid({
+        error: 'La ubicación no es válida',
+      }),
+    ])
+    .transform((value) => (value === '' ? null : value)),
   categoryId: z
     .union([
       z.null(),

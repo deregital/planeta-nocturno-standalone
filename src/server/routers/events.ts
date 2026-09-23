@@ -863,7 +863,7 @@ export const eventsRouter = router({
                       eventStartingDate:
                         organizerEmittedTicket.event.startingDate,
                       eventLocation:
-                        organizerEmittedTicket.event.location.address,
+                        organizerEmittedTicket.event.location?.address ?? '-',
                       fullName: organizerEmittedTicket.fullName,
                       dni: organizerEmittedTicket.dni,
                       createdAt: organizerEmittedTicket.createdAt,
@@ -1306,12 +1306,14 @@ export const eventsRouter = router({
 
                 // Enviar emails con PDFs (solo si sendOrganizerTicketEmail)
                 if (sendOrganizerTicketEmail) {
-                  const eventLocation = await tx.query.location.findFirst({
-                    where: eq(locationSchema.id, eventUpdated.locationId),
-                    columns: {
-                      address: true,
-                    },
-                  });
+                  const eventLocation = eventUpdated.locationId
+                    ? await tx.query.location.findFirst({
+                        where: eq(locationSchema.id, eventUpdated.locationId),
+                        columns: {
+                          address: true,
+                        },
+                      })
+                    : null;
                   for (const org of addedOrganizers) {
                     const emittedTicket = emittedTickets.find(
                       (et) => et.dni === org.dni,
@@ -1438,7 +1440,8 @@ export const eventsRouter = router({
                         eventStartingDate:
                           organizerEmittedTicketFull.event.startingDate,
                         eventLocation:
-                          organizerEmittedTicketFull.event.location.address,
+                          organizerEmittedTicketFull.event.location?.address ??
+                          '-',
                         fullName: organizerEmittedTicketFull.fullName,
                         dni: organizerEmittedTicketFull.dni,
                         createdAt: organizerEmittedTicketFull.createdAt,
@@ -2022,7 +2025,7 @@ export const eventsRouter = router({
       const pdfData: PDFDataOrderName = [
         {
           qr: `${ctx.instance.publicUrl}/admin/event/${event.slug}`,
-          ubicacion: event.location.address,
+          ubicacion: event.location?.address ?? '-',
           nombre: event.name,
           fecha: event.startingDate
             ? formatInTimeZone(
@@ -2220,7 +2223,7 @@ export const eventsRouter = router({
       const pdfData: PDFDataGroupedTicketType = [
         {
           qr: `${ctx.instance.publicUrl}/admin/event/${event.slug}`,
-          ubicacion: event.location.address,
+          ubicacion: event.location?.address ?? '-',
           nombre: event.name,
           fecha: event.startingDate
             ? formatInTimeZone(

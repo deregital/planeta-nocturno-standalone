@@ -396,11 +396,19 @@ export default function TicketTypeModal({
               id='maxAvailable'
               name='maxAvailable'
               className='w-full'
-              label={`Cantidad maxima de tickets (Tickets restantes: ${maxAvailableLeftReal})`}
+              label={
+                maxAvailableLeftReal >= Number.MAX_SAFE_INTEGER
+                  ? 'Cantidad maxima de tickets'
+                  : `Cantidad maxima de tickets (Tickets restantes: ${maxAvailableLeftReal})`
+              }
               type='number'
               required
               error={error.maxAvailable}
-              max={maxAvailableLeftReal}
+              max={
+                maxAvailableLeftReal >= Number.MAX_SAFE_INTEGER
+                  ? undefined
+                  : maxAvailableLeftReal
+              }
               value={editingTicketType.maxAvailable}
               onChange={(e) =>
                 handleInputChange('maxAvailable', Number(e.target.value))

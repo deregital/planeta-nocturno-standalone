@@ -17,15 +17,17 @@ export function TraditionalTicketTypeAction({
   next?: () => void;
 }) {
   const event = useCreateEventStore((state) => state.event);
-  const organizers = useCreateEventStore((state) => state.organizers);
   const ticketTypes = useCreateEventStore((state) => state.ticketTypes);
   const reorderTicketTypes = useCreateEventStore(
     (state) => state.reorderTicketTypes,
   );
 
-  const { data: location } = trpc.location.getById.useQuery(event.locationId, {
-    enabled: !!event.locationId,
-  });
+  const { data: location } = trpc.location.getById.useQuery(
+    event.locationId ?? '',
+    {
+      enabled: !!event.locationId,
+    },
+  );
   const { data: hasMercadoPagoCredentials } =
     trpc.mercadoPago.hasCredentials.useQuery();
 
@@ -39,12 +41,13 @@ export function TraditionalTicketTypeAction({
   }
 
   const maxAvailableLeft = useMemo(() => {
+    if (!event.locationId) return Number.MAX_SAFE_INTEGER;
     if (!location) return 0;
     return (
       location.capacity -
       ticketTypes.reduce((acc, t) => acc + t.maxAvailable, 0)
     );
-  }, [location, ticketTypes, organizers.length]);
+  }, [event.locationId, location, ticketTypes]);
 
   return (
     <div className='w-full text-accent'>

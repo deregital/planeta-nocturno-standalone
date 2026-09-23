@@ -63,9 +63,9 @@ function HeaderTickets({
             <div className='min-w-0 text-sm md:text-xs lg:text-sm'>
               <p
                 className='font-semibold text-black line-clamp-3 md:line-clamp-2'
-                title={event.location.address}
+                title={event.location?.address ?? undefined}
               >
-                {event.location.address}
+                {event.location?.address ?? '-'}
               </p>
             </div>
           </div>
