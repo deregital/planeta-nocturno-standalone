@@ -106,6 +106,7 @@ async function EventDetails({ slug }: { slug: string }) {
             )}
             <div className='md:order-5 order-7'>
               <TicketRaffle
+                eventId={event.id}
                 tickets={tickets.map((ticket) => ({
                   shortId: ticket.shortId,
                   fullName: ticket.fullName,
