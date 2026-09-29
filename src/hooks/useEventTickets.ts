@@ -82,5 +82,11 @@ export function useEventTickets(
     );
   }, [eventId, isLoading, ticketGroups, ticketTypes]);
 
-  return { ticketsAvailable, quantity, setQuantity, isLoading };
+  return {
+    ticketsAvailable,
+    quantity,
+    setQuantity,
+    isLoading:
+      isLoading || (ticketTypes.length > 0 && ticketsAvailable.length === 0),
+  };
 }

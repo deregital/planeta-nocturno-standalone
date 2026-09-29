@@ -33,8 +33,12 @@ function CardEvent({
       >
         <Image src={imageUrl} alt={title} fill className='object-cover' />
       </div>
-      <div className='flex min-h-0 flex-1 flex-col justify-between gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-5'>
-        <h3 className='line-clamp-3 font-light leading-snug text-accent-dark'>
+      <div
+        className={`flex min-h-0 flex-1 flex-col gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-5 ${showDate ? 'justify-between' : 'justify-center'}`}
+      >
+        <h3
+          className={`line-clamp-3 font-light leading-snug text-accent-dark ${showDate ? '' : 'text-center text-lg sm:text-xl'}`}
+        >
           {title}
         </h3>
         {showDate && (

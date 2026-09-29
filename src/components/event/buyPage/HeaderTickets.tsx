@@ -33,10 +33,8 @@ function HeaderTickets({
         <div className='col-span-1 border-b border-stroke px-4 py-2 md:border-b-0 md:px-4 md:py-3 lg:px-6 lg:py-4'>
           <div className='flex flex-row items-start gap-3 sm:gap-4'>
             <div className='min-w-0 flex-1'>
-              <h1 className='text-balance text-xl font-normal text-black md:text-2xl lg:text-2xl'>
-                <span className='line-clamp-2 md:line-clamp-1'>
-                  {event.name}
-                </span>
+              <h1 className='text-balance wrap-break-word text-xl font-normal text-black md:text-2xl lg:text-2xl'>
+                {event.name}
               </h1>
               {formattedDate && (
                 <p className='mt-2 max-w-full text-pretty text-sm capitalize text-black md:text-accent lg:text-base'>
