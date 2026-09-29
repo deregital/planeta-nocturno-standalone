@@ -275,6 +275,7 @@ export const event = pgTable(
     hasSimpleInvitation: boolean().default(false).notNull(),
     descriptionTitleVisible: boolean().default(true).notNull(),
     videoUrl: text(),
+    sortOrder: integer(),
   },
   (table) => [
     foreignKey({

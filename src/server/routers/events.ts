@@ -88,6 +88,22 @@ import {
   nextAvailableSlugInFamily,
 } from '@/server/utils/utils';
 
+function ticketeraVisibleEventsWhere() {
+  return and(
+    eq(eventSchema.isActive, true),
+    eq(eventSchema.isDeleted, false),
+    or(
+      isNull(eventSchema.endingDate),
+      gt(eventSchema.endingDate, new Date().toISOString()),
+    ),
+  );
+}
+
+const ticketeraEventsOrderBy = [
+  asc(eventSchema.sortOrder),
+  asc(eventSchema.startingDate),
+];
+
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
     const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
@@ -316,14 +332,7 @@ export const eventsRouter = router({
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
-      where: and(
-        eq(eventSchema.isActive, true),
-        eq(eventSchema.isDeleted, false),
-        or(
-          isNull(eventSchema.endingDate),
-          gt(eventSchema.endingDate, new Date().toISOString()),
-        ),
-      ),
+      where: ticketeraVisibleEventsWhere(),
       with: {
         ticketTypes: true,
         location: {
@@ -341,9 +350,38 @@ export const eventsRouter = router({
           },
         },
       },
-      orderBy: asc(eventSchema.startingDate),
+      orderBy: ticketeraEventsOrderBy,
     });
   }),
+  getActiveForOrdering: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.query.event.findMany({
+      where: ticketeraVisibleEventsWhere(),
+      columns: {
+        id: true,
+        name: true,
+        startingDate: true,
+        coverImageUrl: true,
+      },
+      with: {
+        location: {
+          columns: { name: true, address: true },
+        },
+      },
+      orderBy: ticketeraEventsOrderBy,
+    });
+  }),
+  reorderActive: adminProcedure
+    .input(z.array(z.uuid()).min(1))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        for (const [index, eventId] of input.entries()) {
+          await tx
+            .update(eventSchema)
+            .set({ sortOrder: index + 1 })
+            .where(eq(eventSchema.id, eventId));
+        }
+      });
+    }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const data = await ctx.db.query.event.findFirst({
       where: and(eq(eventSchema.id, input), eq(eventSchema.isDeleted, false)),
@@ -1956,6 +1994,7 @@ export const eventsRouter = router({
               slug: eventSlug,
               name: `${event.name} (copia)`,
               isActive: false,
+              sortOrder: null,
             })
             .returning();
 

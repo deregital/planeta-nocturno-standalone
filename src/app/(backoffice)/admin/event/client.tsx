@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 
+import ActiveEventsOrder from '@/components/events/admin/ActiveEventsOrder';
 import EventFolderModal from '@/components/events/admin/EventFolderModal';
 import EventList from '@/components/events/admin/EventList';
 import EventSearch from '@/components/events/admin/EventSearch';
@@ -77,6 +78,26 @@ export default function Client({
         <p className='text-lg font-medium text-accent'>
           No se encontraron eventos próximos
         </p>
+      )}
+      {session.data?.user.role === 'ADMIN' && !isFiltering && (
+        <>
+          <Separator className='border rounded-full border-accent-light' />
+          <Accordion type='single' collapsible className='w-full'>
+            <AccordionItem value='item-1' className='border-none'>
+              <AccordionTrigger className='cursor-pointer hover:no-underline py-4 px-0 group gap-2 transition-all duration-200 ease-in-out hover:bg-gray-50/50 rounded-lg flex items-center justify-between'>
+                <p className='text-2xl font-bold text-accent group-hover:text-accent/80 transition-colors duration-200'>
+                  Orden en la ticketera
+                </p>
+                <ChevronDown className='h-6 w-6 text-accent transition-transform duration-200 group-data-[state=open]:rotate-180' />
+              </AccordionTrigger>
+              <AccordionContent className='overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'>
+                <div className='pt-4 pb-2'>
+                  <ActiveEventsOrder />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </>
       )}
       {(!isFiltering || hasPast) && (
         <>
