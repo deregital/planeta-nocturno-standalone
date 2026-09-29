@@ -109,6 +109,16 @@ export async function sendMailService(
   return result.data;
 }
 
+export function generateTicketEmailBody(
+  instance: Pick<ResolvedInstance, 'name' | 'contactEmail'>,
+  eventName: string,
+) {
+  const contact = instance.contactEmail
+    ? ` Para dudas y consultas, contactarse a ${instance.contactEmail}.`
+    : '';
+  return `¡Gracias por elegir ${instance.name}! Te enviamos el/los ticket/s de ${eventName}.${contact}`;
+}
+
 export function generateWelcomeEmail(
   instance: MailInstance,
   name: string,
