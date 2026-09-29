@@ -759,6 +759,7 @@ export const eventsRouter = router({
               await tx.insert(eventQuestion).values(
                 questions.map((question, index) => ({
                   text: question.text,
+                  isRequired: question.isRequired,
                   sortOrder: index,
                   eventId: eventCreated.id,
                 })),
@@ -1881,6 +1882,7 @@ export const eventsRouter = router({
                   .update(eventQuestion)
                   .set({
                     text: question.text,
+                    isRequired: question.isRequired,
                     sortOrder: index,
                     isDeleted: false,
                   })
@@ -1888,6 +1890,7 @@ export const eventsRouter = router({
               } else {
                 await tx.insert(eventQuestion).values({
                   text: question.text,
+                  isRequired: question.isRequired,
                   sortOrder: index,
                   eventId: eventUpdated.id,
                 });
@@ -1929,6 +1932,13 @@ export const eventsRouter = router({
         },
         with: {
           ticketTypes: true,
+          eventQuestions: {
+            where: eq(eventQuestion.isDeleted, false),
+            orderBy: [
+              asc(eventQuestion.sortOrder),
+              asc(eventQuestion.createdAt),
+            ],
+          },
         },
       });
 
@@ -1938,10 +1948,11 @@ export const eventsRouter = router({
 
       const newEvent = await ctx.db.transaction(async (tx) => {
         try {
+          const { eventQuestions, ...eventData } = event;
           const [newEvent] = await tx
             .insert(eventSchema)
             .values({
-              ...event,
+              ...eventData,
               slug: eventSlug,
               name: `${event.name} (copia)`,
               isActive: false,
@@ -1964,6 +1975,17 @@ export const eventsRouter = router({
           );
 
           await tx.insert(ticketType).values(ticketTypesDuplicated);
+
+          if (eventQuestions.length > 0) {
+            await tx.insert(eventQuestion).values(
+              eventQuestions.map((question, index) => ({
+                text: question.text,
+                isRequired: question.isRequired,
+                sortOrder: index,
+                eventId: newEvent.id,
+              })),
+            );
+          }
         } catch (error) {
           console.error(error);
           throw new TRPCError({
