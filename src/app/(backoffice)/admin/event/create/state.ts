@@ -67,7 +67,10 @@ type EventActions = {
   setQuestions: (questions: EventQuestionSchema[]) => void;
   addQuestion: () => void;
   removeQuestion: (index: number) => void;
-  updateQuestion: (index: number, text: string) => void;
+  updateQuestion: (
+    index: number,
+    data: Partial<Omit<EventQuestionSchema, 'id'>>,
+  ) => void;
 };
 
 export type CreateEventStore = EventState & EventActions;
@@ -455,7 +458,7 @@ export const createEventStore = (initState: EventState = initialState) => {
     },
     addQuestion: () => {
       set((state) => ({
-        questions: [...state.questions, { text: '' }],
+        questions: [...state.questions, { text: '', isRequired: false }],
       }));
     },
     removeQuestion: (index) => {
@@ -463,10 +466,10 @@ export const createEventStore = (initState: EventState = initialState) => {
         questions: state.questions.filter((_, i) => i !== index),
       }));
     },
-    updateQuestion: (index, text) => {
+    updateQuestion: (index, data) => {
       set((state) => ({
         questions: state.questions.map((question, i) =>
-          i === index ? { ...question, text } : question,
+          i === index ? { ...question, ...data } : question,
         ),
       }));
     },

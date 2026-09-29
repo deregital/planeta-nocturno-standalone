@@ -182,6 +182,7 @@ export const handlePurchase = async (
   }
 
   for (const question of event.eventQuestions) {
+    if (!question.isRequired) continue;
     const answer = surveyAnswers.find(
       (item) => item.questionId === question.id,
     );

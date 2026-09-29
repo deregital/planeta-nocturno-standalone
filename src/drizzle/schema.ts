@@ -441,6 +441,7 @@ export const eventQuestion = pgTable(
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    isRequired: boolean().default(true).notNull(),
   },
   (table) => [
     foreignKey({

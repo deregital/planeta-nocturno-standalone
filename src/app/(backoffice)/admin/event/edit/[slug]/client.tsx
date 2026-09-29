@@ -99,6 +99,7 @@ export default function Client({
           .map((question) => ({
             id: question.id,
             text: question.text,
+            isRequired: question.isRequired,
           })),
       );
     }
