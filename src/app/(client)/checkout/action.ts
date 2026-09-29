@@ -13,7 +13,10 @@ import {
   createManyTicketSchema,
   invitedBySchema,
 } from '@/server/schemas/emitted-tickets';
-import { sendMailService } from '@/server/services/mail';
+import {
+  generateTicketEmailBody,
+  sendMailService,
+} from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { trpc } from '@/server/trpc/server';
@@ -282,7 +285,7 @@ export const handlePurchase = async (
             eventName: group.event.name,
             receiver: entradas[0].mail,
             subject: `¡Llegaron tus tickets para ${group.event.name}!`,
-            body: `Te esperamos.`,
+            body: generateTicketEmailBody(instance, group.event.name),
             attatchments: pdfs.map((pdf) => pdf.pdf.blob),
           });
         } else {
@@ -291,7 +294,7 @@ export const handlePurchase = async (
               eventName: group.event.name,
               receiver: pdf.ticket.mail,
               subject: `¡Llegaron tus tickets para ${group.event.name}!`,
-              body: `Te esperamos.`,
+              body: generateTicketEmailBody(instance, group.event.name),
               attatchments: [pdf.pdf.blob],
             });
           }
