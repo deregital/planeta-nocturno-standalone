@@ -181,9 +181,7 @@ function TicketPurchase({
           {isLoading
             ? 'CARGANDO'
             : ticketsTypeAvailable.length
-              ? hasPaidTickets
-                ? 'COMPRAR'
-                : 'ADQUIRIR'
+              ? 'CONTINUAR'
               : 'AGOTADO'}
         </Button>
       </div>
