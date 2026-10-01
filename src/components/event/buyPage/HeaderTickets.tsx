@@ -3,6 +3,7 @@ import { es } from 'date-fns/locale';
 import { MapPin } from 'lucide-react';
 
 import { ExpandableImage } from '@/components/common/ExpandableImage';
+import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
 function HeaderTickets({
@@ -25,12 +26,23 @@ function HeaderTickets({
     : '/Foto.png';
 
   const coverAlt = `Portada de ${event.name}`;
+  const address = event.location?.address?.trim();
 
   return (
     <div className='relative w-full md:pr-36 lg:pr-44'>
       {/* Lado izquierdo - Nombre del evento y fecha */}
-      <div className='grid min-w-0 w-full grid-cols-1 md:grid-cols-[7fr_2fr] md:items-stretch'>
-        <div className='col-span-1 border-b border-stroke px-4 py-2 md:border-b-0 md:px-4 md:py-3 lg:px-6 lg:py-4'>
+      <div
+        className={cn(
+          'grid min-w-0 w-full grid-cols-1 md:items-stretch',
+          address && 'md:grid-cols-[7fr_2fr]',
+        )}
+      >
+        <div
+          className={cn(
+            'col-span-1 border-stroke px-4 py-2 md:px-4 md:py-3 lg:px-6 lg:py-4',
+            address && 'border-b md:border-b-0',
+          )}
+        >
           <div className='flex flex-row items-start gap-3 sm:gap-4'>
             <div className='min-w-0 flex-1'>
               <h1 className='text-balance wrap-break-word text-xl font-normal text-black md:text-2xl lg:text-2xl'>
@@ -50,24 +62,26 @@ function HeaderTickets({
             />
           </div>
         </div>
-        <div className='col-span-1 flex items-center justify-start overflow-hidden border-stroke px-4 py-2 md:border-l md:px-3 md:py-3 lg:px-4 lg:py-4 md:min-w-0'>
-          <div className='flex min-w-0 items-start gap-1.5 md:gap-1.5'>
-            <div className='flex shrink-0 items-center justify-center'>
-              <MapPin
-                className='h-5 w-5 shrink-0 text-black sm:h-6 sm:w-6 md:h-4 md:w-4 lg:h-5 lg:w-5'
-                strokeWidth={1.5}
-              />
-            </div>
-            <div className='min-w-0 text-sm md:text-xs lg:text-sm'>
-              <p
-                className='font-semibold text-black line-clamp-3 md:line-clamp-2'
-                title={event.location?.address ?? undefined}
-              >
-                {event.location?.address ?? '-'}
-              </p>
+        {address && (
+          <div className='col-span-1 flex items-center justify-start overflow-hidden border-stroke px-4 py-2 md:border-l md:px-3 md:py-3 lg:px-4 lg:py-4 md:min-w-0'>
+            <div className='flex min-w-0 items-start gap-1.5 md:gap-1.5'>
+              <div className='flex shrink-0 items-center justify-center'>
+                <MapPin
+                  className='h-5 w-5 shrink-0 text-black sm:h-6 sm:w-6 md:h-4 md:w-4 lg:h-5 lg:w-5'
+                  strokeWidth={1.5}
+                />
+              </div>
+              <div className='min-w-0 text-sm md:text-xs lg:text-sm'>
+                <p
+                  className='font-semibold text-black line-clamp-3 md:line-clamp-2'
+                  title={address}
+                >
+                  {address}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Portada en desktop */}
