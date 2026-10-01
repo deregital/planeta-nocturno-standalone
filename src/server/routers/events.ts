@@ -88,6 +88,22 @@ import {
   nextAvailableSlugInFamily,
 } from '@/server/utils/utils';
 
+function ticketeraVisibleEventsWhere() {
+  return and(
+    eq(eventSchema.isActive, true),
+    eq(eventSchema.isDeleted, false),
+    or(
+      isNull(eventSchema.endingDate),
+      gt(eventSchema.endingDate, new Date().toISOString()),
+    ),
+  );
+}
+
+const ticketeraEventsOrderBy = [
+  asc(eventSchema.sortOrder),
+  asc(eventSchema.startingDate),
+];
+
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
     const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
@@ -316,14 +332,7 @@ export const eventsRouter = router({
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
-      where: and(
-        eq(eventSchema.isActive, true),
-        eq(eventSchema.isDeleted, false),
-        or(
-          isNull(eventSchema.endingDate),
-          gt(eventSchema.endingDate, new Date().toISOString()),
-        ),
-      ),
+      where: ticketeraVisibleEventsWhere(),
       with: {
         ticketTypes: true,
         location: {
@@ -341,9 +350,38 @@ export const eventsRouter = router({
           },
         },
       },
-      orderBy: asc(eventSchema.startingDate),
+      orderBy: ticketeraEventsOrderBy,
     });
   }),
+  getActiveForOrdering: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.query.event.findMany({
+      where: ticketeraVisibleEventsWhere(),
+      columns: {
+        id: true,
+        name: true,
+        startingDate: true,
+        coverImageUrl: true,
+      },
+      with: {
+        location: {
+          columns: { name: true, address: true },
+        },
+      },
+      orderBy: ticketeraEventsOrderBy,
+    });
+  }),
+  reorderActive: adminProcedure
+    .input(z.array(z.uuid()).min(1))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        for (const [index, eventId] of input.entries()) {
+          await tx
+            .update(eventSchema)
+            .set({ sortOrder: index + 1 })
+            .where(eq(eventSchema.id, eventId));
+        }
+      });
+    }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const data = await ctx.db.query.event.findFirst({
       where: and(eq(eventSchema.id, input), eq(eventSchema.isDeleted, false)),
@@ -759,6 +797,7 @@ export const eventsRouter = router({
               await tx.insert(eventQuestion).values(
                 questions.map((question, index) => ({
                   text: question.text,
+                  isRequired: question.isRequired,
                   sortOrder: index,
                   eventId: eventCreated.id,
                 })),
@@ -1881,6 +1920,7 @@ export const eventsRouter = router({
                   .update(eventQuestion)
                   .set({
                     text: question.text,
+                    isRequired: question.isRequired,
                     sortOrder: index,
                     isDeleted: false,
                   })
@@ -1888,6 +1928,7 @@ export const eventsRouter = router({
               } else {
                 await tx.insert(eventQuestion).values({
                   text: question.text,
+                  isRequired: question.isRequired,
                   sortOrder: index,
                   eventId: eventUpdated.id,
                 });
@@ -1929,6 +1970,13 @@ export const eventsRouter = router({
         },
         with: {
           ticketTypes: true,
+          eventQuestions: {
+            where: eq(eventQuestion.isDeleted, false),
+            orderBy: [
+              asc(eventQuestion.sortOrder),
+              asc(eventQuestion.createdAt),
+            ],
+          },
         },
       });
 
@@ -1938,13 +1986,15 @@ export const eventsRouter = router({
 
       const newEvent = await ctx.db.transaction(async (tx) => {
         try {
+          const { eventQuestions, ...eventData } = event;
           const [newEvent] = await tx
             .insert(eventSchema)
             .values({
-              ...event,
+              ...eventData,
               slug: eventSlug,
               name: `${event.name} (copia)`,
               isActive: false,
+              sortOrder: null,
             })
             .returning();
 
@@ -1964,6 +2014,17 @@ export const eventsRouter = router({
           );
 
           await tx.insert(ticketType).values(ticketTypesDuplicated);
+
+          if (eventQuestions.length > 0) {
+            await tx.insert(eventQuestion).values(
+              eventQuestions.map((question, index) => ({
+                text: question.text,
+                isRequired: question.isRequired,
+                sortOrder: index,
+                eventId: newEvent.id,
+              })),
+            );
+          }
         } catch (error) {
           console.error(error);
           throw new TRPCError({

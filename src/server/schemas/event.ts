@@ -6,6 +6,7 @@ import { isSupportedEventVideoUrl } from '@/lib/event-video-url';
 export const eventQuestionSchema = z.object({
   id: z.uuid().optional(),
   text: z.string().min(1, { error: 'La pregunta es requerida' }),
+  isRequired: z.boolean().default(false),
 });
 
 export const eventQuestionsSchema = z.array(eventQuestionSchema).default([]);

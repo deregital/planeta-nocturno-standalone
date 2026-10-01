@@ -495,7 +495,9 @@ export function EventGeneralInformation({
                 return;
               }
 
-              if (value === 'NONE' || value === '') {
+              if (value === '') return;
+
+              if (value === 'NONE') {
                 handleChange('locationId', null);
                 return;
               }
@@ -764,7 +766,9 @@ export function EventGeneralInformation({
                       return;
                     }
 
-                    if (value === 'NONE' || value === '') {
+                    if (value === '') return;
+
+                    if (value === 'NONE') {
                       handleChange('categoryId', null);
                       return;
                     }

@@ -5,6 +5,8 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 type EventQuestionsProps = {
   next?: () => void;
@@ -25,15 +27,16 @@ export function EventQuestions({
   const updateQuestion = useCreateEventStore((state) => state.updateQuestion);
 
   return (
-    <div className='flex w-full min-w-0 max-w-full flex-col gap-4'>
+    <div className='flex w-full min-w-0 max-w-full flex-col gap-2'>
       {!embedded && (
         <div className='flex flex-col gap-2'>
           <h3 className='text-2xl text-accent font-bold'>
             Preguntas del formulario
           </h3>
           <p className='text-sm text-muted-foreground'>
-            Agregá preguntas de texto libre que los compradores deberán
-            responder durante el checkout. Este paso es opcional.
+            Agregá preguntas de texto libre que los compradores responderán
+            durante el checkout. Podés marcar cada pregunta como obligatoria u
+            opcional. Este paso es opcional.
           </p>
         </div>
       )}
@@ -52,10 +55,25 @@ export function EventQuestions({
                   label={`Pregunta ${index + 1}`}
                   value={question.text}
                   onChange={(event) =>
-                    updateQuestion(index, event.target.value)
+                    updateQuestion(index, { text: event.target.value })
                   }
                   placeholder='Ej. ¿Cómo te enteraste del evento?'
                 />
+              </div>
+              <div className='flex h-9 items-center gap-2'>
+                <Switch
+                  id={`question-required-${index}`}
+                  checked={question.isRequired}
+                  onCheckedChange={(checked) =>
+                    updateQuestion(index, { isRequired: checked })
+                  }
+                />
+                <Label
+                  htmlFor={`question-required-${index}`}
+                  className='cursor-pointer text-sm text-accent'
+                >
+                  ¿Obligatoria?
+                </Label>
               </div>
               <Button
                 type='button'
@@ -73,11 +91,11 @@ export function EventQuestions({
 
       <Button
         type='button'
-        variant='outline'
+        variant='ghost'
         className='self-start'
         onClick={addQuestion}
       >
-        <Plus className='size-4 mr-2' />
+        <Plus className='size-4' />
         Agregar pregunta
       </Button>
 

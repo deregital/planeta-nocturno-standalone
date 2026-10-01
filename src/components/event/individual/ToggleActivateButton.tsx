@@ -14,6 +14,7 @@ export function ToggleActivateButton({
   const [sure, setSure] = useState(false);
   const router = useRouter();
 
+  const utils = trpc.useUtils();
   const { mutateAsync, isPending } = trpc.events.toggleActivate.useMutation();
   const handleToggle = () => {
     if (sure) {
@@ -22,6 +23,7 @@ export function ToggleActivateButton({
         isActive: !event.isActive,
       }).then(() => {
         setSure(false);
+        utils.events.getActiveForOrdering.invalidate();
         router.refresh();
       });
       return;

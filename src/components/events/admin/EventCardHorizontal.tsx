@@ -67,6 +67,7 @@ export default function EventCardHorizontal({
   const exportXlsxByTicketType =
     trpc.events.exportXlsxByTicketType.useMutation();
 
+  const utils = trpc.useUtils();
   const toggleActivate = trpc.events.toggleActivate.useMutation();
 
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
@@ -87,6 +88,7 @@ export default function EventCardHorizontal({
         },
         onSuccess: () => {
           setActivateSure(false);
+          utils.events.getActiveForOrdering.invalidate();
           router.refresh();
         },
       },

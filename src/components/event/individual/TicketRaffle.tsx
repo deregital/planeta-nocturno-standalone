@@ -1,5 +1,7 @@
 'use client';
 
+import confetti from 'canvas-confetti';
+import { formatInTimeZone } from 'date-fns-tz';
 import { Dices } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -20,6 +22,10 @@ export type RaffleTicket = {
   dni: string;
 };
 
+type RaffleWinner = RaffleTicket & {
+  drawnAt: string;
+};
+
 type SpinPhase = 'idle' | 'spinning' | 'revealed';
 
 const DIGIT_HEIGHT = 80;
@@ -29,6 +35,19 @@ function pickRandomTicket(tickets: RaffleTicket[]): RaffleTicket {
   const buffer = new Uint32Array(1);
   crypto.getRandomValues(buffer);
   return tickets[buffer[0]! % tickets.length]!;
+}
+
+function getStorageKey(eventId: string) {
+  return `ticket-raffle-winner:${eventId}`;
+}
+
+function readStoredWinner(eventId: string): RaffleWinner | null {
+  try {
+    const raw = localStorage.getItem(getStorageKey(eventId));
+    return raw ? (JSON.parse(raw) as RaffleWinner) : null;
+  } catch {
+    return null;
+  }
 }
 
 function DigitReel({
@@ -156,16 +175,18 @@ function SlotMachine({
   onSpinComplete: () => void;
 }) {
   const [stoppedCount, setStoppedCount] = useState(0);
+  const [countedSpinKey, setCountedSpinKey] = useState(spinKey);
   const completedForKey = useRef<number | null>(null);
+
+  if (countedSpinKey !== spinKey) {
+    setCountedSpinKey(spinKey);
+    setStoppedCount(0);
+  }
 
   const digits = useMemo(() => {
     const padded = String(targetNumber ?? 0).padStart(digitCount, '0');
     return padded.split('').map((d) => Number(d));
   }, [targetNumber, digitCount]);
-
-  useEffect(() => {
-    setStoppedCount(0);
-  }, [spinKey]);
 
   useEffect(() => {
     if (
@@ -207,12 +228,21 @@ function SlotMachine({
   );
 }
 
-export function TicketRaffle({ tickets }: { tickets: RaffleTicket[] }) {
+export function TicketRaffle({
+  eventId,
+  tickets,
+}: {
+  eventId: string;
+  tickets: RaffleTicket[];
+}) {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<SpinPhase>('idle');
-  const [winner, setWinner] = useState<RaffleTicket | null>(null);
+  const [winner, setWinner] = useState<RaffleWinner | null>(null);
   const [displayNumber, setDisplayNumber] = useState<number | null>(null);
+  const [justDrawn, setJustDrawn] = useState(false);
   const [spinKey, setSpinKey] = useState(0);
+
+  const isDrawing = phase === 'spinning';
 
   const digitCount = useMemo(() => {
     if (tickets.length === 0) return 2;
@@ -220,22 +250,27 @@ export function TicketRaffle({ tickets }: { tickets: RaffleTicket[] }) {
     return Math.max(String(maxId).length, 2);
   }, [tickets]);
 
-  const reset = () => {
-    setPhase('idle');
-    setWinner(null);
-    setDisplayNumber(null);
-  };
-
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
-    if (!next) reset();
+    if (!next) return;
+    const stored = readStoredWinner(eventId);
+    setPhase(stored ? 'revealed' : 'idle');
+    setWinner(stored);
+    setDisplayNumber(stored?.shortId ?? null);
+    setJustDrawn(false);
+    setSpinKey((k) => k + 1);
   };
 
   const spin = () => {
-    if (tickets.length === 0 || phase === 'spinning') return;
-    const picked = pickRandomTicket(tickets);
+    if (tickets.length === 0 || isDrawing) return;
+    const picked: RaffleWinner = {
+      ...pickRandomTicket(tickets),
+      drawnAt: new Date().toISOString(),
+    };
+    localStorage.setItem(getStorageKey(eventId), JSON.stringify(picked));
     setWinner(picked);
     setDisplayNumber(picked.shortId);
+    setJustDrawn(true);
     setSpinKey((k) => k + 1);
     setPhase('spinning');
   };
@@ -266,7 +301,10 @@ export function TicketRaffle({ tickets }: { tickets: RaffleTicket[] }) {
             digitCount={digitCount}
             spinning={phase === 'spinning'}
             spinKey={spinKey}
-            onSpinComplete={() => setPhase('revealed')}
+            onSpinComplete={() => {
+              setPhase('revealed');
+              confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+            }}
           />
 
           <div
@@ -280,7 +318,7 @@ export function TicketRaffle({ tickets }: { tickets: RaffleTicket[] }) {
             {phase === 'revealed' && winner ? (
               <div className='animate-in fade-in zoom-in-95 duration-500'>
                 <p className='text-xs font-semibold uppercase tracking-[0.2em] text-accent'>
-                  Ganador
+                  {justDrawn ? 'Ganador' : 'Último ganador'}
                 </p>
                 <p className='mt-1 text-2xl font-bold text-accent-dark'>
                   #{winner.shortId}
@@ -289,11 +327,19 @@ export function TicketRaffle({ tickets }: { tickets: RaffleTicket[] }) {
                   {winner.fullName}
                 </p>
                 <p className='text-sm text-gray-500'>DNI {winner.dni}</p>
+                <p className='mt-1 text-xs text-gray-400'>
+                  Sorteado el{' '}
+                  {formatInTimeZone(
+                    new Date(winner.drawnAt),
+                    'America/Argentina/Buenos_Aires',
+                    'dd/MM/yyyy HH:mm',
+                  )}
+                </p>
               </div>
             ) : (
               <div className='flex h-full min-h-[64px] items-center justify-center'>
                 <p className='text-sm text-gray-500'>
-                  {phase === 'spinning'
+                  {isDrawing
                     ? 'Girando los rodillos...'
                     : 'Presioná el botón para sortear'}
                 </p>
@@ -302,29 +348,29 @@ export function TicketRaffle({ tickets }: { tickets: RaffleTicket[] }) {
           </div>
 
           <div className='flex justify-center gap-3'>
-            {phase === 'revealed' ? (
+            {phase === 'revealed' && (
               <Button
                 type='button'
-                variant='accent'
+                variant='ghost'
                 className='min-w-[160px]'
                 onClick={() => handleOpenChange(false)}
               >
-                Aceptar
-              </Button>
-            ) : (
-              <Button
-                type='button'
-                variant='accent'
-                className={cn(
-                  'min-w-[160px]',
-                  phase === 'spinning' && 'animate-pulse',
-                )}
-                onClick={spin}
-                disabled={tickets.length === 0 || phase === 'spinning'}
-              >
-                {phase === 'spinning' ? 'Sorteando...' : '¡Sortear!'}
+                Cerrar
               </Button>
             )}
+            <Button
+              type='button'
+              variant='accent'
+              className={cn('min-w-[160px]', isDrawing && 'animate-pulse')}
+              onClick={spin}
+              disabled={tickets.length === 0 || isDrawing}
+            >
+              {isDrawing
+                ? 'Sorteando...'
+                : phase === 'revealed'
+                  ? 'Volver a sortear'
+                  : '¡Sortear!'}
+            </Button>
           </div>
         </div>
       </DialogContent>
