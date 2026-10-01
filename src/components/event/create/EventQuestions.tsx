@@ -72,7 +72,7 @@ export function EventQuestions({
                   htmlFor={`question-required-${index}`}
                   className='cursor-pointer text-sm text-accent'
                 >
-                  ¿Es requerida?
+                  ¿Obligatoria?
                 </Label>
               </div>
               <Button
