@@ -103,7 +103,9 @@ function TicketPurchase({
                   )}
                   {!type.disabled && type.leftAvailable && (
                     <span className='text-red-500 font-medium text-xs sm:text-sm'>
-                      ¡Quedan {type.leftAvailable} tickets!
+                      {type.leftAvailable === 1
+                        ? '¡Queda 1 ticket!'
+                        : `¡Quedan ${type.leftAvailable} tickets!`}
                     </span>
                   )}
                 </div>
@@ -176,11 +178,11 @@ function TicketPurchase({
             quantity.every((q) => q.amount === 0)
           }
         >
-          {ticketsTypeAvailable.length
-            ? hasPaidTickets
-              ? 'COMPRAR'
-              : 'ADQUIRIR'
-            : 'AGOTADO'}
+          {isLoading
+            ? 'CARGANDO'
+            : ticketsTypeAvailable.length
+              ? 'CONTINUAR'
+              : 'AGOTADO'}
         </Button>
       </div>
     </div>

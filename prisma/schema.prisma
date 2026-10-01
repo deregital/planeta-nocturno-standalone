@@ -163,6 +163,7 @@ model Event {
   ticketSlugVisibleInPdf   Boolean @default(false)
   hasSimpleInvitation      Boolean @default(false)
   descriptionTitleVisible  Boolean @default(true)
+  sortOrder                Int?
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
@@ -182,10 +183,11 @@ model Event {
 model EventQuestion {
   id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   text      String
-  sortOrder Int                 @default(0)
-  isDeleted Boolean             @default(false)
-  eventId   String              @db.Uuid
-  event     Event               @relation("EVENT_X_QUESTION", fields: [eventId], references: [id], onDelete: Cascade)
+  sortOrder  Int                 @default(0)
+  isRequired Boolean             @default(true)
+  isDeleted  Boolean             @default(false)
+  eventId    String              @db.Uuid
+  event      Event               @relation("EVENT_X_QUESTION", fields: [eventId], references: [id], onDelete: Cascade)
   answers   TicketGroupAnswer[] @relation("QUESTION_X_ANSWER")
   createdAt DateTime            @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 

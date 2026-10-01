@@ -565,7 +565,7 @@ export default function CheckoutClient({
                   id={`question_${question.id}`}
                   label={question.text}
                   type='text'
-                  required
+                  required={question.isRequired}
                   defaultValue={
                     state.formData?.[`question_${question.id}`] ?? ''
                   }

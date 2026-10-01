@@ -24,9 +24,15 @@ const columns: StrictColumnDef<AttendedEvent>[] = [
     accessorKey: 'eventStartingDate',
     header: 'Fecha',
     accessorFn: (row) => row.eventStartingDate,
-    cell: (info) => format(new Date(info.getValue() as string), 'dd/MM/yyyy'),
+    cell: ({ row }) =>
+      row.original.eventStartingDate
+        ? format(new Date(row.original.eventStartingDate), 'dd/MM/yyyy')
+        : '',
     meta: {
-      exportValue: (row) => row.original.eventStartingDate || '-',
+      exportValue: (row) =>
+        row.original.eventStartingDate
+          ? format(new Date(row.original.eventStartingDate), 'dd/MM/yyyy')
+          : '',
       exportHeader: 'Fecha',
     },
   },

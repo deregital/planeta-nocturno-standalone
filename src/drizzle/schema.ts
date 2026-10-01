@@ -275,6 +275,7 @@ export const event = pgTable(
     hasSimpleInvitation: boolean().default(false).notNull(),
     descriptionTitleVisible: boolean().default(true).notNull(),
     videoUrl: text(),
+    sortOrder: integer(),
   },
   (table) => [
     foreignKey({
@@ -441,6 +442,7 @@ export const eventQuestion = pgTable(
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    isRequired: boolean().default(true).notNull(),
   },
   (table) => [
     foreignKey({
