@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
+import { logger } from '@/server/observability/logger';
 import { signPayload } from '@/server/security/signed-request';
 
 export async function GET(request: Request) {
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Unable to fetch credentials status', { error });
     return NextResponse.json(
       { success: false, message: 'Unable to fetch redeploy status' },
       { status: 502 },

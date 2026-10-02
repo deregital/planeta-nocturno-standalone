@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,10 @@ export function ToggleActivateButton({
         id: event.id,
         isActive: !event.isActive,
       }).then(() => {
+        posthog.capture('event_activation_changed', {
+          event_id: event.id,
+          is_active: !event.isActive,
+        });
         setSure(false);
         utils.events.getActiveForOrdering.invalidate();
         router.refresh();

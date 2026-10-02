@@ -16,6 +16,7 @@ import {
   TENANT_ID_HEADER,
 } from '@/lib/tenancy/host';
 import { authMiddleware } from '@/server/auth';
+import { logger } from '@/server/observability/logger';
 
 export default authMiddleware(async function middleware(request) {
   const headers = new Headers(request.headers);
@@ -31,7 +32,7 @@ export default authMiddleware(async function middleware(request) {
     const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
     target = resolveMultiTenantHost(getRequestHost(headers), rootDomain);
   } catch (error) {
-    console.error('Invalid multi-tenant configuration', error);
+    logger.error('Invalid multi-tenant configuration', { error });
     return new NextResponse('Configuración de páginas inválida', {
       status: 503,
     });
@@ -109,7 +110,10 @@ export default authMiddleware(async function middleware(request) {
     headers.set(TENANT_ID_HEADER, tenant.slug);
     return NextResponse.next({ request: { headers } });
   } catch (error) {
-    console.error('Tenant lookup failed', { slug: target.slug, error });
+    logger.error('Tenant lookup failed', {
+      instance_key: target.slug,
+      error,
+    });
     return new NextResponse('Servicio temporalmente no disponible', {
       status: 503,
     });
@@ -124,7 +128,9 @@ function isProtectedTenantPath(pathname: string) {
 
 export const config = {
   runtime: 'nodejs',
+  // `relay` es el proxy de PostHog (POSTHOG_PROXY_PATH): lo resuelven los
+  // rewrites de next.config.ts y no debe pasar por el ruteo de tenants.
   matcher: [
-    '/((?!_next/static|_next/image|icon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2)$).*)',
+    '/((?!_next/static|_next/image|relay/|icon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2)$).*)',
   ],
 };

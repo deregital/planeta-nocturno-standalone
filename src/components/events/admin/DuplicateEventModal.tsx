@@ -2,6 +2,7 @@
 
 import { CopyIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -42,6 +43,7 @@ export default function DuplicateEventModal({
 
   const duplicateEvent = trpc.events.duplicate.useMutation({
     onSuccess: () => {
+      posthog.capture('event_duplicated', { source_event_id: eventId });
       toast.success('Evento duplicado correctamente');
       setOpen(false);
       router.refresh();

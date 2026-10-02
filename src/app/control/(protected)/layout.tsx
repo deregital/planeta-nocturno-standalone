@@ -39,6 +39,9 @@ export default async function ProtectedControlLayout({
       <ControlHeader
         homeHref={homeHref}
         userName={session.user.name}
+        userId={session.user.id}
+        userEmail={session.user.email}
+        userRole={session.user.role}
         canReadTenants={canReadTenants}
         canReadAdmins={canReadAdmins}
         canReadRoles={canReadRoles}

@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { event, location } from '@/drizzle/schema';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
+import { logger } from '@/server/observability/logger';
 import { verifySignedRequest } from '@/server/security/signed-request';
 import { getCalendarStatsByEventId } from '@/server/services/calendarEventStats';
 
@@ -94,7 +95,9 @@ export async function POST(request: Request) {
       })),
     });
   } catch (error) {
-    console.error('[api/pluto/calendar-events] Unable to fetch events', error);
+    logger.error('[api/pluto/calendar-events] Unable to fetch events', {
+      error,
+    });
     return NextResponse.json(
       {
         success: false,

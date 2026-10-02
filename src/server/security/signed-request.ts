@@ -2,6 +2,8 @@ import { createHmac, timingSafeEqual } from 'crypto';
 
 import { NextResponse } from 'next/server';
 
+import { logger } from '@/server/observability/logger';
+
 const DEFAULT_SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 function unauthorizedResponse() {
@@ -73,7 +75,7 @@ export async function verifySignedRequest(
   const signingSecret = process.env.CREDENTIALS_SIGNING_SECRET?.trim();
 
   if (!signingSecret) {
-    console.error(`${logPrefix} Missing CREDENTIALS_SIGNING_SECRET`);
+    logger.error(`${logPrefix} Missing CREDENTIALS_SIGNING_SECRET`);
     return {
       ok: false,
       response: NextResponse.json(
@@ -87,20 +89,20 @@ export async function verifySignedRequest(
   const timestampHeader = request.headers.get('x-timestamp')?.trim();
 
   if (!signatureHeader || !timestampHeader) {
-    console.warn(`${logPrefix} Missing signature or timestamp header`);
+    logger.warn(`${logPrefix} Missing signature or timestamp header`);
     return { ok: false, response: unauthorizedResponse() };
   }
 
   const normalizedTimestamp = normalizeTimestamp(timestampHeader);
   if (!normalizedTimestamp) {
-    console.warn(`${logPrefix} Invalid timestamp format`, {
+    logger.warn(`${logPrefix} Invalid timestamp format`, {
       timestampHeader,
     });
     return { ok: false, response: unauthorizedResponse() };
   }
 
   if (Math.abs(Date.now() - normalizedTimestamp) > toleranceMs) {
-    console.warn(`${logPrefix} Timestamp outside tolerance window`, {
+    logger.warn(`${logPrefix} Timestamp outside tolerance window`, {
       timestampHeader,
       normalizedTimestamp,
     });
@@ -111,7 +113,7 @@ export async function verifySignedRequest(
   if (
     !isValidSignature(signingSecret, timestampHeader, rawBody, signatureHeader)
   ) {
-    console.warn(`${logPrefix} Invalid HMAC signature`, {
+    logger.warn(`${logPrefix} Invalid HMAC signature`, {
       timestampHeader,
     });
     return { ok: false, response: unauthorizedResponse() };

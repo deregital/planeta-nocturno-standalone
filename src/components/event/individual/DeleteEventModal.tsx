@@ -1,6 +1,7 @@
 'use client';
 import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -29,6 +30,7 @@ export default function DeleteEventModal({
 
   const deleteEvent = trpc.events.delete.useMutation({
     onSuccess: () => {
+      posthog.capture('event_deleted', { event_id: event.id });
       toast.success('Evento eliminado correctamente');
       router.replace('/admin/event');
     },

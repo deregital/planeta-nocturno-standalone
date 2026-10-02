@@ -6,6 +6,7 @@ import type { Db } from '@/drizzle';
 
 import { ticketGroup as ticketGroupSchema } from '@/drizzle/schema';
 import { formatCurrency } from '@/lib/utils';
+import { logger } from '@/server/observability/logger';
 import { sendMailWithoutAttachments } from '@/server/services/mail';
 import { retryWithBackoff } from '@/server/utils/retry';
 
@@ -71,9 +72,10 @@ export async function sendNotificationService(
   );
 
   if (result.error) {
-    console.error(
-      `Error al enviar notificación a ${email} para ${eventName}:`,
-      result.error,
-    );
+    logger.error('Unable to send purchase notification', {
+      eventName,
+      ticketGroupId,
+      error: result.error,
+    });
   }
 }

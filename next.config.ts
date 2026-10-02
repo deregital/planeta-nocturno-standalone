@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 
+import { posthogProxyRewrites } from '@/lib/analytics/posthog-proxy';
 import { validateEnvironment } from '@/lib/config/environment';
 
 const config: NextConfig = {
@@ -24,6 +25,10 @@ const config: NextConfig = {
     ],
   },
   typedRoutes: true,
+  // Requerido por el proxy de PostHog: sus endpoints usan barra final.
+  skipTrailingSlashRedirect: true,
+  rewrites: async () =>
+    posthogProxyRewrites(process.env.NEXT_PUBLIC_POSTHOG_HOST),
   headers: async () => {
     return [
       {

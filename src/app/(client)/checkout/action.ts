@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
+import { logger } from '@/server/observability/logger';
 import {
   type CreateManyTicket,
   createManyTicketSchema,
@@ -300,7 +301,10 @@ export const handlePurchase = async (
           }
         }
       } catch (error) {
-        console.error(error);
+        logger.error('Unable to send free checkout emails', {
+          ticketGroupId,
+          error,
+        });
         return {
           ticketsInput: prevState.ticketsInput,
           errors: ['Error al enviar los emails, vuelva a intentarlo'],
@@ -348,7 +352,7 @@ export const handlePurchase = async (
       url = `/tickets/${ticketGroupId}` as Route;
     }
   } catch (error) {
-    console.error(error);
+    logger.error('Checkout failed', { error });
     return {
       ticketsInput: prevState.ticketsInput,
       errors: ['Error al procesar la compra, vuelva a intentarlo'],

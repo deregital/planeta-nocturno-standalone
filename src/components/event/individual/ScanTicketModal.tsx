@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import posthog from 'posthog-js';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -46,18 +47,22 @@ export function ScanTicketModal({
                 return;
               }
               e.preventDefault();
-              await scanMutation
-                .mutateAsync({
+              try {
+                const result = await scanMutation.mutateAsync({
                   eventIds: [eventId],
                   barcode: inputValue,
-                })
-                .finally(() => {
-                  utils.emittedTickets.getByEventId.invalidate();
-                  if (inputRef.current) {
-                    inputRef.current.value = '';
-                    inputRef.current.focus();
-                  }
                 });
+                posthog.capture('ticket_scan_completed', {
+                  event_id: eventId,
+                  outcome: result.status,
+                });
+              } finally {
+                utils.emittedTickets.getByEventId.invalidate();
+                if (inputRef.current) {
+                  inputRef.current.value = '';
+                  inputRef.current.focus();
+                }
+              }
             }}
           >
             <Input
