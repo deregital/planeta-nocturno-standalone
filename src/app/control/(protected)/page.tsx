@@ -8,17 +8,13 @@ import TenantTable from '@/app/control/(protected)/tenants/tenant-table';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins, tenants } from '@/db/control/schema';
-import {
-  getHostname,
-  getRequestHost,
-  normalizeRootDomain,
-} from '@/lib/tenancy/host';
 import { requireAnyPermissionOrRedirect } from '@/server/control/can-manage-tenants';
 import { getControlLandingPath } from '@/server/control/landing-path';
 import {
   TENANT_READ_PERMISSIONS,
   tenantVisibilityFilter,
 } from '@/server/control/tenant-access';
+import { getTenantPublicUrl } from '@/server/control/tenant-public-url';
 
 export default async function ControlHomePage() {
   const landingPath = (await getControlLandingPath()) as Route;
@@ -99,23 +95,4 @@ export default async function ControlHomePage() {
       />
     </div>
   );
-}
-
-function getTenantPublicUrl(slug: string, requestHeaders: Headers) {
-  const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
-  const requestHost = getRequestHost(requestHeaders);
-  const hostname = getHostname(requestHost);
-  const forwardedProtocol = requestHeaders
-    .get('x-forwarded-proto')
-    ?.split(',')[0]
-    ?.trim();
-  const protocol =
-    forwardedProtocol === 'http' || forwardedProtocol === 'https'
-      ? forwardedProtocol
-      : hostname === 'localhost' || hostname.endsWith('.localhost')
-        ? 'http'
-        : 'https';
-  const port = new URL(`${protocol}://${requestHost}`).port;
-
-  return `${protocol}://${slug}.${rootDomain}${port ? `:${port}` : ''}`;
 }

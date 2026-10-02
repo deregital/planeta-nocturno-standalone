@@ -1,6 +1,13 @@
 'use client';
 
-import { Building2, LogOut, Menu, Shield, Users } from 'lucide-react';
+import {
+  Building2,
+  CalendarDays,
+  LogOut,
+  Menu,
+  Shield,
+  Users,
+} from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -63,6 +70,12 @@ export default function ControlHeader({
       href: '/' as Route,
       label: 'Plataformas',
       icon: <Building2 className='size-4' />,
+      show: canReadTenants,
+    },
+    {
+      href: '/calendar' as Route,
+      label: 'Calendario',
+      icon: <CalendarDays className='size-4' />,
       show: canReadTenants,
     },
     {

@@ -1,11 +1,10 @@
-import { and, asc, eq, gte, isNotNull, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { event, location } from '@/drizzle/schema';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { logger } from '@/server/observability/logger';
 import { verifySignedRequest } from '@/server/security/signed-request';
+import { getCalendarEvents } from '@/server/services/calendarEvents';
 import { getCalendarStatsByEventId } from '@/server/services/calendarEventStats';
 
 const calendarEventsRequestSchema = z
@@ -17,10 +16,6 @@ const calendarEventsRequestSchema = z
     message: 'from must be before or equal to to',
     path: ['from'],
   });
-
-function toIsoDateTime(value: string) {
-  return new Date(value).toISOString();
-}
 
 export async function POST(request: Request) {
   const signedRequest = await verifySignedRequest(request, {
@@ -43,30 +38,10 @@ export async function POST(request: Request) {
 
   try {
     const { db, instance } = await resolveRequestContext(request.headers);
-    const events = await db
-      .select({
-        id: event.id,
-        slug: event.slug,
-        name: event.name,
-        startingDate: event.startingDate,
-        endingDate: event.endingDate,
-        coverImageUrl: event.coverImageUrl,
-        locationName: location.name,
-        locationAddress: location.address,
-      })
-      .from(event)
-      .innerJoin(location, eq(location.id, event.locationId))
-      .where(
-        and(
-          eq(event.isActive, true),
-          eq(event.isDeleted, false),
-          isNotNull(event.startingDate),
-          isNotNull(event.endingDate),
-          lte(event.startingDate, body.to),
-          gte(event.endingDate, body.from),
-        ),
-      )
-      .orderBy(asc(event.startingDate));
+    // Pluto espera siempre una ubicación: se omiten los eventos sin lugar.
+    const events = (
+      await getCalendarEvents(db, { from: body.from, to: body.to })
+    ).filter((eventItem) => eventItem.locationName !== null);
 
     const eventStats = new Map();
     for (const eventItem of events) {
@@ -86,8 +61,8 @@ export async function POST(request: Request) {
         id: eventItem.id,
         slug: eventItem.slug,
         name: eventItem.name,
-        startingDate: toIsoDateTime(eventItem.startingDate!),
-        endingDate: toIsoDateTime(eventItem.endingDate!),
+        startingDate: eventItem.startingDate,
+        endingDate: eventItem.endingDate,
         locationName: eventItem.locationName,
         locationAddress: eventItem.locationAddress,
         coverImageUrl: eventItem.coverImageUrl,
