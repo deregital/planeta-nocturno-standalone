@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   index,
@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -108,6 +109,50 @@ export const tenantSlugAliases = pgTable(
       .defaultNow(),
   },
   (table) => [index('tenant_slug_aliases_tenant_id_idx').on(table.tenantId)],
+);
+
+/** Etiquetas personales: solo las ve y usa el administrador que las creó. */
+export const tenantTags = pgTable(
+  'tenant_tags',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    controlAdminId: uuid('control_admin_id')
+      .notNull()
+      .references(() => controlAdmins.id, { onDelete: 'cascade' }),
+    name: varchar({ length: 50 }).notNull(),
+    color: varchar({ length: 7 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('tenant_tags_admin_name_unique').on(
+      table.controlAdminId,
+      sql`lower(${table.name})`,
+    ),
+  ],
+);
+
+export const tenantTagAssignments = pgTable(
+  'tenant_tag_assignments',
+  {
+    tagId: uuid('tag_id')
+      .notNull()
+      .references(() => tenantTags.id, { onDelete: 'cascade' }),
+    tenantId: integer('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tagId, table.tenantId] }),
+    index('tenant_tag_assignments_tenant_id_idx').on(table.tenantId),
+  ],
 );
 
 export const controlRolesRelations = relations(controlRoles, ({ many }) => ({
