@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 
 import TenantTable from '@/app/control/(protected)/tenants/tenant-table';
+import TenantTagsManager from '@/components/control/TenantTagsManager';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins, tenants } from '@/db/control/schema';
@@ -15,6 +16,7 @@ import {
   tenantVisibilityFilter,
 } from '@/server/control/tenant-access';
 import { getTenantPublicUrl } from '@/server/control/tenant-public-url';
+import { getControlAdminTenantTags } from '@/server/control/tenant-tags';
 
 export default async function ControlHomePage() {
   const landingPath = (await getControlLandingPath()) as Route;
@@ -23,6 +25,9 @@ export default async function ControlHomePage() {
     landingPath === '/' ? ('/users' as Route) : landingPath,
   );
   const requestHeaders = new Headers(await headers());
+  const { tags, tagIdsByTenant } = await getControlAdminTenantTags(
+    session.user.id,
+  );
   const tenantList = await getControlDb()
     .select({
       id: tenants.id,
@@ -69,6 +74,7 @@ export default async function ControlHomePage() {
           </p>
         </div>
         <div className='flex flex-wrap gap-2'>
+          <TenantTagsManager tags={tags} />
           <Button asChild variant='ghost' className='flex-1 sm:flex-none'>
             <Link href={'/trash' as Route}>
               <Trash2 />
@@ -88,8 +94,10 @@ export default async function ControlHomePage() {
 
       <TenantTable
         permissions={permissions}
+        tags={tags}
         tenants={tenantList.map((tenant) => ({
           ...tenant,
+          tagIds: tagIdsByTenant.get(tenant.id) ?? [],
           publicUrl: getTenantPublicUrl(tenant.slug, requestHeaders),
         }))}
       />
