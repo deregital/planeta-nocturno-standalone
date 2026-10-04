@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
   boolean,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -93,6 +94,21 @@ export const tenants = pgTable('tenants', {
     .defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
+
+/** Subdominios anteriores de cada plataforma: redirigen durante un tiempo tras el cambio. */
+export const tenantSlugAliases = pgTable(
+  'tenant_slug_aliases',
+  {
+    slug: varchar({ length: 63 }).primaryKey(),
+    tenantId: integer('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('tenant_slug_aliases_tenant_id_idx').on(table.tenantId)],
+);
 
 export const controlRolesRelations = relations(controlRoles, ({ many }) => ({
   permissions: many(controlRolePermissions),
