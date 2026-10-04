@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { requirePermission } from '@/server/control/can-manage-tenants';
+import { logger } from '@/server/observability/logger';
 import {
   CUSTOM_ID_TAKEN_ERROR,
   getCustomIdAvailabilityError,
@@ -121,7 +122,7 @@ export async function checkSubdomainAvailability(
         : 'Ese subdominio ya está en uso',
     };
   } catch (error) {
-    console.error('Unable to check subdomain availability', { error });
+    logger.error('Unable to check subdomain availability', { error });
     return { available: false, message: 'No se pudo comprobar el subdominio' };
   }
 }
@@ -266,7 +267,7 @@ export async function createTenant(
       };
     }
 
-    console.error('Unable to save tenant', { slug: data.slug, error });
+    logger.error('Unable to save tenant', { slug: data.slug, error });
     return {
       values: safeValues,
       errors: { general: 'No se pudo guardar la plataforma' },
@@ -289,7 +290,7 @@ export async function createTenant(
       },
     });
   } catch (error) {
-    console.error('Tenant provisioning failed', { tenantId, error });
+    logger.error('Tenant provisioning failed', { tenantId, error });
     return {
       values: {
         ...safeValues,

@@ -57,6 +57,7 @@ import {
   createTicketTypeSchema,
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
+import { logger } from '@/server/observability/logger';
 import { sendMail } from '@/server/services/mail';
 import {
   adminProcedure,
@@ -961,7 +962,7 @@ export const eventsRouter = router({
 
             return { eventCreated, ticketTypesCreated };
           } catch (error) {
-            console.error(error);
+            logger.error('Event creation failed', { error });
             tx.rollback();
             throw error;
           }
@@ -1937,7 +1938,7 @@ export const eventsRouter = router({
 
             return { eventUpdated, ticketTypesUpdated };
           } catch (error) {
-            console.log(error);
+            logger.error('Event update failed', { error });
             // Drizzle hace rollback automáticamente cuando se lanza un error
             // Si el error es un TRPCError, lo propagamos tal cual para mantener el mensaje
             if (error instanceof TRPCError) {
@@ -2026,7 +2027,7 @@ export const eventsRouter = router({
             );
           }
         } catch (error) {
-          console.error(error);
+          logger.error('Event duplication failed', { error });
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
             message: 'Error al duplicar evento',

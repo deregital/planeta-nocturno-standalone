@@ -15,6 +15,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  resetPostHogUser,
+  usePostHogIdentify,
+} from '@/hooks/usePostHogIdentify';
 import { roleTranslation } from '@/lib/translations';
 import { trpc } from '@/server/trpc/client';
 
@@ -26,6 +30,22 @@ export default function TopBar({ auth }: { auth: Session | null }) {
     auth?.user.id as string,
     { enabled: !!auth?.user.id },
   );
+
+  usePostHogIdentify(
+    auth
+      ? {
+          id: auth.user.id,
+          email: auth.user.email,
+          name: auth.user.fullName,
+          role: auth.user.role,
+        }
+      : null,
+  );
+
+  const handleSignOut = async () => {
+    resetPostHogUser();
+    await signOut();
+  };
 
   return (
     <div className='w-full h-16 flex items-center justify-between px-8 bg-accent-dark'>
@@ -49,7 +69,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                 {auth.user.fullName} ({roleTranslation[auth.user.role]})
               </span>
             </div>
-            <Button variant={'accent'} onClick={() => signOut()}>
+            <Button variant={'accent'} onClick={() => void handleSignOut()}>
               Cerrar Sesión
             </Button>
           </div>
@@ -96,7 +116,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                       />
                     ))}
                     <Button
-                      onClick={() => signOut()}
+                      onClick={() => void handleSignOut()}
                       variant={'ghost'}
                       className='flex gap-2 justify-baseline items-center py-2 px-4! m-0 h-fit text-xl font-normal text-brand'
                     >

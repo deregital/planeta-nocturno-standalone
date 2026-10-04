@@ -4,6 +4,7 @@ import type { ResolvedInstance } from '@/server/instance/resolve-instance';
 
 import { createDb, type Db } from '@/drizzle';
 
+import { logger } from '@/server/observability/logger';
 import { getTenantDatabaseUrl } from '@/server/neon/get-database-url';
 
 const TENANT_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -108,7 +109,7 @@ function closeIdleTenantDb(
 
   tenantConnections.delete(databaseName);
   void pool.end().catch((error) => {
-    console.error('Unable to close cached tenant database', {
+    logger.error('Unable to close cached tenant database', {
       databaseName,
       error,
     });

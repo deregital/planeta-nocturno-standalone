@@ -1,6 +1,7 @@
 'use client';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -27,6 +28,15 @@ export default function Client({
 
   const updateEvent = trpc.events.update.useMutation({
     onSuccess: () => {
+      posthog.capture('event_updated', {
+        event_id: event?.id,
+        invite_condition: event?.inviteCondition,
+        ticket_type_count: ticketTypesState.length,
+        organizer_count: organizers.length,
+        question_count: questions.filter(
+          (question) => question.text.trim() !== '',
+        ).length,
+      });
       toast.success('¡Evento editado con éxito!');
       router.push('/admin/event');
       setIsSubmitting(false);

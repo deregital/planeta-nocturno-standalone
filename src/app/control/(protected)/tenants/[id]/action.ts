@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { requirePermission } from '@/server/control/can-manage-tenants';
+import { logger } from '@/server/observability/logger';
 import {
   CUSTOM_ID_TAKEN_ERROR,
   getCustomIdAvailabilityError,
@@ -108,7 +109,7 @@ export async function updateTenant(
         errors: { customId: CUSTOM_ID_TAKEN_ERROR },
       };
     }
-    console.error('Unable to update tenant', {
+    logger.error('Unable to update tenant', {
       tenantId: data.tenantId,
       error,
     });

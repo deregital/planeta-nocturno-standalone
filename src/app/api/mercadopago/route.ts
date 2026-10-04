@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { verifySignedRequest } from '@/server/security/signed-request';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
+import { logger } from '@/server/observability/logger';
+import { verifySignedRequest } from '@/server/security/signed-request';
 import {
   generateTicketEmailBody,
   sendMailService,
@@ -36,7 +37,30 @@ export async function POST(request: Request) {
     );
   }
 
-  const { db, instance } = await resolveRequestContext(request.headers);
+  logger.info('Payment webhook accepted', {
+    operation: 'payment_webhook',
+    ticketGroupId,
+  });
+
+  try {
+    await fulfillTicketGroup(request.headers, ticketGroupId);
+  } catch (error) {
+    logger.error('Payment webhook fulfillment failed', {
+      operation: 'payment_webhook',
+      ticketGroupId,
+      error,
+    });
+    return NextResponse.json(
+      { success: false, error: 'INTERNAL_SERVER_ERROR' },
+      { status: 500 },
+    );
+  }
+
+  return new NextResponse(null, { status: 200 });
+}
+
+async function fulfillTicketGroup(headers: Headers, ticketGroupId: string) {
+  const { db, instance } = await resolveRequestContext(headers);
 
   // cambiar status de ticketGroup a pagado
   await updateTicketGroupStatus(db, ticketGroupId, 'PAID');
@@ -66,5 +90,10 @@ export async function POST(request: Request) {
     });
   }
 
-  return new NextResponse(null, { status: 200 });
+  logger.info('Payment webhook fulfillment completed', {
+    operation: 'payment_webhook',
+    ticketGroupId,
+    eventId: group.event.id,
+    ticketCount: pdfs.length,
+  });
 }
