@@ -29,6 +29,13 @@
       "when": 1788666723182,
       "tag": "0003_control_rbac",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791087769580,
+      "tag": "0004_control_admin_last_seen",
+      "breakpoints": true
     }
   ]
 }
