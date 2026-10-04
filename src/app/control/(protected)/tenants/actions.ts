@@ -16,6 +16,7 @@ import {
 } from '@/server/control/custom-id';
 import { tenantMetadataSchema } from '@/server/schemas/control-tenant';
 import { tenantVisibilityFilter } from '@/server/control/tenant-access';
+import { invalidateTenantLookups } from '@/server/instance/resolve-instance';
 
 const lifecycleSchema = z.object({
   tenantId: z.coerce.number().int().positive(),
@@ -292,6 +293,7 @@ export async function updateTenantLifecycle(
     }
   }
 
+  invalidateTenantLookups();
   revalidatePath('/');
   revalidatePath('/trash');
   return {};

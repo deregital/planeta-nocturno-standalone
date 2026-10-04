@@ -16,6 +16,7 @@ import {
   isUniqueViolation,
 } from '@/server/control/custom-id';
 import { tenantVisibilityFilter } from '@/server/control/tenant-access';
+import { invalidateTenantLookups } from '@/server/instance/resolve-instance';
 import {
   deleteExpiredTenantSlugAliases,
   getSubdomainAvailability,
@@ -216,6 +217,8 @@ export async function updateTenant(
       errors: { general: 'No se pudo actualizar la plataforma' },
     };
   }
+
+  invalidateTenantLookups();
 
   try {
     await deleteExpiredTenantSlugAliases();

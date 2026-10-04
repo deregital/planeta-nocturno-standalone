@@ -4,7 +4,10 @@ import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
-import { resolveInstance } from '@/server/instance/resolve-instance';
+import {
+  invalidateTenantLookups,
+  resolveInstance,
+} from '@/server/instance/resolve-instance';
 import { verifySignedRequest } from '@/server/security/signed-request';
 
 const credentialsSchema = z.object({
@@ -53,5 +56,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'TENANT_NOT_FOUND' }, { status: 404 });
   }
 
+  invalidateTenantLookups();
   return NextResponse.json({ success: true });
 }

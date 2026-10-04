@@ -16,6 +16,7 @@ import {
   deleteTenantDatabase,
   getTenantDatabaseUrl,
 } from '@/server/neon/get-database-url';
+import { invalidateTenantLookups } from '@/server/instance/resolve-instance';
 import { logger } from '@/server/observability/logger';
 import { ensureTenantCorsOrigin } from '@/server/s3/ensure-tenant-cors-origin';
 import { migrateTenantDatabase } from '@/server/tenancy/migrate-tenant-database';
@@ -111,6 +112,7 @@ export async function provisionTenant(input: ProvisionTenantInput) {
 
     if (!activeTenant)
       throw new Error('Tenant disappeared during provisioning');
+    invalidateTenantLookups();
     return activeTenant;
   } catch (error) {
     if (databaseCreated) {

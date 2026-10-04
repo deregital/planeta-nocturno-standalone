@@ -100,8 +100,46 @@ async function resolveMultiTenantInstance(
   };
 }
 
+type HostTenant = Awaited<ReturnType<typeof queryTenantByHostSlug>>;
+
+// Los cambios hechos en otro proceso tardan hasta el TTL en verse.
+const TENANT_LOOKUP_TTL_MS = 30_000;
+// Acota la memoria ante subdominios inventados (DNS wildcard).
+const TENANT_LOOKUP_MAX_ENTRIES = 500;
+
+const tenantLookups = new Map<
+  string,
+  { tenant: Promise<HostTenant>; expiresAt: number }
+>();
+
 /** Busca por el subdominio actual o por uno anterior todavía vigente (alias). */
-export async function findTenantByHostSlug(slug: string) {
+export function findTenantByHostSlug(slug: string): Promise<HostTenant> {
+  const now = Date.now();
+  const cached = tenantLookups.get(slug);
+  if (cached && cached.expiresAt > now) return cached.tenant;
+
+  tenantLookups.delete(slug);
+  if (tenantLookups.size >= TENANT_LOOKUP_MAX_ENTRIES) {
+    const oldestSlug = tenantLookups.keys().next().value;
+    if (oldestSlug !== undefined) tenantLookups.delete(oldestSlug);
+  }
+
+  const entry = {
+    tenant: queryTenantByHostSlug(slug),
+    expiresAt: now + TENANT_LOOKUP_TTL_MS,
+  };
+  entry.tenant.catch(() => {
+    if (tenantLookups.get(slug) === entry) tenantLookups.delete(slug);
+  });
+  tenantLookups.set(slug, entry);
+  return entry.tenant;
+}
+
+export function invalidateTenantLookups() {
+  tenantLookups.clear();
+}
+
+async function queryTenantByHostSlug(slug: string) {
   const db = getControlDb();
   const aliasTenantIds = db
     .select({ id: tenantSlugAliases.tenantId })
