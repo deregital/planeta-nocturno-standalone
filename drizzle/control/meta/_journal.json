@@ -36,6 +36,13 @@
       "when": 1791087769580,
       "tag": "0004_control_admin_last_seen",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791090782247,
+      "tag": "0005_tenant_slug_aliases",
+      "breakpoints": true
     }
   ]
 }
