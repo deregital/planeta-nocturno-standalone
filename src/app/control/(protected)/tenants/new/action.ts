@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
-import { tenants } from '@/db/control/schema';
+import { tenants, tenantSlugAliases } from '@/db/control/schema';
 import { requirePermission } from '@/server/control/can-manage-tenants';
 import { logger } from '@/server/observability/logger';
 import {
@@ -15,6 +15,12 @@ import {
   isUniqueViolation,
 } from '@/server/control/custom-id';
 import { tenantVisibilityFilter } from '@/server/control/tenant-access';
+import {
+  getSubdomainAvailability,
+  getTenantSlugTakenError,
+  type SubdomainAvailability,
+  TENANT_SLUG_TAKEN_ERROR,
+} from '@/server/control/tenant-slug';
 import {
   tenantMetadataSchema,
   tenantSubdomainSchema,
@@ -82,10 +88,7 @@ export type TenantFormState = {
   };
 };
 
-export type SubdomainAvailability = {
-  available: boolean;
-  message: string;
-};
+export type { SubdomainAvailability };
 
 export async function checkSubdomainAvailability(
   value: string,
@@ -95,36 +98,11 @@ export async function checkSubdomainAvailability(
     return { available: false, message: 'No se pudo comprobar el subdominio' };
   }
 
-  const validation = tenantSubdomainSchema.safeParse(value);
-  if (!validation.success) {
-    return {
-      available: false,
-      message: validation.error.issues[0]?.message ?? 'Subdominio inválido',
-    };
-  }
-
-  try {
-    const [existingTenant] = await getControlDb()
-      .select({ id: tenants.id })
-      .from(tenants)
-      .where(eq(tenants.slug, validation.data))
-      .limit(1);
-    const currentTenantId = Number(tenantId);
-    const available =
-      !existingTenant ||
-      (Number.isInteger(currentTenantId) &&
-        existingTenant.id === currentTenantId);
-
-    return {
-      available,
-      message: available
-        ? 'Subdominio disponible'
-        : 'Ese subdominio ya está en uso',
-    };
-  } catch (error) {
-    logger.error('Unable to check subdomain availability', { error });
-    return { available: false, message: 'No se pudo comprobar el subdominio' };
-  }
+  const currentTenantId = Number(tenantId);
+  return getSubdomainAvailability(
+    value,
+    Number.isInteger(currentTenantId) ? currentTenantId : undefined,
+  );
 }
 
 export async function createTenant(
@@ -170,8 +148,14 @@ export async function createTenant(
     return { values: safeValues, errors: { customId: customIdError } };
   }
 
+  const retrying = Number.isInteger(retryTenantId) && retryTenantId > 0;
+  const slugError = retrying ? null : await getTenantSlugTakenError(data.slug);
+  if (slugError) {
+    return { values: safeValues, errors: { slug: slugError } };
+  }
+
   try {
-    if (Number.isInteger(retryTenantId) && retryTenantId > 0) {
+    if (retrying) {
       const [tenant] = await getControlDb()
         .select({
           id: tenants.id,
@@ -234,24 +218,31 @@ export async function createTenant(
         );
       tenantId = tenant.id;
     } else {
-      const [tenant] = await getControlDb()
-        .insert(tenants)
-        .values({
-          customId: data.customId,
-          name: data.name,
-          comments: data.comments,
-          slug: data.slug,
-          description: data.description,
-          contactEmail: data.contactEmail,
-          faviconUrl: data.faviconUrl,
-          hue: data.hue,
-          saturation: data.saturation,
-          createdByControlAdminId: controlAdminSession.user.id,
-        })
-        .returning({ id: tenants.id });
+      tenantId = await getControlDb().transaction(async (tx) => {
+        const [tenant] = await tx
+          .insert(tenants)
+          .values({
+            customId: data.customId,
+            name: data.name,
+            comments: data.comments,
+            slug: data.slug,
+            description: data.description,
+            contactEmail: data.contactEmail,
+            faviconUrl: data.faviconUrl,
+            hue: data.hue,
+            saturation: data.saturation,
+            createdByControlAdminId: controlAdminSession.user.id,
+          })
+          .returning({ id: tenants.id });
 
-      if (!tenant) throw new Error('Tenant was not created');
-      tenantId = tenant.id;
+        if (!tenant) throw new Error('Tenant was not created');
+
+        await tx
+          .delete(tenantSlugAliases)
+          .where(eq(tenantSlugAliases.slug, data.slug));
+
+        return tenant.id;
+      });
     }
   } catch (error) {
     if (isCustomIdUniqueViolation(error)) {
@@ -263,7 +254,7 @@ export async function createTenant(
     if (isUniqueViolation(error)) {
       return {
         values: safeValues,
-        errors: { slug: 'Ese subdominio ya está en uso' },
+        errors: { slug: TENANT_SLUG_TAKEN_ERROR },
       };
     }
 

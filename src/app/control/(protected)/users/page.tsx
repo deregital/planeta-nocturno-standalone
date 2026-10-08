@@ -21,6 +21,13 @@ import {
   requirePermissionOrRedirect,
 } from '@/server/control/can-manage-tenants';
 
+const lastSeenFormatter = new Intl.DateTimeFormat('es-AR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+  hourCycle: 'h23',
+  timeZone: 'America/Argentina/Buenos_Aires',
+});
+
 export default async function ControlUsersPage() {
   const { permissions } = await requirePermissionOrRedirect(
     'admins:read',
@@ -37,6 +44,7 @@ export default async function ControlUsersPage() {
       username: controlAdmins.username,
       email: controlAdmins.email,
       roleName: controlRoles.name,
+      lastSeenAt: controlAdmins.lastSeenAt,
       createdAt: controlAdmins.createdAt,
     })
     .from(controlAdmins)
@@ -73,6 +81,7 @@ export default async function ControlUsersPage() {
                 <TableHead>Usuario</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Rol</TableHead>
+                <TableHead>Última conexión</TableHead>
                 <TableHead>Creado</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
@@ -85,6 +94,11 @@ export default async function ControlUsersPage() {
                   </TableCell>
                   <TableCell>{admin.email}</TableCell>
                   <TableCell>{formatRoleName(admin.roleName)}</TableCell>
+                  <TableCell className='whitespace-nowrap'>
+                    {admin.lastSeenAt
+                      ? lastSeenFormatter.format(admin.lastSeenAt)
+                      : 'Nunca'}
+                  </TableCell>
                   <TableCell>
                     {new Intl.DateTimeFormat('es-AR').format(admin.createdAt)}
                   </TableCell>

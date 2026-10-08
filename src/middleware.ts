@@ -1,8 +1,5 @@
-import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { getControlDb } from '@/db/control/client';
-import { tenants } from '@/db/control/schema';
 import {
   isControlSessionValid,
   isTenantSessionValid,
@@ -10,12 +7,15 @@ import {
 import { createSingleTenantConfig } from '@/lib/config/single-tenant-config';
 import {
   getRequestHost,
+  getRequestOrigin,
   normalizeRootDomain,
+  replaceTenantSubdomain,
   resolveMultiTenantHost,
   ROOT_LANDING_HEADER,
   TENANT_ID_HEADER,
 } from '@/lib/tenancy/host';
 import { authMiddleware } from '@/server/auth';
+import { findTenantByHostSlug } from '@/server/instance/resolve-instance';
 import { logger } from '@/server/observability/logger';
 
 export default authMiddleware(async function middleware(request) {
@@ -72,21 +72,30 @@ export default authMiddleware(async function middleware(request) {
   }
 
   try {
-    const [tenant] = await getControlDb()
-      .select({
-        slug: tenants.slug,
-        databaseName: tenants.databaseName,
-      })
-      .from(tenants)
-      .where(and(eq(tenants.slug, target.slug), eq(tenants.status, 'active')))
-      .limit(1);
+    const tenant = await findTenantByHostSlug(target.slug);
 
-    if (!tenant) {
+    if (tenant?.status !== 'active') {
       return new NextResponse('Página no encontrada', { status: 404 });
     }
 
     if (!tenant.databaseName) {
       return new NextResponse('Página en preparación', { status: 503 });
+    }
+
+    // Los subdominios anteriores redirigen las páginas, pero atienden las
+    // APIs directo: los webhooks y callbacks firmados no siguen redirects.
+    if (
+      tenant.slug !== target.slug &&
+      !request.nextUrl.pathname.startsWith('/api/')
+    ) {
+      const host = replaceTenantSubdomain(getRequestHost(headers), tenant.slug);
+      return NextResponse.redirect(
+        new URL(
+          `${request.nextUrl.pathname}${request.nextUrl.search}`,
+          getRequestOrigin(headers, host),
+        ),
+        308,
+      );
     }
 
     const sessionIsValid = isTenantSessionValid(request.auth, tenant.slug);

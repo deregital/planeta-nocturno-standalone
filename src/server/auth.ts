@@ -1,7 +1,9 @@
 import { compare } from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import NextAuth, { CredentialsSignin, type Session } from 'next-auth';
 import { headers } from 'next/headers';
+import { after } from 'next/server';
+import { cache } from 'react';
 
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins } from '@/db/control/schema';
@@ -15,6 +17,7 @@ import {
   getCurrentRequestContext,
   resolveRequestContext,
 } from '@/server/instance/resolve-request-context';
+import { logger } from '@/server/observability/logger';
 import { userSchema } from '@/server/schemas/user';
 
 const credentialsSchema = userSchema.pick({
@@ -143,6 +146,31 @@ async function controlAdminExists(adminId: string) {
   return Boolean(admin);
 }
 
+/** Escribe como máximo una vez cada 5 minutos por admin, fuera del tiempo de respuesta. */
+const touchControlAdminLastSeen = cache((adminId: string) => {
+  after(async () => {
+    try {
+      await getControlDb()
+        .update(controlAdmins)
+        .set({ lastSeenAt: sql`now()` })
+        .where(
+          and(
+            eq(controlAdmins.id, adminId),
+            or(
+              isNull(controlAdmins.lastSeenAt),
+              lt(controlAdmins.lastSeenAt, sql`now() - interval '5 minutes'`),
+            ),
+          ),
+        );
+    } catch (error) {
+      logger.error('Unable to update control admin last seen', {
+        adminId,
+        error,
+      });
+    }
+  });
+});
+
 /** Cierra sesión si el JWT de control apunta a un admin que ya no existe. */
 export async function clearStaleControlSession() {
   const rawSession = await nextAuth.auth();
@@ -160,6 +188,7 @@ export async function auth() {
   if (isControlRequest(requestHeaders)) {
     if (!isControlSessionValid(session)) return null;
     if (!(await controlAdminExists(session.user.id))) return null;
+    touchControlAdminLastSeen(session.user.id);
     return session;
   }
 

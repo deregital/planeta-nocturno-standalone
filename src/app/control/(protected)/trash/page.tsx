@@ -11,11 +11,15 @@ import {
   TENANT_READ_PERMISSIONS,
   tenantVisibilityFilter,
 } from '@/server/control/tenant-access';
+import { getControlAdminTenantTags } from '@/server/control/tenant-tags';
 
 export default async function TenantTrashPage() {
   const { permissions, session } = await requireAnyPermissionOrRedirect(
     TENANT_READ_PERMISSIONS,
     '/' as Route,
+  );
+  const { tags, tagIdsByTenant } = await getControlAdminTenantTags(
+    session.user.id,
   );
   const recycledTenants = await getControlDb()
     .select({
@@ -65,8 +69,10 @@ export default async function TenantTrashPage() {
       <TenantTable
         recycled
         permissions={permissions}
+        tags={tags}
         tenants={recycledTenants.map((tenant) => ({
           ...tenant,
+          tagIds: tagIdsByTenant.get(tenant.id) ?? [],
           publicUrl: '',
         }))}
       />

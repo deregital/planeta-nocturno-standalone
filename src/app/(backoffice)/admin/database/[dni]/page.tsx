@@ -16,11 +16,14 @@ export default async function Page({
     return notFound();
   }
 
-  const data = await trpc.emittedTickets.getUniqueBuyer(dni);
+  const [data, emissionHistory] = await Promise.all([
+    trpc.emittedTickets.getUniqueBuyer(dni),
+    trpc.emittedTickets.getEmissionHistoryByDni(dni),
+  ]);
 
   if (!data) {
     return notFound();
   }
 
-  return <Client data={data} />;
+  return <Client data={data} emissionHistory={emissionHistory} />;
 }

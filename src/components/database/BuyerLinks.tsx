@@ -2,20 +2,28 @@ import { Mail } from 'lucide-react';
 
 import { Instagram } from '@/components/icons/Instagram';
 import { WhatsApp } from '@/components/icons/WhatsApp';
+import { cn } from '@/lib/utils';
 
 interface BuyerLinksParams {
   instagram?: string | null;
   phoneNumber?: string | null;
   mail?: string | null;
+  className?: string;
 }
 
 export default function BuyerLinks({
   instagram,
   phoneNumber,
   mail,
+  className,
 }: BuyerLinksParams) {
   return (
-    <div className='flex justify-center items-center gap-4 ml-8 [&>a]:w-9 [&>a]:h-9 [&>a]:inline-flex [&>a]:items-center [&>a]:cursor-pointer [&>a]:justify-center [&>a]:border [&>a]:border-black [&>a]:rounded-sm [&>a]:transition'>
+    <div
+      className={cn(
+        'flex justify-center items-center gap-4 ml-8 [&>a]:w-9 [&>a]:h-9 [&>a]:inline-flex [&>a]:items-center [&>a]:cursor-pointer [&>a]:justify-center [&>a]:border [&>a]:border-black [&>a]:rounded-sm [&>a]:transition',
+        className,
+      )}
+    >
       {instagram && (
         <a
           href={`https://instagram.com/${instagram}`}

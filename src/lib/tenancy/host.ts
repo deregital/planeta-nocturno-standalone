@@ -8,6 +8,7 @@ const RESERVED_SUBDOMAINS = new Set([
 ]);
 
 export const TENANT_ID_HEADER = 'x-tenant-id';
+export const TENANT_SLUG_ALIAS_TTL_MINUTES = 20;
 export const ROOT_LANDING_HEADER = 'x-root-landing';
 
 export type MultiTenantHost =
@@ -26,6 +27,27 @@ export function getRequestHost(headers: Headers) {
     headers.get('host') ||
     ''
   );
+}
+
+export function getRequestOrigin(headers: Headers, host: string) {
+  const forwardedProtocol = headers
+    .get('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim();
+  const hostname = getHostname(host);
+  const protocol =
+    forwardedProtocol === 'http' || forwardedProtocol === 'https'
+      ? forwardedProtocol
+      : hostname === 'localhost' || hostname.endsWith('.localhost')
+        ? 'http'
+        : 'https';
+
+  return `${protocol}://${host.toLowerCase()}`;
+}
+
+/** Reemplaza el subdominio de un host de tenant, conservando dominio y puerto. */
+export function replaceTenantSubdomain(host: string, slug: string) {
+  return host.replace(/^[^.]+/, slug);
 }
 
 export function getSubdomain(host: string, rootDomain: string) {

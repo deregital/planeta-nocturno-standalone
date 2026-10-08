@@ -29,6 +29,27 @@
       "when": 1788666723182,
       "tag": "0003_control_rbac",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791087769580,
+      "tag": "0004_control_admin_last_seen",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791090782247,
+      "tag": "0005_tenant_slug_aliases",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791097953303,
+      "tag": "0006_tenant_tags",
+      "breakpoints": true
     }
   ]
 }
