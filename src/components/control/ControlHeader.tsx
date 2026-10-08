@@ -1,6 +1,13 @@
 'use client';
 
-import { Building2, LogOut, Menu, Shield, Users } from 'lucide-react';
+import {
+  Building2,
+  CalendarDays,
+  LogOut,
+  Menu,
+  Shield,
+  Users,
+} from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -13,11 +20,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  resetPostHogUser,
+  usePostHogIdentify,
+} from '@/hooks/usePostHogIdentify';
 import { cn } from '@/lib/utils';
 
 type ControlHeaderProps = {
   homeHref: Route;
   userName: string;
+  userId: string;
+  userEmail: string;
+  userRole: string;
   canReadTenants: boolean;
   canReadAdmins: boolean;
   canReadRoles: boolean;
@@ -34,6 +48,9 @@ type NavItem = {
 export default function ControlHeader({
   homeHref,
   userName,
+  userId,
+  userEmail,
+  userRole,
   canReadTenants,
   canReadAdmins,
   canReadRoles,
@@ -41,11 +58,24 @@ export default function ControlHeader({
 }: ControlHeaderProps) {
   const pathname = usePathname();
 
+  usePostHogIdentify({
+    id: userId,
+    email: userEmail,
+    name: userName,
+    role: userRole,
+  });
+
   const navItems: NavItem[] = [
     {
       href: '/' as Route,
       label: 'Plataformas',
       icon: <Building2 className='size-4' />,
+      show: canReadTenants,
+    },
+    {
+      href: '/calendar' as Route,
+      label: 'Calendario',
+      icon: <CalendarDays className='size-4' />,
       show: canReadTenants,
     },
     {
@@ -87,7 +117,11 @@ export default function ControlHeader({
 
       <div className='flex items-center gap-4'>
         <span className='hidden text-sm text-brand sm:block'>{userName}</span>
-        <form action={signOutAction} className='hidden sm:block'>
+        <form
+          action={signOutAction}
+          onSubmit={resetPostHogUser}
+          className='hidden sm:block'
+        >
           <Button type='submit' variant='accent' size='sm'>
             <LogOut />
             Cerrar sesión
@@ -127,7 +161,11 @@ export default function ControlHeader({
                   </Link>
                 </SheetClose>
               ))}
-              <form action={signOutAction} className='border-t border-white/10'>
+              <form
+                action={signOutAction}
+                onSubmit={resetPostHogUser}
+                className='border-t border-white/10'
+              >
                 <Button
                   type='submit'
                   variant='ghost'

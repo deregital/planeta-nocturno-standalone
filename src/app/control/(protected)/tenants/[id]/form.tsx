@@ -1,8 +1,9 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
 import {
+  checkTenantSlugAvailability,
   type TenantEditState,
   type TenantEditValues,
   updateTenant,
@@ -13,19 +14,46 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { TENANT_SLUG_ALIAS_TTL_MINUTES } from '@/lib/tenancy/host';
 
 export default function TenantEditForm({
   initialValues,
-  slug,
+  rootDomain,
+  hasDatabase,
 }: {
   initialValues: TenantEditValues;
-  slug: string;
+  rootDomain: string;
+  hasDatabase: boolean;
 }) {
   const [state, action, pending] = useActionState<TenantEditState, FormData>(
     updateTenant,
     {},
   );
   const values = { ...initialValues, ...state.values };
+  const [slug, setSlug] = useState(values.slug);
+  const [availability, setAvailability] = useState<{
+    available: boolean | null;
+    message: string;
+  }>({ available: null, message: '' });
+  const slugChanged = slug !== initialValues.slug;
+
+  useEffect(() => {
+    if (!slugChanged) return;
+
+    let active = true;
+    const timeout = setTimeout(async () => {
+      const result = await checkTenantSlugAvailability(
+        slug,
+        initialValues.tenantId,
+      );
+      if (active) setAvailability(result);
+    }, 400);
+
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [slugChanged, slug, initialValues.tenantId]);
 
   return (
     <form action={action} className='space-y-6'>
@@ -62,6 +90,52 @@ export default function TenantEditForm({
           error={state.errors?.contactEmail}
         />
         <div className='space-y-1 md:col-span-2'>
+          <Label htmlFor='slug'>Subdominio</Label>
+          <div className='flex items-center rounded-md border border-stroke bg-white focus-within:border-ring'>
+            <Input
+              id='slug'
+              name='slug'
+              value={slug}
+              onChange={(event) => {
+                const value = event.target.value.toLowerCase();
+                setSlug(value);
+                setAvailability({
+                  available: null,
+                  message: value ? 'Comprobando disponibilidad...' : '',
+                });
+              }}
+              className='border-0 shadow-none focus-visible:ring-0'
+              aria-invalid={Boolean(state.errors?.slug)}
+              required
+            />
+            {rootDomain && (
+              <span className='pr-3 text-sm text-gray-500'>.{rootDomain}</span>
+            )}
+          </div>
+          <FieldError message={state.errors?.slug} />
+          {!state.errors?.slug && slugChanged && availability.message && (
+            <p
+              className={`text-xs font-medium ${
+                availability.available
+                  ? 'text-green-600'
+                  : availability.available === false
+                    ? 'text-red-600'
+                    : 'text-gray-500'
+              }`}
+            >
+              {availability.message}
+            </p>
+          )}
+          {slugChanged && hasDatabase && (
+            <p className='rounded-md bg-amber-50 p-3 text-xs text-amber-800'>
+              {initialValues.slug}.{rootDomain} va a redirigir a {slug || '…'}.
+              {rootDomain} durante {TENANT_SLUG_ALIAS_TTL_MINUTES} minutos.
+              Después deja de funcionar y queda libre para otras plataformas.
+              Los usuarios van a tener que volver a iniciar sesión.
+            </p>
+          )}
+        </div>
+        <div className='space-y-1 md:col-span-2'>
           <Label htmlFor='description'>Descripción</Label>
           <Textarea
             id='description'
@@ -74,7 +148,7 @@ export default function TenantEditForm({
         <TenantFaviconField
           initialUrl={values.faviconUrl}
           error={state.errors?.faviconUrl}
-          slug={slug}
+          slug={initialValues.slug}
         />
         <TenantColorFields
           initialHue={values.hue}

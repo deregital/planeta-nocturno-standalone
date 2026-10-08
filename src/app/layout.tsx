@@ -8,6 +8,10 @@ import { headers } from 'next/headers';
 import { InstanceProvider } from '@/components/instance/InstanceProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+  instanceAnalyticsKey,
+  instanceContextDataAttributes,
+} from '@/lib/analytics/instance-context';
 import { getMultiTenantLandingConfig } from '@/lib/config/multi-tenant-landing';
 import { getColors } from '@/lib/get-colors';
 import { ROOT_LANDING_HEADER } from '@/lib/tenancy/host';
@@ -58,6 +62,16 @@ export default async function RootLayout({
     controlRequest || rootLandingRequest
       ? null
       : (await getCurrentRequestContext()).instance;
+  const analyticsAttributes = instanceContextDataAttributes({
+    area: controlRequest
+      ? 'control'
+      : rootLandingRequest
+        ? 'landing'
+        : 'tenant',
+    mode: instance && !instance.slug ? 'single-tenant' : 'multi-tenant',
+    key: instance ? instanceAnalyticsKey(instance) : null,
+    name: instance?.name ?? null,
+  });
   const colors = getColors(instance?.hue ?? 200, instance?.saturation ?? 100);
   const colorVariables = {
     '--accent-dark-color': colors.accentDark,
@@ -76,6 +90,7 @@ export default async function RootLayout({
       className='notranslate'
       translate='no'
       style={colorVariables}
+      {...analyticsAttributes}
     >
       <body className={`${dmSans.className} antialiased`}>
         {instance ? (

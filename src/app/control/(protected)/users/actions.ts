@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins, controlRoles } from '@/db/control/schema';
 import { requirePermission } from '@/server/control/can-manage-tenants';
+import { logger } from '@/server/observability/logger';
 import { isUniqueViolation } from '@/server/control/custom-id';
 import {
   wouldDeleteLastAdminManager,
@@ -98,7 +99,7 @@ export async function createControlAdmin(
         errors: { general: 'El usuario o email ya existe' },
       };
     }
-    console.error('Unable to create control admin', error);
+    logger.error('Unable to create control admin', { error });
     return {
       values: safeValues,
       errors: { general: 'No se pudo crear el usuario' },
@@ -196,7 +197,7 @@ export async function updateControlAdmin(
         errors: { general: 'El usuario o email ya existe' },
       };
     }
-    console.error('Unable to update control admin', { adminId, error });
+    logger.error('Unable to update control admin', { adminId, error });
     return {
       values: safeValues,
       errors: { general: 'No se pudo actualizar el usuario' },
@@ -241,7 +242,7 @@ export async function deleteControlAdmin(
 
     if (!deleted) return { error: 'El usuario no existe' };
   } catch (error) {
-    console.error('Unable to delete control admin', { adminId, error });
+    logger.error('Unable to delete control admin', { adminId, error });
     return { error: 'No se pudo eliminar el usuario' };
   }
 

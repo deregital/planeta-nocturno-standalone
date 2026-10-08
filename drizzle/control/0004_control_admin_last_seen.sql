@@ -1,0 +1,1 @@
+ALTER TABLE "control_admins" ADD COLUMN "last_seen_at" timestamp with time zone;

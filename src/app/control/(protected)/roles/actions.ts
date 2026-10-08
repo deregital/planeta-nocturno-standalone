@@ -20,6 +20,7 @@ import {
 } from '@/lib/control/permissions';
 import { toRoleSlug } from '@/lib/control/role-name';
 import { requirePermission } from '@/server/control/can-manage-tenants';
+import { logger } from '@/server/observability/logger';
 import { isUniqueViolation } from '@/server/control/custom-id';
 
 const roleDisplayNameSchema = z
@@ -113,7 +114,7 @@ export async function createControlRole(
     if (isUniqueViolation(error)) {
       return { values, errors: { name: 'Ya existe un rol con ese nombre' } };
     }
-    console.error('Unable to create control role', error);
+    logger.error('Unable to create control role', { error });
     return { values, errors: { general: 'No se pudo crear el rol' } };
   }
 
@@ -231,7 +232,7 @@ export async function updateControlRole(
     if (isUniqueViolation(error)) {
       return { values, errors: { name: 'Ya existe un rol con ese nombre' } };
     }
-    console.error('Unable to update control role', { roleId, error });
+    logger.error('Unable to update control role', { roleId, error });
     return { values, errors: { general: 'No se pudo actualizar el rol' } };
   }
 
@@ -286,7 +287,7 @@ export async function deleteControlRole(
       .delete(controlRoles)
       .where(and(eq(controlRoles.id, roleId), ne(controlRoles.isSystem, true)));
   } catch (error) {
-    console.error('Unable to delete control role', { roleId, error });
+    logger.error('Unable to delete control role', { roleId, error });
     return { error: 'No se pudo eliminar el rol' };
   }
 

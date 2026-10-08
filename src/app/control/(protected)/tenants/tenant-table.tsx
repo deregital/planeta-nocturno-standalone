@@ -1,6 +1,7 @@
 'use client';
 
 import type { ControlPermission } from '@/lib/control/permissions';
+import type { TenantTag } from '@/server/control/tenant-tags';
 
 import {
   ArrowDown,
@@ -15,6 +16,7 @@ import { type TenantLifecycleStatus } from '@/app/control/(protected)/tenants/ac
 import TenantActions from '@/app/control/(protected)/tenants/tenant-actions';
 import EditableCommentsCell from '@/components/control/EditableCommentsCell';
 import EditableCustomIdCell from '@/components/control/EditableCustomIdCell';
+import TenantTagsCell from '@/components/control/TenantTagsCell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -65,9 +67,12 @@ type SortColumn =
   | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 type StatusFilter = 'all' | (typeof filterStatuses)[number];
+type CreatorFilter = 'all' | 'none' | `user:${string}`;
+type TagFilter = 'all' | 'none' | `tag:${string}`;
 
 type TenantRow = {
   id: number;
+  tagIds: string[];
   customId: string | null;
   comments: string | null;
   name: string;
@@ -82,23 +87,64 @@ type TenantRow = {
 
 export default function TenantTable({
   tenants,
+  tags,
   recycled = false,
   permissions,
 }: {
   tenants: TenantRow[];
+  tags: TenantTag[];
   recycled?: boolean;
   permissions: ControlPermission[];
 }) {
   const canUpdate = permissions.includes('tenants:update');
+  const canViewAll = permissions.includes('tenants:read_all');
+  const hasTags = tags.length > 0;
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [creator, setCreator] = useState<CreatorFilter>('all');
+  const [tagFilter, setTagFilter] = useState<TagFilter>('all');
   const [sort, setSort] = useState<SortColumn>('createdAt');
   const [direction, setDirection] = useState<SortDirection>('desc');
+
+  const creators = useMemo(() => {
+    const usernames = new Set<string>();
+    let hasUnregistered = false;
+    for (const tenant of tenants) {
+      if (tenant.createdByUsername) usernames.add(tenant.createdByUsername);
+      else hasUnregistered = true;
+    }
+    return {
+      usernames: [...usernames].sort((first, second) =>
+        first.localeCompare(second, 'es', { sensitivity: 'base' }),
+      ),
+      hasUnregistered,
+    };
+  }, [tenants]);
+
+  const tagsById = useMemo(
+    () => new Map(tags.map((tag) => [tag.id, tag])),
+    [tags],
+  );
+  const effectiveTagFilter: TagFilter =
+    tagFilter.startsWith('tag:') &&
+    !tagsById.has(tagFilter.slice('tag:'.length))
+      ? 'all'
+      : tagFilter;
 
   const visibleTenants = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('es');
     const filtered = tenants.filter((tenant) => {
       const matchesStatus = status === 'all' || tenant.status === status;
+      const matchesCreator =
+        creator === 'all' ||
+        (creator === 'none'
+          ? !tenant.createdByUsername
+          : tenant.createdByUsername === creator.slice('user:'.length));
+      const matchesTag =
+        effectiveTagFilter === 'all' ||
+        (effectiveTagFilter === 'none'
+          ? tenant.tagIds.length === 0
+          : tenant.tagIds.includes(effectiveTagFilter.slice('tag:'.length)));
       const matchesQuery =
         !normalizedQuery ||
         [
@@ -106,10 +152,11 @@ export default function TenantTable({
           tenant.name,
           tenant.slug,
           tenant.createdByUsername ?? '',
+          ...tenant.tagIds.map((tagId) => tagsById.get(tagId)?.name ?? ''),
         ].some((value) =>
           value.toLocaleLowerCase('es').includes(normalizedQuery),
         );
-      return matchesStatus && matchesQuery;
+      return matchesStatus && matchesCreator && matchesTag && matchesQuery;
     });
 
     return filtered.sort((first, second) => {
@@ -120,11 +167,23 @@ export default function TenantTable({
           : compareTenants(first, second, sort);
       return direction === 'asc' ? comparison : -comparison;
     });
-  }, [direction, query, recycled, sort, status, tenants]);
+  }, [
+    creator,
+    direction,
+    effectiveTagFilter,
+    query,
+    recycled,
+    sort,
+    status,
+    tagsById,
+    tenants,
+  ]);
 
   const hasCustomView =
     query !== '' ||
     status !== 'all' ||
+    creator !== 'all' ||
+    effectiveTagFilter !== 'all' ||
     sort !== 'createdAt' ||
     direction !== 'desc';
 
@@ -141,13 +200,23 @@ export default function TenantTable({
   function clearView() {
     setQuery('');
     setStatus('all');
+    setCreator('all');
+    setTagFilter('all');
     setSort('createdAt');
     setDirection('desc');
   }
 
   return (
     <div className='min-w-0 overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
-      <div className='grid gap-3 border-b border-stroke p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_200px_auto] lg:items-end'>
+      <div
+        className={`grid gap-3 border-b border-stroke p-4 sm:grid-cols-2 lg:items-end ${
+          canViewAll && hasTags
+            ? 'lg:grid-cols-[minmax(0,1fr)_200px_200px_200px_auto]'
+            : canViewAll || hasTags
+              ? 'lg:grid-cols-[minmax(0,1fr)_200px_200px_auto]'
+              : 'lg:grid-cols-[minmax(0,1fr)_200px_auto]'
+        }`}
+      >
         <div className='grid min-w-0 gap-1 text-sm font-medium text-gray-700 sm:col-span-2 lg:col-span-1'>
           <label htmlFor='page-filter'>Filtrar</label>
           <div className='relative min-w-0'>
@@ -157,7 +226,7 @@ export default function TenantTable({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className='w-full min-w-0 pl-9'
-              placeholder='Buscar por ID, nombre o creador'
+              placeholder='Buscar por ID, nombre, creador o etiqueta'
             />
           </div>
         </div>
@@ -181,6 +250,58 @@ export default function TenantTable({
             </SelectContent>
           </Select>
         </div>
+
+        {canViewAll && (
+          <div className='grid min-w-0 gap-1 text-sm font-medium text-gray-700'>
+            <label htmlFor='creator-filter'>Creado por</label>
+            <Select
+              value={creator}
+              onValueChange={(value) => setCreator(value as CreatorFilter)}
+            >
+              <SelectTrigger id='creator-filter' className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Todos</SelectItem>
+                {creators.usernames.map((username) => (
+                  <SelectItem key={username} value={`user:${username}`}>
+                    {username}
+                  </SelectItem>
+                ))}
+                {creators.hasUnregistered && (
+                  <SelectItem value='none'>Sin registrar</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {hasTags && (
+          <div className='grid min-w-0 gap-1 text-sm font-medium text-gray-700'>
+            <label htmlFor='tag-filter'>Etiqueta</label>
+            <Select
+              value={effectiveTagFilter}
+              onValueChange={(value) => setTagFilter(value as TagFilter)}
+            >
+              <SelectTrigger id='tag-filter' className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>Todas</SelectItem>
+                {tags.map((tag) => (
+                  <SelectItem key={tag.id} value={`tag:${tag.id}`}>
+                    <span
+                      className='size-2.5 shrink-0 rounded-full'
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    {tag.name}
+                  </SelectItem>
+                ))}
+                <SelectItem value='none'>Sin etiquetas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className='flex sm:justify-end lg:justify-start'>
           {hasCustomView && (
@@ -242,6 +363,7 @@ export default function TenantTable({
                 direction={direction}
                 onSort={toggleSort}
               />
+              <TableHead>Etiquetas</TableHead>
               {!recycled && <TableHead>Comentarios</TableHead>}
               <TableHead>Acciones</TableHead>
             </TableRow>
@@ -288,6 +410,14 @@ export default function TenantTable({
                       ? tenant.recycledAt
                       : tenant.createdAt,
                   )}
+                </TableCell>
+                <TableCell>
+                  <TenantTagsCell
+                    tenantId={tenant.id}
+                    tenantName={tenant.name}
+                    tags={tags}
+                    assignedTagIds={tenant.tagIds}
+                  />
                 </TableCell>
                 {!recycled && (
                   <TableCell>

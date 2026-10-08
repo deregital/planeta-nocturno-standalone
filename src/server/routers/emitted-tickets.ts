@@ -377,6 +377,26 @@ export const emittedTicketsRouter = router({
 
       return { buyer: buyerWithAge, events };
     }),
+  getEmissionHistoryByDni: adminProcedure
+    .input(emittedTicketSchema.shape.dni)
+    .query(async ({ input, ctx }) => {
+      return ctx.db
+        .select({
+          id: emittedTicket.id,
+          createdAt: emittedTicket.createdAt,
+          eventName: event.name,
+          ticketTypeName: ticketTypeTable.name,
+          scanned: emittedTicket.scanned,
+        })
+        .from(emittedTicket)
+        .innerJoin(event, eq(emittedTicket.eventId, event.id))
+        .innerJoin(
+          ticketTypeTable,
+          eq(emittedTicket.ticketTypeId, ticketTypeTable.id),
+        )
+        .where(eq(emittedTicket.dni, input))
+        .orderBy(desc(emittedTicket.createdAt));
+    }),
   getPdf: ticketingProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {

@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import posthog from 'posthog-js';
 import {
   useActionState,
   useCallback,
@@ -209,6 +210,19 @@ export default function CheckoutClient({
     ticketGroup.ticketTypePerGroups[0].amount === 1 &&
     ticketGroup.ticketTypePerGroups[0].ticketType.category === 'FREE';
 
+  const handleCheckoutSubmit = () => {
+    posthog.capture('checkout_submitted', {
+      event_id: ticketGroup.eventId,
+      ticket_count: ticketGroup.ticketTypePerGroups.reduce(
+        (count, ticketType) => count + ticketType.amount,
+        0,
+      ),
+      ticket_type_count: ticketGroup.ticketTypePerGroups.length,
+      total_price: totalPrice,
+      is_free: totalPrice === 0,
+    });
+  };
+
   return (
     <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
       <div className='hidden sm:flex justify-baseline w-full'>
@@ -247,6 +261,7 @@ export default function CheckoutClient({
 
       <form
         action={action}
+        onSubmit={handleCheckoutSubmit}
         className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'
       >
         {ticketGroup.event.extraTicketData ? (

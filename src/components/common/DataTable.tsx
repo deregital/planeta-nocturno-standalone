@@ -292,7 +292,9 @@ export function DataTable<
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody className='[&_tr:last-child]:border-0'>
+        {/* ph-mask: las filas suelen tener datos personales (DNI, mail,
+            teléfono) y no deben verse en los session replays de PostHog. */}
+        <TableBody className='ph-mask [&_tr:last-child]:border-0'>
           {isLoading ? (
             <tr>
               <td colSpan={columns.length} className='py-3'>

@@ -16,6 +16,8 @@ import {
   deleteTenantDatabase,
   getTenantDatabaseUrl,
 } from '@/server/neon/get-database-url';
+import { invalidateTenantLookups } from '@/server/instance/resolve-instance';
+import { logger } from '@/server/observability/logger';
 import { ensureTenantCorsOrigin } from '@/server/s3/ensure-tenant-cors-origin';
 import { migrateTenantDatabase } from '@/server/tenancy/migrate-tenant-database';
 
@@ -110,6 +112,7 @@ export async function provisionTenant(input: ProvisionTenantInput) {
 
     if (!activeTenant)
       throw new Error('Tenant disappeared during provisioning');
+    invalidateTenantLookups();
     return activeTenant;
   } catch (error) {
     if (databaseCreated) {
@@ -117,7 +120,7 @@ export async function provisionTenant(input: ProvisionTenantInput) {
         await deleteTenantDatabase(databaseName);
         databaseDeleted = true;
       } catch (cleanupError) {
-        console.error('Unable to delete incomplete tenant database', {
+        logger.error('Unable to delete incomplete tenant database', {
           databaseName,
           error: cleanupError,
         });
@@ -132,7 +135,7 @@ export async function provisionTenant(input: ProvisionTenantInput) {
           ? databaseName
           : null,
     }).catch((updateError) => {
-      console.error('Unable to mark tenant provisioning as failed', {
+      logger.error('Unable to mark tenant provisioning as failed', {
         tenantId: tenant.id,
         error: updateError,
       });

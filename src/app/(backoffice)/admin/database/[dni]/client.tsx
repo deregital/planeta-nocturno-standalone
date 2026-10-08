@@ -1,6 +1,7 @@
 'use client';
 
 import AttendedEventsTable from '@/components/admin/BuyerTable';
+import EmissionHistoryTable from '@/components/admin/EmissionHistoryTable';
 import { FilledCard } from '@/components/common/FilledCard';
 import GoBack from '@/components/common/GoBack';
 import BuyerInformation from '@/components/database/BuyerInformation';
@@ -9,8 +10,10 @@ import { type RouterOutputs } from '@/server/routers/app';
 
 export default function Client({
   data,
+  emissionHistory,
 }: {
   data: RouterOutputs['emittedTickets']['getUniqueBuyer'];
+  emissionHistory: RouterOutputs['emittedTickets']['getEmissionHistoryByDni'];
 }) {
   const { buyer, events } = data!;
 
@@ -23,7 +26,7 @@ export default function Client({
   return (
     <div className='flex flex-col gap-4 p-4'>
       <GoBack route='/admin/database' className='size-fit my-2' />
-      <div className='flex'>
+      <div className='flex flex-col gap-3 md:flex-row md:gap-0'>
         <h1 className='text-4xl font-bold text-accent'>
           {buyer.fullName}{' '}
           <span className='text-3xl text-gray-500'>ID: {buyer.buyerCode}</span>
@@ -32,6 +35,7 @@ export default function Client({
           instagram={normalizedInstagram}
           phoneNumber={buyer.phoneNumber}
           mail={buyer.mail}
+          className='justify-start ml-0 md:ml-8 md:justify-center'
         />
       </div>
 
@@ -45,6 +49,14 @@ export default function Client({
           <AttendedEventsTable events={events} buyerName={buyer.fullName} />
         </FilledCard>
       </div>
+
+      <FilledCard className='flex max-w-full p-4 flex-col text-accent-dark'>
+        <p className='text-3xl font-bold'>Historial de emisiones:</p>
+        <EmissionHistoryTable
+          tickets={emissionHistory}
+          buyerName={buyer.fullName}
+        />
+      </FilledCard>
     </div>
   );
 }

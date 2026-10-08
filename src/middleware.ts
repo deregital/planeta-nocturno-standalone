@@ -1,8 +1,5 @@
-import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { getControlDb } from '@/db/control/client';
-import { tenants } from '@/db/control/schema';
 import {
   isControlSessionValid,
   isTenantSessionValid,
@@ -10,12 +7,16 @@ import {
 import { createSingleTenantConfig } from '@/lib/config/single-tenant-config';
 import {
   getRequestHost,
+  getRequestOrigin,
   normalizeRootDomain,
+  replaceTenantSubdomain,
   resolveMultiTenantHost,
   ROOT_LANDING_HEADER,
   TENANT_ID_HEADER,
 } from '@/lib/tenancy/host';
 import { authMiddleware } from '@/server/auth';
+import { findTenantByHostSlug } from '@/server/instance/resolve-instance';
+import { logger } from '@/server/observability/logger';
 
 export default authMiddleware(async function middleware(request) {
   const headers = new Headers(request.headers);
@@ -31,7 +32,7 @@ export default authMiddleware(async function middleware(request) {
     const rootDomain = normalizeRootDomain(process.env.ROOT_DOMAIN ?? '');
     target = resolveMultiTenantHost(getRequestHost(headers), rootDomain);
   } catch (error) {
-    console.error('Invalid multi-tenant configuration', error);
+    logger.error('Invalid multi-tenant configuration', { error });
     return new NextResponse('Configuración de páginas inválida', {
       status: 503,
     });
@@ -71,21 +72,30 @@ export default authMiddleware(async function middleware(request) {
   }
 
   try {
-    const [tenant] = await getControlDb()
-      .select({
-        slug: tenants.slug,
-        databaseName: tenants.databaseName,
-      })
-      .from(tenants)
-      .where(and(eq(tenants.slug, target.slug), eq(tenants.status, 'active')))
-      .limit(1);
+    const tenant = await findTenantByHostSlug(target.slug);
 
-    if (!tenant) {
+    if (tenant?.status !== 'active') {
       return new NextResponse('Página no encontrada', { status: 404 });
     }
 
     if (!tenant.databaseName) {
       return new NextResponse('Página en preparación', { status: 503 });
+    }
+
+    // Los subdominios anteriores redirigen las páginas, pero atienden las
+    // APIs directo: los webhooks y callbacks firmados no siguen redirects.
+    if (
+      tenant.slug !== target.slug &&
+      !request.nextUrl.pathname.startsWith('/api/')
+    ) {
+      const host = replaceTenantSubdomain(getRequestHost(headers), tenant.slug);
+      return NextResponse.redirect(
+        new URL(
+          `${request.nextUrl.pathname}${request.nextUrl.search}`,
+          getRequestOrigin(headers, host),
+        ),
+        308,
+      );
     }
 
     const sessionIsValid = isTenantSessionValid(request.auth, tenant.slug);
@@ -109,7 +119,10 @@ export default authMiddleware(async function middleware(request) {
     headers.set(TENANT_ID_HEADER, tenant.slug);
     return NextResponse.next({ request: { headers } });
   } catch (error) {
-    console.error('Tenant lookup failed', { slug: target.slug, error });
+    logger.error('Tenant lookup failed', {
+      instance_key: target.slug,
+      error,
+    });
     return new NextResponse('Servicio temporalmente no disponible', {
       status: 503,
     });
@@ -124,7 +137,9 @@ function isProtectedTenantPath(pathname: string) {
 
 export const config = {
   runtime: 'nodejs',
+  // `relay` es el proxy de PostHog (POSTHOG_PROXY_PATH): lo resuelven los
+  // rewrites de next.config.ts y no debe pasar por el ruteo de tenants.
   matcher: [
-    '/((?!_next/static|_next/image|icon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2)$).*)',
+    '/((?!_next/static|_next/image|relay/|icon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2)$).*)',
   ],
 };

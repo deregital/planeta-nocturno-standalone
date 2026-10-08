@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { type GuideVideo } from '@/lib/guide';
+import { logger } from '@/server/observability/logger';
 
 const guideRoleByUserRole: Record<string, string> = {
   ADMIN: 'administrador',
@@ -48,7 +49,7 @@ export async function getGuideVideos(userRole: string): Promise<GuideVideo[]> {
     const videos = guideVideosSchema.parse(await response.json());
     return videos.filter((video) => video.role.id === guideRole);
   } catch (error) {
-    console.error('Unable to load guide videos', error);
+    logger.error('Unable to load guide videos', { error });
     return [];
   }
 }

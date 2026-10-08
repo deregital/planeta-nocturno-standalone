@@ -2,6 +2,7 @@
 
 import { Ticket } from 'lucide-react';
 import Link from 'next/link';
+import posthog from 'posthog-js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PhoneInput from 'react-phone-number-input';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
@@ -99,6 +100,11 @@ export function EmitTicketModal({
 
     setEmitTicketLoading(true);
     await emitTicket(ticketData);
+    posthog.capture('ticket_emitted', {
+      event_id: ticketData.eventId,
+      ticket_category: selectedTicketType?.category,
+      paid_on_location: ticketData.paidOnLocation,
+    });
     setEmitTicketLoading(false);
 
     setOpen(false);

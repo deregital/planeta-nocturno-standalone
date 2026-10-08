@@ -1,4 +1,4 @@
-import { and, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 import { type Route } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -6,9 +6,10 @@ import { notFound } from 'next/navigation';
 import TenantEditForm from '@/app/control/(protected)/tenants/[id]/form';
 import { Button } from '@/components/ui/button';
 import { getControlDb } from '@/db/control/client';
-import { tenants } from '@/db/control/schema';
+import { tenants, tenantSlugAliases } from '@/db/control/schema';
 import { requirePermissionOrRedirect } from '@/server/control/can-manage-tenants';
 import { tenantVisibilityFilter } from '@/server/control/tenant-access';
+import { activeTenantSlugAlias } from '@/server/control/tenant-slug';
 
 const statusLabels = {
   provisioning: 'Preparando',
@@ -58,7 +59,15 @@ export default async function EditTenantPage({
 
   if (!tenant) notFound();
 
-  const rootDomain = process.env.ROOT_DOMAIN;
+  const aliases = await getControlDb()
+    .select({ slug: tenantSlugAliases.slug })
+    .from(tenantSlugAliases)
+    .where(
+      and(eq(tenantSlugAliases.tenantId, tenant.id), activeTenantSlugAlias),
+    )
+    .orderBy(desc(tenantSlugAliases.createdAt));
+
+  const rootDomain = process.env.ROOT_DOMAIN ?? '';
 
   return (
     <div className='space-y-6'>
@@ -78,14 +87,22 @@ export default async function EditTenantPage({
           {statusLabels[tenant.status]}
           {tenant.databaseName ? '' : ' · Pendiente de configuración'}
         </p>
+        {aliases.length > 0 && (
+          <p className='mt-1 text-xs text-gray-500'>
+            Redirigiendo temporalmente desde:{' '}
+            {aliases.map((alias) => alias.slug).join(', ')}
+          </p>
+        )}
       </div>
 
       <TenantEditForm
-        slug={tenant.slug}
+        rootDomain={rootDomain}
+        hasDatabase={Boolean(tenant.databaseName)}
         initialValues={{
           tenantId: String(tenant.id),
           customId: tenant.customId ?? '',
           name: tenant.name,
+          slug: tenant.slug,
           comments: tenant.comments ?? '',
           description: tenant.description ?? '',
           contactEmail: tenant.contactEmail ?? '',

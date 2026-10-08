@@ -8,6 +8,7 @@ import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { LIFECYCLE_PERMISSIONS } from '@/lib/control/permissions';
 import { requirePermission } from '@/server/control/can-manage-tenants';
+import { logger } from '@/server/observability/logger';
 import {
   CUSTOM_ID_TAKEN_ERROR,
   getCustomIdAvailabilityError,
@@ -15,6 +16,7 @@ import {
 } from '@/server/control/custom-id';
 import { tenantMetadataSchema } from '@/server/schemas/control-tenant';
 import { tenantVisibilityFilter } from '@/server/control/tenant-access';
+import { invalidateTenantLookups } from '@/server/instance/resolve-instance';
 
 const lifecycleSchema = z.object({
   tenantId: z.coerce.number().int().positive(),
@@ -81,7 +83,7 @@ export async function updateTenantComments(
 
     if (!updatedTenant) return { error: 'La plataforma ya no existe' };
   } catch (error) {
-    console.error('Unable to update tenant comments', { tenantId, error });
+    logger.error('Unable to update tenant comments', { tenantId, error });
     return { error: 'No se pudieron actualizar los comentarios' };
   }
 
@@ -141,7 +143,7 @@ export async function updateTenantCustomId(
     if (isCustomIdUniqueViolation(error)) {
       return { error: CUSTOM_ID_TAKEN_ERROR };
     }
-    console.error('Unable to update tenant custom id', { tenantId, error });
+    logger.error('Unable to update tenant custom id', { tenantId, error });
     return { error: 'No se pudo actualizar el ID personalizable' };
   }
 
@@ -202,7 +204,7 @@ export async function updateTenantLifecycle(
         .set({ status: 'suspended', updatedAt: new Date() })
         .where(and(eq(tenants.id, tenantId), eq(tenants.status, 'active')));
     } catch (error) {
-      console.error('Unable to suspend tenant', { tenantId, error });
+      logger.error('Unable to suspend tenant', { tenantId, error });
       return { error: 'No se pudo suspender la plataforma' };
     }
   }
@@ -228,7 +230,7 @@ export async function updateTenantLifecycle(
           ),
         );
     } catch (error) {
-      console.error('Unable to activate tenant', { tenantId, error });
+      logger.error('Unable to activate tenant', { tenantId, error });
       return { error: 'No se pudo activar la plataforma' };
     }
   }
@@ -251,7 +253,7 @@ export async function updateTenantLifecycle(
         })
         .where(and(eq(tenants.id, tenantId), isNull(tenants.deletedAt)));
     } catch (error) {
-      console.error('Unable to recycle tenant', { tenantId, error });
+      logger.error('Unable to recycle tenant', { tenantId, error });
       return { error: 'No se pudo enviar la plataforma a la papelera' };
     }
   }
@@ -286,11 +288,12 @@ export async function updateTenantLifecycle(
         return { error: 'La plataforma ya no está en la papelera' };
       }
     } catch (error) {
-      console.error('Unable to restore tenant', { tenantId, error });
+      logger.error('Unable to restore tenant', { tenantId, error });
       return { error: 'No se pudo restaurar la plataforma' };
     }
   }
 
+  invalidateTenantLookups();
   revalidatePath('/');
   revalidatePath('/trash');
   return {};
