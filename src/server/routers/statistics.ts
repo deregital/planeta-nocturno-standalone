@@ -4,10 +4,12 @@ import z from 'zod';
 
 import { emittedTicket, event, ticketGroup } from '@/drizzle/schema';
 import { calculateTicketGroupStats } from '@/server/services/eventStats';
-import { adminProcedure, router } from '@/server/trpc';
+import { permissionProcedure, router } from '@/server/trpc';
+
+const statisticsProcedure = permissionProcedure('statistics:read');
 
 export const statisticsRouter = router({
-  getStatistics: adminProcedure
+  getStatistics: statisticsProcedure
     .input(
       z.object({
         from: z.date(),
@@ -64,7 +66,7 @@ export const statisticsRouter = router({
         genderCounts: stats.genderCounts,
       };
     }),
-  getEventsStats: adminProcedure
+  getEventsStats: statisticsProcedure
     .input(
       z.object({
         from: z.date(),
@@ -120,7 +122,7 @@ export const statisticsRouter = router({
 
       return stats;
     }),
-  getLocationsStats: adminProcedure
+  getLocationsStats: statisticsProcedure
     .input(
       z.object({
         from: z.date(),
@@ -181,7 +183,7 @@ export const statisticsRouter = router({
 
       return stats;
     }),
-  getEmittedTicketsPerHour: adminProcedure
+  getEmittedTicketsPerHour: statisticsProcedure
     .input(
       z.object({
         from: z.date(),

@@ -10,9 +10,9 @@ import { useSession } from 'next-auth/react';
 import { EditUserForm } from '@/components/admin/config/EditUserForm';
 import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
 import { ResetPasswordForm } from '@/components/admin/users/ResetPasswordForm';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
-import { type role as roleEnum } from '@/drizzle/schema';
-import { genderTranslation, roleTranslation } from '@/lib/translations';
+import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
@@ -233,24 +233,14 @@ export const userColumns: StrictColumnDef<
   },
 
   {
-    accessorKey: 'role',
+    id: 'role',
+    accessorFn: (row) => row.accessRole.name,
     header: () => <p className='text-sm p-2'>Rol</p>,
-    cell: ({ row }) => {
-      return (
-        <p className='text-sm p-2'>
-          {
-            roleTranslation[
-              row.original.role as (typeof roleEnum.enumValues)[number]
-            ]
-          }
-        </p>
-      );
-    },
+    cell: ({ row }) => (
+      <p className='text-sm p-2'>{row.original.accessRole.name}</p>
+    ),
     meta: {
-      exportValue: (row) =>
-        roleTranslation[
-          row.original.role as (typeof roleEnum.enumValues)[number]
-        ],
+      exportValue: (row) => row.original.accessRole.name,
       exportHeader: 'Rol',
     },
   },
@@ -260,16 +250,22 @@ export const userColumns: StrictColumnDef<
     cell: ({ row }) => {
       // eslint-disable-next-line react-hooks/rules-of-hooks
       const session = useSession();
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const { can } = usePermissions();
       if (session.data?.user.id === row.original.id) return null;
       return (
         <div className='flex items-center gap-2'>
-          <EditUserForm user={row.original} />
-          <ResetPasswordForm
-            userId={row.original.id}
-            userName={row.original.name}
-            userRole={row.original.role}
-          />
-          <DeleteUserModal user={row.original} />
+          {can('users:update') && (
+            <>
+              <EditUserForm user={row.original} />
+              <ResetPasswordForm
+                userId={row.original.id}
+                userName={row.original.name}
+                credentialsType='user'
+              />
+            </>
+          )}
+          {can('users:delete') && <DeleteUserModal user={row.original} />}
         </div>
       );
     },

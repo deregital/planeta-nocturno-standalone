@@ -45,12 +45,14 @@ export async function updateUser(
   const gender = formData.get('gender') as string;
   const phoneNumber = formData.get('phoneNumber') as string;
   const instagram = formData.get('instagram') as string;
+  const accessRoleId = (formData.get('accessRoleId') as string) || null;
 
   const data = {
     fullName,
     name: username,
     email,
     role,
+    accessRoleId,
     birthDate,
     dni,
     gender,
@@ -155,12 +157,14 @@ export async function updateOrganizer(
   const gender = formData.get('gender') as string;
   const phoneNumber = formData.get('phoneNumber') as string;
   const instagram = formData.get('instagram') as string;
+  const accessRoleId = (formData.get('accessRoleId') as string) || null;
 
   const data = {
     fullName,
     name: username,
     email,
     role,
+    accessRoleId,
     birthDate,
     dni,
     gender,
@@ -244,7 +248,6 @@ export async function updateOrganizer(
   }
 
   revalidatePath('/admin/users');
-  revalidatePath('/organization/organizers');
 
   return {
     data: validation.data,

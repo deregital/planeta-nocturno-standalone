@@ -48,7 +48,6 @@ export function AddTag({ userId, currentUserTagIds = [] }: AddTagProps) {
       toast.success('Usuario agregado al grupo exitosamente');
       // Add the tag to the local list to immediately filter it out
       setAddedTagIds((prev) => [...prev, variables.tagId]);
-      utils.user.getByRole.invalidate('ORGANIZER');
       utils.user.getOrganizersByChiefOrganizer.invalidate();
       utils.user.getOrganizers.invalidate();
       utils.tag.getAll.invalidate();

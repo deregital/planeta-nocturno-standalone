@@ -2,37 +2,37 @@ import { and, eq, not, sql } from 'drizzle-orm';
 import z from 'zod';
 
 import { tag, userXTag } from '@/drizzle/schema';
-import { chiefOrganizerProcedure, router } from '@/server/trpc';
+import { permissionProcedure, router } from '@/server/trpc';
 import { assertTagOwnedByUser } from '@/server/utils/tags';
 
+const groupsProcedure = permissionProcedure('organizers:groups');
+
 export const tagRouter = router({
-  getAll: chiefOrganizerProcedure.query(async ({ ctx }) => {
+  getAll: groupsProcedure.query(async ({ ctx }) => {
     return ctx.db.query.tag.findMany({
       where: eq(tag.createdById, ctx.session.user.id),
       orderBy: (tags, { asc }) => [asc(tags.name)],
     });
   }),
-  create: chiefOrganizerProcedure
-    .input(z.string())
-    .mutation(async ({ ctx, input }) => {
-      const existingTag = await ctx.db.query.tag.findFirst({
-        where: and(
-          sql`lower(${tag.name}) = lower(${input})`,
-          eq(tag.createdById, ctx.session.user.id),
-        ),
-      });
+  create: groupsProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
+    const existingTag = await ctx.db.query.tag.findFirst({
+      where: and(
+        sql`lower(${tag.name}) = lower(${input})`,
+        eq(tag.createdById, ctx.session.user.id),
+      ),
+    });
 
-      if (existingTag) {
-        throw new Error('Ya existe un grupo con ese nombre');
-      }
+    if (existingTag) {
+      throw new Error('Ya existe un grupo con ese nombre');
+    }
 
-      const [createdTag] = await ctx.db
-        .insert(tag)
-        .values({ name: input, createdById: ctx.session.user.id })
-        .returning();
-      return createdTag;
-    }),
-  update: chiefOrganizerProcedure
+    const [createdTag] = await ctx.db
+      .insert(tag)
+      .values({ name: input, createdById: ctx.session.user.id })
+      .returning();
+    return createdTag;
+  }),
+  update: groupsProcedure
     .input(z.object({ id: z.string(), name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertTagOwnedByUser(ctx.db, input.id, ctx.session.user.id);
@@ -55,15 +55,13 @@ export const tagRouter = router({
         .where(eq(tag.id, input.id));
       return updatedTag;
     }),
-  delete: chiefOrganizerProcedure
-    .input(z.string())
-    .mutation(async ({ ctx, input }) => {
-      await assertTagOwnedByUser(ctx.db, input, ctx.session.user.id);
+  delete: groupsProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
+    await assertTagOwnedByUser(ctx.db, input, ctx.session.user.id);
 
-      const deletedTag = await ctx.db.delete(tag).where(eq(tag.id, input));
-      return deletedTag;
-    }),
-  removeUserFromTag: chiefOrganizerProcedure
+    const deletedTag = await ctx.db.delete(tag).where(eq(tag.id, input));
+    return deletedTag;
+  }),
+  removeUserFromTag: groupsProcedure
     .input(z.object({ userId: z.string(), tagId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertTagOwnedByUser(ctx.db, input.tagId, ctx.session.user.id);
@@ -73,7 +71,7 @@ export const tagRouter = router({
         .where(and(eq(userXTag.a, input.tagId), eq(userXTag.b, input.userId)));
       return removedUserFromTag;
     }),
-  addUserToTag: chiefOrganizerProcedure
+  addUserToTag: groupsProcedure
     .input(
       z.object({
         userId: z.string(),

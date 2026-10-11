@@ -6,21 +6,28 @@ import { z } from 'zod';
 
 import type { Db } from '@/drizzle';
 
-import {
-  role,
-  tag as tagTable,
-  user as userTable,
-  userXTag,
-} from '@/drizzle/schema';
+import { tag as tagTable, user as userTable, userXTag } from '@/drizzle/schema';
 import { resetPasswordSchema, userSchema } from '@/server/schemas/user';
 import {
   generateWelcomeEmail,
   sendMailWithoutAttachments,
 } from '@/server/services/mail';
+import { SYSTEM_ACCESS_ROLE_IDS } from '@/lib/rbac/permissions';
 import {
-  adminProcedure,
-  chiefOrganizerProcedure,
-  organizerProcedure,
+  getRoleIdsWithPermission,
+  isHiddenUser,
+  visibleUserCondition,
+} from '@/server/rbac/access';
+import { assertCanAccessOrganizer } from '@/server/rbac/scope';
+import {
+  assertCanAssignRole,
+  assertCanManageUser,
+} from '@/server/rbac/user-assignment';
+import {
+  anyPermissionProcedure,
+  forbidden,
+  permissionProcedure,
+  protectedProcedure,
   publicProcedure,
   router,
 } from '@/server/trpc';
@@ -32,46 +39,43 @@ import {
 import { generateRandomPassword } from '@/server/utils/users';
 
 export const userRouter = router({
-  getAll: adminProcedure.query(async ({ ctx }) => {
+  getAll: permissionProcedure('users:read').query(async ({ ctx }) => {
     const ownedTagIds = await getTagIdsOwnedByUser(ctx.db, ctx.session.user.id);
-    const users = await ctx.db.query.user.findMany({
-      with: {
-        userXTags: buildUserXTagsRelation(ownedTagIds),
-        user: {
-          columns: {
-            fullName: true,
-          },
-        },
-      },
-    });
-
-    return users;
-  }),
-  getByRole: chiefOrganizerProcedure
-    .input(z.enum(role.enumValues))
-    .query(async ({ ctx, input }) => {
-      const ownedTagIds = await getTagIdsOwnedByUser(
-        ctx.db,
-        ctx.session.user.id,
-      );
-      const users = await ctx.db.query.user.findMany({
-        where: eq(userTable.role, input),
+    const [users, organizerRoleIds] = await Promise.all([
+      ctx.db.query.user.findMany({
+        where: visibleUserCondition,
         with: {
           userXTags: buildUserXTagsRelation(ownedTagIds),
+          accessRole: { columns: { name: true } },
+          user: {
+            columns: {
+              fullName: true,
+            },
+          },
         },
-      });
-      return users;
-    }),
-  getOrganizersByChiefOrganizer: chiefOrganizerProcedure.query(
+      }),
+      getRoleIdsWithPermission(ctx.db, 'organizer:act'),
+    ]);
+
+    return users.map((user) => ({
+      ...user,
+      isOrganizer: organizerRoleIds.includes(user.accessRoleId),
+    }));
+  }),
+  getOrganizersByChiefOrganizer: permissionProcedure('organizers:read').query(
     async ({ ctx }) => {
       const ownedTagIds = await getTagIdsOwnedByUser(
         ctx.db,
         ctx.session.user.id,
       );
       const users = await ctx.db.query.user.findMany({
-        where: eq(userTable.chiefOrganizerId, ctx.session.user.id),
+        where: and(
+          eq(userTable.chiefOrganizerId, ctx.session.user.id),
+          visibleUserCondition,
+        ),
         with: {
           userXTags: buildUserXTagsRelation(ownedTagIds),
+          accessRole: { columns: { name: true } },
           user: {
             columns: {
               fullName: true,
@@ -82,18 +86,45 @@ export const userRouter = router({
       return users;
     },
   ),
-  getTicketingUsers: adminProcedure.query(async ({ ctx }) => {
-    const users = await ctx.db.query.user.findMany({
-      where: inArray(userTable.role, ['TICKETING', 'CONTROL_TICKETING']),
+  getTicketingUsers: anyPermissionProcedure([
+    'events:create',
+    'events:update',
+    'users:read',
+  ]).query(async ({ ctx }) => {
+    const roleIds = await getRoleIdsWithPermission(ctx.db, 'events:staff');
+    if (roleIds.length === 0) return [];
+
+    return ctx.db.query.user.findMany({
+      where: and(
+        inArray(userTable.accessRoleId, roleIds),
+        visibleUserCondition,
+      ),
+      with: { accessRole: { columns: { name: true } } },
     });
-    return users;
   }),
-  getById: organizerProcedure
+  getById: protectedProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (input === ctx.session.user.id) {
+        ctx.require('profile:read');
+      } else if (
+        !ctx.canAny([
+          'users:read',
+          'organizers:read_all',
+          'events:create',
+          'events:update',
+        ])
+      ) {
+        ctx.require('organizers:read');
+        await assertCanAccessOrganizer(ctx, input);
+      }
+
       const user = await ctx.db.query.user.findFirst({
         where: eq(userTable.id, input),
       });
+      if (user && input !== ctx.session.user.id && isHiddenUser(user)) {
+        return undefined;
+      }
       return user;
     }),
   getUnsensitiveInfoById: publicProcedure
@@ -110,9 +141,15 @@ export const userRouter = router({
 
       return user;
     }),
-  create: chiefOrganizerProcedure
+  create: protectedProcedure
     .input(userSchema)
     .mutation(async ({ ctx, input }) => {
+      const assignedRole = await assertCanAssignRole(
+        ctx,
+        input.accessRoleId,
+        'create',
+      );
+
       await assertUniqueUser(ctx.db, input);
 
       const hashedPassword = await hash(input.password, 10);
@@ -125,6 +162,13 @@ export const userRouter = router({
         .insert(userTable)
         .values({
           ...input,
+          role: assignedRole.legacyRole,
+          accessRoleId: assignedRole.id,
+          // Sin ver a todos los organizadores, los que crea quedan en su equipo.
+          chiefOrganizerId:
+            assignedRole.kind === 'organizer' && !ctx.can('organizers:read_all')
+              ? ctx.session.user.id
+              : input.chiefOrganizerId,
           fullName: input.fullName,
           name: input.name.trim(),
           password: hashedPassword,
@@ -133,13 +177,29 @@ export const userRouter = router({
         .returning();
       return user;
     }),
-  update: chiefOrganizerProcedure
+  update: protectedProcedure
     .input(
       userSchema
         .omit({ password: true, chiefOrganizerId: true })
         .extend({ id: z.string() }),
     )
     .mutation(async ({ ctx, input }) => {
+      const target = await assertCanManageUser(ctx, input.id, 'update');
+
+      const assignedRole = await assertCanAssignRole(
+        ctx,
+        input.accessRoleId ?? target.accessRoleId,
+        'update',
+        target.accessRoleId,
+      );
+
+      if (
+        target.id === ctx.session.user.id &&
+        assignedRole.id !== target.accessRoleId
+      ) {
+        throw forbidden('No podés cambiar tu propio rol');
+      }
+
       await assertUniqueUser(ctx.db, input, input.id);
 
       const instagram = input.instagram?.startsWith('@')
@@ -150,6 +210,8 @@ export const userRouter = router({
         .update(userTable)
         .set({
           ...input,
+          role: assignedRole.legacyRole,
+          accessRoleId: assignedRole.id,
           name: input.name.trim(),
           birthDate: input.birthDate,
           instagram,
@@ -159,9 +221,14 @@ export const userRouter = router({
       revalidatePath('/admin/users');
       return user;
     }),
-  updateOwnProfile: organizerProcedure
+  updateOwnProfile: permissionProcedure('profile:update')
     .input(
-      userSchema.omit({ password: true, role: true, chiefOrganizerId: true }),
+      userSchema.omit({
+        password: true,
+        role: true,
+        chiefOrganizerId: true,
+        accessRoleId: true,
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       await assertUniqueUser(ctx.db, input, ctx.session.user.id);
@@ -183,12 +250,14 @@ export const userRouter = router({
       revalidatePath('/profile');
       return user;
     }),
-  partialUpdate: chiefOrganizerProcedure
+  partialUpdate: protectedProcedure
     .input(
       userSchema
         .omit({
           password: true,
           chiefOrganizerId: true,
+          accessRoleId: true,
+          role: true,
           email: true,
           dni: true,
           name: true,
@@ -197,6 +266,8 @@ export const userRouter = router({
         .extend({ id: z.string() }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertCanManageUser(ctx, input.id, 'update');
+
       const instagram = input.instagram?.startsWith('@')
         ? input.instagram.slice(1)
         : input.instagram;
@@ -211,9 +282,11 @@ export const userRouter = router({
 
       return user;
     }),
-  resetPassword: chiefOrganizerProcedure
+  resetPassword: protectedProcedure
     .input(resetPasswordSchema)
     .mutation(async ({ ctx, input }) => {
+      await assertCanManageUser(ctx, input.id, 'update');
+
       const hashedPassword = await hash(input.password, 10);
 
       await ctx.db
@@ -242,9 +315,11 @@ export const userRouter = router({
         email: user.email,
       };
     }),
-  delete: chiefOrganizerProcedure
+  delete: protectedProcedure
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
+      await assertCanManageUser(ctx, input, 'delete');
+
       const user = await ctx.db
         .delete(userTable)
         .where(eq(userTable.id, input));
@@ -252,7 +327,7 @@ export const userRouter = router({
       revalidatePath('/admin/users');
       return user;
     }),
-  importUsers: chiefOrganizerProcedure
+  importUsers: permissionProcedure('organizers:import')
     .input(
       z.object({
         users: z.array(
@@ -270,6 +345,12 @@ export const userRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const assignedRole = await assertCanAssignRole(
+        ctx,
+        SYSTEM_ACCESS_ROLE_IDS.ORGANIZER,
+        'create',
+      );
+
       const errors: string[] = [];
       const createdUsers: (typeof userTable.$inferSelect)[] = [];
 
@@ -405,11 +486,10 @@ export const userRouter = router({
         uniqueUsernames.set(user.email, finalUsername);
       }
 
-      // Determinar chiefOrganizerId si el usuario actual es CHIEF_ORGANIZER
-      const chiefOrganizerId =
-        ctx.session.user.role === 'CHIEF_ORGANIZER'
-          ? ctx.session.user.id
-          : null;
+      // Sin ver a todos los organizadores, los importados quedan en su equipo.
+      const chiefOrganizerId = ctx.can('organizers:read_all')
+        ? null
+        : ctx.session.user.id;
 
       for (const user of input.users) {
         const fullName = `${user.nombre} ${user.apellido}`.trim();
@@ -428,7 +508,8 @@ export const userRouter = router({
             fullName: fullName,
             password: hashedPassword,
             email: user.email,
-            role: 'ORGANIZER',
+            role: assignedRole.legacyRole,
+            accessRoleId: assignedRole.id,
             gender: 'other',
             phoneNumber: user.telefono,
             dni: user.dni,
@@ -464,12 +545,23 @@ export const userRouter = router({
         createdCount: createdUsers.length,
       };
     }),
-  getOrganizers: adminProcedure.query(async ({ ctx }) => {
+  getOrganizers: anyPermissionProcedure([
+    'organizers:read_all',
+    'events:create',
+    'events:update',
+  ]).query(async ({ ctx }) => {
     const ownedTagIds = await getTagIdsOwnedByUser(ctx.db, ctx.session.user.id);
+    const roleIds = await getRoleIdsWithPermission(ctx.db, 'organizer:act');
+    if (roleIds.length === 0) return [];
+
     const organizers = await ctx.db.query.user.findMany({
-      where: inArray(userTable.role, ['ORGANIZER', 'CHIEF_ORGANIZER']),
+      where: and(
+        inArray(userTable.accessRoleId, roleIds),
+        visibleUserCondition,
+      ),
       with: {
         userXTags: buildUserXTagsRelation(ownedTagIds),
+        accessRole: { columns: { name: true } },
         user: {
           columns: {
             fullName: true,

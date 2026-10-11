@@ -12,7 +12,9 @@ import { ChiefOrganizerEventView } from '@/components/organization/event/ChiefOr
 import { CopyUrl } from '@/components/organization/event/CopyUrl';
 import { InvitationTicketTableWrapper } from '@/components/organization/event/InvitationTicketTableWrapper';
 import { getChiefDistributableTicketPool } from '@/lib/chief-organizer-event';
+import { hasPermission, type TenantPermission } from '@/lib/rbac/permissions';
 import { auth } from '@/server/auth';
+import { requirePagePermission } from '@/server/rbac/guards';
 import { trpc } from '@/server/trpc/server';
 import {
   ORGANIZER_CODE_QUERY_PARAM,
@@ -24,6 +26,10 @@ export default async function EventPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const access = await requirePagePermission('organizer:act');
+  const can = (permission: TenantPermission) =>
+    hasPermission(access.permissions, permission);
+  const isTeamLead = can('organizer:team');
   const { slug } = await params;
   const session = await auth();
   const event = await trpc.events.getBySlug(slug);
@@ -64,19 +70,18 @@ export default async function EventPage({
 
   const organizerEventUrl = `${origin}/event/${event.slug}?${ORGANIZER_CODE_QUERY_PARAM}=${myCode}${ticketParam}`;
 
-  // Para chief organizer: obtener IDs de sus organizadores
-  const myOrganizerIds =
-    session?.user.role === 'CHIEF_ORGANIZER'
-      ? event.eventXorganizers
-          .filter((eo) => eo.user.chiefOrganizerId === session?.user.id)
-          .map((eo) => eo.user.id)
-      : [];
+  // Quien lidera un equipo ve las ventas de sus organizadores
+  const myOrganizerIds = isTeamLead
+    ? event.eventXorganizers
+        .filter((eo) => eo.user.chiefOrganizerId === session?.user.id)
+        .map((eo) => eo.user.id)
+    : [];
 
   // Filtrar tickets: chief organizer ve los de sus organizadores, organizador ve solo los suyos
   const myTickets = event.ticketGroups
     .filter((tg) => !tg.isOrganizerGroup)
     .filter((tg) =>
-      session?.user.role === 'CHIEF_ORGANIZER'
+      isTeamLead
         ? myOrganizerIds.includes(tg.invitedById ?? '')
         : tg.invitedById === session?.user.id,
     )
@@ -85,7 +90,7 @@ export default async function EventPage({
   const userId = session?.user.id;
   const maxAvailable =
     event.inviteCondition === 'INVITATION' && userId
-      ? session?.user.role === 'CHIEF_ORGANIZER'
+      ? isTeamLead
         ? getChiefDistributableTicketPool(event, userId)
         : (event.eventXorganizers.find((eo) => eo.user.id === userId)
             ?.ticketAmount ?? 0)
@@ -113,7 +118,8 @@ export default async function EventPage({
           </div>
         </div>
       )}
-      {session?.user.role === 'CHIEF_ORGANIZER' &&
+      {isTeamLead &&
+        can('organizers:distribute') &&
         event.inviteCondition === 'INVITATION' && (
           <div className='mt-4 flex justify-center px-4'>
             <OrganizerDistribution event={event} />
@@ -126,10 +132,10 @@ export default async function EventPage({
       <Suspense
         fallback={<div className='text-center p-8'>Cargando ventas...</div>}
       >
-        {session?.user.role === 'CHIEF_ORGANIZER' ? (
+        {isTeamLead ? (
           <ChiefOrganizerEventView
             event={event}
-            chiefOrganizerId={session.user.id}
+            chiefOrganizerId={access.userId}
           />
         ) : (
           <TicketTableWithTabs
@@ -146,23 +152,24 @@ export default async function EventPage({
         )}
       </Suspense>
 
-      {event.inviteCondition === 'INVITATION' && (
-        <>
-          <h2 className='text-3xl font-bold px-4 text-accent mb-4 mt-8'>
-            Códigos de invitación
-          </h2>
-          <Suspense
-            fallback={
-              <div className='text-center p-8'>Cargando códigos...</div>
-            }
-          >
-            <InvitationTicketTableWrapper
-              eventId={event.id}
-              eventSlug={event.slug}
-            />
-          </Suspense>
-        </>
-      )}
+      {can('organizer:invitation_codes') &&
+        event.inviteCondition === 'INVITATION' && (
+          <>
+            <h2 className='text-3xl font-bold px-4 text-accent mb-4 mt-8'>
+              Códigos de invitación
+            </h2>
+            <Suspense
+              fallback={
+                <div className='text-center p-8'>Cargando códigos...</div>
+              }
+            >
+              <InvitationTicketTableWrapper
+                eventId={event.id}
+                eventSlug={event.slug}
+              />
+            </Suspense>
+          </>
+        )}
     </div>
   );
 }

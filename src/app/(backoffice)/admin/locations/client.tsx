@@ -2,6 +2,7 @@
 
 import LocationAccordion from '@/components/location/LocationAccordion';
 import LocationModal from '@/components/location/LocationModal';
+import { Can } from '@/components/rbac/Can';
 import { Accordion } from '@/components/ui/accordion';
 import { type Location } from '@/server/schemas/location';
 
@@ -19,7 +20,9 @@ export default function Client({ locations }: { locations: Location[] }) {
             />
           ))}
       </Accordion>
-      <LocationModal action='CREATE' />
+      <Can permission='locations:create'>
+        <LocationModal action='CREATE' />
+      </Can>
     </div>
   );
 }

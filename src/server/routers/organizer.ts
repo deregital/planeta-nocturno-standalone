@@ -20,15 +20,12 @@ import {
 } from '@/drizzle/schema';
 import { eventSchema } from '@/server/schemas/event';
 import { organizerBaseSchema } from '@/server/schemas/organizer';
-import {
-  chiefOrganizerProcedure,
-  organizerProcedure,
-  router,
-} from '@/server/trpc';
+import { assertCanAccessOrganizer } from '@/server/rbac/scope';
+import { permissionProcedure, router } from '@/server/trpc';
 import { endOfDayUTC } from '@/server/utils/utils';
 
 export const organizerRouter = router({
-  getMyEvents: organizerProcedure.query(async ({ ctx }) => {
+  getMyEvents: permissionProcedure('organizer:act').query(async ({ ctx }) => {
     const myEventsRelation = await ctx.db.query.eventXorganizer.findMany({
       where: eq(eventXorganizer.organizerId, ctx.session.user.id),
       with: {
@@ -44,7 +41,7 @@ export const organizerRouter = router({
       (relation) => relation.event && !relation.event.isDeleted,
     );
   }),
-  getMyCodesNotUsed: organizerProcedure
+  getMyCodesNotUsed: permissionProcedure('organizer:invitation_codes')
     .input(eventSchema.shape.id)
     .query(async ({ ctx, input }) => {
       const codes = await ctx.db.query.ticketXorganizer.findMany({
@@ -63,7 +60,7 @@ export const organizerRouter = router({
         createdAt: row.createdAt,
       }));
     }),
-  setCodeShared: organizerProcedure
+  setCodeShared: permissionProcedure('organizer:invitation_codes')
     .input(
       z.object({
         eventId: eventSchema.shape.id,
@@ -94,7 +91,7 @@ export const organizerRouter = router({
 
       return updated[0];
     }),
-  getMyCode: organizerProcedure.query(async ({ ctx }) => {
+  getMyCode: permissionProcedure('organizer:act').query(async ({ ctx }) => {
     const code = await ctx.db.query.user.findFirst({
       where: eq(user.id, ctx.session.user.id),
       columns: {
@@ -103,9 +100,11 @@ export const organizerRouter = router({
     });
     return code?.code;
   }),
-  getInfoById: chiefOrganizerProcedure
+  getInfoById: permissionProcedure('organizers:read')
     .input(organizerBaseSchema.shape.id)
     .query(async ({ ctx, input: organizerId }) => {
+      await assertCanAccessOrganizer(ctx, organizerId);
+
       // Check if user exists
       const organizer = await ctx.db.query.user.findFirst({
         where: eq(user.id, organizerId),
@@ -119,6 +118,7 @@ export const organizerRouter = router({
           mercadopago: true,
           googleDriveUrl: true,
         },
+        with: { accessRole: { columns: { name: true } } },
       });
 
       if (!organizer) {
@@ -166,7 +166,7 @@ export const organizerRouter = router({
         organizer,
       };
     }),
-  getStatsById: chiefOrganizerProcedure
+  getStatsById: permissionProcedure('organizers:statistics')
     .input(
       z.object({
         organizerId: organizerBaseSchema.shape.id,
@@ -176,30 +176,23 @@ export const organizerRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const { organizerId, from, to } = input;
+      await assertCanAccessOrganizer(ctx, organizerId);
 
       const targetUser = await ctx.db.query.user.findFirst({
         where: eq(user.id, organizerId),
-        columns: {
-          id: true,
-          role: true,
-        },
+        columns: { id: true },
       });
 
       if (!targetUser) {
         throw new Error('User not found');
       }
 
-      // IF its a CHIEF_ORGANIZER: Get all organizer IDs to include in stats (chief + their organizers if chief)
-      let organizerIds = [organizerId];
-      if (targetUser.role === 'CHIEF_ORGANIZER') {
-        const relatedOrganizers = await ctx.db.query.user.findMany({
-          where: eq(user.chiefOrganizerId, organizerId),
-          columns: {
-            id: true,
-          },
-        });
-        organizerIds = [organizerId, ...relatedOrganizers.map((o) => o.id)];
-      }
+      // Las estadísticas de quien lidera un equipo incluyen a sus organizadores.
+      const teamMembers = await ctx.db.query.user.findMany({
+        where: eq(user.chiefOrganizerId, organizerId),
+        columns: { id: true },
+      });
+      const organizerIds = [organizerId, ...teamMembers.map((o) => o.id)];
 
       // INVITATION: Get tickets sold (ticketXorganizer with non-null ticketId) within time period
       const ticketsSoldInvitation =

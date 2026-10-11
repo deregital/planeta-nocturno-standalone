@@ -60,12 +60,11 @@ import {
 import { logger } from '@/server/observability/logger';
 import { sendMail } from '@/server/services/mail';
 import {
-  adminProcedure,
-  chiefOrganizerProcedure,
-  controlTicketingProcedure,
+  anyPermissionProcedure,
+  forbidden,
+  permissionProcedure,
   publicProcedure,
   router,
-  ticketingProcedure,
 } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import { applyChiefOrganizerInvitationDistribution } from '@/server/utils/chief-organizer-invitation-distribution';
@@ -179,45 +178,43 @@ export const eventsRouter = router({
 
     return { pastEvents, upcomingEvents };
   }),
-  getAllForTicketing: controlTicketingProcedure.query(async ({ ctx }) => {
-    const isTicketing =
-      ctx.session.user.role === 'TICKETING' ||
-      ctx.session.user.role === 'CONTROL_TICKETING';
+  getAllForTicketing: permissionProcedure('scanner:use').query(
+    async ({ ctx }) => {
+      const authorizedEventIds = !ctx.can('events:read_all')
+        ? (
+            await ctx.db.query.eventXUser.findMany({
+              where: eq(eventXUser.b, ctx.session.user.id),
+              columns: { a: true },
+            })
+          ).map((r) => r.a)
+        : null;
 
-    const authorizedEventIds = isTicketing
-      ? (
-          await ctx.db.query.eventXUser.findMany({
-            where: eq(eventXUser.b, ctx.session.user.id),
-            columns: { a: true },
-          })
-        ).map((r) => r.a)
-      : null;
-
-    return ctx.db.query.event.findMany({
-      where: and(
-        eq(eventSchema.isDeleted, false),
-        authorizedEventIds
-          ? inArray(eventSchema.id, authorizedEventIds)
-          : undefined,
-        or(
-          isNull(eventSchema.startingDate),
-          gte(eventSchema.startingDate, startOfYesterday().toISOString()),
+      return ctx.db.query.event.findMany({
+        where: and(
+          eq(eventSchema.isDeleted, false),
+          authorizedEventIds
+            ? inArray(eventSchema.id, authorizedEventIds)
+            : undefined,
+          or(
+            isNull(eventSchema.startingDate),
+            gte(eventSchema.startingDate, startOfYesterday().toISOString()),
+          ),
         ),
-      ),
-      columns: {
-        id: true,
-        name: true,
-        startingDate: true,
-        endingDate: true,
-      },
-      with: {
-        location: {
-          columns: { name: true },
+        columns: {
+          id: true,
+          name: true,
+          startingDate: true,
+          endingDate: true,
         },
-      },
-      orderBy: asc(eventSchema.startingDate),
-    });
-  }),
+        with: {
+          location: {
+            columns: { name: true },
+          },
+        },
+        orderBy: asc(eventSchema.startingDate),
+      });
+    },
+  ),
   getAllWithoutFolders: publicProcedure.query(async ({ ctx }) => {
     const events = await ctx.db.query.event.findMany({
       where: eq(eventSchema.isDeleted, false),
@@ -235,9 +232,13 @@ export const eventsRouter = router({
     });
     return events;
   }),
-  getAuthorized: ticketingProcedure
+  getAuthorized: permissionProcedure('events:read')
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (input !== ctx.session.user.id && !ctx.can('events:read_all')) {
+        throw forbidden();
+      }
+
       const userFound = await ctx.db.query.user.findFirst({
         where: eq(user.id, input),
         with: {
@@ -354,24 +355,26 @@ export const eventsRouter = router({
       orderBy: ticketeraEventsOrderBy,
     });
   }),
-  getActiveForOrdering: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.event.findMany({
-      where: ticketeraVisibleEventsWhere(),
-      columns: {
-        id: true,
-        name: true,
-        startingDate: true,
-        coverImageUrl: true,
-      },
-      with: {
-        location: {
-          columns: { name: true, address: true },
+  getActiveForOrdering: permissionProcedure('events:reorder').query(
+    async ({ ctx }) => {
+      return ctx.db.query.event.findMany({
+        where: ticketeraVisibleEventsWhere(),
+        columns: {
+          id: true,
+          name: true,
+          startingDate: true,
+          coverImageUrl: true,
         },
-      },
-      orderBy: ticketeraEventsOrderBy,
-    });
-  }),
-  reorderActive: adminProcedure
+        with: {
+          location: {
+            columns: { name: true, address: true },
+          },
+        },
+        orderBy: ticketeraEventsOrderBy,
+      });
+    },
+  ),
+  reorderActive: permissionProcedure('events:reorder')
     .input(z.array(z.uuid()).min(1))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.transaction(async (tx) => {
@@ -653,7 +656,7 @@ export const eventsRouter = router({
         alreadyUsed: false,
       };
     }),
-  create: adminProcedure
+  create: permissionProcedure('events:create')
     .input(
       z.object({
         event: createEventSchema,
@@ -971,7 +974,7 @@ export const eventsRouter = router({
 
       return { eventCreated, ticketTypesCreated };
     }),
-  update: adminProcedure
+  update: permissionProcedure('events:update')
     .input(
       z.object({
         event: eventSchemaZod,
@@ -1961,7 +1964,7 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  duplicate: adminProcedure
+  duplicate: permissionProcedure('events:duplicate')
     .input(eventSchemaZod.shape.id)
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
@@ -2039,7 +2042,7 @@ export const eventsRouter = router({
 
       return newEvent;
     }),
-  generatePresentismoOrderNamePDF: ticketingProcedure
+  generatePresentismoOrderNamePDF: permissionProcedure('events:export')
     .input(
       z.object({
         eventId: z.string(),
@@ -2154,7 +2157,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  exportXlsxByTicketType: adminProcedure
+  exportXlsxByTicketType: permissionProcedure('events:export')
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
@@ -2235,7 +2238,7 @@ export const eventsRouter = router({
       const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       return new Uint8Array(out as ArrayBuffer);
     }),
-  generatePresentismoGroupedTicketTypePDF: ticketingProcedure
+  generatePresentismoGroupedTicketTypePDF: permissionProcedure('events:export')
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { eventId } = input;
@@ -2376,7 +2379,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  toggleActivate: adminProcedure
+  toggleActivate: permissionProcedure('events:publish')
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const { id, isActive } = input;
@@ -2385,7 +2388,7 @@ export const eventsRouter = router({
         .set({ isActive })
         .where(eq(eventSchema.id, id));
     }),
-  delete: adminProcedure
+  delete: permissionProcedure('events:delete')
     .input(eventSchemaZod.shape.id)
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
@@ -2421,7 +2424,11 @@ export const eventsRouter = router({
 
       return deletedEvent[0];
     }),
-  getOrganizerDeliveredTicketCounts: chiefOrganizerProcedure
+  getOrganizerDeliveredTicketCounts: anyPermissionProcedure([
+    'events:create',
+    'events:update',
+    'organizers:distribute',
+  ])
     .input(z.object({ eventId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
@@ -2442,7 +2449,9 @@ export const eventsRouter = router({
         rows.map((row) => [row.organizerId, row.count]),
       ) as Record<string, number>;
     }),
-  updateChiefOrganizerTicketDistribution: chiefOrganizerProcedure
+  updateChiefOrganizerTicketDistribution: permissionProcedure(
+    'organizers:distribute',
+  )
     .input(
       z.object({
         eventId: z.uuid(),
@@ -2450,7 +2459,7 @@ export const eventsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'CHIEF_ORGANIZER') {
+      if (!ctx.can('organizer:team')) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Solo los jefes de organizadores pueden usar esta acción.',

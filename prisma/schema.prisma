@@ -29,6 +29,8 @@ model User {
   mercadopago    String?
   googleDriveUrl String?
   role           Role
+  accessRoleId   String      @db.Uuid
+  accessRole     AccessRole  @relation("USER_X_ACCESS_ROLE", fields: [accessRoleId], references: [id], onDelete: Restrict)
   code           String  @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
   tags           Tag[]   @relation("USER_X_TAG")
   tagsCreated    Tag[]   @relation("TAG_CREATED_BY")
@@ -55,7 +57,32 @@ model User {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@index([code])
+  @@index([accessRoleId])
   @@map("user")
+}
+
+model AccessRole {
+  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String                 @unique
+  description String?
+  baseRole    Role
+  isSystem    Boolean                @default(false)
+  permissions AccessRolePermission[] @relation("ACCESS_ROLE_X_PERMISSION")
+  users       User[]                 @relation("USER_X_ACCESS_ROLE")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  updatedAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("accessRole")
+}
+
+model AccessRolePermission {
+  roleId     String     @db.Uuid
+  role       AccessRole @relation("ACCESS_ROLE_X_PERMISSION", fields: [roleId], references: [id], onDelete: Cascade)
+  permission String
+
+  @@id([roleId, permission])
+  @@map("accessRolePermission")
 }
 
 model Tag {

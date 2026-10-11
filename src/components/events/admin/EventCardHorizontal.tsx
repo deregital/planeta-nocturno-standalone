@@ -10,7 +10,6 @@ import {
   MoreVertical,
   Pencil,
 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -21,6 +20,7 @@ import ChangeEventFolder from '@/components/events/admin/ChangeEventFolder';
 import DuplicateEventModal from '@/components/events/admin/DuplicateEventModal';
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import {
@@ -51,12 +51,17 @@ export default function EventCardHorizontal({
   showActions?: boolean;
 }) {
   const router = useRouter();
-  const session = useSession();
+  const { can } = usePermissions();
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [activateSure, setActivateSure] = useState(false);
 
-  const isAdmin = session.data?.user.role === 'ADMIN';
+  const canPublish = can('events:publish');
+  const canDuplicate = can('events:duplicate');
+  const canUpdate = can('events:update');
+  const canManageFolders = can('events:folders');
+  const canExport = can('events:export');
+  const hasMoreOptions = canManageFolders || canDuplicate || canExport;
 
   const generatePresentismoOrdenAlfPDF =
     trpc.events.generatePresentismoOrderNamePDF.useMutation();
@@ -152,7 +157,7 @@ export default function EventCardHorizontal({
           <div className='flex shrink-0 flex-row items-center gap-0.5'>
             {event.inviteCondition !== 'INVITATION' && (
               <>
-                {!event.isActive && (
+                {canPublish && !event.isActive && (
                   <Button
                     variant='success'
                     size='sm'
@@ -183,17 +188,14 @@ export default function EventCardHorizontal({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant={'ghost'} size={'icon'} asChild>
-                  <Link
-                    href={manageHref as Route<string>}
-                    aria-disabled={!isAdmin}
-                  >
+                  <Link href={manageHref as Route<string>}>
                     <Calendar className='w-4 h-4 text-on-accent' />
                   </Link>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Gestionar evento</TooltipContent>
             </Tooltip>
-            {isAdmin && (
+            {canDuplicate && (
               <>
                 <div className='hidden sm:block'>
                   <DuplicateEventModal
@@ -208,21 +210,26 @@ export default function EventCardHorizontal({
                   onOpenChange={setDuplicateDialogOpen}
                   hideTrigger
                 />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={'ghost'}
-                      className='text-on-accent'
-                      disabled={!isAdmin}
-                      onClick={() =>
-                        router.push(`/admin/event/edit/${event.slug}`)
-                      }
-                    >
-                      <Pencil />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Editar evento</TooltipContent>
-                </Tooltip>
+              </>
+            )}
+            {canUpdate && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={'ghost'}
+                    className='text-on-accent'
+                    onClick={() =>
+                      router.push(`/admin/event/edit/${event.slug}`)
+                    }
+                  >
+                    <Pencil />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Editar evento</TooltipContent>
+              </Tooltip>
+            )}
+            {canManageFolders && (
+              <>
                 <div className='hidden sm:block'>
                   <ChangeEventFolder
                     eventId={event.id}
@@ -236,37 +243,41 @@ export default function EventCardHorizontal({
                   onOpenChange={setFolderDialogOpen}
                   hideTrigger
                 />
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant={'ghost'}
-                          size={'icon'}
-                          className='text-on-accent'
-                        >
-                          <MoreVertical className='w-4 h-4' />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>Más opciones</TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent align='end'>
-                    {event.inviteCondition !== 'INVITATION' && (
-                      <DropdownMenuItem
-                        asChild
-                        className='sm:hidden cursor-pointer'
+              </>
+            )}
+            {hasMoreOptions && (
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant={'ghost'}
+                        size={'icon'}
+                        className='text-on-accent'
                       >
-                        <Link
-                          href={`/event/${event.slug}`}
-                          target='_blank'
-                          className='flex w-full items-center'
-                        >
-                          <Link2 className='mr-2 h-4 w-4' />
-                          Ver evento
-                        </Link>
-                      </DropdownMenuItem>
-                    )}
+                        <MoreVertical className='w-4 h-4' />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Más opciones</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align='end'>
+                  {event.inviteCondition !== 'INVITATION' && (
+                    <DropdownMenuItem
+                      asChild
+                      className='sm:hidden cursor-pointer'
+                    >
+                      <Link
+                        href={`/event/${event.slug}`}
+                        target='_blank'
+                        className='flex w-full items-center'
+                      >
+                        <Link2 className='mr-2 h-4 w-4' />
+                        Ver evento
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {canManageFolders && (
                     <DropdownMenuItem
                       className='sm:hidden cursor-pointer'
                       onClick={() => setFolderDialogOpen(true)}
@@ -274,6 +285,8 @@ export default function EventCardHorizontal({
                       <Folder className='mr-2 h-4 w-4' />
                       Cambiar carpeta
                     </DropdownMenuItem>
+                  )}
+                  {canDuplicate && (
                     <DropdownMenuItem
                       className='sm:hidden cursor-pointer'
                       onClick={() => setDuplicateDialogOpen(true)}
@@ -281,99 +294,103 @@ export default function EventCardHorizontal({
                       <CopyIcon className='mr-2 h-4 w-4' />
                       Duplicar evento
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        generatePresentismoOrdenAlfPDF.mutate(
-                          { eventId: event.id },
-                          {
+                  )}
+                  {canExport && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          generatePresentismoOrdenAlfPDF.mutate(
+                            { eventId: event.id },
+                            {
+                              onError: (error) => {
+                                toast.error(error.message);
+                              },
+                              onSuccess: (pdf) => {
+                                const blob = new Blob(
+                                  [pdf as unknown as ArrayBuffer],
+                                  {
+                                    type: 'application/pdf',
+                                  },
+                                );
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `Asistencia ${event.slug}.pdf`;
+                                a.click();
+                              },
+                            },
+                          );
+                        }}
+                        className='cursor-pointer'
+                      >
+                        <span className='mr-2 inline-flex'>
+                          <FileMarkdown />
+                        </span>
+                        PDF en orden alfabético
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          generatePresentismoGroupedTicketTypePDF.mutate(
+                            { eventId: event.id },
+                            {
+                              onError: (error) => {
+                                toast.error(error.message);
+                              },
+                              onSuccess: (pdf) => {
+                                const blob = new Blob(
+                                  [pdf as unknown as ArrayBuffer],
+                                  {
+                                    type: 'application/pdf',
+                                  },
+                                );
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `Asistencia ${event.slug}.pdf`;
+                                a.click();
+                              },
+                            },
+                          );
+                        }}
+                        className='cursor-pointer'
+                      >
+                        <span className='mr-2 inline-flex'>
+                          <FileSmile />
+                        </span>
+                        PDF agrupado por tipo de ticket
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          await exportXlsxByTicketType.mutateAsync(event.id, {
                             onError: (error) => {
                               toast.error(error.message);
                             },
-                            onSuccess: (pdf) => {
-                              const blob = new Blob(
-                                [pdf as unknown as ArrayBuffer],
-                                {
-                                  type: 'application/pdf',
-                                },
-                              );
+                            onSuccess: (out) => {
+                              const blob = new Blob([out], {
+                                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                              });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url;
-                              a.download = `Asistencia ${event.slug}.pdf`;
+                              a.download = `tickets-${event.slug}.xlsx`;
                               a.click();
+                              URL.revokeObjectURL(url);
                             },
-                          },
-                        );
-                      }}
-                      className='cursor-pointer'
-                    >
-                      <span className='mr-2 inline-flex'>
-                        <FileMarkdown />
-                      </span>
-                      PDF en orden alfabético
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        generatePresentismoGroupedTicketTypePDF.mutate(
-                          { eventId: event.id },
-                          {
-                            onError: (error) => {
-                              toast.error(error.message);
-                            },
-                            onSuccess: (pdf) => {
-                              const blob = new Blob(
-                                [pdf as unknown as ArrayBuffer],
-                                {
-                                  type: 'application/pdf',
-                                },
-                              );
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `Asistencia ${event.slug}.pdf`;
-                              a.click();
-                            },
-                          },
-                        );
-                      }}
-                      className='cursor-pointer'
-                    >
-                      <span className='mr-2 inline-flex'>
-                        <FileSmile />
-                      </span>
-                      PDF agrupado por tipo de ticket
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        await exportXlsxByTicketType.mutateAsync(event.id, {
-                          onError: (error) => {
-                            toast.error(error.message);
-                          },
-                          onSuccess: (out) => {
-                            const blob = new Blob([out], {
-                              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                            });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `tickets-${event.slug}.xlsx`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          },
-                        });
-                      }}
-                      className='cursor-pointer'
-                    >
-                      <span className='mr-2 inline-flex'>
-                        <FileSpreadsheet />
-                      </span>
-                      Excel por tipo de ticket
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
+                          });
+                        }}
+                        className='cursor-pointer'
+                      >
+                        <span className='mr-2 inline-flex'>
+                          <FileSpreadsheet />
+                        </span>
+                        Excel por tipo de ticket
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            {!isAdmin && (
+            {!hasMoreOptions && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button

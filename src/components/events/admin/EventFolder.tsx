@@ -1,10 +1,10 @@
 import { Folder } from 'lucide-react';
 import { type Route } from 'next';
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 import EventCardHorizontal from '@/components/events/admin/EventCardHorizontal';
 import EventFolderModal from '@/components/events/admin/EventFolderModal';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import {
   Accordion,
   AccordionContent,
@@ -25,8 +25,7 @@ export default function EventFolder({
   href?: (slug: string) => string;
   showActions?: boolean;
 }) {
-  const session = useSession();
-  const isAdmin = session?.data?.user.role === 'ADMIN';
+  const canManageFolders = useCan('events:folders');
 
   const isEmpty = folder.events.length === 0;
 
@@ -51,7 +50,7 @@ export default function EventFolder({
               </p>
             </div>
           </AccordionTrigger>
-          {isAdmin && (
+          {canManageFolders && (
             <div className='absolute right-10 top-1/2 -translate-y-1/2'>
               <EventFolderModal action='EDIT' folder={folder} />
             </div>

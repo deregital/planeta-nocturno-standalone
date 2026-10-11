@@ -2,102 +2,60 @@
 
 import {
   Calendar,
+  CalendarCheck,
   Database,
   Settings,
+  Shield,
   Ticket,
   UserPen,
   Users,
 } from 'lucide-react';
-import { type Route } from 'next';
 import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
 
 import SideBarTile from '@/components/admin/SideBarTile';
-import { type role as roleEnum } from '@/drizzle/schema';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
+import { getVisibleRoutes } from '@/lib/rbac/navigation';
 
-export const navRoutes: {
-  href: Route<string>;
-  icon: React.ReactNode;
-  title: string;
-  roles: (typeof roleEnum.enumValues)[number][];
-}[] = [
-  {
-    href: '/organization',
-    icon: <Calendar />,
-    title: 'Eventos',
-    roles: ['ORGANIZER', 'CHIEF_ORGANIZER'],
-  },
-  {
-    href: '/organization/database',
-    icon: <Database />,
-    title: 'Base de Datos',
-    roles: ['ORGANIZER', 'CHIEF_ORGANIZER'],
-  },
-  {
-    href: '/organization/organizers',
-    icon: <Users />,
-    title: 'Organizadores',
-    roles: ['CHIEF_ORGANIZER'],
-  },
-  // {
-  //   href: '/admin',
-  //   icon: <Home />,
-  //   title: 'Dashboard',
-  //   roles: ['ADMIN'],
-  // },
-  {
-    href: '/admin/event',
-    icon: <Calendar />,
-    title: 'Eventos',
-    roles: ['ADMIN', 'TICKETING'],
-  },
-  {
-    href: '/admin/database',
-    icon: <Database />,
-    title: 'Base de Datos',
-    roles: ['ADMIN'],
-  },
-  {
-    href: '/admin/users',
-    icon: <Users />,
-    title: 'Organizadores',
-    roles: ['ADMIN'],
-  },
-  {
-    href: '/admin/ticketing',
-    icon: <Ticket />,
-    title: 'Escanear',
-    roles: ['ADMIN', 'TICKETING', 'CONTROL_TICKETING'],
-  },
-  {
-    href: '/profile',
-    icon: <UserPen />,
-    title: 'Mis Datos',
-    roles: ['ADMIN', 'ORGANIZER', 'CHIEF_ORGANIZER'],
-  },
-  {
-    href: '/admin/settings',
-    icon: <Settings />,
-    title: 'Configuración',
-    roles: ['ADMIN'],
-  },
-];
+const routeIcons: Record<string, React.ReactNode> = {
+  '/organization': <CalendarCheck />,
+  '/admin/event': <Calendar />,
+  '/admin/database': <Database />,
+  '/admin/users': <Users />,
+  '/admin/ticketing': <Ticket />,
+  '/profile': <UserPen />,
+  '/admin/roles': <Shield />,
+  '/admin/settings': <Settings />,
+};
 
-export default function SideBar({
-  role,
-}: {
-  role: (typeof roleEnum.enumValues)[number];
-}) {
+/** Rutas del menú visibles para el usuario actual según sus permisos. */
+export function useNavRoutes() {
+  const { permissions } = usePermissions();
+
+  return useMemo(
+    () =>
+      getVisibleRoutes([...permissions]).map((route) => ({
+        ...route,
+        icon: routeIcons[route.href],
+      })),
+    [permissions],
+  );
+}
+
+export default function SideBar() {
   const pathname = usePathname();
+  const routes = useNavRoutes();
+
   return (
     <aside className='hidden w-(--sidebar-width) md:flex flex-col py-3 min-h-full'>
-      {navRoutes.map((route, index) => (
+      {routes.map((route) => (
         <SideBarTile
-          key={index}
+          key={route.href}
           href={route.href}
           icon={route.icon}
           title={route.title}
           isActive={pathname === route.href}
-          show={route.roles.includes(role)}
+          show
         />
       ))}
     </aside>

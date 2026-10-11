@@ -130,7 +130,7 @@ export default authMiddleware(async function middleware(request) {
 });
 
 function isProtectedTenantPath(pathname: string) {
-  return ['/admin', '/organization', '/profile'].some(
+  return ['/admin', '/organization', '/profile', '/no-access'].some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 }

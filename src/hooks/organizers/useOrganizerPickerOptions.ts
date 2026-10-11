@@ -1,35 +1,35 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { trpc } from '@/server/trpc/client';
 
 export function useOrganizerPickerOptions() {
-  const { data: session, status } = useSession();
-  const role = session?.user?.role;
+  const { can } = usePermissions();
+  const canReadAll = can('organizers:read_all');
+  const canReadTeam = !canReadAll && can('organizers:read');
 
-  const adminQuery = trpc.user.getOrganizers.useQuery(undefined, {
-    enabled: status === 'authenticated' && role === 'ADMIN',
+  const allQuery = trpc.user.getOrganizers.useQuery(undefined, {
+    enabled: canReadAll,
   });
 
-  const chiefQuery = trpc.user.getOrganizersByChiefOrganizer.useQuery(
+  const teamQuery = trpc.user.getOrganizersByChiefOrganizer.useQuery(
     undefined,
     {
-      enabled: status === 'authenticated' && role === 'CHIEF_ORGANIZER',
+      enabled: canReadTeam,
     },
   );
 
-  if (role === 'CHIEF_ORGANIZER') {
+  if (canReadAll) {
     return {
-      data: chiefQuery.data,
-      isLoading: chiefQuery.isLoading,
+      data: allQuery.data,
+      isLoading: allQuery.isLoading,
     };
   }
 
-  if (role === 'ADMIN') {
+  if (canReadTeam) {
     return {
-      data: adminQuery.data,
-      isLoading: adminQuery.isLoading,
+      data: teamQuery.data,
+      isLoading: teamQuery.isLoading,
     };
   }
 

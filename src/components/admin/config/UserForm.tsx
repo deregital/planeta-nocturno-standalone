@@ -1,15 +1,16 @@
 'use client';
 
-import { startTransition, useState } from 'react';
+import { startTransition, useCallback, useState } from 'react';
 import esPhoneLocale from 'react-phone-number-input/locale/es';
 
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
+import { AccessRoleSelect } from '@/components/rbac/AccessRoleSelect';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { role } from '@/drizzle/schema';
+import { type role } from '@/drizzle/schema';
 import { roleTranslation } from '@/lib/translations';
 import { type User } from '@/server/types';
 import 'react-phone-number-input/style.css';
@@ -26,7 +27,7 @@ export type UserData = Pick<
   | 'gender'
   | 'phoneNumber'
   | 'instagram'
->;
+> & { accessRoleId?: string | null };
 
 const defaultState: UserData = {
   fullName: '',
@@ -49,7 +50,9 @@ export function UserForm({
   isPending,
   type,
   lockedRole,
-  allowedRoles,
+  lockedRoleLabel,
+  roleKind = 'staff',
+  readOnly = false,
   onSubmit,
 }: {
   type: 'CREATE' | 'EDIT';
@@ -59,19 +62,15 @@ export function UserForm({
   formAction: (formData: FormData) => void;
   isPending: boolean;
   lockedRole?: (typeof role.enumValues)[number];
-  allowedRoles?: (typeof role.enumValues)[number][];
+  lockedRoleLabel?: string;
+  /** staff: roles sin capacidad de organizador; event_staff: personal asignable a eventos. */
+  roleKind?: 'staff' | 'event_staff';
+  readOnly?: boolean;
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
 }) {
   const resolveInitialRole = (): (typeof role.enumValues)[number] => {
     if (lockedRole) return lockedRole;
-    const fromInitial = initialState?.role;
-    if (allowedRoles?.length) {
-      if (fromInitial && allowedRoles.includes(fromInitial)) {
-        return fromInitial;
-      }
-      return allowedRoles[0];
-    }
-    return fromInitial ?? defaultState.role;
+    return initialState?.role ?? defaultState.role;
   };
 
   const [internalState, setInternalState] = useState<UserData>({
@@ -85,6 +84,19 @@ export function UserForm({
   function handleChange<K extends keyof UserData>(key: K, value: UserData[K]) {
     setInternalState((prev) => ({ ...prev, [key]: value }));
   }
+
+  const handleRoleChange = useCallback(
+    ({
+      role,
+      accessRoleId,
+    }: {
+      role: UserData['role'];
+      accessRoleId: string;
+    }) => {
+      setInternalState((prev) => ({ ...prev, role, accessRoleId }));
+    },
+    [],
+  );
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (onSubmit) {
@@ -105,182 +117,161 @@ export function UserForm({
       onSubmit={handleSubmit}
     >
       {userId && <input type='hidden' name='id' value={userId} />}
-      <InputWithLabel
-        required
-        label='Nombre'
-        id='fullName'
-        name='fullName'
-        value={internalState?.fullName}
-        error={errors?.fullName}
-        onChange={(e) => {
-          handleChange('fullName', e.target.value);
-        }}
-      />
-      <InputWithLabel
-        label='Email'
-        required
-        id='email'
-        name='email'
-        type='email'
-        value={internalState?.email}
-        error={errors?.email}
-        onChange={(e) => {
-          handleChange('email', e.target.value);
-        }}
-      />
-      <InputDateWithLabel
-        label='Fecha de nacimiento'
-        id='birthDate'
-        name='birthDate'
-        error={errors?.birthDate}
-        selected={
-          internalState?.birthDate
-            ? new Date(internalState.birthDate)
-            : undefined
-        }
-        onChange={(date) => {
-          if (!date) return;
-          handleChange('birthDate', date.toISOString());
-        }}
-      />
-      {lockedRole ? (
-        <>
-          <p className='text-sm text-accent-dark'>
-            Rol asignado: {roleTranslation[lockedRole]}
-          </p>
-        </>
-      ) : allowedRoles && allowedRoles.length > 0 ? (
-        <SelectWithLabel
-          label='Rol'
-          required
-          id='role'
-          value={internalState?.role}
-          className='w-full'
-          values={allowedRoles.map((roleValue) => ({
-            label: roleTranslation[roleValue],
-            value: roleValue,
-          }))}
-          error={errors?.role}
-          onValueChange={(value) => {
-            handleChange('role', value as (typeof role.enumValues)[number]);
-          }}
-        />
-      ) : (
-        <SelectWithLabel
-          label='Rol'
-          required
-          id='role'
-          value={internalState?.role}
-          className='w-full'
-          values={role.enumValues
-            .filter(
-              (roleValue) =>
-                roleValue !== 'ORGANIZER' && roleValue !== 'CHIEF_ORGANIZER',
-            )
-            .map((roleValue) => ({
-              label: roleTranslation[roleValue],
-              value: roleValue,
-            }))}
-          error={errors?.role}
-          onValueChange={(value) => {
-            handleChange('role', value as (typeof role.enumValues)[number]);
-          }}
-        />
-      )}
-      <input
-        type='hidden'
-        name='role'
-        value={lockedRole ?? internalState?.role}
-      />
-      <div>
-        <PhoneInputWithLabel
-          label='Número de teléfono'
-          id='phoneNumber'
-          labels={esPhoneLocale}
-          defaultCountry='AR'
-          value={internalState?.phoneNumber}
-          error={errors?.phoneNumber}
-          onChange={(value) => {
-            handleChange('phoneNumber', value ?? '');
-          }}
-        />
-        <input
-          type='hidden'
-          name='phoneNumber'
-          value={internalState?.phoneNumber}
-        />
-      </div>
-      <InputWithLabel
-        label='DNI/Pasaporte'
-        id='dni'
-        name='dni'
-        value={internalState?.dni}
-        error={errors?.dni}
-        onChange={(e) => {
-          handleChange('dni', e.target.value);
-        }}
-        required
-      />
-      <SelectWithLabel
-        label='Género'
-        id='gender'
-        value={internalState?.gender}
-        className='w-full'
-        values={[
-          { label: 'Masculino', value: 'male' },
-          { label: 'Femenino', value: 'female' },
-          { label: 'Otro', value: 'other' },
-        ]}
-        error={errors?.gender}
-        onValueChange={(value) => {
-          handleChange('gender', value as 'male' | 'female' | 'other');
-        }}
-        required
-      />
-      <input type='hidden' name='gender' value={internalState?.gender} />
-      <InputWithLabel
-        label='Instagram'
-        id='instagram'
-        name='instagram'
-        value={internalState?.instagram ?? ''}
-        error={errors?.instagram}
-        onChange={(e) => {
-          handleChange('instagram', e.target.value);
-        }}
-        placeholder='@'
-      />
-      <Separator className='border rounded-full border-accent-light' />
-      <InputWithLabel
-        required
-        label='Nombre de usuario'
-        id='username'
-        name='username'
-        value={internalState?.name}
-        error={errors?.name}
-        onChange={(e) => {
-          handleChange('name', e.target.value);
-        }}
-      />
-      {type === 'CREATE' && (
+      <fieldset disabled={readOnly} className='contents'>
         <InputWithLabel
           required
-          label='Contraseña'
-          id='password'
-          type='password'
-          name='password'
-          value={internalState?.password}
-          error={errors?.password}
+          label='Nombre'
+          id='fullName'
+          name='fullName'
+          value={internalState?.fullName}
+          error={errors?.fullName}
           onChange={(e) => {
-            handleChange('password', e.target.value);
+            handleChange('fullName', e.target.value);
           }}
         />
+        <InputWithLabel
+          label='Email'
+          required
+          id='email'
+          name='email'
+          type='email'
+          value={internalState?.email}
+          error={errors?.email}
+          onChange={(e) => {
+            handleChange('email', e.target.value);
+          }}
+        />
+        <InputDateWithLabel
+          label='Fecha de nacimiento'
+          id='birthDate'
+          name='birthDate'
+          error={errors?.birthDate}
+          selected={
+            internalState?.birthDate
+              ? new Date(internalState.birthDate)
+              : undefined
+          }
+          onChange={(date) => {
+            if (!date) return;
+            handleChange('birthDate', date.toISOString());
+          }}
+        />
+        {lockedRole ? (
+          <>
+            <p className='text-sm text-accent-dark'>
+              Rol asignado: {lockedRoleLabel ?? roleTranslation[lockedRole]}
+            </p>
+          </>
+        ) : (
+          <AccessRoleSelect
+            kind={roleKind}
+            value={internalState}
+            currentAccessRoleId={
+              type === 'EDIT' ? initialState?.accessRoleId : undefined
+            }
+            error={errors?.role}
+            onChange={handleRoleChange}
+          />
+        )}
+        <input
+          type='hidden'
+          name='role'
+          value={lockedRole ?? internalState?.role}
+        />
+        <div>
+          <PhoneInputWithLabel
+            label='Número de teléfono'
+            id='phoneNumber'
+            labels={esPhoneLocale}
+            defaultCountry='AR'
+            value={internalState?.phoneNumber}
+            error={errors?.phoneNumber}
+            onChange={(value) => {
+              handleChange('phoneNumber', value ?? '');
+            }}
+          />
+          <input
+            type='hidden'
+            name='phoneNumber'
+            value={internalState?.phoneNumber}
+          />
+        </div>
+        <InputWithLabel
+          label='DNI/Pasaporte'
+          id='dni'
+          name='dni'
+          value={internalState?.dni}
+          error={errors?.dni}
+          onChange={(e) => {
+            handleChange('dni', e.target.value);
+          }}
+          required
+        />
+        <SelectWithLabel
+          label='Género'
+          id='gender'
+          value={internalState?.gender}
+          className='w-full'
+          values={[
+            { label: 'Masculino', value: 'male' },
+            { label: 'Femenino', value: 'female' },
+            { label: 'Otro', value: 'other' },
+          ]}
+          error={errors?.gender}
+          onValueChange={(value) => {
+            handleChange('gender', value as 'male' | 'female' | 'other');
+          }}
+          required
+        />
+        <input type='hidden' name='gender' value={internalState?.gender} />
+        <InputWithLabel
+          label='Instagram'
+          id='instagram'
+          name='instagram'
+          value={internalState?.instagram ?? ''}
+          error={errors?.instagram}
+          onChange={(e) => {
+            handleChange('instagram', e.target.value);
+          }}
+          placeholder='@'
+        />
+        <Separator className='border rounded-full border-accent-light' />
+        <InputWithLabel
+          required
+          label='Nombre de usuario'
+          id='username'
+          name='username'
+          value={internalState?.name}
+          error={errors?.name}
+          onChange={(e) => {
+            handleChange('name', e.target.value);
+          }}
+        />
+        {type === 'CREATE' && (
+          <InputWithLabel
+            required
+            label='Contraseña'
+            id='password'
+            type='password'
+            name='password'
+            value={internalState?.password}
+            error={errors?.password}
+            onChange={(e) => {
+              handleChange('password', e.target.value);
+            }}
+          />
+        )}
+        {errors?.general && (
+          <p className='pl-1 font-bold text-xs text-red-500'>
+            {errors?.general}
+          </p>
+        )}
+      </fieldset>
+      {!readOnly && (
+        <Button type='submit' disabled={isPending}>
+          Guardar
+        </Button>
       )}
-      {errors?.general && (
-        <p className='pl-1 font-bold text-xs text-red-500'>{errors?.general}</p>
-      )}
-      <Button type='submit' disabled={isPending}>
-        Guardar
-      </Button>
     </form>
   );
 }

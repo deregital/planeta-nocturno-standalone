@@ -20,6 +20,7 @@ import EventVideoField from '@/components/event/create/EventVideoField';
 import { ImageUploader } from '@/components/event/create/ImageUploader';
 import { TicketingUserModal } from '@/components/event/create/TicketingUserModal';
 import { UserBox } from '@/components/event/create/UserBox';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import LocationModal from '@/components/location/LocationModal';
 import {
   Accordion,
@@ -101,6 +102,9 @@ export function EventGeneralInformation({
     [key: string]: string;
   }>({});
   const [openTicketingUserModal, setOpenTicketingUserModal] = useState(false);
+  const canCreateUsers = useCan('users:create');
+  const canCreateLocations = useCan('locations:create');
+  const canCreateCategories = useCan('categories:create');
 
   const [cropOpen, setCropOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -484,10 +488,9 @@ export function EventGeneralInformation({
                     value: location.id,
                   }))
                 : []),
-              {
-                label: '+ Crear locación',
-                value: 'CREATE_NEW',
-              },
+              ...(canCreateLocations
+                ? [{ label: '+ Crear locación', value: 'CREATE_NEW' }]
+                : []),
             ]}
             onValueChange={(value) => {
               if (value === 'CREATE_NEW') {
@@ -522,10 +525,14 @@ export function EventGeneralInformation({
           <div>
             {action !== 'PREVIEW' && (
               <SelectableComboBox
-                createOption={{
-                  label: '+ Crear usuario Acceso',
-                  onClick: () => setOpenTicketingUserModal(true),
-                }}
+                createOption={
+                  canCreateUsers
+                    ? {
+                        label: '+ Crear usuario Acceso',
+                        onClick: () => setOpenTicketingUserModal(true),
+                      }
+                    : undefined
+                }
                 list={
                   users
                     ? users
@@ -755,10 +762,9 @@ export function EventGeneralInformation({
                           value: category.id,
                         }))
                       : []),
-                    {
-                      label: '+ Crear categoría',
-                      value: 'CREATE_NEW',
-                    },
+                    ...(canCreateCategories
+                      ? [{ label: '+ Crear categoría', value: 'CREATE_NEW' }]
+                      : []),
                   ]}
                   onValueChange={(value) => {
                     if (value === 'CREATE_NEW') {

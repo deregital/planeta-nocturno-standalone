@@ -3,10 +3,10 @@ import z from 'zod';
 
 import { sendMailService } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
-import { adminProcedure, router, ticketingProcedure } from '@/server/trpc';
+import { permissionProcedure, router } from '@/server/trpc';
 
 export const mailRouter = router({
-  send: ticketingProcedure
+  send: permissionProcedure('tickets:create')
     .input(
       z.object({
         eventName: z.string(),
@@ -33,7 +33,7 @@ export const mailRouter = router({
         });
       }
     }),
-  sendNotification: adminProcedure
+  sendNotification: permissionProcedure('tickets:create')
     .input(
       z.object({
         eventName: z.string(),

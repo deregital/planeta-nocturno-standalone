@@ -1,6 +1,7 @@
 import { Check, Trash2 } from 'lucide-react';
 
 import { EditTicketingUserModal } from '@/components/event/create/EditTicketingUserModal';
+import { Can } from '@/components/rbac/Can';
 import { Button } from '@/components/ui/button';
 
 export function UserBox({
@@ -25,9 +26,11 @@ export function UserBox({
         </Button>
       ) : (
         <>
-          <div className='pl-2'>
-            <EditTicketingUserModal userId={id} onSuccess={onUserUpdated} />
-          </div>
+          <Can permission='users:update'>
+            <div className='pl-2'>
+              <EditTicketingUserModal userId={id} onSuccess={onUserUpdated} />
+            </div>
+          </Can>
           <Button variant={'destructiveGhost'} onClick={remove}>
             <Trash2 />
           </Button>

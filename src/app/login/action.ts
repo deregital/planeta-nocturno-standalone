@@ -1,14 +1,13 @@
 'use server';
 
-import { type Route } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { auth, signIn } from '@/server/auth';
 import { isControlRequest } from '@/server/control/is-control-request';
+import { getCurrentLandingPath } from '@/server/rbac/guards';
 import { userSchema } from '@/server/schemas/user';
-import { getDefaultPathByRole } from '@/server/utils/authRedirect';
 
 const loginSchema = userSchema.pick({ name: true, password: true });
 type LoginActionState = {
@@ -62,7 +61,7 @@ export async function authenticate(
   if (controlRequest) redirect('/');
 
   const session = await auth();
-  const role = session?.user?.role;
+  if (session?.user?.role === 'CONTROL_ADMIN') redirect('/');
 
-  redirect(getDefaultPathByRole(role) as Route);
+  redirect(await getCurrentLandingPath());
 }

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { type RouterOutputs } from '@/server/routers/app';
-import { type Role } from '@/server/types';
+import { type TicketScope } from '@/lib/rbac/permissions';
 
 const SEARCH_FIELDS = [
   { id: 'id', label: 'ID' },
@@ -53,15 +53,15 @@ function getFieldValues(ticket: Ticket, field: SearchFieldId): string[] {
   }
 }
 
-function getAvailableFields(role: Role | undefined) {
-  if (role === 'ORGANIZER') {
+function getAvailableFields(scope: TicketScope) {
+  if (scope === 'own') {
     return SEARCH_FIELDS.filter((field) => field.id !== 'invitedBy');
   }
   return SEARCH_FIELDS;
 }
 
-function getPlaceholder(role: Role | undefined) {
-  if (role === 'ORGANIZER') {
+function getPlaceholder(scope: TicketScope) {
+  if (scope === 'own') {
     return 'Buscar por ID, nombre, DNI, email o teléfono...';
   }
   return 'Buscar por ID, nombre, DNI, email, teléfono u organizador...';
@@ -74,7 +74,7 @@ interface SearchTicketsProps {
       | RouterOutputs['emittedTickets']['getByEventId']
       | undefined,
   ) => void;
-  role?: Role;
+  scope: TicketScope;
   externalSearchValue?: string;
   externalFilterInvitedByIds?: string[];
   onClearOrganizerFilter?: () => void;
@@ -83,12 +83,12 @@ interface SearchTicketsProps {
 export function SearchTickets({
   tickets,
   onFilteredTicketsChange,
-  role,
+  scope,
   externalSearchValue,
   externalFilterInvitedByIds,
   onClearOrganizerFilter,
 }: SearchTicketsProps) {
-  const availableFields = useMemo(() => getAvailableFields(role), [role]);
+  const availableFields = useMemo(() => getAvailableFields(scope), [scope]);
   const availableFieldIds = useMemo(
     () => availableFields.map((field) => field.id),
     [availableFields],
@@ -194,7 +194,7 @@ export function SearchTickets({
         <Search className='pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-gray-400' />
         <Input
           ref={inputRef}
-          placeholder={getPlaceholder(role)}
+          placeholder={getPlaceholder(scope)}
           value={searchTerm}
           onChange={(e) => handleSearchChange(e.target.value)}
           className='rounded-r-none pl-10'

@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import * as relations from '@/drizzle/relations';
 import * as models from '@/drizzle/schema';
 import { user } from '@/drizzle/schema';
+import { SYSTEM_ACCESS_ROLE_IDS } from '@/lib/rbac/permissions';
 import 'dotenv/config';
 
 export const db = drizzle(process.env.DATABASE_URL!, {
@@ -33,6 +34,7 @@ async function main() {
     email: userEmail,
     fullName: userFullName,
     role: 'ADMIN',
+    accessRoleId: SYSTEM_ACCESS_ROLE_IDS.ADMIN,
     dni: '99999999',
     birthDate: '2000-01-01',
     gender: 'male',
