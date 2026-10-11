@@ -8,8 +8,6 @@ import { DataTable } from '@/components/common/DataTable';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { role as roleEnum } from '@/drizzle/schema';
-import { roleTranslation } from '@/lib/translations';
 import { type RouterOutputs } from '@/server/routers/app';
 
 interface UsersTableProps {
@@ -20,15 +18,13 @@ export function UsersTable({ data }: UsersTableProps) {
   const [globalFilter, setGlobalFilter] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
-  // Create role options
-  const roleOptions = useMemo(() => {
-    return roleEnum.enumValues
-      .filter((role) => role !== 'ORGANIZER' && role !== 'CHIEF_ORGANIZER')
-      .map((role) => ({
-        value: role,
-        label: roleTranslation[role as (typeof roleEnum.enumValues)[number]],
-      }));
-  }, []);
+  const roleOptions = useMemo(
+    () =>
+      [...new Set(data.map((user) => user.accessRole.name))]
+        .sort((a, b) => a.localeCompare(b, 'es'))
+        .map((name) => ({ value: name, label: name })),
+    [data],
+  );
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
@@ -57,7 +53,8 @@ export function UsersTable({ data }: UsersTableProps) {
         })();
 
       const matchesRole =
-        selectedRoles.length === 0 || selectedRoles.includes(item.role);
+        selectedRoles.length === 0 ||
+        selectedRoles.includes(item.accessRole.name);
 
       return matchesSearch && matchesRole;
     });

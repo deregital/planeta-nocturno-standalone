@@ -52,6 +52,7 @@ export const userSchema = z.object({
     })
     .nullable(),
   chiefOrganizerId: z.uuid().nullable(),
+  accessRoleId: z.uuid().nullish(),
   mercadopago: z
     .string()
     .max(24, {

@@ -1,7 +1,6 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
@@ -10,21 +9,17 @@ import { DataTable } from '@/components/common/DataTable';
 import { MultiSelect } from '@/components/common/MultiSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { roleTranslation } from '@/lib/translations';
 import { type RouterOutputs } from '@/server/routers/app';
 
 interface UsersTableProps {
   data:
-    | RouterOutputs['user']['getAll']
-    | RouterOutputs['user']['getOrganizers'];
+    | RouterOutputs['user']['getOrganizers']
+    | RouterOutputs['user']['getOrganizersByChiefOrganizer'];
   onClickRow?: (id: string) => void;
 }
 
 export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
   const router = useRouter();
-  const session = useSession();
-  const isAdmin = session.data?.user.role === 'ADMIN';
-
   const [globalFilter, setGlobalFilter] = useState('');
   const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -42,20 +37,14 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
       .map((batch) => ({ value: batch, label: batch }));
   }, [data]);
 
-  // Create role options for admin
-  const roleOptions = useMemo(() => {
-    if (!isAdmin) return [];
-    return [
-      {
-        value: 'ORGANIZER',
-        label: roleTranslation['ORGANIZER'],
-      },
-      {
-        value: 'CHIEF_ORGANIZER',
-        label: roleTranslation['CHIEF_ORGANIZER'],
-      },
-    ];
-  }, [isAdmin]);
+  const roleOptions = useMemo(
+    () =>
+      [...new Set(data.map((user) => user.accessRole.name))]
+        .sort((a, b) => a.localeCompare(b, 'es'))
+        .map((name) => ({ value: name, label: name })),
+    [data],
+  );
+  const canFilterByRole = roleOptions.length > 1;
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
@@ -89,13 +78,13 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
         item.userXTags.some(({ tag }) => selectedBatches.includes(tag.name));
 
       const matchesRole =
-        !isAdmin ||
+        !canFilterByRole ||
         selectedRoles.length === 0 ||
-        selectedRoles.includes(item.role);
+        selectedRoles.includes(item.accessRole.name);
 
       return matchesSearch && matchesBatch && matchesRole;
     });
-  }, [data, globalFilter, selectedBatches, selectedRoles, isAdmin]);
+  }, [data, globalFilter, selectedBatches, selectedRoles, canFilterByRole]);
 
   const handleRowClick = (id: string) => {
     if (onClickRow) {
@@ -121,7 +110,7 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
             />
           </div>
           <div className='flex w-full flex-row items-end gap-4 md:w-auto'>
-            {isAdmin && (
+            {canFilterByRole && (
               <MultiSelect
                 className='min-w-0 flex-1 sm:min-w-48 sm:flex-none'
                 options={roleOptions}

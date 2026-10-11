@@ -1,5 +1,7 @@
 'use client';
 
+import type { SubdomainAvailability } from '@/server/control/tenant-slug';
+
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useState } from 'react';
@@ -9,7 +11,6 @@ import TenantFaviconField from '@/app/control/(protected)/tenants/favicon-field'
 import {
   checkSubdomainAvailability,
   createTenant,
-  type SubdomainAvailability,
   type TenantFormState,
   type TenantFormValues,
 } from '@/app/control/(protected)/tenants/new/action';

@@ -83,7 +83,7 @@ export function EditTicketingUserModal({
             initialState={(state.data ?? initialState) as UserData}
             formAction={formAction}
             isPending={isPending}
-            allowedRoles={['TICKETING', 'CONTROL_TICKETING']}
+            roleKind='event_staff'
             onSubmit={(e) => {
               e.preventDefault();
               e.stopPropagation();

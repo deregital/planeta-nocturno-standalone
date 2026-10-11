@@ -1,5 +1,6 @@
 import DeleteLocationModal from '@/components/location/DeleteLocationModal';
 import LocationModal from '@/components/location/LocationModal';
+import { Can } from '@/components/rbac/Can';
 import {
   AccordionContent,
   AccordionItem,
@@ -41,8 +42,12 @@ export default function LocationAccordion({
         <p className='font-medium'>
           Capacidad: <span className='font-light'>{location.capacity}</span>
         </p>
-        <LocationModal action='EDIT' location={location} />
-        <DeleteLocationModal id={location.id} />
+        <Can permission='locations:update'>
+          <LocationModal action='EDIT' location={location} />
+        </Can>
+        <Can permission='locations:delete'>
+          <DeleteLocationModal id={location.id} />
+        </Can>
       </AccordionContent>
     </AccordionItem>
   );

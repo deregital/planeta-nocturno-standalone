@@ -11,7 +11,7 @@ import {
   ticketXorganizer,
 } from '@/drizzle/schema';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 
 export const ticketGroupSchema = z.object({
@@ -348,18 +348,20 @@ export const ticketGroupRouter = router({
 
       return result[0];
     }),
-  delete: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
-    const result = await ctx.db
-      .delete(ticketGroup)
-      .where(eq(ticketGroup.id, input))
-      .returning();
+  delete: permissionProcedure('tickets:delete')
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .delete(ticketGroup)
+        .where(eq(ticketGroup.id, input))
+        .returning();
 
-    if (result.length === 0) {
-      throw new Error('Ticket group no encontrado');
-    }
+      if (result.length === 0) {
+        throw new Error('Ticket group no encontrado');
+      }
 
-    return result[0];
-  }),
+      return result[0];
+    }),
   getTotalPriceById: publicProcedure
     .input(ticketGroupSchema.shape.id)
     .query(async ({ ctx, input }) => {

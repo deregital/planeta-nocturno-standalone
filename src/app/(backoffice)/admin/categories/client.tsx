@@ -1,5 +1,6 @@
 import EventCategoryCard from '@/components/category/EventCategoryCard';
 import EventCategoryModal from '@/components/category/EventCategoryModal';
+import { Can } from '@/components/rbac/Can';
 import { type EventCategory } from '@/server/schemas/event-category';
 
 export default function Client({
@@ -10,7 +11,9 @@ export default function Client({
   return (
     <div className='p-4'>
       <h1 className='text-4xl font-bold text-accent'>Categorías</h1>
-      <EventCategoryModal action='CREATE' />
+      <Can permission='categories:create'>
+        <EventCategoryModal action='CREATE' />
+      </Can>
       <div className='flex flex-wrap gap-4'>
         {categories &&
           categories.map((category, index) => (

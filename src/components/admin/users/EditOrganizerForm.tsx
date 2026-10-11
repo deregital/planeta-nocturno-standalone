@@ -87,8 +87,8 @@ export default function EditOrganizerForm({
   useEffect(() => {
     if (state.success && !successHandledRef.current) {
       successHandledRef.current = true;
+      utils.user.getOrganizers.invalidate();
       setOpen(false);
-      utils.user.getByRole.invalidate();
       toast.success('Organizador actualizado correctamente');
     }
   }, [state.success, utils]);

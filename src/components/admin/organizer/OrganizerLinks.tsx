@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import LinksModal from '@/components/admin/organizer/LinksModal';
 import GoogleDrive from '@/components/icons/GoogleDrive';
 import { MercadoPago } from '@/components/icons/MercadoPago';
+import { Can } from '@/components/rbac/Can';
 
 interface OrganizerLinksParams {
   mercadopago?: string | null;
@@ -44,11 +45,13 @@ export default function OrganizerLinks({
           <GoogleDrive />
         </a>
       )}
-      <LinksModal
-        organizerId={organizerId}
-        mercadopago={mercadopago}
-        googleDriveUrl={googleDriveUrl}
-      />
+      <Can permission='organizers:update'>
+        <LinksModal
+          organizerId={organizerId}
+          mercadopago={mercadopago}
+          googleDriveUrl={googleDriveUrl}
+        />
+      </Can>
     </div>
   );
 }

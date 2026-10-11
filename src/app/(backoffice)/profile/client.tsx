@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { updateProfile } from '@/app/(backoffice)/profile/actions';
 import { UserForm, type UserData } from '@/components/admin/config/UserForm';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 
 export default function ProfileClient({
   initialData,
@@ -13,6 +14,7 @@ export default function ProfileClient({
   initialData: Omit<UserData, 'password'>;
 }) {
   const router = useRouter();
+  const { can, roleName } = usePermissions();
 
   const [state, formAction, isPending] = useActionState(updateProfile, {
     data: initialData,
@@ -38,6 +40,8 @@ export default function ProfileClient({
           isPending={isPending}
           errors={state.errors}
           lockedRole={initialData.role}
+          lockedRoleLabel={roleName ?? undefined}
+          readOnly={!can('profile:update')}
         />
       </div>
     </div>

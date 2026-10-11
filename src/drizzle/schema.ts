@@ -349,6 +349,7 @@ export const user = pgTable(
     image: text(),
     fullName: text().notNull(),
     role: role().notNull(),
+    accessRoleId: uuid().notNull(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -397,6 +398,61 @@ export const user = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('set null'),
+    index('user_accessRoleId_idx').using(
+      'btree',
+      table.accessRoleId.asc().nullsLast().op('uuid_ops'),
+    ),
+    foreignKey({
+      columns: [table.accessRoleId],
+      foreignColumns: [accessRole.id],
+      name: 'user_accessRoleId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict'),
+  ],
+);
+
+export const accessRole = pgTable(
+  'accessRole',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    description: text(),
+    baseRole: role().notNull(),
+    isSystem: boolean().default(false).notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('accessRole_name_key').using(
+      'btree',
+      table.name.asc().nullsLast().op('text_ops'),
+    ),
+  ],
+);
+
+export const accessRolePermission = pgTable(
+  'accessRolePermission',
+  {
+    roleId: uuid().notNull(),
+    permission: text().notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.roleId],
+      foreignColumns: [accessRole.id],
+      name: 'accessRolePermission_roleId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    primaryKey({
+      columns: [table.roleId, table.permission],
+      name: 'accessRolePermission_pkey',
+    }),
   ],
 );
 

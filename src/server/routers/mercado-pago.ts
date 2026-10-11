@@ -5,14 +5,18 @@ import z from 'zod';
 import { eventXorganizer, ticketGroup } from '@/drizzle/schema';
 import { hasMercadoPagoCredentials } from '@/server/services/mercadoPagoCredentials';
 import { calculateTotalPrice } from '@/server/services/ticketGroup';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import { anyPermissionProcedure, publicProcedure, router } from '@/server/trpc';
 
 export const createPreferenceSchema = z.object({
   ticketGroupId: z.string(),
 });
 
 export const mercadoPagoRouter = router({
-  hasCredentials: adminProcedure.query(({ ctx }) => {
+  hasCredentials: anyPermissionProcedure([
+    'settings:payments',
+    'events:create',
+    'events:update',
+  ]).query(({ ctx }) => {
     return hasMercadoPagoCredentials(
       ctx.instance.mercadoPagoAccessToken,
       ctx.instance.mercadoPagoRefreshToken,

@@ -21,16 +21,18 @@ import {
   getTotalTicketsWithoutOrganizer,
   mapEventOrganizersToSchema,
 } from '@/lib/event-organizers';
-import { auth } from '@/server/auth';
+import { hasPermission, type TenantPermission } from '@/lib/rbac/permissions';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
+import { canAccessEvent, requirePagePermission } from '@/server/rbac/guards';
 import { trpc } from '@/server/trpc/server';
 
 async function EventDetails({ slug }: { slug: string }) {
+  const access = await requirePagePermission('events:read');
+  const can = (permission: TenantPermission) =>
+    hasPermission(access.permissions, permission);
   const event = await trpc.events.getBySlug(slug);
-  const session = await auth();
-  const isAdmin = session?.user.role === 'ADMIN';
 
-  if (!event) {
+  if (!event || !(await canAccessEvent(access, event.id))) {
     notFound();
   }
 
@@ -72,29 +74,34 @@ async function EventDetails({ slug }: { slug: string }) {
       </div>
       <div className='flex flex-col items-center mt-4'>
         <EventBasicInformation event={event} />
-        <QuantityTicketsEmitted
-          tickets={tickets}
-          organizerTickets={organizerTickets}
-          maxAvailable={maxAvailable}
-        />
+        {can('events:statistics') && (
+          <QuantityTicketsEmitted
+            tickets={tickets}
+            organizerTickets={organizerTickets}
+            maxAvailable={maxAvailable}
+          />
+        )}
       </div>
       <div className='flex justify-between w-full px-4 mt-2'>
         <div className='flex-1 flex justify-center items-center'>
           <div className='md:flex md:gap-x-2 md:items-center grid grid-cols-2 gap-2 md:grid-cols-none'>
-            {isAdmin && (
+            {can('events:delete') && (
               <div className='md:order-1 order-3'>
                 <DeleteEventModal event={event} />
               </div>
             )}
-            <div className='md:order-2 order-1'>
-              <ScanTicket eventId={event.id} eventSlug={event.slug} />
-            </div>
-            {(event.inviteCondition === 'TRADITIONAL' ||
-              event.inviteCondition === 'SIMPLE') && (
-              <div className='md:order-3 order-2'>
-                <EmitTicketModal event={event} />
+            {can('scanner:use') && (
+              <div className='md:order-2 order-1'>
+                <ScanTicket eventId={event.id} eventSlug={event.slug} />
               </div>
             )}
+            {can('tickets:create') &&
+              (event.inviteCondition === 'TRADITIONAL' ||
+                event.inviteCondition === 'SIMPLE') && (
+                <div className='md:order-3 order-2'>
+                  <EmitTicketModal event={event} />
+                </div>
+              )}
             {event.inviteCondition !== 'INVITATION' && (
               <div className='md:order-4 order-4'>
                 <PrintEventQr
@@ -104,24 +111,26 @@ async function EventDetails({ slug }: { slug: string }) {
                 />
               </div>
             )}
-            <div className='md:order-5 order-7'>
-              <TicketRaffle
-                eventId={event.id}
-                tickets={tickets.map((ticket) => ({
-                  shortId: ticket.shortId,
-                  fullName: ticket.fullName,
-                  dni: ticket.dni,
-                }))}
-              />
-            </div>
-            {isAdmin &&
+            {can('tickets:raffle') && (
+              <div className='md:order-5 order-7'>
+                <TicketRaffle
+                  eventId={event.id}
+                  tickets={tickets.map((ticket) => ({
+                    shortId: ticket.shortId,
+                    fullName: ticket.fullName,
+                    dni: ticket.dni,
+                  }))}
+                />
+              </div>
+            )}
+            {can('events:publish') &&
               (event.inviteCondition === 'TRADITIONAL' ||
                 event.inviteCondition === 'SIMPLE') && (
                 <div className='md:order-6 order-5'>
                   <ToggleActivateButton event={event} />
                 </div>
               )}
-            {isAdmin && event.inviteCondition === 'INVITATION' && (
+            {can('events:update') && event.inviteCondition === 'INVITATION' && (
               <div className='md:order-7 order-6'>
                 <OrganizerDistribution event={event} />
               </div>
@@ -129,23 +138,31 @@ async function EventDetails({ slug }: { slug: string }) {
           </div>
         </div>
       </div>
-      <div className='w-full px-4'>
-        <h2 className='text-3xl font-bold text-accent my-4'>Lista de ventas</h2>
-      </div>
-      {event.inviteCondition === 'INVITATION' ? (
-        <AdminInvitationEventView event={event} />
-      ) : (
-        <TicketTableWithTabs
-          ticketTypes={event.ticketTypes}
-          event={{
-            slug: event.slug,
-            inviteCondition: event.inviteCondition,
-            hasSimpleInvitation: event.hasSimpleInvitation,
-            hasQuestions: hasVisibleQuestions,
-          }}
-        />
+      {can('tickets:read') && (
+        <>
+          <div className='w-full px-4'>
+            <h2 className='text-3xl font-bold text-accent my-4'>
+              Lista de ventas
+            </h2>
+          </div>
+          {event.inviteCondition === 'INVITATION' ? (
+            <AdminInvitationEventView event={event} />
+          ) : (
+            <TicketTableWithTabs
+              ticketTypes={event.ticketTypes}
+              event={{
+                slug: event.slug,
+                inviteCondition: event.inviteCondition,
+                hasSimpleInvitation: event.hasSimpleInvitation,
+                hasQuestions: hasVisibleQuestions,
+              }}
+            />
+          )}
+        </>
       )}
-      {hasVisibleQuestions && <SurveyAnswersTable event={event} />}
+      {can('tickets:answers') && hasVisibleQuestions && (
+        <SurveyAnswersTable event={event} />
+      )}
     </div>
   );
 }
