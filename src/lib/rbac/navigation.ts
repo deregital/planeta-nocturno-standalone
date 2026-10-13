@@ -10,6 +10,7 @@ export const SETTINGS_PAGE_PERMISSIONS = [
   'locations:read',
   'categories:read',
   'settings:read',
+  'mercadopago:link',
 ] as const satisfies readonly TenantPermission[];
 
 type BackofficeRoute = {
