@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import MercadoPagoUnlinkDialog from '@/components/admin/oauth/MercadoPagoUnlinkDialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +25,7 @@ const MP_TEST_EVENT_PROMPT_KEY = 'mp_test_event_prompt_shown';
 type MercadoPagoConnectProps = {
   isConnected: boolean;
   authUrl: string | null;
+  canUnlink: boolean;
 };
 
 function getCookie(name: string) {
@@ -35,9 +37,14 @@ function setStatusCookie(value: string) {
   document.cookie = `${MP_STATUS_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=300; SameSite=Lax`;
 }
 
+export function clearMercadoPagoStatusCookie() {
+  document.cookie = `${MP_STATUS_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+}
+
 export default function MercadoPagoConnect({
   isConnected,
   authUrl,
+  canUnlink,
 }: MercadoPagoConnectProps) {
   const searchParams = useSearchParams();
   const urlStatus = searchParams.get('mp');
@@ -116,9 +123,12 @@ export default function MercadoPagoConnect({
       </Dialog>
 
       {connected ? (
-        <Button variant='success' disabled>
-          Ya estás conectado a Mercado Pago
-        </Button>
+        <div className='flex flex-wrap gap-2'>
+          <Button variant='success' disabled>
+            Ya estás conectado a Mercado Pago
+          </Button>
+          {canUnlink && <MercadoPagoUnlinkDialog />}
+        </div>
       ) : authUrl ? (
         <Dialog>
           <DialogTrigger asChild>

@@ -349,6 +349,13 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     description:
       'Conectar la cuenta de Mercado Pago en la que se acreditan los cobros de las entradas',
   },
+  {
+    key: 'mercadopago:unlink',
+    label: 'Desvincular Mercado Pago',
+    description:
+      'Desconectar la cuenta de Mercado Pago. Se confirma desde un link enviado por mail',
+    parent: 'mercadopago:link',
+  },
 
   // Estadísticas
   {

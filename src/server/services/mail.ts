@@ -131,3 +131,33 @@ export function generateWelcomeEmail(
     <p>Gracias por unirte a nuestra plataforma.</p>
   `;
 }
+
+export function generateMercadoPagoUnlinkRequestEmail(
+  instance: MailInstance,
+  link: string,
+  expiresInMinutes: number,
+) {
+  return `
+    <h1>Confirmá la desvinculación de Mercado Pago</h1>
+    <p>Recibimos un pedido para desvincular la cuenta de Mercado Pago de la plataforma <b>${instance.name}</b>.</p>
+    <p>Una vez desvinculada, no se van a poder cobrar entradas online hasta que se vuelva a conectar una cuenta.</p>
+    <p>Para confirmar, ingresá al siguiente link con tu usuario de la plataforma. El link vence en ${expiresInMinutes} minutos y se puede usar una sola vez.</p>
+    <p><a href="${link}">Confirmar desvinculación de Mercado Pago</a></p>
+    <p><b>Si no pediste la desvinculación, ignorá este mail</b>: la cuenta de Mercado Pago sigue vinculada. Te recomendamos cambiar tu contraseña.</p>
+  `;
+}
+
+export function generateMercadoPagoUnlinkedEmail(
+  instance: MailInstance,
+  pending: boolean,
+) {
+  const status = pending
+    ? 'La desvinculación está en proceso y puede tardar unos minutos en completarse.'
+    : 'Desde ahora no se pueden cobrar entradas online hasta que se vuelva a conectar una cuenta.';
+  return `
+    <h1>Mercado Pago fue desvinculado</h1>
+    <p>Se confirmó la desvinculación de la cuenta de Mercado Pago de la plataforma <b>${instance.name}</b>.</p>
+    <p>${status}</p>
+    <p>Para conectar una cuenta nuevamente, ingresá a <a href="${instance.publicUrl}/admin/settings">${instance.publicUrl}/admin/settings</a>.</p>
+  `;
+}
