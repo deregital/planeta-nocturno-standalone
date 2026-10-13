@@ -341,10 +341,13 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     label: 'Editar configuración adicional',
     parent: 'settings:read',
   },
+
+  // Mercado Pago
   {
-    key: 'settings:payments',
-    label: 'Gestionar integración con Mercado Pago',
-    parent: 'settings:read',
+    key: 'mercadopago:link',
+    label: 'Vinculación de Mercado Pago',
+    description:
+      'Conectar la cuenta de Mercado Pago en la que se acreditan los cobros de las entradas',
   },
 
   // Estadísticas
@@ -508,6 +511,7 @@ export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   locations: 'Locaciones',
   categories: 'Categorías',
   settings: 'Configuración',
+  mercadopago: 'Mercado Pago',
   statistics: 'Estadísticas',
   exports: 'Exportaciones',
   profile: 'Mi perfil',
@@ -647,7 +651,8 @@ export function deriveLegacyRole(
       (permission) =>
         permission.startsWith('users:') ||
         permission.startsWith('roles:') ||
-        permission.startsWith('settings:'),
+        permission.startsWith('settings:') ||
+        permission.startsWith('mercadopago:'),
     )
   ) {
     return 'ADMIN';

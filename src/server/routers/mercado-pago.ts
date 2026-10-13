@@ -13,7 +13,7 @@ export const createPreferenceSchema = z.object({
 
 export const mercadoPagoRouter = router({
   hasCredentials: anyPermissionProcedure([
-    'settings:payments',
+    'mercadopago:link',
     'events:create',
     'events:update',
   ]).query(({ ctx }) => {
