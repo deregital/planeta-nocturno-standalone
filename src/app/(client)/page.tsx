@@ -1,12 +1,15 @@
 import { eq } from 'drizzle-orm';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import { Suspense } from 'react';
 
-import GridEvents from '@/components/events/buyPage/GridEvents';
 import { EventFilter } from '@/components/events/buyPage/EventFilter';
+import GridEvents from '@/components/events/buyPage/GridEvents';
+import TicketeraHomeSkeleton from '@/components/events/buyPage/TicketeraHomeSkeleton';
 import { InstanceLanding } from '@/components/instance/InstanceLanding';
 import { feature as featureSchema } from '@/drizzle/schema';
 import { FEATURE_KEYS } from '@/server/constants/feature-keys';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
+import { trpc } from '@/server/trpc/server';
 
 export default async function Home() {
   const { db, instance } = await getCurrentRequestContext();
@@ -26,10 +29,23 @@ export default async function Home() {
 
   return (
     <div className='h-main-screen mx-auto w-full min-w-0 max-w-screen-2xl p-4 font-(family-name:--font-geist-sans)'>
-      <NuqsAdapter>
-        <EventFilter />
-        <GridEvents />
-      </NuqsAdapter>
+      <Suspense fallback={<TicketeraHomeSkeleton />}>
+        <TicketeraHome />
+      </Suspense>
     </div>
+  );
+}
+
+async function TicketeraHome() {
+  const [events, categories] = await Promise.all([
+    trpc.events.getActive(),
+    trpc.eventCategory.getActive(),
+  ]);
+
+  return (
+    <NuqsAdapter>
+      <EventFilter categories={categories} />
+      <GridEvents events={events} />
+    </NuqsAdapter>
   );
 }

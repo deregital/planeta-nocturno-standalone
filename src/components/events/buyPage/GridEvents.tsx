@@ -5,10 +5,11 @@ import { useMemo } from 'react';
 
 import EventCardContainer from '@/components/events/buyPage/EventCardContainer';
 import { dateRanges } from '@/components/events/buyPage/EventFilter';
-import { trpc } from '@/server/trpc/client';
+import { type RouterOutputs } from '@/server/routers/app';
 
-function GridEvents() {
-  const { data, isLoading } = trpc.events.getActive.useQuery();
+type ActiveEvent = RouterOutputs['events']['getActive'][number];
+
+function GridEvents({ events }: { events: ActiveEvent[] }) {
   const [dateRange] = useQueryState('date', parseAsString);
   const [search] = useQueryState('q', parseAsString);
   const [selectedCategory] = useQueryState('cat', parseAsString);
@@ -24,8 +25,8 @@ function GridEvents() {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
 
-    return data
-      ?.filter((event) => {
+    return events
+      .filter((event) => {
         if (!searchValue) return true;
         return event.name.toLowerCase().includes(searchValue);
       })
@@ -33,36 +34,28 @@ function GridEvents() {
         if (!selectedDateRange) return true;
         if (!event.startingDate) return false;
         return isWithinInterval(new Date(event.startingDate), {
-          start: selectedDateRange?.from,
-          end: selectedDateRange?.to,
+          start: selectedDateRange.from,
+          end: selectedDateRange.to,
         });
       })
       .filter((event) => {
         if (!selectedCategory) return true;
         return event.eventCategory?.id === selectedCategory;
       });
-  }, [data, search, selectedDateRange, selectedCategory]);
+  }, [events, search, selectedDateRange, selectedCategory]);
 
-  if (isLoading) {
+  if (events.length === 0) {
     return (
-      <div className='max-w-7xl mx-auto py-8 px-4'>
-        <h1 className='text-2xl font-bold select-none'>Cargando eventos...</h1>
-      </div>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className='max-w-full mx-5 md:mx-12 py-8 px-4'>
-        <h1 className='text-2xl font-bold text-center'>No hay eventos</h1>
+      <div className='mx-5 max-w-full px-4 py-8 md:mx-12'>
+        <h1 className='text-center text-2xl font-bold'>No hay eventos</h1>
       </div>
     );
   }
 
   return (
-    <div className='max-w-full p-4 sm:px-8 sm:py-8 md:px-12 mb-20 '>
-      <div className='grid w-full max-w-6xl grid-cols-2 lg:grid-cols-4 mx-auto gap-6 place-content-start items-stretch justify-items-stretch'>
-        {filteredEvents?.map((event) => (
+    <div className='mb-20 max-w-full p-4 sm:px-8 sm:py-8 md:px-12'>
+      <div className='mx-auto grid w-full max-w-6xl grid-cols-2 place-content-start items-stretch justify-items-stretch gap-6 lg:grid-cols-4'>
+        {filteredEvents.map((event) => (
           <div
             key={event.id}
             className='flex h-full w-full min-h-0 justify-center'

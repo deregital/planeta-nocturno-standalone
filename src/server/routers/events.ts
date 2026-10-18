@@ -336,21 +336,16 @@ export const eventsRouter = router({
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
       where: ticketeraVisibleEventsWhere(),
+      columns: {
+        id: true,
+        name: true,
+        slug: true,
+        coverImageUrl: true,
+        startingDate: true,
+      },
       with: {
-        ticketTypes: true,
-        location: {
-          columns: {
-            id: true,
-            name: true,
-            address: true,
-          },
-        },
         eventCategory: {
-          columns: {
-            id: true,
-            name: true,
-            isActive: true,
-          },
+          columns: { id: true },
         },
       },
       orderBy: ticketeraEventsOrderBy,
