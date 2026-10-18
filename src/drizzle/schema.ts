@@ -34,6 +34,10 @@ export const ticketGroupStatus = pgEnum('TicketGroupStatus', [
   'PAID',
   'FREE',
 ]);
+export const paymentMethod = pgEnum('PaymentMethod', [
+  'MERCADO_PAGO',
+  'TRANSFER',
+]);
 export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'FREE',
   'PAID',
@@ -199,6 +203,7 @@ export const ticketGroup = pgTable(
     isOrganizerGroup: boolean().default(false).notNull(),
     invitedBySimple: text(),
     totalAmount: numeric({ precision: 14, scale: 2 }).default('0').notNull(),
+    paymentMethod: paymentMethod(),
   },
   (table) => [
     foreignKey({
@@ -247,6 +252,14 @@ export const feature = pgTable(
     ),
   ],
 );
+
+export const paymentSettings = pgTable('paymentSettings', {
+  id: integer().default(1).primaryKey().notNull(),
+  transferAlias: text(),
+  updatedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
 
 export const event = pgTable(
   'event',

@@ -13,6 +13,7 @@ import { PrintEventQr } from '@/components/event/individual/PrintEventQr';
 import { QuantityTicketsEmitted } from '@/components/event/individual/QuantityTicketsEmitted';
 import { ScanTicket } from '@/components/event/individual/ScanTicket';
 import { SurveyAnswersTable } from '@/components/event/individual/SurveyAnswersTable';
+import { TicketGroupsTable } from '@/components/event/individual/TicketGroupsTable';
 import { TicketRaffle } from '@/components/event/individual/TicketRaffle';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
@@ -159,6 +160,9 @@ async function EventDetails({ slug }: { slug: string }) {
             />
           )}
         </>
+      )}
+      {can('tickets:read_all') && event.inviteCondition !== 'INVITATION' && (
+        <TicketGroupsTable eventId={event.id} eventSlug={event.slug} />
       )}
       {can('tickets:answers') && hasVisibleQuestions && (
         <SurveyAnswersTable event={event} />

@@ -104,8 +104,8 @@ function TicketPurchase({
                   {!type.disabled && type.leftAvailable && (
                     <span className='text-red-500 font-medium text-xs sm:text-sm'>
                       {type.leftAvailable === 1
-                        ? '¡Queda 1 ticket!'
-                        : `¡Quedan ${type.leftAvailable} tickets!`}
+                        ? '¡Queda 1!'
+                        : `¡Quedan ${type.leftAvailable}!`}
                     </span>
                   )}
                 </div>
