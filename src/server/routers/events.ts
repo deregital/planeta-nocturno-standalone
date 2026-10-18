@@ -66,7 +66,6 @@ import {
   anyPermissionProcedure,
   forbidden,
   permissionProcedure,
-  protectedProcedure,
   publicProcedure,
   router,
 } from '@/server/trpc';
@@ -501,7 +500,11 @@ export const eventsRouter = router({
 
       return event ?? null;
     }),
-  getBySlug: protectedProcedure
+  getBySlug: anyPermissionProcedure([
+    'events:read',
+    'events:update',
+    'organizer:act',
+  ])
     .input(z.string())
     .query(async ({ ctx, input }) => {
       const [event] = await Promise.all([
