@@ -19,7 +19,7 @@ export async function GET(
   }
 
   // Obtener el evento
-  const event = await trpc.events.getBySlug(slug);
+  const event = await trpc.events.getPublicBySlug(slug);
   if (!event) {
     redirect(`/event/${slug}?error=event_not_found`);
   }

@@ -23,6 +23,8 @@ import { revalidatePath } from 'next/cache';
 import * as XLSX from 'xlsx';
 import z from 'zod';
 
+import type { Db } from '@/drizzle';
+
 import {
   emittedTicket,
   eventFolder,
@@ -64,6 +66,7 @@ import {
   anyPermissionProcedure,
   forbidden,
   permissionProcedure,
+  protectedProcedure,
   publicProcedure,
   router,
 } from '@/server/trpc';
@@ -104,6 +107,35 @@ const ticketeraEventsOrderBy = [
   asc(eventSchema.sortOrder),
   asc(eventSchema.startingDate),
 ];
+
+const BOOKED_TICKET_GROUP_TTL_MS = 1000 * 60 * 10;
+
+/** Libera las reservas sin pagar vencidas (salvo transferencias) para que el cupo vuelva a estar disponible. */
+function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
+  const eventIds = db
+    .select({ id: eventSchema.id })
+    .from(eventSchema)
+    .where(
+      and(eq(eventSchema.slug, eventSlug), eq(eventSchema.isDeleted, false)),
+    );
+
+  return db
+    .delete(ticketGroup)
+    .where(
+      and(
+        eq(ticketGroup.status, 'BOOKED'),
+        inArray(ticketGroup.eventId, eventIds),
+        or(
+          isNull(ticketGroup.paymentMethod),
+          ne(ticketGroup.paymentMethod, 'TRANSFER'),
+        ),
+        lt(
+          ticketGroup.createdAt,
+          new Date(Date.now() - BOOKED_TICKET_GROUP_TTL_MS).toISOString(),
+        ),
+      ),
+    );
+}
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -434,98 +466,125 @@ export const eventsRouter = router({
 
     return data;
   }),
-  getBySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    const event = await ctx.db.query.event.findFirst({
-      where: and(eq(eventSchema.slug, input), eq(eventSchema.isDeleted, false)),
-      with: {
-        ticketGroups: {
+  /** Lo que necesita la página de compra: sin compradores ni organizadores. */
+  getPublicBySlug: publicProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const [event] = await Promise.all([
+        ctx.db.query.event.findFirst({
+          where: and(
+            eq(eventSchema.slug, input),
+            eq(eventSchema.isDeleted, false),
+          ),
+          columns: { emailNotification: false },
           with: {
-            emittedTickets: {
-              with: {
-                ticketType: true,
+            ticketTypes: {
+              orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
+            },
+            location: {
+              columns: {
+                id: true,
+                address: true,
+                name: true,
               },
             },
-            ticketGroupAnswers: {
-              with: {
-                eventQuestion: true,
-              },
-            },
-          },
-        },
-        eventQuestions: {
-          orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
-        },
-        ticketTypes: {
-          orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
-          with: {
-            ticketTypeXOrganizers: true,
-          },
-        },
-        location: {
-          columns: {
-            id: true,
-            address: true,
-            name: true,
-          },
-        },
-        eventCategory: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-        eventXUsers: {
-          with: {
-            user: {
+            eventCategory: {
               columns: {
                 id: true,
                 name: true,
               },
             },
           },
-        },
-        eventXorganizers: {
-          columns: {
-            discountPercentage: true,
-            ticketAmount: true,
-          },
+        }),
+        deleteExpiredBookedTicketGroups(ctx.db, input),
+      ]);
+
+      return event ?? null;
+    }),
+  getBySlug: protectedProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const [event] = await Promise.all([
+        ctx.db.query.event.findFirst({
+          where: and(
+            eq(eventSchema.slug, input),
+            eq(eventSchema.isDeleted, false),
+          ),
           with: {
-            user: {
+            ticketGroups: {
+              with: {
+                emittedTickets: {
+                  with: {
+                    ticketType: true,
+                  },
+                },
+                ticketGroupAnswers: {
+                  with: {
+                    eventQuestion: true,
+                  },
+                },
+              },
+            },
+            eventQuestions: {
+              orderBy: [
+                asc(eventQuestion.sortOrder),
+                asc(eventQuestion.createdAt),
+              ],
+            },
+            ticketTypes: {
+              orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
+              with: {
+                ticketTypeXOrganizers: true,
+              },
+            },
+            location: {
               columns: {
-                dni: true,
                 id: true,
-                fullName: true,
-                phoneNumber: true,
-                chiefOrganizerId: true,
-                role: true,
+                address: true,
+                name: true,
+              },
+            },
+            eventCategory: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
+            eventXUsers: {
+              with: {
+                user: {
+                  columns: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            eventXorganizers: {
+              columns: {
+                discountPercentage: true,
+                ticketAmount: true,
+              },
+              with: {
+                user: {
+                  columns: {
+                    dni: true,
+                    id: true,
+                    fullName: true,
+                    phoneNumber: true,
+                    chiefOrganizerId: true,
+                    role: true,
+                  },
+                },
               },
             },
           },
-        },
-      },
-    });
+        }),
+        deleteExpiredBookedTicketGroups(ctx.db, input),
+      ]);
 
-    if (!event) return null;
-
-    await ctx.db
-      .delete(ticketGroup)
-      .where(
-        and(
-          eq(ticketGroup.status, 'BOOKED'),
-          eq(ticketGroup.eventId, event.id),
-          or(
-            isNull(ticketGroup.paymentMethod),
-            ne(ticketGroup.paymentMethod, 'TRANSFER'),
-          ),
-          lt(
-            ticketGroup.createdAt,
-            new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-          ),
-        ),
-      );
-
-    return event;
-  }),
+      return event ?? null;
+    }),
   validateOrganizerCode: publicProcedure
     .input(
       z.object({

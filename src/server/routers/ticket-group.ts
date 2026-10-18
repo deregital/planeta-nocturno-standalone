@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -184,36 +184,22 @@ export const ticketGroupRouter = router({
       });
       return groups;
     }),
-  getTicketsByEvent: publicProcedure
+  /** Entradas tomadas por tipo (incluye reservas sin pagar), sumadas en la base. */
+  getTicketTypeAmounts: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
-      const groups = await ctx.db.query.ticketGroup.findMany({
-        where: eq(ticketGroup.eventId, input),
-        columns: {
-          id: true,
-        },
-        with: {
-          ticketTypePerGroups: {
-            columns: {
-              amount: true,
-            },
-            with: {
-              ticketType: {
-                columns: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  maxAvailable: true,
-                  maxPerPurchase: true,
-                  price: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      return groups;
+      return ctx.db
+        .select({
+          ticketTypeId: ticketTypePerGroup.ticketTypeId,
+          amount: sql<number>`sum(${ticketTypePerGroup.amount})::int`,
+        })
+        .from(ticketTypePerGroup)
+        .innerJoin(
+          ticketGroup,
+          eq(ticketTypePerGroup.ticketGroupId, ticketGroup.id),
+        )
+        .where(eq(ticketGroup.eventId, input))
+        .groupBy(ticketTypePerGroup.ticketTypeId);
     }),
   findById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const group = await ctx.db.query.ticketGroup.findFirst({
