@@ -21,22 +21,27 @@ import { trpc } from '@/server/trpc/client';
 type UnlinkMercadoPagoClientProps = {
   token: string | null;
   isConnected: boolean;
+  transferAlias: string | null;
 };
 
 export default function UnlinkMercadoPagoClient({
   token,
   isConnected,
+  transferAlias,
 }: UnlinkMercadoPagoClientProps) {
   const router = useRouter();
+  const utils = trpc.useUtils();
   const confirmUnlink = trpc.mercadoPago.confirmUnlink.useMutation({
     onSuccess(data) {
       clearMercadoPagoStatusCookie();
+      utils.mercadoPago.hasCredentials.invalidate();
       const href = (
         data.pending
           ? '/admin/settings?mp=unlinked-pending'
           : '/admin/settings?mp=unlinked'
       ) as Route;
       router.replace(href);
+      router.refresh();
     },
     onError(error) {
       toast.error(error.message);
@@ -90,8 +95,9 @@ export default function UnlinkMercadoPagoClient({
         <AlertTriangle />
         <AlertTitle>Esta acción no se puede deshacer</AlertTitle>
         <AlertDescription>
-          Al desvincular la cuenta de Mercado Pago no se van a poder cobrar
-          entradas online hasta que se vuelva a conectar una cuenta.
+          {transferAlias
+            ? `Las entradas pagas pasan a cobrarse por transferencia al alias ${transferAlias}. El comprador manda el comprobante a tu mail de contacto y liberás las entradas desde la página del evento.`
+            : 'No se van a poder cobrar entradas online ni crear tickets pagos hasta que vuelvas a conectar una cuenta.'}
         </AlertDescription>
       </Alert>
     </UnlinkCard>

@@ -111,6 +111,13 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     parent: 'tickets:read',
   },
   {
+    key: 'tickets:release',
+    label: 'Liberar y cancelar compras por transferencia',
+    description:
+      'Confirmar el pago de las compras que se transfirieron al alias cuando Mercado Pago no estaba disponible',
+    parent: 'tickets:read_all',
+  },
+  {
     key: 'tickets:create',
     label: 'Emitir entradas',
     parent: 'tickets:read',

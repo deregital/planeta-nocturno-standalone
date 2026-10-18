@@ -14,6 +14,7 @@ import {
   inArray,
   isNull,
   lt,
+  ne,
   not,
   or,
   sql,
@@ -517,6 +518,10 @@ export const eventsRouter = router({
         and(
           eq(ticketGroup.status, 'BOOKED'),
           eq(ticketGroup.eventId, event.id),
+          or(
+            isNull(ticketGroup.paymentMethod),
+            ne(ticketGroup.paymentMethod, 'TRANSFER'),
+          ),
           lt(
             ticketGroup.createdAt,
             new Date(Date.now() - 1000 * 60 * 10).toISOString(),

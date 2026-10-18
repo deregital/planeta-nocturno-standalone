@@ -19,7 +19,9 @@ import {
   sendMailService,
 } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
+import { getTransferAlias } from '@/server/services/paymentSettings';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
+import { startTransferPayment } from '@/server/services/transferPayment';
 import { trpc } from '@/server/trpc/server';
 
 export type PurchaseActionState = {
@@ -328,11 +330,24 @@ export const handlePurchase = async (
 
       url = `/tickets/${ticketGroupId}` as Route;
     } else {
-      const mercadoPagoUrl = await trpc.mercadoPago.createPreference({
-        ticketGroupId,
-      });
+      const transferAlias = await getTransferAlias(db);
+      let mercadoPagoUrl: string | null = null;
 
-      if (!mercadoPagoUrl) {
+      if (instance.mercadoPagoAccessToken) {
+        try {
+          mercadoPagoUrl = await trpc.mercadoPago.createPreference({
+            ticketGroupId,
+          });
+        } catch (error) {
+          if (!transferAlias) throw error;
+          logger.warn('Mercado Pago preference failed, using transfer', {
+            ticketGroupId,
+            error,
+          });
+        }
+      }
+
+      if (!mercadoPagoUrl && !transferAlias) {
         return {
           ticketsInput: prevState.ticketsInput,
           errors: [
@@ -342,12 +357,21 @@ export const handlePurchase = async (
         };
       }
 
+      if (!mercadoPagoUrl && transferAlias) {
+        await startTransferPayment(db, instance, {
+          ticketGroupId,
+          transferAlias,
+        });
+      }
+
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket), {
         maxAge: 60 * 60 * 24 * 365, // 1 año
         path: '/',
       });
       (await cookies()).delete('carrito');
-      (await cookies()).set('pendingPaymentUrl', mercadoPagoUrl);
+      if (mercadoPagoUrl) {
+        (await cookies()).set('pendingPaymentUrl', mercadoPagoUrl);
+      }
 
       url = `/tickets/${ticketGroupId}` as Route;
     }

@@ -53,6 +53,7 @@ export default async function MercadoPagoOAuth({
           isConnected={isConnected}
           authUrl={authUrl}
           canUnlink={canUnlink}
+          isMultiTenant={instance.tenantId !== null}
         />
       </CardContent>
     </Card>

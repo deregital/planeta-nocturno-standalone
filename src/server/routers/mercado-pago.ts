@@ -1,10 +1,11 @@
 import { TRPCError } from '@trpc/server';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import z from 'zod';
 
-import { eventXorganizer, ticketGroup, user } from '@/drizzle/schema';
+import { ticketGroup, user } from '@/drizzle/schema';
 import { logger } from '@/server/observability/logger';
+import { transferAliasSchema } from '@/server/schemas/payment-settings';
 import {
   generateMercadoPagoUnlinkedEmail,
   generateMercadoPagoUnlinkRequestEmail,
@@ -20,7 +21,12 @@ import {
   reserveUnlinkRequest,
   UNLINK_REQUEST_TTL_MINUTES,
 } from '@/server/services/mercadoPagoUnlink';
-import { calculateTotalPrice } from '@/server/services/ticketGroup';
+import {
+  getTransferAlias,
+  hasActivePaidEvents,
+  setTransferAlias,
+} from '@/server/services/paymentSettings';
+import { calculateAndSaveTotalAmount } from '@/server/services/ticketGroup';
 import {
   anyPermissionProcedure,
   permissionProcedure,
@@ -42,8 +48,40 @@ export const mercadoPagoRouter = router({
       ctx.instance.mercadoPagoRefreshToken,
     );
   }),
-  requestUnlink: permissionProcedure('mercadopago:unlink').mutation(
+  getTransferAlias: permissionProcedure('mercadopago:link').query(({ ctx }) =>
+    getTransferAlias(ctx.db),
+  ),
+  updateTransferAlias: permissionProcedure('mercadopago:link')
+    .input(z.object({ transferAlias: transferAliasSchema.nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      if (
+        !input.transferAlias &&
+        !ctx.instance.mercadoPagoAccessToken &&
+        (await hasActivePaidEvents(ctx.db))
+      ) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Hay eventos activos con entradas pagas: el alias es obligatorio mientras Mercado Pago no esté vinculado',
+        });
+      }
+      await setTransferAlias(ctx.db, input.transferAlias);
+    }),
+  unlinkRequirements: permissionProcedure('mercadopago:unlink').query(
     async ({ ctx }) => {
+      const transferAlias = await getTransferAlias(ctx.db);
+      return {
+        transferAlias,
+        requiresTransferAlias:
+          !transferAlias && (await hasActivePaidEvents(ctx.db)),
+      };
+    },
+  ),
+  requestUnlink: permissionProcedure('mercadopago:unlink')
+    .input(
+      z.object({ transferAlias: transferAliasSchema.optional() }).optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
       if (
         !ctx.instance.mercadoPagoAccessToken ||
         !ctx.instance.mercadoPagoRefreshToken
@@ -51,6 +89,19 @@ export const mercadoPagoRouter = router({
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
           message: 'Mercado Pago no está vinculado',
+        });
+      }
+
+      if (input?.transferAlias) {
+        await setTransferAlias(ctx.db, input.transferAlias);
+      } else if (
+        !(await getTransferAlias(ctx.db)) &&
+        (await hasActivePaidEvents(ctx.db))
+      ) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Hay eventos activos con entradas pagas: ingresá un alias para recibir transferencias antes de desvincular',
         });
       }
 
@@ -80,6 +131,7 @@ export const mercadoPagoRouter = router({
           ctx.instance,
           link.toString(),
           UNLINK_REQUEST_TTL_MINUTES,
+          await getTransferAlias(ctx.db),
         ),
       }).catch((error: unknown) => ({ error }));
       if (mail.error) {
@@ -95,11 +147,21 @@ export const mercadoPagoRouter = router({
         email: maskEmail(requester.email),
         expiresInMinutes: UNLINK_REQUEST_TTL_MINUTES,
       };
-    },
-  ),
+    }),
   confirmUnlink: permissionProcedure('mercadopago:unlink')
     .input(z.object({ token: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      if (
+        !(await getTransferAlias(ctx.db)) &&
+        (await hasActivePaidEvents(ctx.db))
+      ) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Hay eventos activos con entradas pagas: configurá un alias para recibir transferencias antes de desvincular',
+        });
+      }
+
       let result: Awaited<ReturnType<typeof confirmUnlink>>;
       try {
         result = await confirmUnlink(
@@ -130,7 +192,11 @@ export const mercadoPagoRouter = router({
         const mail = await sendMailWithoutAttachments(ctx.instance, {
           to: requester.email,
           subject: 'Mercado Pago fue desvinculado',
-          html: generateMercadoPagoUnlinkedEmail(ctx.instance, result.pending),
+          html: generateMercadoPagoUnlinkedEmail(
+            ctx.instance,
+            result.pending,
+            await getTransferAlias(ctx.db),
+          ),
         }).catch((error: unknown) => ({ error }));
         if (mail.error) {
           logger.error('Mercado Pago unlinked email failed', {
@@ -205,36 +271,14 @@ export const mercadoPagoRouter = router({
         accessToken: ctx.instance.mercadoPagoAccessToken,
       });
 
-      // Get discount percentage from organizer if exists
-      let discountPercentage: number | null = null;
-      if (group.invitedById) {
-        const eventOrganizer = await ctx.db.query.eventXorganizer.findFirst({
-          where: and(
-            eq(eventXorganizer.eventId, group.event.id),
-            eq(eventXorganizer.organizerId, group.invitedById),
-          ),
-          columns: {
-            discountPercentage: true,
-          },
-        });
+      const totalPrice = await calculateAndSaveTotalAmount(
+        ctx.db,
+        input.ticketGroupId,
+      );
 
-        if (eventOrganizer?.discountPercentage) {
-          discountPercentage = eventOrganizer.discountPercentage;
-        }
-      }
-
-      // calcular el precio total
-      const totalPrice = await calculateTotalPrice(ctx.db, {
-        ticketGroupId: input.ticketGroupId,
-        discountPercentage,
-      });
-
-      // Actualizar el totalAmount del ticketGroup
       await ctx.db
         .update(ticketGroup)
-        .set({
-          totalAmount: totalPrice.toFixed(2),
-        })
+        .set({ paymentMethod: 'MERCADO_PAGO' })
         .where(eq(ticketGroup.id, input.ticketGroupId));
 
       const preference = await new Preference(mercadoPago).create({

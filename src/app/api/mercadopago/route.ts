@@ -5,12 +5,9 @@ import { resolveRequestContext } from '@/server/instance/resolve-request-context
 import { logger } from '@/server/observability/logger';
 import { verifySignedRequest } from '@/server/security/signed-request';
 import {
-  generateTicketEmailBody,
-  sendMailService,
-} from '@/server/services/mail';
-import { sendNotificationService } from '@/server/services/notification';
-import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
-import { trpc } from '@/server/trpc/server';
+  deliverPaidTicketGroup,
+  updateTicketGroupStatus,
+} from '@/server/services/ticketGroup';
 
 const mercadoPagoRequestSchema = z.object({
   ticketGroupId: z.string().min(1),
@@ -62,38 +59,18 @@ export async function POST(request: Request) {
 async function fulfillTicketGroup(headers: Headers, ticketGroupId: string) {
   const { db, instance } = await resolveRequestContext(headers);
 
-  // cambiar status de ticketGroup a pagado
   await updateTicketGroupStatus(db, ticketGroupId, 'PAID');
 
-  const group = await trpc.ticketGroup.getById(ticketGroupId);
-
-  // crear pdf
-  const pdfs =
-    await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
-
-  // enviar mail con los pdf de forma secuencial para evitar rate limits
-  for (const pdf of pdfs) {
-    await sendMailService(instance, {
-      eventName: group.event.name,
-      receiver: pdf.ticket.mail,
-      subject: `¡Llegaron tus tickets para ${group.event.name}!`,
-      body: generateTicketEmailBody(instance, group.event.name),
-      attatchments: [pdf.pdf.blob],
-    });
-  }
-
-  if (group.event.emailNotification) {
-    await sendNotificationService(db, instance, {
-      eventName: group.event.name,
-      ticketGroupId: group.id,
-      email: group.event.emailNotification,
-    });
-  }
+  const { eventId, ticketCount } = await deliverPaidTicketGroup(
+    db,
+    instance,
+    ticketGroupId,
+  );
 
   logger.info('Payment webhook fulfillment completed', {
     operation: 'payment_webhook',
     ticketGroupId,
-    eventId: group.event.id,
-    ticketCount: pdfs.length,
+    eventId,
+    ticketCount,
   });
 }

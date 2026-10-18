@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, format } from 'date-fns';
-import { and, count, desc, eq, inArray, or } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -673,11 +673,26 @@ export const emittedTicketsRouter = router({
         return [];
       }
 
+      const pendingTransferGroups = ctx.db
+        .select({ id: ticketGroup.id })
+        .from(ticketGroup)
+        .where(
+          and(
+            eq(ticketGroup.eventId, input.eventId),
+            eq(ticketGroup.status, 'BOOKED'),
+            eq(ticketGroup.paymentMethod, 'TRANSFER'),
+          ),
+        );
+
       const tickets = await ctx.db.query.emittedTicket.findMany({
         where: canSeeAllTickets
-          ? eq(emittedTicket.eventId, input.eventId)
+          ? and(
+              eq(emittedTicket.eventId, input.eventId),
+              notInArray(emittedTicket.ticketGroupId, pendingTransferGroups),
+            )
           : and(
               eq(emittedTicket.eventId, input.eventId),
+              notInArray(emittedTicket.ticketGroupId, pendingTransferGroups),
               hasGroups && hasOrganizerTickets
                 ? or(
                     inArray(emittedTicket.ticketGroupId, ticketGroupIds),
