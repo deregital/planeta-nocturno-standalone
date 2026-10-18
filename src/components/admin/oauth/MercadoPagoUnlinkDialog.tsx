@@ -26,7 +26,9 @@ export default function MercadoPagoUnlinkDialog() {
   return (
     <Dialog onOpenChange={(open) => !open && requestUnlink.reset()}>
       <DialogTrigger asChild>
-        <Button variant='outline'>Desvincular</Button>
+        <Button variant='destructive' className='hover:bg-red-600'>
+          Desvincular
+        </Button>
       </DialogTrigger>
       <DialogContent className='flex max-w-lg flex-col gap-4'>
         <DialogHeader>

@@ -19,16 +19,11 @@ export default async function UnlinkMercadoPagoPage({
       : null;
 
   return (
-    <div className='flex flex-col gap-4 p-4'>
-      <h1 className='text-4xl font-bold text-accent'>
-        Desvincular Mercado Pago
-      </h1>
-      <UnlinkMercadoPagoClient
-        token={validToken}
-        isConnected={Boolean(
-          instance.mercadoPagoAccessToken && instance.mercadoPagoRefreshToken,
-        )}
-      />
-    </div>
+    <UnlinkMercadoPagoClient
+      token={validToken}
+      isConnected={Boolean(
+        instance.mercadoPagoAccessToken && instance.mercadoPagoRefreshToken,
+      )}
+    />
   );
 }

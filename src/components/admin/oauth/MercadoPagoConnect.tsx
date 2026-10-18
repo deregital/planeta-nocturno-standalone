@@ -52,6 +52,12 @@ export default function MercadoPagoConnect({
   const [testEventModalOpen, setTestEventModalOpen] = useState(false);
 
   useEffect(() => {
+    if (urlStatus === 'unlinked' || urlStatus === 'unlinked-pending') {
+      clearMercadoPagoStatusCookie();
+      setCookieStatus(null);
+      return;
+    }
+
     if (urlStatus === 'success') {
       setStatusCookie('success');
       setCookieStatus('success');
@@ -64,11 +70,22 @@ export default function MercadoPagoConnect({
   const status =
     urlStatus === 'error'
       ? 'error'
-      : urlStatus === 'success' || cookieStatus === 'success'
-        ? 'success'
-        : null;
+      : urlStatus === 'unlinked' || urlStatus === 'unlinked-pending'
+        ? urlStatus
+        : urlStatus === 'success' || cookieStatus === 'success'
+          ? 'success'
+          : null;
 
   const connected = isConnected || status === 'success';
+
+  useEffect(() => {
+    if (urlStatus !== 'unlinked' && urlStatus !== 'unlinked-pending') return;
+
+    document.getElementById('mercadopago')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    });
+  }, [urlStatus]);
 
   useEffect(() => {
     if (status !== 'success') return;
@@ -92,6 +109,17 @@ export default function MercadoPagoConnect({
       {status === 'error' && (
         <p className='text-sm font-medium text-red-500'>
           Ocurrió un error al conectar con Mercado Pago. Intentá nuevamente.
+        </p>
+      )}
+      {status === 'unlinked' && (
+        <p className='text-sm font-medium text-green-600'>
+          Mercado Pago se desvinculó correctamente.
+        </p>
+      )}
+      {status === 'unlinked-pending' && (
+        <p className='text-sm font-medium text-green-600'>
+          La desvinculación de Mercado Pago está en proceso y puede tardar unos
+          minutos en completarse.
         </p>
       )}
 
@@ -123,12 +151,13 @@ export default function MercadoPagoConnect({
       </Dialog>
 
       {connected ? (
-        <div className='flex flex-wrap gap-2'>
+        canUnlink ? (
+          <MercadoPagoUnlinkDialog />
+        ) : (
           <Button variant='success' disabled>
             Ya estás conectado a Mercado Pago
           </Button>
-          {canUnlink && <MercadoPagoUnlinkDialog />}
-        </div>
+        )
       ) : authUrl ? (
         <Dialog>
           <DialogTrigger asChild>
