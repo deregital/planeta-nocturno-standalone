@@ -218,6 +218,7 @@ model EventQuestion {
   answers   TicketGroupAnswer[] @relation("QUESTION_X_ANSWER")
   createdAt DateTime            @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([eventId])
   @@map("eventQuestion")
 }
 
@@ -305,6 +306,8 @@ model TicketGroup {
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([eventId])
+  @@index([invitedById])
   @@map("ticketGroup")
 }
 
@@ -317,6 +320,8 @@ model TicketGroupAnswer {
   ticketGroup   TicketGroup   @relation("TICKET_GROUP_X_ANSWER", fields: [ticketGroupId], references: [id], onDelete: Cascade)
   createdAt     DateTime      @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([questionId])
+  @@index([ticketGroupId])
   @@map("ticketGroupAnswer")
 }
 
@@ -329,6 +334,7 @@ model TicketTypePerGroup {
   ticketGroup   TicketGroup? @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP", fields: [ticketGroupId], references: [id], onDelete: Cascade)
 
   @@id([ticketTypeId, ticketGroupId])
+  @@index([ticketGroupId])
   @@map("ticketTypePerGroup")
 }
 
@@ -369,6 +375,9 @@ model EmittedTicket {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@unique([eventId, shortId])
+  @@index([ticketTypeId])
+  @@index([ticketGroupId])
+  @@index([dni, createdAt(sort: Desc)])
   @@map("emittedTicket")
 }
 
@@ -444,6 +453,7 @@ model TicketXOrganizer {
   @@unique([ticketId])
   @@index([organizerId])
   @@index([code])
+  @@index([ticketGroupId])
   @@map("ticketXOrganizer")
 }
 
@@ -460,6 +470,7 @@ model EventXOrganizer {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@id([eventId, organizerId])
+  @@index([organizerId])
   @@map("eventXOrganizer")
 }
 
