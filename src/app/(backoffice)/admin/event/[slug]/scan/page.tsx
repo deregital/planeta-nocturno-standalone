@@ -11,7 +11,7 @@ export default async function ScanTicketPage({
 }) {
   const access = await requirePagePermission('scanner:use');
   const { slug } = await params;
-  const event = await trpc.events.getBySlug(slug);
+  const event = await trpc.events.getPublicBySlug(slug);
 
   if (!event || !(await canAccessEvent(access, event.id))) {
     notFound();

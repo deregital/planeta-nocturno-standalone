@@ -275,9 +275,7 @@ export const emittedTicketsRouter = router({
           new Date(),
           dateOnlyToLocalDate(buyer.birthDate),
         ).toString(),
-        buyerCode:
-          buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
-          '---',
+        buyerCode: buyerCodes.get(buyer.dni)?.toString() || '---',
       }));
 
       return dataWithAge;
@@ -314,9 +312,7 @@ export const emittedTicketsRouter = router({
           new Date(),
           dateOnlyToLocalDate(buyer.birthDate),
         ).toString(),
-        buyerCode:
-          buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
-          '---',
+        buyerCode: buyerCodes.get(buyer.dni)?.toString() || '---',
       }));
 
       return dataWithAge;
@@ -375,9 +371,7 @@ export const emittedTicketsRouter = router({
           new Date(),
           dateOnlyToLocalDate(buyer.birthDate),
         ).toString(),
-        buyerCode:
-          buyerCode?.find((code) => code.dni === buyer.dni)?.id.toString() ||
-          '---',
+        buyerCode: buyerCode.get(buyer.dni)?.toString() || '---',
       };
 
       return { buyer: buyerWithAge, events };
@@ -768,9 +762,7 @@ export const emittedTicketsRouter = router({
         ...ticket,
         buyerCode: isInvitation
           ? (invitationShortIdByTicketId.get(ticket.id)?.toString() ?? '-')
-          : buyerCodes
-              ?.find((code) => code.dni === ticket.dni)
-              ?.id.toString() || '---',
+          : buyerCodes?.get(ticket.dni)?.toString() || '---',
         ticketGroup: {
           ...ticket.ticketGroup,
           invitedBy: ticket.ticketGroup.user?.fullName || '-',

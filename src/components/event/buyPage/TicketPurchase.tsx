@@ -21,7 +21,9 @@ function TicketPurchase({
   invitedBy,
   eventStartingDate,
 }: {
-  ticketTypes: NonNullable<RouterOutputs['events']['getBySlug']>['ticketTypes'];
+  ticketTypes: NonNullable<
+    RouterOutputs['events']['getPublicBySlug']
+  >['ticketTypes'];
   eventId: string;
   invitedBy: string | null;
   eventStartingDate: string | null;

@@ -153,6 +153,19 @@ export const emittedTicket = pgTable(
     shortId: integer().notNull(),
   },
   (table) => [
+    index('emittedTicket_dni_createdAt_idx').using(
+      'btree',
+      table.dni.asc().nullsLast().op('text_ops'),
+      table.createdAt.desc().nullsFirst().op('timestamptz_ops'),
+    ),
+    index('emittedTicket_ticketGroupId_idx').using(
+      'btree',
+      table.ticketGroupId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('emittedTicket_ticketTypeId_idx').using(
+      'btree',
+      table.ticketTypeId.asc().nullsLast().op('uuid_ops'),
+    ),
     uniqueIndex('emittedTicket_eventId_shortId_key').using(
       'btree',
       table.eventId.asc().nullsLast().op('uuid_ops'),
@@ -206,6 +219,14 @@ export const ticketGroup = pgTable(
     paymentMethod: paymentMethod(),
   },
   (table) => [
+    index('ticketGroup_event_id_idx').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('ticketGroup_invitedById_idx').using(
+      'btree',
+      table.invitedById.asc().nullsLast().op('uuid_ops'),
+    ),
     foreignKey({
       columns: [table.eventId],
       foreignColumns: [event.id],
@@ -514,6 +535,10 @@ export const eventQuestion = pgTable(
     isRequired: boolean().default(true).notNull(),
   },
   (table) => [
+    index('eventQuestion_eventId_idx').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+    ),
     foreignKey({
       columns: [table.eventId],
       foreignColumns: [event.id],
@@ -536,6 +561,14 @@ export const ticketGroupAnswer = pgTable(
       .notNull(),
   },
   (table) => [
+    index('ticketGroupAnswer_questionId_idx').using(
+      'btree',
+      table.questionId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('ticketGroupAnswer_ticketGroupId_idx').using(
+      'btree',
+      table.ticketGroupId.asc().nullsLast().op('uuid_ops'),
+    ),
     foreignKey({
       columns: [table.questionId],
       foreignColumns: [eventQuestion.id],
@@ -657,6 +690,10 @@ export const ticketTypePerGroup = pgTable(
     ticketGroupId: uuid().notNull(),
   },
   (table) => [
+    index('ticketTypePerGroup_ticketGroupId_idx').using(
+      'btree',
+      table.ticketGroupId.asc().nullsLast().op('uuid_ops'),
+    ),
     foreignKey({
       columns: [table.ticketTypeId],
       foreignColumns: [ticketType.id],
@@ -690,6 +727,10 @@ export const eventXorganizer = pgTable(
       .notNull(),
   },
   (table) => [
+    index('eventXOrganizer_organizerId_idx').using(
+      'btree',
+      table.organizerId.asc().nullsLast().op('uuid_ops'),
+    ),
     foreignKey({
       columns: [table.eventId],
       foreignColumns: [event.id],
@@ -728,6 +769,10 @@ export const ticketXorganizer = pgTable(
     shared: boolean().default(false).notNull(),
   },
   (table) => [
+    index('ticketXOrganizer_ticketGroupId_idx').using(
+      'btree',
+      table.ticketGroupId.asc().nullsLast().op('uuid_ops'),
+    ),
     index('ticketXOrganizer_code_idx').using(
       'btree',
       table.code.asc().nullsLast().op('text_ops'),

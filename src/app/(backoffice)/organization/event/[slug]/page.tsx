@@ -31,9 +31,11 @@ export default async function EventPage({
     hasPermission(access.permissions, permission);
   const isTeamLead = can('organizer:team');
   const { slug } = await params;
-  const session = await auth();
-  const event = await trpc.events.getBySlug(slug);
-  const myCode = await trpc.organizer.getMyCode();
+  const [session, event, myCode] = await Promise.all([
+    auth(),
+    trpc.events.getBySlug(slug),
+    trpc.organizer.getMyCode(),
+  ]);
 
   if (!event) {
     notFound();

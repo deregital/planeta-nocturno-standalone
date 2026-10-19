@@ -78,10 +78,9 @@ function buildColumns({
       },
       header: 'Compartir',
       cell: ({ row }) => {
-        const basePath = window.location.origin;
-        const url = `${basePath}/event/${eventSlug}?${INVITE_CODE_QUERY_PARAM}=${row.original.code}`;
-
         function copyToClipboard() {
+          // `window` sólo existe en el navegador: leerlo al renderizar rompe el SSR.
+          const url = `${window.location.origin}/event/${eventSlug}?${INVITE_CODE_QUERY_PARAM}=${row.original.code}`;
           void navigator.clipboard.writeText(url);
           onCopy(row.original.code);
           toast.success('Enlace copiado al portapapeles');
