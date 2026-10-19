@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import ts from 'typescript';
@@ -26,6 +28,9 @@ const {
   normalizeRootDomain,
   resolveMultiTenantHost,
 } = await importTypeScript('../src/lib/tenancy/host.ts');
+const { classifyPublicAsset } = await importTypeScript(
+  '../src/lib/tenancy/public-asset.ts',
+);
 
 for (const key of SINGLE_TENANT_ENV_KEYS) {
   test(`reconoce ${key} como configuración single-tenant`, () => {
@@ -140,6 +145,24 @@ test('distingue el dominio raíz y los dominios desconocidos', () => {
   assert.deepEqual(resolveMultiTenantHost('www.planeta.test', 'planeta.test'), {
     type: 'unknown',
   });
+});
+
+test('distingue archivos públicos de los que no existen', async () => {
+  const publicDirectory = await mkdtemp(path.join(tmpdir(), 'public-asset-'));
+  await mkdir(path.join(publicDirectory, 'icons'));
+  await writeFile(path.join(publicDirectory, 'icons', 'logo.svg'), '<svg/>');
+
+  assert.equal(
+    classifyPublicAsset('/icons/logo.svg', publicDirectory),
+    'file',
+  );
+  assert.equal(classifyPublicAsset('/icon.ico', publicDirectory), 'missing');
+  assert.equal(classifyPublicAsset('/favicon.ico', publicDirectory), 'missing');
+  assert.equal(classifyPublicAsset('/admin/event', publicDirectory), 'none');
+  assert.equal(
+    classifyPublicAsset('/../secret.ico', publicDirectory),
+    'missing',
+  );
 });
 
 test('prioriza x-forwarded-host para resolver el dominio público', () => {

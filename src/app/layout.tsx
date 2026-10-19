@@ -45,7 +45,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title: instance.name,
     description:
       instance.description ?? 'Plataforma de eventos y venta de entradas',
-    icons: { icon: [{ url: instance.faviconUrl ?? '/icon.ico' }] },
+    icons: instance.faviconUrl
+      ? { icon: [{ url: instance.faviconUrl }] }
+      : undefined,
   };
 }
 
