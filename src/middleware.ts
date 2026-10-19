@@ -14,6 +14,7 @@ import {
   ROOT_LANDING_HEADER,
   TENANT_ID_HEADER,
 } from '@/lib/tenancy/host';
+import { classifyPublicAsset } from '@/lib/tenancy/public-asset';
 import { authMiddleware } from '@/server/auth';
 import { findTenantByHostSlug } from '@/server/instance/resolve-instance';
 import { logger } from '@/server/observability/logger';
@@ -22,6 +23,17 @@ export default authMiddleware(async function middleware(request) {
   const headers = new Headers(request.headers);
   headers.delete(ROOT_LANDING_HEADER);
   headers.delete(TENANT_ID_HEADER);
+
+  // Si el middleware no corre, Next igual renderiza el root layout para un
+  // archivo que no existe. Ese layout resuelve el tenant y, sin el header que
+  // setea este middleware, PostHog lo registra como error no manejado.
+  const asset = classifyPublicAsset(request.nextUrl.pathname);
+  if (asset === 'missing') {
+    return new NextResponse(null, { status: 404 });
+  }
+  if (asset === 'file') {
+    return NextResponse.next({ request: { headers } });
+  }
 
   if (createSingleTenantConfig(process.env)) {
     return NextResponse.next({ request: { headers } });
@@ -139,7 +151,8 @@ export const config = {
   runtime: 'nodejs',
   // `relay` es el proxy de PostHog (POSTHOG_PROXY_PATH): lo resuelven los
   // rewrites de next.config.ts y no debe pasar por el ruteo de tenants.
-  matcher: [
-    '/((?!_next/static|_next/image|relay/|icon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2)$).*)',
-  ],
+  // Favicon e imágenes sí entran: si faltan en `public/`, se responden 404
+  // antes de renderizar. Excluirlos hacía que el layout tirara
+  // "The tenant header does not match the request host".
+  matcher: ['/((?!_next/static|_next/image|relay/).*)'],
 };
