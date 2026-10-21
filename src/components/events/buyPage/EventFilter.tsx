@@ -15,6 +15,9 @@ import {
   SelectGroup,
   SelectLabel,
 } from '@/components/ui/select';
+import { type RouterOutputs } from '@/server/routers/app';
+
+type ActiveCategory = RouterOutputs['eventCategory']['getActive'][number];
 
 export const dateRanges: { label: string; id: string; from: Date; to: Date }[] =
   [
@@ -33,7 +36,7 @@ export const dateRanges: { label: string; id: string; from: Date; to: Date }[] =
     },
   ];
 
-export function EventFilter() {
+export function EventFilter({ categories }: { categories: ActiveCategory[] }) {
   const [search, setSearch] = useQueryState('q', parseAsString);
   const [dateRange, setDateRange] = useQueryState('date', parseAsString);
 
@@ -87,7 +90,7 @@ export function EventFilter() {
           </SelectContent>
         </Select>
       </div>
-      <CategoryFilter />
+      <CategoryFilter categories={categories} />
     </div>
   );
 }

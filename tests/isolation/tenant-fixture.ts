@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
 import { user } from '@/drizzle/schema';
+import { SYSTEM_ACCESS_ROLE_IDS } from '@/lib/rbac/permissions';
 import { migrateTenantDatabase } from '@/server/tenancy/migrate-tenant-database';
 
 export type TestAdmin = {
@@ -30,6 +31,7 @@ export async function prepareTenantDatabase(
         email: admin.email,
         fullName: admin.fullName,
         role: 'ADMIN',
+        accessRoleId: SYSTEM_ACCESS_ROLE_IDS.ADMIN,
         gender: 'other',
         phoneNumber: '',
         dni: `isolation-${randomUUID()}`,

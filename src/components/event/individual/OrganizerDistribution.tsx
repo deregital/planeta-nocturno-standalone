@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { EventOrganizersContent } from '@/components/event/create/inviteCondition/EventOrganizers';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -33,9 +34,8 @@ type EventForDistribution = RouterOutputs['events']['getBySlug'];
 
 function useChiefOrganizerId() {
   const { data: session } = useSession();
-  return session?.user?.role === 'CHIEF_ORGANIZER'
-    ? session.user.id
-    : undefined;
+  const isTeamLead = useCan('organizer:team');
+  return isTeamLead ? session?.user?.id : undefined;
 }
 
 function OrganizerDistributionSaveButton({
@@ -216,6 +216,7 @@ function OrganizerDistributionDialogBody({
         capacityOrganizers={capacityOrganizers}
         ticketPool={chiefTicketPool}
         chiefOrganizerId={chiefOrganizerId}
+        redistributeAssignedTickets
         {...organizersState}
       />
       <DialogFooter className='mt-4'>

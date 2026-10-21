@@ -10,6 +10,7 @@ import { useCreateEventOrganizersState } from '@/hooks/organizers/useEventOrgani
 import { useOrganizerPickerOptions } from '@/hooks/organizers/useOrganizerPickerOptions';
 import { useOrganizerTickets } from '@/hooks/organizers/useOrganizerTickets';
 import {
+  buildInvitationTicketEditLimits,
   getInvitationAssignedTickets,
   getInvitationRemainingTickets,
   getTotalTicketsWithoutOrganizer,
@@ -138,12 +139,15 @@ export function EventOrganizersContent({
   eventId,
   ticketPool,
   chiefOrganizerId,
+  redistributeAssignedTickets = false,
 }: {
   type: InviteCondition;
   showSendEmailOption?: boolean;
   capacityOrganizers?: OrganizerSchema[];
   ticketPool?: number;
   chiefOrganizerId?: string;
+  /** En el diálogo de redistribución se pueden mover tickets que todavía no se entregaron. */
+  redistributeAssignedTickets?: boolean;
 } & EventOrganizersState) {
   const organizersForCapacity = capacityOrganizers ?? organizers;
 
@@ -165,6 +169,42 @@ export function EventOrganizersContent({
     locationId,
     ticketPool,
   });
+  const poolUsesTickets = usesTicketPool || poolMode;
+  const { data: deliveredCounts = {}, isSuccess: deliveredLoaded } =
+    trpc.events.getOrganizerDeliveredTicketCounts.useQuery(
+      { eventId: eventId! },
+      {
+        enabled:
+          type === 'INVITATION' && !!eventId && redistributeAssignedTickets,
+      },
+    );
+  const canMoveUndeliveredTickets =
+    redistributeAssignedTickets && (!eventId || deliveredLoaded);
+  const invitationEditLimits = useMemo(() => {
+    if (
+      !canMoveUndeliveredTickets ||
+      type !== 'INVITATION' ||
+      maxCapacity === undefined
+    ) {
+      return undefined;
+    }
+
+    return buildInvitationTicketEditLimits({
+      holderIds: organizersForDistribution.map((organizer) => organizer.id),
+      deliveredByOrganizerId: deliveredCounts,
+      maxCapacity,
+      usesTicketPool: poolUsesTickets,
+      balanceHolderId: chiefOrganizerId,
+    });
+  }, [
+    canMoveUndeliveredTickets,
+    type,
+    maxCapacity,
+    organizersForDistribution,
+    deliveredCounts,
+    poolUsesTickets,
+    chiefOrganizerId,
+  ]);
   const [defaultNumber, setDefaultNumber] = useState<number>(minNumber);
   const [selectedComboboxOption, setSelectedComboboxOption] =
     useState<string>('');
@@ -553,7 +593,7 @@ export function EventOrganizersContent({
           <OrganizerCapacitySummary
             organizers={organizersForCapacity}
             maxCapacity={maxCapacity}
-            usesTicketPool={usesTicketPool || poolMode}
+            usesTicketPool={poolUsesTickets}
             chiefOrganizerId={chiefOrganizerId}
           />
         )}
@@ -562,8 +602,9 @@ export function EventOrganizersContent({
       <OrganizerTableWithAction
         type={type}
         data={tableOrganizers}
-        usesTicketPool={usesTicketPool || poolMode}
-        redistributeTeamPool={!!chiefOrganizerId && usesTicketPool}
+        usesTicketPool={poolUsesTickets}
+        redistributeAssignedTickets={redistributeAssignedTickets}
+        reservedOrganizerId={chiefOrganizerId}
         capacityData={
           capacityOrganizers
             ? organizersForDistribution.map((org) => ({
@@ -612,12 +653,26 @@ export function EventOrganizersContent({
               onValueChange={(value) => {
                 const clampedValue = Math.min(value[0], maxNumber);
                 setDefaultNumber(clampedValue);
+                const targets = chiefOrganizerId
+                  ? organizers.filter((org) => org.id !== chiefOrganizerId)
+                  : organizers;
+
+                if (invitationEditLimits) {
+                  targets.forEach((org) =>
+                    updateOrganizerNumber(
+                      org,
+                      clampedValue,
+                      type,
+                      invitationEditLimits,
+                    ),
+                  );
+                  return;
+                }
+
                 if (chiefOrganizerId) {
-                  organizers
-                    .filter((org) => org.id !== chiefOrganizerId)
-                    .forEach((org) =>
-                      updateOrganizerNumber(org, clampedValue, type),
-                    );
+                  targets.forEach((org) =>
+                    updateOrganizerNumber(org, clampedValue, type),
+                  );
                 } else {
                   updateAllOrganizerNumber(clampedValue, type);
                 }

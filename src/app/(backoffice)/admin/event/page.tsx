@@ -1,25 +1,20 @@
-import { redirect } from 'next/navigation';
-
 import Client from '@/app/(backoffice)/admin/event/client';
-import { auth } from '@/server/auth';
+import { hasPermission } from '@/lib/rbac/permissions';
+import { requirePagePermission } from '@/server/rbac/guards';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/server';
 
 export default async function Page() {
-  const session = await auth();
-
-  if (!session || !session.user || !session.user.id) {
-    redirect('/login');
-  }
+  const access = await requirePagePermission('events:read');
 
   let events:
     | RouterOutputs['events']['getAll']
     | RouterOutputs['events']['getAuthorized'];
 
-  if (session.user.role === 'ADMIN') {
+  if (hasPermission(access.permissions, 'events:read_all')) {
     events = await trpc.events.getAll();
   } else {
-    events = await trpc.events.getAuthorized(session.user.id);
+    events = await trpc.events.getAuthorized(access.userId);
   }
 
   return <Client events={events} />;

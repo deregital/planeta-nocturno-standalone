@@ -33,6 +33,9 @@ export const MULTI_TENANT_REQUIRED_ENV_KEYS = [
   'NEON_API_KEY',
   'NEON_PROJECT_NAME',
   'ROOT_DOMAIN',
+  'TENANT_SYSTEM_ADMIN_EMAIL',
+  'TENANT_SYSTEM_ADMIN_PASSWORD',
+  'TENANT_SYSTEM_ADMIN_USERNAME',
 ] as const;
 
 export type EnvironmentMode = 'single-tenant' | 'multi-tenant';

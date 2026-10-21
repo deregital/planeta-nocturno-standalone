@@ -3,17 +3,21 @@ import { toast } from 'sonner';
 import LinksModal from '@/components/admin/organizer/LinksModal';
 import GoogleDrive from '@/components/icons/GoogleDrive';
 import { MercadoPago } from '@/components/icons/MercadoPago';
+import { Can } from '@/components/rbac/Can';
 
 interface OrganizerLinksParams {
   mercadopago?: string | null;
   googleDriveUrl?: string | null;
-  organizerId: string;
+  organizerId?: string;
+  /** self: el usuario edita sus propios enlaces desde Mis datos. */
+  mode?: 'organizer' | 'self';
 }
 
 export default function OrganizerLinks({
   mercadopago,
   googleDriveUrl,
   organizerId,
+  mode = 'organizer',
 }: OrganizerLinksParams) {
   return (
     <div className='flex justify-center items-center gap-4 [&>a]:w-9 [&>a]:h-9 [&>a]:inline-flex [&>a]:items-center [&>a]:cursor-pointer [&>a]:justify-center [&>a]:border [&>a]:border-black [&>a]:rounded-sm [&>a]:transition'>
@@ -44,11 +48,16 @@ export default function OrganizerLinks({
           <GoogleDrive />
         </a>
       )}
-      <LinksModal
-        organizerId={organizerId}
-        mercadopago={mercadopago}
-        googleDriveUrl={googleDriveUrl}
-      />
+      <Can
+        permission={mode === 'self' ? 'profile:update' : 'organizers:update'}
+      >
+        <LinksModal
+          mode={mode}
+          organizerId={organizerId}
+          mercadopago={mercadopago}
+          googleDriveUrl={googleDriveUrl}
+        />
+      </Can>
     </div>
   );
 }

@@ -1,17 +1,13 @@
 import { redirect } from 'next/navigation';
 
 import ProfileClient from '@/app/(backoffice)/profile/client';
-import { auth } from '@/server/auth';
+import { requirePagePermission } from '@/server/rbac/guards';
 import { trpc } from '@/server/trpc/server';
 
 export default async function ProfilePage() {
-  const session = await auth();
+  const access = await requirePagePermission('profile:read');
 
-  if (!session) {
-    redirect('/login');
-  }
-
-  const user = await trpc.user.getById(session.user.id);
+  const user = await trpc.user.getById(access.userId);
 
   if (!user) {
     redirect('/login');
@@ -30,6 +26,10 @@ export default async function ProfilePage() {
           gender: user.gender,
           phoneNumber: user.phoneNumber,
           instagram: user.instagram ?? '',
+        }}
+        links={{
+          mercadopago: user.mercadopago,
+          googleDriveUrl: user.googleDriveUrl,
         }}
       />
     </div>

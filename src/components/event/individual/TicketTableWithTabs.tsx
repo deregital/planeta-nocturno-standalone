@@ -1,21 +1,18 @@
 'use client';
 
 import { Link } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { SearchTickets } from '@/components/event/individual/SearchTickets';
 import { TicketTableSection } from '@/components/event/individual/ticketsTable/TicketTableSection';
 import { useInstance } from '@/components/instance/InstanceProvider';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getTicketScope } from '@/lib/rbac/permissions';
 import { trpc } from '@/server/trpc/client';
-import {
-  type InviteCondition,
-  type Role,
-  type TicketType,
-} from '@/server/types';
+import { type InviteCondition, type TicketType } from '@/server/types';
 import {
   ORGANIZER_CODE_QUERY_PARAM,
   ORGANIZER_TICKET_TYPE_NAME,
@@ -53,12 +50,12 @@ export function TicketTableWithTabs({
       refetchInterval: 30_000,
     },
   );
-  const session = useSession();
+  const { can, permissions } = usePermissions();
+  const canReadMyEvents = can('organizer:act');
+  const scope = getTicketScope(permissions);
 
   const { data: myCode } = trpc.organizer.getMyCode.useQuery(undefined, {
-    enabled:
-      session.data?.user.role === 'ORGANIZER' ||
-      session.data?.user.role === 'CHIEF_ORGANIZER',
+    enabled: canReadMyEvents,
   });
   const [filteredTickets, setFilteredTickets] = useState<
     typeof tickets | undefined
@@ -128,7 +125,7 @@ export function TicketTableWithTabs({
       <SearchTickets
         tickets={tickets}
         onFilteredTicketsChange={setFilteredTickets}
-        role={session.data?.user.role as Role | undefined}
+        scope={scope}
         externalSearchValue={externalSearchValue}
         externalFilterInvitedByIds={externalFilterInvitedByIds}
         onClearOrganizerFilter={onClearOrganizerFilter}
@@ -176,25 +173,12 @@ export function TicketTableWithTabs({
 
           return (
             <TabsContent key={item.tabValue} value={item.tabValue}>
-              {session.data?.user.role === 'CHIEF_ORGANIZER' ? (
-                <TicketTableSection
-                  tickets={item.tickets}
-                  role={session.data?.user.role}
-                  headerActions={copyButton}
-                  event={{
-                    inviteCondition: event.inviteCondition,
-                    hasSimpleInvitation: event.hasSimpleInvitation,
-                    hasQuestions: event.hasQuestions,
-                  }}
-                />
-              ) : (
-                <TicketTableSection
-                  tickets={item.tickets}
-                  role={session.data?.user.role as Role}
-                  headerActions={copyButton}
-                  event={event}
-                />
-              )}
+              <TicketTableSection
+                tickets={item.tickets}
+                scope={scope}
+                headerActions={copyButton}
+                event={event}
+              />
             </TabsContent>
           );
         })}

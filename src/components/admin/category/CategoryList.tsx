@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 
 import EventCategoryCard from '@/components/category/EventCategoryCard';
 import EventCategoryModal from '@/components/category/EventCategoryModal';
+import { Can } from '@/components/rbac/Can';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/server/trpc/client';
 
@@ -82,7 +83,9 @@ export default function CategoryList() {
               </SortableContext>
             </DndContext>
           </div>
-          <EventCategoryModal action='CREATE' />
+          <Can permission='categories:create'>
+            <EventCategoryModal action='CREATE' />
+          </Can>
         </>
       )}
     </div>

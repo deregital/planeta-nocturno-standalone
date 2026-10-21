@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { handleUpdate } from '@/app/(backoffice)/admin/settings/action';
 import { InputFromSchema } from '@/components/admin/config/InputFromSchema';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -42,6 +43,7 @@ export default function UpdateFeatures() {
     success: false,
   });
 
+  const canEdit = useCan('settings:update');
   const { data: features } = trpc.feature.getAll.useQuery();
   const utils = trpc.useUtils();
   const [drafts, setDrafts] = useState<Record<FeatureKey, FeatureDraft> | null>(
@@ -81,73 +83,81 @@ export default function UpdateFeatures() {
       action={action}
       className='flex flex-col gap-6 rounded-md border border-stroke bg-accent-ultra-light p-6'
     >
-      {Object.values(FEATURE_KEYS).map((featureKey, index) => {
-        const typedKey = featureKey as FeatureKey;
-        const configRaw = FEATURE_CONFIG[typedKey];
-        if (!configRaw) return null;
+      <fieldset disabled={!canEdit} className='contents'>
+        {Object.values(FEATURE_KEYS).map((featureKey, index) => {
+          const typedKey = featureKey as FeatureKey;
+          const configRaw = FEATURE_CONFIG[typedKey];
+          if (!configRaw) return null;
 
-        const config = configRaw as FeatureConfig;
-        const draft = drafts[typedKey];
-        const error = state.errors?.[index];
+          const config = configRaw as FeatureConfig;
+          const draft = drafts[typedKey];
+          const error = state.errors?.[index];
 
-        return (
-          <div key={typedKey} className='flex flex-col gap-2'>
-            <div className='grid max-w-3xl grid-cols-3 gap-4'>
-              <Label
-                htmlFor={`${typedKey}-enabled`}
-                className='col-span-2 text-lg font-medium'
-              >
-                {config.label}
-              </Label>
+          return (
+            <div key={typedKey} className='flex flex-col gap-2'>
+              <div className='grid max-w-3xl grid-cols-3 gap-4'>
+                <Label
+                  htmlFor={`${typedKey}-enabled`}
+                  className='col-span-2 text-lg font-medium'
+                >
+                  {config.label}
+                </Label>
 
-              <div className='flex items-center justify-end gap-4'>
-                <InputFromSchema
-                  id={`${typedKey}-value`}
-                  name={`${typedKey}-value`}
-                  field={config.validator}
-                  value={draft.value}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setDrafts((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            [typedKey]: { ...prev[typedKey], value },
-                          }
-                        : prev,
-                    );
-                  }}
-                  className='w-24'
-                />
-                <Switch
-                  className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
-                  id={`${typedKey}-enabled`}
-                  name={`${typedKey}-enabled`}
-                  checked={draft.enabled}
-                  onCheckedChange={(enabled) => {
-                    setDrafts((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            [typedKey]: { ...prev[typedKey], enabled },
-                          }
-                        : prev,
-                    );
-                  }}
-                />
+                <div className='flex items-center justify-end gap-4'>
+                  <InputFromSchema
+                    id={`${typedKey}-value`}
+                    name={`${typedKey}-value`}
+                    field={config.validator}
+                    value={draft.value}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setDrafts((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              [typedKey]: { ...prev[typedKey], value },
+                            }
+                          : prev,
+                      );
+                    }}
+                    className='w-24'
+                  />
+                  <Switch
+                    className='h-6 w-10 **:data-[slot=switch-thumb]:size-5'
+                    id={`${typedKey}-enabled`}
+                    name={`${typedKey}-enabled`}
+                    checked={draft.enabled}
+                    onCheckedChange={(enabled) => {
+                      setDrafts((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              [typedKey]: { ...prev[typedKey], enabled },
+                            }
+                          : prev,
+                      );
+                    }}
+                  />
+                </div>
               </div>
+              {error?.value && (
+                <p className='ml-4 text-sm font-bold text-red-500'>
+                  {error.value}
+                </p>
+              )}
             </div>
-            {error?.value && (
-              <p className='ml-4 text-sm font-bold text-red-500'>
-                {error.value}
-              </p>
-            )}
-          </div>
-        );
-      })}
-      <Button type='submit' disabled={isPending || !isDirty} className='w-fit'>
-        Actualizar
-      </Button>
+          );
+        })}
+      </fieldset>
+      {canEdit && (
+        <Button
+          type='submit'
+          disabled={isPending || !isDirty}
+          className='w-fit'
+        >
+          Actualizar
+        </Button>
+      )}
     </form>
   );
 }

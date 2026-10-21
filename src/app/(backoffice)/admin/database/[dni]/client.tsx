@@ -13,7 +13,9 @@ export default function Client({
   emissionHistory,
 }: {
   data: RouterOutputs['emittedTickets']['getUniqueBuyer'];
-  emissionHistory: RouterOutputs['emittedTickets']['getEmissionHistoryByDni'];
+  emissionHistory:
+    | RouterOutputs['emittedTickets']['getEmissionHistoryByDni']
+    | null;
 }) {
   const { buyer, events } = data!;
 
@@ -50,13 +52,15 @@ export default function Client({
         </FilledCard>
       </div>
 
-      <FilledCard className='flex max-w-full p-4 flex-col text-accent-dark'>
-        <p className='text-3xl font-bold'>Historial de emisiones:</p>
-        <EmissionHistoryTable
-          tickets={emissionHistory}
-          buyerName={buyer.fullName}
-        />
-      </FilledCard>
+      {emissionHistory && (
+        <FilledCard className='flex max-w-full p-4 flex-col text-accent-dark'>
+          <p className='text-3xl font-bold'>Historial de emisiones:</p>
+          <EmissionHistoryTable
+            tickets={emissionHistory}
+            buyerName={buyer.fullName}
+          />
+        </FilledCard>
+      )}
     </div>
   );
 }

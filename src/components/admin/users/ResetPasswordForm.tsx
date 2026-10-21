@@ -17,19 +17,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { type Role } from '@/server/types';
 
 type ResetPasswordFormProps = {
   userId: string;
   userName: string;
-  userRole?: Role;
+  credentialsType?: 'organizer' | 'user';
   trigger?: React.ReactNode;
 };
 
 export function ResetPasswordForm({
   userId,
   userName,
-  userRole,
+  credentialsType = 'user',
   trigger,
 }: ResetPasswordFormProps) {
   const [state, formAction, isPending] = useActionState(
@@ -121,7 +120,7 @@ export function ResetPasswordForm({
           open={credentialsModalOpen}
           onOpenChange={handleCredentialsModalClose}
           credentials={state.credentials}
-          type={userRole === 'ORGANIZER' ? 'organizer' : 'user'}
+          type={credentialsType}
         />
       )}
     </>

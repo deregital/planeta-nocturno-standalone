@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -10,8 +10,14 @@ import {
   ticketTypePerGroup,
   ticketXorganizer,
 } from '@/drizzle/schema';
+import { logger } from '@/server/observability/logger';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import { getTransferAlias } from '@/server/services/paymentSettings';
+import {
+  deliverPaidTicketGroup,
+  generateTicketGroupPdfs,
+} from '@/server/services/ticketGroup';
+import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { generatePdf } from '@/server/utils/ticket-template';
 
 export const ticketGroupSchema = z.object({
@@ -178,36 +184,22 @@ export const ticketGroupRouter = router({
       });
       return groups;
     }),
-  getTicketsByEvent: publicProcedure
+  /** Entradas tomadas por tipo (incluye reservas sin pagar), sumadas en la base. */
+  getTicketTypeAmounts: publicProcedure
     .input(z.string())
     .query(async ({ ctx, input }) => {
-      const groups = await ctx.db.query.ticketGroup.findMany({
-        where: eq(ticketGroup.eventId, input),
-        columns: {
-          id: true,
-        },
-        with: {
-          ticketTypePerGroups: {
-            columns: {
-              amount: true,
-            },
-            with: {
-              ticketType: {
-                columns: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  maxAvailable: true,
-                  maxPerPurchase: true,
-                  price: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      return groups;
+      return ctx.db
+        .select({
+          ticketTypeId: ticketTypePerGroup.ticketTypeId,
+          amount: sql<number>`sum(${ticketTypePerGroup.amount})::int`,
+        })
+        .from(ticketTypePerGroup)
+        .innerJoin(
+          ticketGroup,
+          eq(ticketTypePerGroup.ticketGroupId, ticketGroup.id),
+        )
+        .where(eq(ticketGroup.eventId, input))
+        .groupBy(ticketTypePerGroup.ticketTypeId);
     }),
   findById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
     const group = await ctx.db.query.ticketGroup.findFirst({
@@ -348,18 +340,20 @@ export const ticketGroupRouter = router({
 
       return result[0];
     }),
-  delete: adminProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
-    const result = await ctx.db
-      .delete(ticketGroup)
-      .where(eq(ticketGroup.id, input))
-      .returning();
+  delete: permissionProcedure('tickets:delete')
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .delete(ticketGroup)
+        .where(eq(ticketGroup.id, input))
+        .returning();
 
-    if (result.length === 0) {
-      throw new Error('Ticket group no encontrado');
-    }
+      if (result.length === 0) {
+        throw new Error('Ticket group no encontrado');
+      }
 
-    return result[0];
-  }),
+      return result[0];
+    }),
   getTotalPriceById: publicProcedure
     .input(ticketGroupSchema.shape.id)
     .query(async ({ ctx, input }) => {
@@ -505,87 +499,120 @@ export const ticketGroupRouter = router({
     }),
   generatePdfsByTicketGroupId: publicProcedure
     .input(ticketGroupSchema.shape.id)
+    .query(({ ctx, input }) =>
+      generateTicketGroupPdfs(ctx.db, ctx.instance, input),
+    ),
+  getTransferInstructions: publicProcedure
+    .input(ticketGroupSchema.shape.id)
     .query(async ({ ctx, input }) => {
       const group = await ctx.db.query.ticketGroup.findFirst({
-        where: eq(ticketGroup.id, input),
-        columns: { status: true, invitedById: true },
+        where: and(
+          eq(ticketGroup.id, input),
+          eq(ticketGroup.status, 'BOOKED'),
+          eq(ticketGroup.paymentMethod, 'TRANSFER'),
+        ),
+        columns: { id: true, totalAmount: true },
+        with: {
+          event: { columns: { name: true } },
+          emittedTickets: { columns: { fullName: true }, limit: 1 },
+        },
+      });
+      if (!group) return null;
+
+      return {
+        eventName: group.event.name,
+        buyerName: group.emittedTickets[0]?.fullName ?? '',
+        totalAmount: Number(group.totalAmount),
+        transferAlias: await getTransferAlias(ctx.db),
+        contactEmail: ctx.instance.contactEmail,
+      };
+    }),
+  getPurchasesByEvent: permissionProcedure('tickets:read_all')
+    .input(z.uuid())
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.query.ticketGroup.findMany({
+        where: and(
+          eq(ticketGroup.eventId, input),
+          eq(ticketGroup.isOrganizerGroup, false),
+        ),
+        orderBy: [desc(ticketGroup.createdAt)],
+        columns: {
+          id: true,
+          status: true,
+          paymentMethod: true,
+          totalAmount: true,
+          amountTickets: true,
+          createdAt: true,
+        },
         with: {
           user: { columns: { fullName: true } },
-          emittedTickets: {
-            columns: {
-              id: true,
-              fullName: true,
-              mail: true,
-              dni: true,
-              createdAt: true,
-              slug: true,
-            },
-            with: {
-              ticketType: {
-                columns: { id: true, name: true, startingDate: true },
-              },
-            },
+          ticketTypePerGroups: {
+            columns: { amount: true },
+            with: { ticketType: { columns: { name: true } } },
           },
-          event: {
-            columns: {
-              name: true,
-              startingDate: true,
-              ticketSlugVisibleInPdf: true,
-            },
-            with: { location: { columns: { address: true } } },
+          emittedTickets: {
+            columns: { id: true, fullName: true, dni: true, mail: true },
           },
         },
       });
+    }),
+  releaseTransfer: permissionProcedure('tickets:release')
+    .input(ticketGroupSchema.shape.id)
+    .mutation(async ({ ctx, input }) => {
+      const [released] = await ctx.db
+        .update(ticketGroup)
+        .set({ status: 'PAID' })
+        .where(
+          and(
+            eq(ticketGroup.id, input),
+            eq(ticketGroup.status, 'BOOKED'),
+            eq(ticketGroup.paymentMethod, 'TRANSFER'),
+          ),
+        )
+        .returning({ id: ticketGroup.id });
 
-      if (!group) {
+      if (!released) {
         throw new TRPCError({
           code: 'NOT_FOUND',
-          message: 'TicketGroup no encontrado',
+          message:
+            'La compra no existe o ya no está pendiente de transferencia',
         });
       }
 
-      if (!group.emittedTickets?.length) {
+      try {
+        await deliverPaidTicketGroup(ctx.db, ctx.instance, input);
+      } catch (error) {
+        logger.error('Transfer release delivery failed', {
+          ticketGroupId: input,
+          error,
+        });
         throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'No hay tickets emitidos',
+          code: 'INTERNAL_SERVER_ERROR',
+          message:
+            'La compra quedó como pagada pero no se pudieron enviar las entradas. Reenvialas desde la lista de ventas',
         });
       }
+    }),
+  cancelTransfer: permissionProcedure('tickets:release')
+    .input(ticketGroupSchema.shape.id)
+    .mutation(async ({ ctx, input }) => {
+      const [cancelled] = await ctx.db
+        .delete(ticketGroup)
+        .where(
+          and(
+            eq(ticketGroup.id, input),
+            eq(ticketGroup.status, 'BOOKED'),
+            eq(ticketGroup.paymentMethod, 'TRANSFER'),
+          ),
+        )
+        .returning({ id: ticketGroup.id });
 
-      const results = await Promise.all(
-        group.emittedTickets.map(async (ticket) => {
-          const blob = await generatePdf(
-            {
-              eventName: group.event.name,
-              startingDate: ticket.ticketType.startingDate,
-              eventStartingDate: group.event.startingDate,
-              eventLocation: group.event.location?.address ?? '',
-              createdAt: ticket.createdAt,
-              dni: ticket.dni,
-              fullName: ticket.fullName,
-              id: ticket.id,
-              ticketType: ticket.ticketType.name,
-              invitedBy: group.user?.fullName ?? '-',
-              slug: ticket.slug,
-              ticketSlugVisibleInPdf: group.event.ticketSlugVisibleInPdf,
-            },
-            ctx.instance,
-          );
-          return {
-            ticket: {
-              id: ticket.id,
-              fullName: ticket.fullName,
-              slug: ticket.slug,
-              mail: ticket.mail,
-              ticketType: {
-                id: ticket.ticketType.id,
-                name: ticket.ticketType.name,
-              },
-            },
-            pdf: { blob },
-          };
-        }),
-      );
-
-      return results;
+      if (!cancelled) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message:
+            'La compra no existe o ya no está pendiente de transferencia',
+        });
+      }
     }),
 });

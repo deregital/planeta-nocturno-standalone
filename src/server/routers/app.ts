@@ -1,5 +1,6 @@
 import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/server';
 
+import { accessRoleRouter } from '@/server/routers/access-role';
 import { emittedTicketsRouter } from '@/server/routers/emitted-tickets';
 import { eventCategoriesRouter } from '@/server/routers/event-categories';
 import { eventFolderRouter } from '@/server/routers/event-folder';
@@ -29,6 +30,7 @@ export const appRouter = router({
   organizer: organizerRouter,
   eventFolder: eventFolderRouter,
   tag: tagRouter,
+  accessRole: accessRoleRouter,
 });
 
 export type AppRouter = typeof appRouter;

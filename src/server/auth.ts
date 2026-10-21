@@ -180,7 +180,8 @@ export async function clearStaleControlSession() {
   return true;
 }
 
-export async function auth() {
+/** Memoizada por request: layouts y páginas la llaman varias veces por render. */
+export const auth = cache(async () => {
   const session = await nextAuth.auth();
   if (!session) return null;
 
@@ -198,7 +199,7 @@ export async function auth() {
   } catch {
     return null;
   }
-}
+});
 
 export class CustomError extends CredentialsSignin {
   code = CustomError.CUSTOM_ERROR_CODE;

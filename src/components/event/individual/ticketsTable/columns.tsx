@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 
 import { downloadTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
 import { TicketEntryTimeCell } from '@/components/event/individual/ticketsTable/TicketEntryTimeCell';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -43,7 +44,8 @@ import { formatDateOnly } from '@/lib/date-only';
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
-import { type InviteCondition, type Role } from '@/server/types';
+import { type TicketScope } from '@/lib/rbac/permissions';
+import { type InviteCondition } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export const FORM_SEARCH_PARAM = 'formulario';
@@ -75,10 +77,10 @@ function FormCell({ dni }: { dni: string }) {
 }
 
 export function generateTicketColumns({
-  role,
+  scope,
   event,
 }: {
-  role: Role;
+  scope: TicketScope;
   event: {
     inviteCondition: InviteCondition;
     hasSimpleInvitation: boolean;
@@ -680,6 +682,15 @@ export function generateTicketColumns({
             toast.success('Ticket eliminado con éxito');
           },
         });
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const { can } = usePermissions();
+        const canChangeOrganizer = can('tickets:change_organizer');
+        const hasActions =
+          can('tickets:resend') ||
+          can('tickets:download') ||
+          can('tickets:manual_scan') ||
+          canChangeOrganizer ||
+          can('tickets:delete');
         const sendTicketMutation = trpc.emittedTickets.send.useMutation({
           onSuccess: () => {
             toast.success('Ticket enviado con éxito');
@@ -718,7 +729,7 @@ export function generateTicketColumns({
             },
           });
         const eventQuery = trpc.events.getById.useQuery(ticket.eventId ?? '', {
-          enabled: openOrganizerModal && !!ticket.eventId && role === 'ADMIN',
+          enabled: openOrganizerModal && !!ticket.eventId && canChangeOrganizer,
         });
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const organizerOptions = useMemo(() => {
@@ -768,6 +779,8 @@ export function generateTicketColumns({
           return user ? { type: 'organizer' as const, user } : null;
         }, [eventQuery.data, selectedComboboxOption]);
 
+        if (!hasActions) return null;
+
         return (
           <>
             <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -781,59 +794,63 @@ export function generateTicketColumns({
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end'>
                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                <DropdownMenuItem
-                  disabled={sendTicketMutation.isPending}
-                  className='flex cursor-pointer items-center justify-between'
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    await sendTicketMutation.mutateAsync({
-                      ticketId: ticket.id,
-                    });
-                    setOpen(false);
-                  }}
-                >
-                  <span>Reenviar</span>
-                  <SendIcon />
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={deleteTicketMutation.isPending}
-                  className='flex cursor-pointer items-center justify-between'
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    toast.loading('Descargando ticket...', {
-                      id: `downloading-ticket-${ticket.id}`,
-                    });
-                    const result = await downloadTicket(ticket.id);
-                    if (result?.base64) {
-                      const byteCharacters = atob(result.base64);
-                      const byteNumbers = new Array(byteCharacters.length);
-                      for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                      }
-                      const blob = new Blob([new Uint8Array(byteNumbers)], {
-                        type: 'application/pdf',
+                {can('tickets:resend') && (
+                  <DropdownMenuItem
+                    disabled={sendTicketMutation.isPending}
+                    className='flex cursor-pointer items-center justify-between'
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      await sendTicketMutation.mutateAsync({
+                        ticketId: ticket.id,
                       });
-                      const url = URL.createObjectURL(blob);
-
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `Ticket-${ticket.fullName}.pdf`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-
-                      URL.revokeObjectURL(url);
                       setOpen(false);
-                      toast.dismiss(`downloading-ticket-${ticket.id}`);
-                    } else {
-                      toast.error('Error al descargar ticket');
-                    }
-                  }}
-                >
-                  Descargar
-                  <DownloadIcon className='size-4' />
-                </DropdownMenuItem>
-                {(role === 'ADMIN' || role === 'TICKETING') && (
+                    }}
+                  >
+                    <span>Reenviar</span>
+                    <SendIcon />
+                  </DropdownMenuItem>
+                )}
+                {can('tickets:download') && (
+                  <DropdownMenuItem
+                    disabled={deleteTicketMutation.isPending}
+                    className='flex cursor-pointer items-center justify-between'
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      toast.loading('Descargando ticket...', {
+                        id: `downloading-ticket-${ticket.id}`,
+                      });
+                      const result = await downloadTicket(ticket.id);
+                      if (result?.base64) {
+                        const byteCharacters = atob(result.base64);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const blob = new Blob([new Uint8Array(byteNumbers)], {
+                          type: 'application/pdf',
+                        });
+                        const url = URL.createObjectURL(blob);
+
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Ticket-${ticket.fullName}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+
+                        URL.revokeObjectURL(url);
+                        setOpen(false);
+                        toast.dismiss(`downloading-ticket-${ticket.id}`);
+                      } else {
+                        toast.error('Error al descargar ticket');
+                      }
+                    }}
+                  >
+                    Descargar
+                    <DownloadIcon className='size-4' />
+                  </DropdownMenuItem>
+                )}
+                {can('tickets:manual_scan') && (
                   <DropdownMenuItem
                     className='flex cursor-pointer items-center justify-between'
                     onClick={() => {
@@ -860,7 +877,7 @@ export function generateTicketColumns({
                     <ScanBarcode className='size-5' />
                   </DropdownMenuItem>
                 )}
-                {role === 'ADMIN' &&
+                {canChangeOrganizer &&
                   ticket.ticketType.name.trim() !==
                     ORGANIZER_TICKET_TYPE_NAME && (
                     <DropdownMenuItem
@@ -878,7 +895,7 @@ export function generateTicketColumns({
                       <UserCircle className='size-4' />
                     </DropdownMenuItem>
                   )}
-                {role === 'ADMIN' && (
+                {can('tickets:delete') && (
                   <DropdownMenuItem
                     onClick={async (e) => {
                       e.preventDefault();
@@ -897,9 +914,7 @@ export function generateTicketColumns({
                       setSure(true);
                     }}
                     data-sure={sure}
-                    disabled={
-                      deleteTicketMutation.isPending || role !== 'ADMIN'
-                    }
+                    disabled={deleteTicketMutation.isPending}
                     className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
                   >
                     {sure ? 'Estás seguro?' : 'Eliminar ticket'}
@@ -908,7 +923,7 @@ export function generateTicketColumns({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            {role === 'ADMIN' && (
+            {canChangeOrganizer && (
               <Dialog
                 open={openOrganizerModal}
                 onOpenChange={(open) => {
@@ -1034,11 +1049,11 @@ export function generateTicketColumns({
     columns = columns.filter((col) => col.id !== 'invitedBySimple');
   }
 
-  if (role === 'ORGANIZER' || role === 'CHIEF_ORGANIZER') {
+  if (scope !== 'all') {
     columns = columns.filter((col) => col.id !== 'chiefOrganizer');
   }
 
-  if (role === 'ORGANIZER') {
+  if (scope === 'own') {
     columns = columns.filter((col) => col.id !== 'invitedBy');
   }
 

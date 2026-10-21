@@ -45,12 +45,14 @@ export async function createUser(
   const gender = formData.get('gender') as string;
   const phoneNumber = formData.get('phoneNumber') as string;
   const instagram = formData.get('instagram') as string;
+  const accessRoleId = (formData.get('accessRoleId') as string) || null;
 
   const data = {
     fullName,
     name,
     email,
     role,
+    accessRoleId,
     password,
     birthDate,
     dni,
@@ -135,6 +137,7 @@ export async function createOrganizer(
   const phoneNumber = formData.get('phoneNumber') as string;
   const instagram = formData.get('instagram') as string;
   const chiefOrganizerId = formData.get('chiefOrganizerId') as string | null;
+  const accessRoleId = (formData.get('accessRoleId') as string) || null;
   const role = formData.get('role') as
     | (typeof roleEnum.enumValues)[number]
     | null;
@@ -144,6 +147,7 @@ export async function createOrganizer(
     name,
     email,
     role,
+    accessRoleId,
     password,
     birthDate,
     dni,
@@ -190,7 +194,6 @@ export async function createOrganizer(
   }
 
   revalidatePath('/admin/config');
-  revalidatePath('/organization/organizers');
 
   return {
     credentials: {

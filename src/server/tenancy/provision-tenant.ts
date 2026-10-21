@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
 import { user } from '@/drizzle/schema';
+import { SYSTEM_ACCESS_ROLE_IDS } from '@/lib/rbac/permissions';
 import { userSchema } from '@/server/schemas/user';
 import {
   buildTenantDatabaseName,
@@ -20,6 +21,12 @@ import { invalidateTenantLookups } from '@/server/instance/resolve-instance';
 import { logger } from '@/server/observability/logger';
 import { ensureTenantCorsOrigin } from '@/server/s3/ensure-tenant-cors-origin';
 import { migrateTenantDatabase } from '@/server/tenancy/migrate-tenant-database';
+import {
+  ensureTenantSuperadmin,
+  getSuperadminConflicts,
+  getSuperadminCredentials,
+  type SuperadminCredentials,
+} from '@/server/tenancy/superadmin';
 
 const tenantAdminSchema = userSchema
   .pick({
@@ -60,6 +67,10 @@ export class TenantProvisioningError extends Error {
 
 export async function provisionTenant(input: ProvisionTenantInput) {
   const admin = tenantAdminSchema.parse(input.admin);
+  const superadmin = getSuperadminCredentials();
+  if (Object.values(getSuperadminConflicts(superadmin, admin)).some(Boolean)) {
+    throw new Error('The tenant admin collides with the superadmin user');
+  }
   const controlDb = getControlDb();
   const [tenant] = await controlDb
     .select(provisionedTenantFields)
@@ -97,7 +108,7 @@ export async function provisionTenant(input: ProvisionTenantInput) {
 
     const connectionString = await getTenantDatabaseUrl(databaseName);
     await migrateTenantDatabase(connectionString);
-    await createTenantAdmin(connectionString, admin);
+    await createTenantUsers(connectionString, admin, superadmin);
     await ensureTenantCorsOrigin(tenant.slug);
 
     const [activeTenant] = await controlDb
@@ -145,27 +156,29 @@ export async function provisionTenant(input: ProvisionTenantInput) {
   }
 }
 
-async function createTenantAdmin(
+async function createTenantUsers(
   connectionString: string,
   admin: z.output<typeof tenantAdminSchema>,
+  superadmin: SuperadminCredentials,
 ) {
   const pool = new Pool({ connectionString, max: 1 });
 
   try {
-    await drizzle(pool)
-      .insert(user)
-      .values({
-        name: admin.name.trim(),
-        password: await hash(admin.password, 10),
-        email: admin.email,
-        fullName: admin.fullName,
-        role: 'ADMIN',
-        gender: admin.gender || 'other',
-        phoneNumber: admin.phoneNumber,
-        dni: admin.dni,
-        birthDate: admin.birthDate || '1900-01-01T00:00:00.000Z',
-        instagram: admin.instagram,
-      });
+    const db = drizzle(pool);
+    await ensureTenantSuperadmin(db, superadmin);
+    await db.insert(user).values({
+      name: admin.name.trim(),
+      password: await hash(admin.password, 10),
+      email: admin.email,
+      fullName: admin.fullName,
+      role: 'ADMIN',
+      accessRoleId: SYSTEM_ACCESS_ROLE_IDS.ADMIN,
+      gender: admin.gender || 'other',
+      phoneNumber: admin.phoneNumber,
+      dni: admin.dni,
+      birthDate: admin.birthDate || '1900-01-01T00:00:00.000Z',
+      instagram: admin.instagram,
+    });
   } finally {
     await pool.end();
   }
