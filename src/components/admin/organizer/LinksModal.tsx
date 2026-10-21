@@ -1,15 +1,19 @@
 'use client';
 
 import { Pencil, Plus } from 'lucide-react';
-import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useActionState, useEffect, useRef, useState } from 'react';
 
 import { updateLinks } from '@/app/(backoffice)/admin/users/[id]/action';
+import {
+  updateOwnLinks,
+  type UpdateOwnLinksState,
+} from '@/app/(backoffice)/profile/actions';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -20,67 +24,103 @@ import { trpc } from '@/server/trpc/client';
 interface LinksModalParams {
   mercadopago?: string | null;
   googleDriveUrl?: string | null;
-  organizerId: string;
+  organizerId?: string;
+  /** self: el usuario edita sus propios enlaces desde Mis datos. */
+  mode?: 'organizer' | 'self';
 }
 
 export default function LinksModal({
   mercadopago,
   googleDriveUrl,
   organizerId,
+  mode = 'organizer',
 }: LinksModalParams) {
-  const [state, action, isPending] = useActionState(updateLinks, {});
+  const router = useRouter();
+  const [state, action, isPending] = useActionState(
+    mode === 'self' ? updateOwnLinks : updateLinks,
+    {} as UpdateOwnLinksState,
+  );
   const [open, setOpen] = useState(false);
   const utils = trpc.useUtils();
+  const hasLinks = Boolean(mercadopago || googleDriveUrl);
+  const handledSave = useRef<UpdateOwnLinksState | null>(null);
 
   useEffect(() => {
-    if (state.success) {
-      setOpen(false);
-      utils.organizer.getInfoById.invalidate();
+    if (!state.success || handledSave.current === state) return;
+    handledSave.current = state;
+
+    setOpen(false);
+    if (mode === 'self') {
+      void utils.user.getUnsensitiveInfoById.invalidate();
+      router.refresh();
+      return;
     }
-  }, [state]);
+
+    void utils.organizer.getInfoById.invalidate();
+  }, [state, mode, router, utils]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {mercadopago && googleDriveUrl ? (
-          <Button variant='ghost' size='icon'>
+        {mode === 'self' ? (
+          <Button variant='ghost' type='button'>
+            {hasLinks ? <Pencil /> : <Plus />}
+            {hasLinks ? 'Editar enlaces' : 'Agregar enlaces'}
+          </Button>
+        ) : hasLinks ? (
+          <Button variant='ghost' size='icon' type='button'>
             <Pencil />
           </Button>
         ) : (
-          <Button variant='ghost'>
+          <Button variant='ghost' type='button'>
             <Plus /> Agregar
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle>
-            <p className='font-bold text-xl'>Enlaces</p>
-          </DialogTitle>
-          <DialogDescription />
+          <DialogTitle className='font-bold text-xl'>Enlaces</DialogTitle>
         </DialogHeader>
         <form action={action} className='flex flex-col gap-4'>
-          <input
-            hidden
-            id='organizerId'
-            name='organizerId'
-            value={organizerId}
-            readOnly
-          />
-          <InputWithLabel
-            id='mercadopago'
-            name='mercadopago'
-            label='Alias/CVU (opcional)'
-            defaultValue={state.data?.mercadopago ?? mercadopago ?? ''}
-            error={state.errors?.mercadopago}
-          />
-          <InputWithLabel
-            id='googleDriveUrl'
-            name='googleDriveUrl'
-            label='Google Drive (opcional)'
-            defaultValue={state.data?.googleDriveUrl ?? googleDriveUrl ?? ''}
-            error={state.errors?.googleDriveUrl}
-          />
+          {mode === 'organizer' && organizerId && (
+            <input
+              hidden
+              id='organizerId'
+              name='organizerId'
+              value={organizerId}
+              readOnly
+            />
+          )}
+          <div className='flex flex-col gap-1'>
+            <InputWithLabel
+              id='mercadopago'
+              name='mercadopago'
+              label='Alias/CVU (opcional)'
+              placeholder='alias.mp o CVU'
+              defaultValue={state.data?.mercadopago ?? mercadopago ?? ''}
+              error={state.errors?.mercadopago}
+            />
+            <p className='pl-1 text-xs text-muted-foreground'>
+              {mode === 'self'
+                ? 'Para que te transfieran. Se copia desde tu perfil.'
+                : 'Para transferirle. Se copia desde el perfil.'}
+            </p>
+          </div>
+          <div className='flex flex-col gap-1'>
+            <InputWithLabel
+              id='googleDriveUrl'
+              name='googleDriveUrl'
+              label='Google Drive (opcional)'
+              placeholder='https://drive.google.com/...'
+              defaultValue={state.data?.googleDriveUrl ?? googleDriveUrl ?? ''}
+              error={state.errors?.googleDriveUrl}
+            />
+            <p className='pl-1 text-xs text-muted-foreground'>
+              {mode === 'self'
+                ? 'Tu carpeta de trabajo. Aparece en la barra de arriba.'
+                : 'Su carpeta de trabajo. Aparece en su barra de arriba.'}
+            </p>
+          </div>
           <DialogFooter>
             <DialogTrigger asChild>
               <Button variant='ghost' type='button'>
