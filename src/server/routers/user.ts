@@ -228,6 +228,8 @@ export const userRouter = router({
         role: true,
         chiefOrganizerId: true,
         accessRoleId: true,
+        mercadopago: true,
+        googleDriveUrl: true,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -249,6 +251,24 @@ export const userRouter = router({
 
       revalidatePath('/profile');
       return user;
+    }),
+  updateOwnLinks: permissionProcedure('profile:update')
+    .input(
+      userSchema.pick({
+        mercadopago: true,
+        googleDriveUrl: true,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(userTable)
+        .set({
+          mercadopago: input.mercadopago ?? null,
+          googleDriveUrl: input.googleDriveUrl ?? null,
+        })
+        .where(eq(userTable.id, ctx.session.user.id));
+
+      revalidatePath('/profile');
     }),
   partialUpdate: protectedProcedure
     .input(

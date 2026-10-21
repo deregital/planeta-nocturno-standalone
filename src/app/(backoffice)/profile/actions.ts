@@ -41,7 +41,13 @@ export async function updateProfile(
 
   // Validar sin password, role y chiefOrganizerId
   const validation = userSchema
-    .omit({ password: true, role: true, chiefOrganizerId: true })
+    .omit({
+      password: true,
+      role: true,
+      chiefOrganizerId: true,
+      mercadopago: true,
+      googleDriveUrl: true,
+    })
     .safeParse(data);
 
   if (!validation.success) {
@@ -107,6 +113,78 @@ export async function updateProfile(
   return {
     data: validation.data,
     errors: {},
+    success: true,
+  };
+}
+
+export type UpdateOwnLinksState = {
+  data?: {
+    mercadopago?: string;
+    googleDriveUrl?: string;
+  };
+  errors?: {
+    mercadopago?: string;
+    googleDriveUrl?: string;
+  };
+  success?: boolean;
+};
+
+export async function updateOwnLinks(
+  _prevState: UpdateOwnLinksState,
+  formData: FormData,
+): Promise<UpdateOwnLinksState> {
+  const mercadopago = formData.get('mercadopago') as string;
+  const googleDriveUrl = formData.get('googleDriveUrl') as string;
+
+  const validation = userSchema
+    .pick({
+      mercadopago: true,
+      googleDriveUrl: true,
+    })
+    .safeParse({
+      mercadopago: mercadopago?.trim() || null,
+      googleDriveUrl: googleDriveUrl?.trim() || null,
+    });
+
+  if (validation.error) {
+    const errors = z.treeifyError(validation.error).properties;
+    return {
+      data: {
+        mercadopago,
+        googleDriveUrl,
+      },
+      errors: {
+        mercadopago: errors?.mercadopago?.errors[0],
+        googleDriveUrl: errors?.googleDriveUrl?.errors[0],
+      },
+    };
+  }
+
+  try {
+    await trpc.user.updateOwnLinks({
+      mercadopago: validation.data.mercadopago,
+      googleDriveUrl: validation.data.googleDriveUrl,
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Error al guardar los enlaces';
+    return {
+      data: {
+        mercadopago,
+        googleDriveUrl,
+      },
+      errors: {
+        mercadopago: errorMessage,
+      },
+    };
+  }
+
+  revalidatePath('/profile');
+  return {
+    data: {
+      mercadopago,
+      googleDriveUrl,
+    },
     success: true,
   };
 }

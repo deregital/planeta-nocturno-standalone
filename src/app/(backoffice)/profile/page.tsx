@@ -27,6 +27,10 @@ export default async function ProfilePage() {
           phoneNumber: user.phoneNumber,
           instagram: user.instagram ?? '',
         }}
+        links={{
+          mercadopago: user.mercadopago,
+          googleDriveUrl: user.googleDriveUrl,
+        }}
       />
     </div>
   );
