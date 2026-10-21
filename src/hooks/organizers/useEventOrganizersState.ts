@@ -9,8 +9,10 @@ import {
 } from '@/lib/chief-organizer-event';
 import {
   applyAddInvitationOrganizersStealingTickets,
+  applyInvitationOrganizerTicketEdit,
   type EventOrganizersState,
   type InvitationOrganizerCapacityOptions,
+  type InvitationTicketEditLimits,
   type OrganizerTicketTypeRef,
 } from '@/lib/event-organizers';
 import {
@@ -134,8 +136,24 @@ export function useStandaloneEventOrganizersState({
   );
 
   const updateOrganizerNumber = useCallback(
-    (organizer: OrganizerBaseSchema, number: number, type: InviteCondition) => {
+    (
+      organizer: OrganizerBaseSchema,
+      number: number,
+      type: InviteCondition,
+      ticketLimits?: InvitationTicketEditLimits,
+    ) => {
       setOrganizers((current) => {
+        if (type === 'INVITATION' && ticketLimits) {
+          return applyChiefPoolBalance(
+            applyInvitationOrganizerTicketEdit(
+              current,
+              organizer.id,
+              number,
+              ticketLimits,
+            ),
+          );
+        }
+
         let nextNumber = number;
 
         if (

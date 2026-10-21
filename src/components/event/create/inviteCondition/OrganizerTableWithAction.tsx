@@ -7,7 +7,14 @@ import { SortableColumnHeader } from '@/components/common/table/SortableColumnHe
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { type role } from '@/drizzle/schema';
-import { type EventOrganizersState } from '@/lib/event-organizers';
+import {
+  buildInvitationTicketEditLimits,
+  type EventOrganizersState,
+  getInvitationHolderMax,
+  getInvitationMaxTicketsForOrganizer,
+  type InvitationTicketEditLimits,
+  type InvitationTicketHolder,
+} from '@/lib/event-organizers';
 import { roleTranslation } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
@@ -37,6 +44,7 @@ function OrganizerNumberInput({
   updateOrganizerNumber,
   showRemaining,
   inputClassName,
+  getTicketLimits,
 }: {
   row: OrganizerTableData;
   type: InviteCondition;
@@ -45,11 +53,13 @@ function OrganizerNumberInput({
   updateOrganizerNumber: EventOrganizersState['updateOrganizerNumber'];
   showRemaining?: boolean;
   inputClassName?: string;
+  getTicketLimits?: () => InvitationTicketEditLimits | undefined;
 }) {
   const delivered = row.deliveredCount;
   const assigned = row.number;
   const remaining = row.remainingCount;
   const minValue = type === 'INVITATION' ? Math.max(1, delivered) : 0;
+  const upperBound = Math.max(maxForRow, minValue);
   const [inputValue, setInputValue] = useState(String(row.number));
   const isFocusedRef = useRef(false);
 
@@ -65,8 +75,8 @@ function OrganizerNumberInput({
     const parsed = Number(raw);
     if (Number.isNaN(parsed)) return;
 
-    const clampedValue = Math.min(Math.max(parsed, minValue), maxForRow);
-    updateOrganizerNumber(row, clampedValue, type);
+    const clampedValue = Math.min(Math.max(parsed, minValue), upperBound);
+    updateOrganizerNumber(row, clampedValue, type, getTicketLimits?.());
 
     if (syncInputToCommitted) {
       setInputValue(String(clampedValue));
@@ -82,23 +92,45 @@ function OrganizerNumberInput({
         className={cn('w-16 shrink-0', inputClassName)}
         type='number'
         disabled={disableActions}
+        min={minValue}
+        max={upperBound}
         value={inputValue}
         onFocus={() => {
           isFocusedRef.current = true;
         }}
-        onBlur={() => {
+        onBlur={(e) => {
           isFocusedRef.current = false;
-          if (inputValue === '') {
+          const raw = e.currentTarget.value;
+          if (raw === '') {
             setInputValue(String(minValue));
-            updateOrganizerNumber(row, minValue, type);
+            updateOrganizerNumber(row, minValue, type, getTicketLimits?.());
             return;
           }
-          commitValue(inputValue, true);
+          commitValue(raw, true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
         }}
         onChange={(e) => {
           const raw = e.target.value;
           setInputValue(raw);
-          commitValue(raw);
+
+          // Escribir no guarda en cada tecla: si no, la tabla se rearma y se pierde el foco.
+          const inputType =
+            e.nativeEvent instanceof InputEvent ? e.nativeEvent.inputType : '';
+          const isTyping =
+            inputType === 'insertText' ||
+            inputType === 'deleteContentBackward' ||
+            inputType === 'deleteContentForward' ||
+            inputType === 'insertFromPaste' ||
+            inputType === 'deleteByCut';
+
+          if (!isTyping) {
+            commitValue(raw);
+          }
         }}
       />
       {showRemaining && type === 'INVITATION' && (
@@ -115,17 +147,17 @@ function columns({
   type,
   updateOrganizerNumber,
   deleteOrganizer,
-  maxNumber,
   disableActions,
   getMaxForRow,
+  getTicketLimits,
 }: {
   type: InviteCondition;
   numberTitle: string;
   updateOrganizerNumber: EventOrganizersState['updateOrganizerNumber'];
   deleteOrganizer: EventOrganizersState['deleteOrganizer'];
-  maxNumber: number;
   disableActions: boolean;
   getMaxForRow: (rowId: string) => number;
+  getTicketLimits?: () => InvitationTicketEditLimits | undefined;
 }): ColumnDef<OrganizerTableData>[] {
   const showInvitationStats = type === 'INVITATION';
 
@@ -197,6 +229,7 @@ function columns({
             disableActions={disableActions}
             updateOrganizerNumber={updateOrganizerNumber}
             showRemaining={showInvitationStats}
+            getTicketLimits={getTicketLimits}
           />
           {!disableActions && (
             <Button
@@ -227,7 +260,8 @@ export function OrganizerTableWithAction({
   disableActions = false,
   maxCapacity,
   usesTicketPool = false,
-  redistributeTeamPool = false,
+  redistributeAssignedTickets = false,
+  reservedOrganizerId,
   eventId,
   updateOrganizerNumber,
   deleteOrganizer,
@@ -241,63 +275,95 @@ export function OrganizerTableWithAction({
   disableActions?: boolean;
   maxCapacity?: number;
   usesTicketPool?: boolean;
-  /** Pool del equipo: el jefe no consume cupo visible; subordinados pueden usar todo el pool. */
-  redistributeTeamPool?: boolean;
+  /** Mueve tickets no entregados entre organizadores, en vez de partir el total. */
+  redistributeAssignedTickets?: boolean;
+  /** Jefe: sus tickets ya entregados no se pueden repartir. */
+  reservedOrganizerId?: string;
   eventId?: string;
   updateOrganizerNumber: EventOrganizersState['updateOrganizerNumber'];
   deleteOrganizer: EventOrganizersState['deleteOrganizer'];
 }) {
-  const { data: deliveredCounts = {} } =
+  const { data: deliveredCounts = {}, isSuccess: deliveredLoaded } =
     trpc.events.getOrganizerDeliveredTicketCounts.useQuery(
       { eventId: eventId! },
       { enabled: type === 'INVITATION' && !!eventId },
     );
+  const canMoveUndeliveredTickets =
+    redistributeAssignedTickets && (!eventId || deliveredLoaded);
 
-  // Keep a ref to the latest data to avoid recreating the function
+  // Ref actualizada en el render para que el máximo use los números recién editados.
   const dataRef = useRef(data);
   const capacityDataRef = useRef(capacityData ?? data);
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
-  useEffect(() => {
-    capacityDataRef.current = capacityData ?? data;
-  }, [capacityData, data]);
+  dataRef.current = data;
+  capacityDataRef.current = capacityData ?? data;
 
-  // Función para calcular el máximo dinámico para cada fila
+  const deliveredCountsRef = useRef(deliveredCounts);
+  deliveredCountsRef.current = deliveredCounts;
+
+  const getTicketLimits = useCallback(() => {
+    if (!canMoveUndeliveredTickets || !maxCapacity) return undefined;
+
+    return buildInvitationTicketEditLimits({
+      holderIds: capacityDataRef.current.map((row) => row.id),
+      deliveredByOrganizerId: deliveredCountsRef.current,
+      maxCapacity,
+      usesTicketPool,
+      balanceHolderId: reservedOrganizerId,
+    });
+  }, [
+    canMoveUndeliveredTickets,
+    maxCapacity,
+    usesTicketPool,
+    reservedOrganizerId,
+  ]);
+
+  // Máximo de cada fila: en redistribución, todo lo que no está clavado en otros.
   const getMaxForRow = useCallback(
     (rowId: string) => {
-      // En modo TRADITIONAL, usar el máximo fijo
       if (type === 'TRADITIONAL') {
         return maxNumber;
       }
 
-      // En modo INVITATION, calcular dinámicamente
       if (!maxCapacity) {
         return maxNumber;
       }
 
       const currentData = capacityDataRef.current;
-      const sumOfAllInputs = currentData.reduce(
+      const assignedTickets = currentData.reduce(
         (sum, row) => sum + row.number,
         0,
       );
-      const thisRowValue =
+      const thisOrganizerTickets =
         dataRef.current.find((row) => row.id === rowId)?.number ??
         currentData.find((row) => row.id === rowId)?.number ??
         0;
 
-      const remainingCapacity = usesTicketPool
-        ? maxCapacity - sumOfAllInputs + thisRowValue
-        : maxCapacity - currentData.length - sumOfAllInputs + thisRowValue;
-
-      const rowMax = Math.max(0, remainingCapacity);
-      if (redistributeTeamPool) {
-        return rowMax;
+      const limits = getTicketLimits();
+      if (!limits) {
+        return getInvitationMaxTicketsForOrganizer({
+          maxCapacity,
+          usesTicketPool,
+          organizerCount: currentData.length,
+          assignedTickets,
+          thisOrganizerTickets,
+        });
       }
 
-      return Math.min(rowMax, maxNumber);
+      const holders: InvitationTicketHolder[] = currentData.map((row) => ({
+        id: row.id,
+        tickets: row.number,
+        locked: limits.lockedByOrganizerId[row.id] ?? 1,
+      }));
+
+      return getInvitationHolderMax({
+        holders,
+        holderId: rowId,
+        maxCapacity,
+        seatCount: usesTicketPool ? 0 : holders.length,
+        reservedTickets: limits.reservedTickets,
+      });
     },
-    [type, maxNumber, maxCapacity, usesTicketPool, redistributeTeamPool],
+    [type, maxNumber, maxCapacity, usesTicketPool, getTicketLimits],
   );
 
   const tableData = useMemo<OrganizerTableData[]>(
@@ -326,18 +392,18 @@ export function OrganizerTableWithAction({
         type,
         updateOrganizerNumber,
         deleteOrganizer,
-        maxNumber,
         disableActions,
         getMaxForRow,
+        getTicketLimits,
       }),
     [
       numberTitle,
       type,
       updateOrganizerNumber,
       deleteOrganizer,
-      maxNumber,
       disableActions,
       getMaxForRow,
+      getTicketLimits,
     ],
   );
 

@@ -216,6 +216,7 @@ function OrganizerDistributionDialogBody({
         capacityOrganizers={capacityOrganizers}
         ticketPool={chiefTicketPool}
         chiefOrganizerId={chiefOrganizerId}
+        redistributeAssignedTickets
         {...organizersState}
       />
       <DialogFooter className='mt-4'>
