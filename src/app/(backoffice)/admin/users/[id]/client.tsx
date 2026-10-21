@@ -5,6 +5,7 @@ import { format, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader } from 'lucide-react';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
+import { useMemo } from 'react';
 
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
 import OrganizerLinks from '@/components/admin/organizer/OrganizerLinks';
@@ -72,7 +73,7 @@ const eventColumns: StrictColumnDef<RecentEvent>[] = [
 ];
 
 export default function Client({ organizerId }: { organizerId: string }) {
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
 
   const [from, setFrom] = useQueryState<Date>(
     'from',
