@@ -1,7 +1,7 @@
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
 
 import { DataTable } from '@/components/common/DataTable';
+import { formatLocalDateTime } from '@/lib/format-date';
 import { type RouterOutputs } from '@/server/routers/app';
 
 type AttendedEventRaw = NonNullable<
@@ -26,12 +26,12 @@ const columns: StrictColumnDef<AttendedEvent>[] = [
     accessorFn: (row) => row.eventStartingDate,
     cell: ({ row }) =>
       row.original.eventStartingDate
-        ? format(new Date(row.original.eventStartingDate), 'dd/MM/yyyy')
+        ? formatLocalDateTime(row.original.eventStartingDate, 'dd/MM/yyyy')
         : '',
     meta: {
       exportValue: (row) =>
         row.original.eventStartingDate
-          ? format(new Date(row.original.eventStartingDate), 'dd/MM/yyyy')
+          ? formatLocalDateTime(row.original.eventStartingDate, 'dd/MM/yyyy')
           : '',
       exportHeader: 'Fecha',
     },

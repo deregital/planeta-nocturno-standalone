@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { differenceInYears, format } from 'date-fns';
+import { format } from 'date-fns';
 import { and, count, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -13,7 +13,7 @@ import {
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
-import { dateOnlyToLocalDate, dateToDateOnlyString } from '@/lib/date-only';
+import { ageFromBirthDate, dateToDateOnlyString } from '@/lib/date-only';
 import {
   createManyTicketSchema,
   createTicketSchema,
@@ -271,10 +271,7 @@ export const emittedTicketsRouter = router({
 
       const dataWithAge = data.map((buyer) => ({
         ...buyer,
-        age: differenceInYears(
-          new Date(),
-          dateOnlyToLocalDate(buyer.birthDate),
-        ).toString(),
+        age: ageFromBirthDate(buyer.birthDate),
         buyerCode: buyerCodes.get(buyer.dni)?.toString() || '---',
       }));
 
@@ -308,10 +305,7 @@ export const emittedTicketsRouter = router({
 
       const dataWithAge = data.map((buyer) => ({
         ...buyer,
-        age: differenceInYears(
-          new Date(),
-          dateOnlyToLocalDate(buyer.birthDate),
-        ).toString(),
+        age: ageFromBirthDate(buyer.birthDate),
         buyerCode: buyerCodes.get(buyer.dni)?.toString() || '---',
       }));
 
@@ -367,10 +361,7 @@ export const emittedTicketsRouter = router({
 
       const buyerWithAge = {
         ...buyer,
-        age: differenceInYears(
-          new Date(),
-          dateOnlyToLocalDate(buyer.birthDate),
-        ).toString(),
+        age: ageFromBirthDate(buyer.birthDate),
         buyerCode: buyerCode.get(buyer.dni)?.toString() || '---',
       };
 

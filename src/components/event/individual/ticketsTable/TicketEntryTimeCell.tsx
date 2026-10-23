@@ -1,7 +1,6 @@
 'use client';
 
-import { formatInTimeZone } from 'date-fns-tz';
-
+import { formatZonedDateTime } from '@/lib/format-date';
 import {
   Popover,
   PopoverContent,
@@ -14,8 +13,8 @@ type TicketRow = RouterOutputs['emittedTickets']['getByEventId'][number];
 const SCAN_DATETIME_FORMAT = 'dd/MM/yyyy HH:mm:ss';
 
 function formatScanDateTime(scannedAt: string) {
-  return formatInTimeZone(
-    new Date(scannedAt),
+  return formatZonedDateTime(
+    scannedAt,
     'America/Argentina/Buenos_Aires',
     SCAN_DATETIME_FORMAT,
   );

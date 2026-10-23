@@ -3,7 +3,7 @@ import { Cake, Contact, IdCard, Mail, Phone, VenusAndMars } from 'lucide-react';
 
 import { FilledCard } from '@/components/common/FilledCard';
 import { Instagram } from '@/components/icons/Instagram';
-import { formatDateOnly } from '@/lib/date-only';
+import { formatDateOnly, tryDateOnlyToLocalDate } from '@/lib/date-only';
 import { genderTranslation } from '@/lib/translations';
 
 interface BuyerInformationParams {
@@ -20,6 +20,8 @@ interface BuyerInformationParams {
 }
 
 export default function BuyerInformation({ buyer }: BuyerInformationParams) {
+  const hasValidBirthDate = tryDateOnlyToLocalDate(buyer.birthDate) !== null;
+
   return (
     <FilledCard className='flex flex-col gap-4 text-xl font-medium p-4 py-8 lg:w-2/5 [&>div]:flex [&>div]:gap-2 text-accent-dark h-fit'>
       <div>
@@ -38,7 +40,12 @@ export default function BuyerInformation({ buyer }: BuyerInformationParams) {
         <Cake />
         <p>
           <span className='text-gray-600'>Fecha de nacimiento:</span>{' '}
-          {formatDateOnly(buyer.birthDate)}{' '}
+          <span
+            className={hasValidBirthDate ? undefined : 'text-amber-800'}
+            title={hasValidBirthDate ? undefined : 'Fecha inválida'}
+          >
+            {formatDateOnly(buyer.birthDate)}
+          </span>{' '}
           <span className='text-sm'>({buyer.age} años)</span>
         </p>
       </div>

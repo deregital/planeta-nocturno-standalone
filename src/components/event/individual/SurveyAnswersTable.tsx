@@ -1,7 +1,6 @@
 'use client';
 
 import { type Row, type StrictColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Search } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
@@ -10,6 +9,7 @@ import { useMemo } from 'react';
 import { DataTable } from '@/components/common/DataTable';
 import { FORM_SEARCH_PARAM } from '@/components/event/individual/ticketsTable/columns';
 import { Input } from '@/components/ui/input';
+import { formatLocalDateTime } from '@/lib/format-date';
 import { type RouterOutputs } from '@/server/routers/app';
 
 type SurveyEvent = NonNullable<RouterOutputs['events']['getBySlug']>;
@@ -74,7 +74,7 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
           const firstTicket = ticketGroup.emittedTickets[0];
           const purchase = firstTicket
             ? `${firstTicket.fullName} - DNI ${firstTicket.dni} (${firstTicket.mail})`
-            : `Compra ${format(new Date(ticketGroup.createdAt), 'dd/MM/yyyy HH:mm', { locale: es })}`;
+            : `Compra ${formatLocalDateTime(ticketGroup.createdAt, 'dd/MM/yyyy HH:mm', { locale: es })}`;
 
           const answersByQuestionId = Object.fromEntries(
             ticketGroup.ticketGroupAnswers.map((answer) => [

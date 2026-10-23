@@ -40,7 +40,7 @@ import {
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
-import { dateOnlyToLocalDate } from '@/lib/date-only';
+import { tryDateOnlyToLocalDate } from '@/lib/date-only';
 import {
   isEventPast,
   isEventUpcoming,
@@ -2287,7 +2287,9 @@ export const eventsRouter = router({
                   t.gender as keyof typeof genderTranslation
                 ] ?? t.gender)
               : '',
-            t.birthDate ? dateOnlyToLocalDate(t.birthDate) : '',
+            t.birthDate
+              ? (tryDateOnlyToLocalDate(t.birthDate) ?? t.birthDate)
+              : '',
             t.createdAt ? new Date(t.createdAt) : '',
             t.scanned ? 'Sí' : 'No',
             t.ticketGroup.user?.fullName ?? '-',
