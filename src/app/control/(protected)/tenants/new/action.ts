@@ -27,6 +27,11 @@ import {
 } from '@/server/schemas/control-tenant';
 import { userSchema } from '@/server/schemas/user';
 import { provisionTenant } from '@/server/tenancy/provision-tenant';
+import {
+  getSuperadminConflicts,
+  getSuperadminCredentials,
+  type SuperadminCredentials,
+} from '@/server/tenancy/superadmin';
 
 const tenantCreationSchema = tenantMetadataSchema.extend({
   slug: tenantSubdomainSchema,
@@ -88,8 +93,6 @@ export type TenantFormState = {
   };
 };
 
-export type { SubdomainAvailability };
-
 export async function checkSubdomainAvailability(
   value: string,
   tenantId?: string,
@@ -135,6 +138,39 @@ export async function createTenant(
   }
 
   const data = validation.data;
+
+  let superadmin: SuperadminCredentials;
+  try {
+    superadmin = getSuperadminCredentials();
+  } catch (error) {
+    logger.error('Superadmin credentials are not configured', { error });
+    return {
+      values: safeValues,
+      errors: {
+        general:
+          'Falta configurar el superadministrador de las plataformas (TENANT_SYSTEM_ADMIN_*)',
+      },
+    };
+  }
+
+  const conflicts = getSuperadminConflicts(superadmin, {
+    name: data.adminUsername,
+    email: data.adminEmail,
+    dni: data.adminDni,
+  });
+  if (conflicts.name || conflicts.email || conflicts.dni) {
+    return {
+      values: safeValues,
+      errors: {
+        ...(conflicts.name && {
+          adminUsername: 'Ese nombre de usuario está reservado',
+        }),
+        ...(conflicts.email && { adminEmail: 'Ese email está reservado' }),
+        ...(conflicts.dni && { adminDni: 'Ese DNI está reservado' }),
+      },
+    };
+  }
+
   const retryTenantId = Number(values.tenantId);
   let tenantId: number;
 

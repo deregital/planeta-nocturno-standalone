@@ -3,7 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import z from 'zod';
 
 import { eventCategory } from '@/drizzle/schema';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { eventCategorySchema } from '@/server/schemas/event-category';
 
 export const eventCategoriesRouter = router({
@@ -34,7 +34,7 @@ export const eventCategoriesRouter = router({
 
       return data;
     }),
-  create: adminProcedure
+  create: permissionProcedure('categories:create')
     .input(eventCategorySchema.omit({ id: true }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.query.eventCategory.findMany({
@@ -58,7 +58,7 @@ export const eventCategoriesRouter = router({
 
       return created;
     }),
-  edit: adminProcedure
+  edit: permissionProcedure('categories:update')
     .input(eventCategorySchema)
     .mutation(async ({ ctx, input }) => {
       return ctx.db
@@ -66,7 +66,7 @@ export const eventCategoriesRouter = router({
         .set(input)
         .where(eq(eventCategory.id, input.id));
     }),
-  toggleActive: adminProcedure
+  toggleActive: permissionProcedure('categories:update')
     .input(z.object({ id: z.uuid(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db
@@ -74,7 +74,7 @@ export const eventCategoriesRouter = router({
         .set({ isActive: input.isActive })
         .where(eq(eventCategory.id, input.id));
     }),
-  reorder: adminProcedure
+  reorder: permissionProcedure('categories:update')
     .input(z.array(z.object({ id: z.uuid(), sortOrder: z.number().int() })))
     .mutation(async ({ ctx, input }) => {
       await Promise.all(

@@ -5,6 +5,7 @@ import { format, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader } from 'lucide-react';
 import { parseAsIsoDate, useQueryState } from 'nuqs';
+import { useMemo } from 'react';
 
 import { DateRangePicker } from '@/components/admin/DataRangePicker';
 import OrganizerLinks from '@/components/admin/organizer/OrganizerLinks';
@@ -12,9 +13,10 @@ import { DataTable } from '@/components/common/DataTable';
 import { FilledCard } from '@/components/common/FilledCard';
 import GoBack from '@/components/common/GoBack';
 import BuyerLinks from '@/components/database/BuyerLinks';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { roleTranslation } from '@/lib/translations';
+import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
@@ -71,7 +73,7 @@ const eventColumns: StrictColumnDef<RecentEvent>[] = [
 ];
 
 export default function Client({ organizerId }: { organizerId: string }) {
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
 
   const [from, setFrom] = useQueryState<Date>(
     'from',
@@ -88,15 +90,19 @@ export default function Client({ organizerId }: { organizerId: string }) {
     isError: isErrorInfo,
   } = trpc.organizer.getInfoById.useQuery(organizerId);
 
+  const canSeeStats = useCan('organizers:statistics');
   const {
     data: stats,
     isLoading: isLoadingStats,
     isError: isErrorStats,
-  } = trpc.organizer.getStatsById.useQuery({
-    organizerId,
-    from,
-    to,
-  });
+  } = trpc.organizer.getStatsById.useQuery(
+    {
+      organizerId,
+      from,
+      to,
+    },
+    { enabled: canSeeStats },
+  );
 
   if (isLoadingInfo) {
     return <Loader className='spin-in' />;
@@ -123,7 +129,7 @@ export default function Client({ organizerId }: { organizerId: string }) {
           {info?.organizer.fullName}
         </h1>
         <span className='flex items-center text-xl ml-2 text-accent'>
-          ({info ? roleTranslation[info.organizer.role] : null})
+          ({info?.organizer.accessRole.name})
         </span>
         <BuyerLinks
           instagram={normalizedInstagram}
@@ -140,7 +146,12 @@ export default function Client({ organizerId }: { organizerId: string }) {
         />
       </div>
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        <FilledCard className='lg:col-span-2 p-4 flex-col text-accent-dark'>
+        <FilledCard
+          className={cn(
+            'p-4 flex-col text-accent-dark',
+            canSeeStats ? 'lg:col-span-2' : 'lg:col-span-3',
+          )}
+        >
           <p className='text-3xl font-bold'>Últimos eventos asistidos:</p>
           {isLoadingInfo ? (
             <div className='text-center py-8'>
@@ -156,74 +167,76 @@ export default function Client({ organizerId }: { organizerId: string }) {
           )}
         </FilledCard>
 
-        <FilledCard className='lg:col-span-1 p-4 flex-col text-accent-dark'>
-          <div className='flex flex-col gap-4'>
-            <div className='flex items-center justify-between gap-4'>
-              <p className='text-3xl font-bold'>Estadísticas</p>
+        {canSeeStats && (
+          <FilledCard className='lg:col-span-1 p-4 flex-col text-accent-dark'>
+            <div className='flex flex-col gap-4'>
+              <div className='flex items-center justify-between gap-4'>
+                <p className='text-3xl font-bold'>Estadísticas</p>
+              </div>
+              <DateRangePicker
+                align='start'
+                value={{ from, to }}
+                showCompare={false}
+                initialDateFrom={subMonths(today, 1)}
+                initialDateTo={today}
+                locale='es-AR'
+                onUpdate={({ range }) => {
+                  setFrom(range.from);
+                  setTo(range.to ?? today);
+                }}
+              />
             </div>
-            <DateRangePicker
-              align='start'
-              value={{ from, to }}
-              showCompare={false}
-              initialDateFrom={subMonths(today, 1)}
-              initialDateTo={today}
-              locale='es-AR'
-              onUpdate={({ range }) => {
-                setFrom(range.from);
-                setTo(range.to ?? today);
-              }}
-            />
-          </div>
-          {isLoadingStats ? (
-            <div className='space-y-3 py-4'>
-              <Skeleton className='h-22 w-full rounded-md bg-white' />
-              <Skeleton className='h-22 w-full rounded-md bg-white' />
-              <Skeleton className='h-22 w-full rounded-md bg-white' />
-            </div>
-          ) : stats && !isErrorStats ? (
-            <>
-              <FilledCard className='p-4 my-3 bg-white'>
-                <div className='space-y-1'>
-                  <p className='text-muted-foreground'>Tickets Vendidos</p>
-                  <p className='text-2xl font-bold'>
-                    {stats.statistics.ticketsSold || 0}
-                  </p>
-                </div>
-              </FilledCard>
+            {isLoadingStats ? (
+              <div className='space-y-3 py-4'>
+                <Skeleton className='h-22 w-full rounded-md bg-white' />
+                <Skeleton className='h-22 w-full rounded-md bg-white' />
+                <Skeleton className='h-22 w-full rounded-md bg-white' />
+              </div>
+            ) : stats && !isErrorStats ? (
+              <>
+                <FilledCard className='p-4 my-3 bg-white'>
+                  <div className='space-y-1'>
+                    <p className='text-muted-foreground'>Tickets Vendidos</p>
+                    <p className='text-2xl font-bold'>
+                      {stats.statistics.ticketsSold || 0}
+                    </p>
+                  </div>
+                </FilledCard>
 
-              <FilledCard className='p-4 my-3 bg-white'>
-                <div className='space-y-1'>
-                  <p className=' text-muted-foreground'>
-                    Porcentaje de Asistencia
-                  </p>
-                  <p className='text-2xl font-bold'>
-                    {stats.statistics.attendancePercentage
-                      ? stats.statistics.attendancePercentage.toFixed(1)
-                      : '0.0'}
-                    %
-                  </p>
-                </div>
-              </FilledCard>
+                <FilledCard className='p-4 my-3 bg-white'>
+                  <div className='space-y-1'>
+                    <p className=' text-muted-foreground'>
+                      Porcentaje de Asistencia
+                    </p>
+                    <p className='text-2xl font-bold'>
+                      {stats.statistics.attendancePercentage
+                        ? stats.statistics.attendancePercentage.toFixed(1)
+                        : '0.0'}
+                      %
+                    </p>
+                  </div>
+                </FilledCard>
 
-              <FilledCard className='p-4 my-3 bg-white'>
-                <div className='space-y-1'>
-                  <p className='text-muted-foreground'>Dinero Generado</p>
-                  <p className='text-2xl font-bold'>
-                    {stats.statistics.totalGenerated
-                      ? formatCurrency(stats.statistics.totalGenerated)
-                      : '$0'}
-                  </p>
-                </div>
-              </FilledCard>
-            </>
-          ) : (
-            <div className='text-center py-8'>
-              <p className='text-muted-foreground'>
-                No hay estadísticas disponibles
-              </p>
-            </div>
-          )}
-        </FilledCard>
+                <FilledCard className='p-4 my-3 bg-white'>
+                  <div className='space-y-1'>
+                    <p className='text-muted-foreground'>Dinero Generado</p>
+                    <p className='text-2xl font-bold'>
+                      {stats.statistics.totalGenerated
+                        ? formatCurrency(stats.statistics.totalGenerated)
+                        : '$0'}
+                    </p>
+                  </div>
+                </FilledCard>
+              </>
+            ) : (
+              <div className='text-center py-8'>
+                <p className='text-muted-foreground'>
+                  No hay estadísticas disponibles
+                </p>
+              </div>
+            )}
+          </FilledCard>
+        )}
       </div>
     </div>
   );

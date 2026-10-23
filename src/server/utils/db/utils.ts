@@ -61,11 +61,13 @@ export function getUniqueTicketTypeSlugsById(
   return uniqueSlugsById;
 }
 
+/** Código global de cada comprador, indexado por DNI. */
 export async function getBuyersCodeByDni(
   db: Db,
   dnis: string[],
-): Promise<{ dni: string; id: number }[] | null> {
-  if (dnis.length === 0) return null;
+): Promise<Map<string, number>> {
+  const uniqueDnis = [...new Set(dnis)];
+  if (uniqueDnis.length === 0) return new Map();
 
   const firstPurchaseDate = min(emittedTicket.createdAt).as('firstPurchase');
 
@@ -98,7 +100,7 @@ export async function getBuyersCodeByDni(
       id: allBuyersCte.id,
     })
     .from(allBuyersCte)
-    .where(inArray(allBuyersCte.dni, dnis));
+    .where(inArray(allBuyersCte.dni, uniqueDnis));
 
-  return filteredBuyers;
+  return new Map(filteredBuyers.map((buyer) => [buyer.dni, buyer.id]));
 }

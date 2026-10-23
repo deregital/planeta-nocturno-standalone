@@ -2,10 +2,15 @@ import { type inferRouterOutputs, initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { z, ZodError } from 'zod';
 
-import { type role as roleEnum } from '@/drizzle/schema';
 import { isTenantSessionValid } from '@/lib/auth/session-tenant';
+import {
+  hasAnyPermission,
+  hasPermission,
+  type TenantPermission,
+} from '@/lib/rbac/permissions';
 import { getSessionForInstance } from '@/server/auth';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
+import { loadUserAccess, type UserAccess } from '@/server/rbac/access';
 import { type appRouter } from '@/server/routers/app';
 
 export function handleError(error: {
@@ -62,10 +67,20 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   const requestContext = await resolveRequestContext(opts.headers);
   const session = await getSessionForInstance(requestContext.instance.slug);
 
+  let accessPromise: Promise<UserAccess | null> | undefined;
+  const getAccess = () => {
+    if (!session?.user || session.user.role === 'CONTROL_ADMIN') {
+      return Promise.resolve(null);
+    }
+    accessPromise ??= loadUserAccess(requestContext.db, session.user.id);
+    return accessPromise;
+  };
+
   return {
     session,
     ...requestContext,
     ...opts,
+    getAccess,
   };
 };
 
@@ -105,55 +120,72 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   },
 });
 
-const levelsOfAccess: (typeof roleEnum.enumValues)[number][] = [
-  'ADMIN',
-  'CHIEF_ORGANIZER',
-  'ORGANIZER',
-  'TICKETING',
-  'CONTROL_TICKETING',
-];
+export const FORBIDDEN_MESSAGE = 'No tenés permiso para realizar esta acción';
 
-function genericProcedure(level: (typeof roleEnum.enumValues)[number]) {
-  return t.procedure.use(({ ctx, next }) => {
-    const session = ctx.session;
+export function forbidden(message = FORBIDDEN_MESSAGE) {
+  return new TRPCError({ code: 'FORBIDDEN', message });
+}
 
-    if (!session || !session.user) {
-      throw new TRPCError({ code: 'UNAUTHORIZED' });
-    }
+/** Usuario autenticado de la plataforma, con sus permisos resueltos. */
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  const session = ctx.session;
 
-    if (session.user.role === 'CONTROL_ADMIN') {
-      throw new TRPCError({ code: 'UNAUTHORIZED' });
-    }
+  if (!session || !session.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
 
-    if (!isTenantSessionValid(session, ctx.instance.slug)) {
-      throw new TRPCError({ code: 'UNAUTHORIZED' });
-    }
+  if (session.user.role === 'CONTROL_ADMIN') {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
 
-    const adminIndex = levelsOfAccess.indexOf(level);
-    const index = levelsOfAccess.indexOf(session.user.role);
+  if (!isTenantSessionValid(session, ctx.instance.slug)) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
 
-    if (index > adminIndex) {
-      throw new TRPCError({ code: 'UNAUTHORIZED' });
-    }
+  const access = await ctx.getAccess();
+  if (!access) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
 
-    return next({
-      ctx: {
-        ...ctx,
-        session: { ...session, user: session.user },
+  const can = (permission: TenantPermission) =>
+    hasPermission(access.permissions, permission);
+  const canAny = (permissions: readonly TenantPermission[]) =>
+    hasAnyPermission(access.permissions, permissions);
+
+  return next({
+    ctx: {
+      ...ctx,
+      session: { ...session, user: session.user },
+      access,
+      can,
+      canAny,
+      /** Lanza FORBIDDEN si falta el permiso. */
+      require: (permission: TenantPermission) => {
+        if (!can(permission)) throw forbidden();
       },
-    });
+    },
+  });
+});
+
+/** Exige todos los permisos indicados. */
+export function permissionProcedure(...permissions: TenantPermission[]) {
+  return protectedProcedure.use(({ ctx, next }) => {
+    if (!permissions.every((permission) => ctx.can(permission))) {
+      throw forbidden();
+    }
+    return next();
   });
 }
 
-export const adminProcedure = genericProcedure('ADMIN');
-
-export const chiefOrganizerProcedure = genericProcedure('CHIEF_ORGANIZER');
-
-export const organizerProcedure = genericProcedure('ORGANIZER');
-
-export const ticketingProcedure = genericProcedure('TICKETING');
-
-export const controlTicketingProcedure = genericProcedure('CONTROL_TICKETING');
+/** Exige al menos uno de los permisos indicados. */
+export function anyPermissionProcedure(
+  permissions: readonly TenantPermission[],
+) {
+  return protectedProcedure.use(({ ctx, next }) => {
+    if (!ctx.canAny(permissions)) throw forbidden();
+    return next();
+  });
+}
 
 export const router = t.router;
 export const publicProcedure = t.procedure;

@@ -13,7 +13,7 @@ import { ORGANIZER_CODE_QUERY_PARAM } from '@/server/utils/constants';
 export default function Client({
   event,
 }: {
-  event: NonNullable<RouterOutputs['events']['getBySlug']>;
+  event: NonNullable<RouterOutputs['events']['getPublicBySlug']>;
 }) {
   const searchParams = useSearchParams();
 

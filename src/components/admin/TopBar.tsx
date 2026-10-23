@@ -4,7 +4,7 @@ import { type Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 
-import { navRoutes } from '@/components/admin/SideBar';
+import { useNavRoutes } from '@/components/admin/SideBar';
 import SideBarTile from '@/components/admin/SideBarTile';
 import InstanceLogo from '@/components/header/InstanceLogo';
 import GoogleDrive from '@/components/icons/GoogleDrive';
@@ -19,13 +19,16 @@ import {
   resetPostHogUser,
   usePostHogIdentify,
 } from '@/hooks/usePostHogIdentify';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { roleTranslation } from '@/lib/translations';
 import { trpc } from '@/server/trpc/client';
 
 export default function TopBar({ auth }: { auth: Session | null }) {
   const pathname = usePathname();
-  const tenantRole =
-    auth?.user.role === 'CONTROL_ADMIN' ? null : auth?.user.role;
+  const navRoutes = useNavRoutes();
+  const { roleName } = usePermissions();
+  const roleLabel =
+    roleName ?? (auth ? roleTranslation[auth.user.role] : undefined);
   const { data: user } = trpc.user.getUnsensitiveInfoById.useQuery(
     auth?.user.id as string,
     { enabled: !!auth?.user.id },
@@ -66,7 +69,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                 </a>
               )}
               <span className='text-brand'>
-                {auth.user.fullName} ({roleTranslation[auth.user.role]})
+                {auth.user.fullName} ({roleLabel})
               </span>
             </div>
             <Button variant={'accent'} onClick={() => void handleSignOut()}>
@@ -99,16 +102,14 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                       </a>
                     )}
                     <span className='text-brand'>
-                      {auth.user.fullName} ({roleTranslation[auth.user.role]})
+                      {auth.user.fullName} ({roleLabel})
                     </span>
                   </div>
                   <nav className='flex flex-col py-4 dark'>
-                    {navRoutes.map((route, index) => (
+                    {navRoutes.map((route) => (
                       <SideBarTile
-                        show={
-                          tenantRole ? route.roles.includes(tenantRole) : false
-                        }
-                        key={index}
+                        show
+                        key={route.href}
                         href={route.href}
                         icon={route.icon}
                         title={route.title}

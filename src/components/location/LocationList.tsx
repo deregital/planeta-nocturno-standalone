@@ -2,6 +2,7 @@
 
 import LocationAccordion from '@/components/location/LocationAccordion';
 import LocationModal from '@/components/location/LocationModal';
+import { Can } from '@/components/rbac/Can';
 import { Accordion } from '@/components/ui/accordion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { trpc } from '@/server/trpc/client';
@@ -26,7 +27,9 @@ export default function LocationList() {
                 />
               ))}
           </Accordion>
-          <LocationModal action='CREATE' />
+          <Can permission='locations:create'>
+            <LocationModal action='CREATE' />
+          </Can>
         </>
       )}
     </div>

@@ -131,3 +131,90 @@ export function generateWelcomeEmail(
     <p>Gracias por unirte a nuestra plataforma.</p>
   `;
 }
+
+export function generateTransferPaymentEmail(
+  instance: Pick<ResolvedInstance, 'name' | 'contactEmail'>,
+  {
+    eventName,
+    totalAmount,
+    transferAlias,
+    buyerName,
+  }: {
+    eventName: string;
+    totalAmount: string;
+    transferAlias: string;
+    buyerName: string;
+  },
+) {
+  const safeBuyerName = buyerName
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const nameNote = safeBuyerName
+    ? ` Si la cuenta desde la que transferís está a otro nombre, indicá en ese mail el nombre que cargaste en la compra: <b>${safeBuyerName}</b>.`
+    : '';
+  const receiptInstructions = instance.contactEmail
+    ? `<p>Una vez hecha la transferencia, enviá el comprobante a <a href="mailto:${instance.contactEmail}">${instance.contactEmail}</a>.${nameNote}</p>`
+    : `<p>Una vez hecha la transferencia, enviá el comprobante a los organizadores del evento.${nameNote}</p>`;
+  return `
+    <h1>Completá el pago de tus entradas para ${eventName}</h1>
+    <p>Tu reserva en <b>${instance.name}</b> quedó registrada. Para recibir las entradas, transferí el total de la compra:</p>
+    <ul>
+      <li>Alias / CBU: <b>${transferAlias}</b></li>
+      <li>Monto: <b>${totalAmount}</b></li>
+    </ul>
+    ${receiptInstructions}
+    <p>Cuando los organizadores confirmen el pago, te vamos a enviar las entradas a este mail.</p>
+  `;
+}
+
+function unlinkConsequence(
+  instance: Pick<ResolvedInstance, 'contactEmail'>,
+  transferAlias: string | null,
+) {
+  if (!transferAlias) {
+    return 'No se van a poder cobrar entradas online ni crear tickets pagos hasta que se vuelva a conectar una cuenta de Mercado Pago.';
+  }
+
+  const receipt = instance.contactEmail
+    ? ` a <a href="mailto:${instance.contactEmail}">${instance.contactEmail}</a>`
+    : '';
+  return `Las entradas pagas se cobran por transferencia al alias <b>${transferAlias}</b>. El comprador tiene que enviar el comprobante${receipt} y las entradas se liberan desde la página del evento.`;
+}
+
+function lowerFirst(value: string) {
+  return `${value.charAt(0).toLowerCase()}${value.slice(1)}`;
+}
+
+export function generateMercadoPagoUnlinkRequestEmail(
+  instance: MailInstance & Pick<ResolvedInstance, 'contactEmail'>,
+  link: string,
+  expiresInMinutes: number,
+  transferAlias: string | null,
+) {
+  return `
+    <h1>Confirmá la desvinculación de Mercado Pago</h1>
+    <p>Recibimos un pedido para desvincular la cuenta de Mercado Pago de la plataforma <b>${instance.name}</b>.</p>
+    <p>Una vez desvinculada, ${lowerFirst(unlinkConsequence(instance, transferAlias))}</p>
+    <p>Para confirmar, ingresá al siguiente link con tu usuario de la plataforma. El link vence en ${expiresInMinutes} minutos y se puede usar una sola vez.</p>
+    <p><a href="${link}">Confirmar desvinculación de Mercado Pago</a></p>
+    <p><b>Si no pediste la desvinculación, ignorá este mail</b>: la cuenta de Mercado Pago sigue vinculada. Te recomendamos cambiar tu contraseña.</p>
+  `;
+}
+
+export function generateMercadoPagoUnlinkedEmail(
+  instance: MailInstance & Pick<ResolvedInstance, 'contactEmail'>,
+  pending: boolean,
+  transferAlias: string | null,
+) {
+  const consequence = unlinkConsequence(instance, transferAlias);
+  const status = pending
+    ? `La desvinculación está en proceso y puede tardar unos minutos en completarse. Cuando termine, ${lowerFirst(consequence)}`
+    : consequence;
+  return `
+    <h1>Mercado Pago fue desvinculado</h1>
+    <p>Se confirmó la desvinculación de la cuenta de Mercado Pago de la plataforma <b>${instance.name}</b>.</p>
+    <p>${status}</p>
+    <p>Para conectar una cuenta nuevamente, ingresá a <a href="${instance.publicUrl}/admin/settings">${instance.publicUrl}/admin/settings</a>.</p>
+  `;
+}

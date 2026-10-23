@@ -7,7 +7,9 @@ import { type TicketType } from '@/server/types';
 
 export function useEventTickets(
   eventId: string,
-  ticketTypes: NonNullable<RouterOutputs['events']['getBySlug']>['ticketTypes'],
+  ticketTypes: NonNullable<
+    RouterOutputs['events']['getPublicBySlug']
+  >['ticketTypes'],
 ) {
   const [quantity, setQuantity] = useState<
     { ticketTypeId: string; amount: number }[]
@@ -22,20 +24,18 @@ export function useEventTickets(
     >
   >([]);
 
-  const { data: ticketGroups, isLoading } =
-    trpc.ticketGroup.getTicketsByEvent.useQuery(eventId);
+  const { data: ticketTypeAmounts, isLoading } =
+    trpc.ticketGroup.getTicketTypeAmounts.useQuery(eventId);
 
   useEffect(() => {
-    if (!ticketGroups || isLoading) return;
+    if (!ticketTypeAmounts || isLoading) return;
+
+    const emittedByType = new Map(
+      ticketTypeAmounts.map((row) => [row.ticketTypeId, row.amount]),
+    );
 
     const availableTypes = ticketTypes.map((type) => {
-      const ticketTypeEmitted = ticketGroups.reduce((acum, current) => {
-        return (
-          acum +
-          (current.ticketTypePerGroups.find((t) => t.ticketType.id === type.id)
-            ?.amount || 0)
-        );
-      }, 0);
+      const ticketTypeEmitted = emittedByType.get(type.id) ?? 0;
 
       const disabled = ticketTypeEmitted >= type.maxAvailable;
 
@@ -80,7 +80,7 @@ export function useEventTickets(
         amount: shouldDefaultSelectOne ? 1 : 0,
       })),
     );
-  }, [eventId, isLoading, ticketGroups, ticketTypes]);
+  }, [eventId, isLoading, ticketTypeAmounts, ticketTypes]);
 
   return {
     ticketsAvailable,

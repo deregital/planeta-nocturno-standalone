@@ -7,9 +7,10 @@ import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import SelectWithLabel from '@/components/common/SelectWithLabel';
+import { AccessRoleSelect } from '@/components/rbac/AccessRoleSelect';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { roleTranslation } from '@/lib/translations';
 import { parseDateOnly } from '@/lib/utils-client';
 import { type User } from '@/server/types';
 import 'react-phone-number-input/style.css';
@@ -27,7 +28,7 @@ export type OrganizerData = Pick<
   | 'phoneNumber'
   | 'instagram'
   | 'chiefOrganizerId'
->;
+> & { accessRoleId?: string | null };
 
 export const defaultOrganizerState: OrganizerData = {
   fullName: '',
@@ -41,6 +42,7 @@ export const defaultOrganizerState: OrganizerData = {
   dni: '',
   instagram: '',
   chiefOrganizerId: '',
+  accessRoleId: null,
 };
 
 export function OrganizerForm({
@@ -51,7 +53,6 @@ export function OrganizerForm({
   isPending,
   type,
   chiefOrganizerId,
-  isAdmin,
 }: {
   type: 'CREATE' | 'EDIT';
   userId?: string;
@@ -60,8 +61,8 @@ export function OrganizerForm({
   formAction: (formData: FormData) => void;
   isPending: boolean;
   chiefOrganizerId?: string;
-  isAdmin?: boolean;
 }) {
+  const canAssignRole = useCan('organizers:assign_role');
   const [internalState, setInternalState] = useState<OrganizerData>(
     initialState ?? defaultOrganizerState,
   );
@@ -119,26 +120,16 @@ export function OrganizerForm({
           handleChange('birthDate', date.toISOString());
         }}
       />
-      {isAdmin && type === 'CREATE' && (
-        <SelectWithLabel
-          label='Rol'
-          required
-          id='role'
-          value={internalState?.role}
-          className='w-full'
-          values={[
-            {
-              label: roleTranslation['ORGANIZER'],
-              value: 'ORGANIZER',
-            },
-            {
-              label: roleTranslation['CHIEF_ORGANIZER'],
-              value: 'CHIEF_ORGANIZER',
-            },
-          ]}
+      {canAssignRole && (
+        <AccessRoleSelect
+          kind='organizer'
+          value={internalState}
+          currentAccessRoleId={
+            type === 'EDIT' ? initialState?.accessRoleId : undefined
+          }
           error={errors?.role}
-          onValueChange={(value) => {
-            handleChange('role', value as 'ORGANIZER' | 'CHIEF_ORGANIZER');
+          onChange={({ role, accessRoleId }) => {
+            setInternalState((prev) => ({ ...prev, role, accessRoleId }));
           }}
         />
       )}

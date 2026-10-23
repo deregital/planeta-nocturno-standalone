@@ -76,7 +76,6 @@ export function TagModal({
 
   function invalidateAfterTagChange() {
     utils.tag.getAll.invalidate();
-    utils.user.getByRole.invalidate('ORGANIZER');
     utils.user.getOrganizersByChiefOrganizer.invalidate();
     utils.user.getOrganizers.invalidate();
     router.refresh();
@@ -122,7 +121,6 @@ export function TagModal({
       toast.success('Grupo actualizado exitosamente');
       setOpen(false);
       utils.tag.getAll.invalidate();
-      utils.user.getByRole.invalidate('ORGANIZER');
       utils.user.getOrganizersByChiefOrganizer.invalidate();
       utils.user.getOrganizers.invalidate();
       router.refresh();
@@ -140,7 +138,6 @@ export function TagModal({
       setPopoverOpen(false);
       setSure(false);
       utils.tag.getAll.invalidate();
-      utils.user.getByRole.invalidate('ORGANIZER');
       utils.user.getOrganizersByChiefOrganizer.invalidate();
       utils.user.getOrganizers.invalidate();
       router.refresh();
@@ -158,7 +155,6 @@ export function TagModal({
       setPopoverOpen(false);
       setSureDelete(false);
       utils.tag.getAll.invalidate();
-      utils.user.getByRole.invalidate('ORGANIZER');
       utils.user.getOrganizersByChiefOrganizer.invalidate();
       utils.user.getOrganizers.invalidate();
       router.refresh();

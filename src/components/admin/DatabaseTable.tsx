@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { dateOnlyToLocalDate, formatDateOnly } from '@/lib/date-only';
+import { formatDateOnly, tryDateOnlyToLocalDate } from '@/lib/date-only';
 import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
 import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
@@ -144,7 +144,15 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
     },
     cell: ({ row }) => {
       const birthDate = row.original.birthDate;
-      return <p className='text-sm p-2'>{formatDateOnly(birthDate)}</p>;
+      const parsed = tryDateOnlyToLocalDate(birthDate);
+      return (
+        <p
+          className={parsed ? 'text-sm p-2' : 'text-sm p-2 text-amber-800'}
+          title={parsed ? undefined : 'Fecha inválida'}
+        >
+          {formatDateOnly(birthDate)}
+        </p>
+      );
     },
   },
   {
@@ -467,8 +475,9 @@ export function DatabaseTable({
   const dataWithIdFilteredByMonth = useMemo(() => {
     return selectedMonth !== '0'
       ? dataWithId.filter((p) => {
-          const month = dateOnlyToLocalDate(p.birthDate).getMonth() + 1;
-          return month === Number(selectedMonth);
+          const birthDate = tryDateOnlyToLocalDate(p.birthDate);
+          if (!birthDate) return false;
+          return birthDate.getMonth() + 1 === Number(selectedMonth);
         })
       : dataWithId;
   }, [dataWithId, selectedMonth]);

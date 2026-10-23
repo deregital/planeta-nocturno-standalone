@@ -9,7 +9,7 @@ import { type RouterOutputs } from '@/server/routers/app';
 function HeaderTickets({
   event,
 }: {
-  event: NonNullable<RouterOutputs['events']['getBySlug']>;
+  event: NonNullable<RouterOutputs['events']['getPublicBySlug']>;
 }) {
   const formattedDate = event.startingDate
     ? formatInTimeZone(

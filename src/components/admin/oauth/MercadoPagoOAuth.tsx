@@ -24,7 +24,11 @@ function getMercadoPagoAuthUrl(publicUrl: string) {
   return url.toString();
 }
 
-export default async function MercadoPagoOAuth() {
+export default async function MercadoPagoOAuth({
+  canUnlink,
+}: {
+  canUnlink: boolean;
+}) {
   const { instance } = await getCurrentRequestContext();
   const isConnected = Boolean(
     instance.mercadoPagoAccessToken && instance.mercadoPagoRefreshToken,
@@ -38,12 +42,19 @@ export default async function MercadoPagoOAuth() {
         <div className='flex flex-col gap-1'>
           <CardTitle>Mercado Pago</CardTitle>
           <CardDescription>
-            Conectá tu cuenta de Mercado Pago para cobrar tus tickets.
+            {isConnected && canUnlink
+              ? 'Ya estás conectado a Mercado Pago.'
+              : 'Conectá tu cuenta de Mercado Pago para cobrar tus tickets.'}
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className='flex flex-col items-start gap-3'>
-        <MercadoPagoConnect isConnected={isConnected} authUrl={authUrl} />
+        <MercadoPagoConnect
+          isConnected={isConnected}
+          authUrl={authUrl}
+          canUnlink={canUnlink}
+          isMultiTenant={instance.tenantId !== null}
+        />
       </CardContent>
     </Card>
   );

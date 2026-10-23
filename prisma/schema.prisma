@@ -29,6 +29,8 @@ model User {
   mercadopago    String?
   googleDriveUrl String?
   role           Role
+  accessRoleId   String      @db.Uuid
+  accessRole     AccessRole  @relation("USER_X_ACCESS_ROLE", fields: [accessRoleId], references: [id], onDelete: Restrict)
   code           String  @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
   tags           Tag[]   @relation("USER_X_TAG")
   tagsCreated    Tag[]   @relation("TAG_CREATED_BY")
@@ -55,7 +57,32 @@ model User {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@index([code])
+  @@index([accessRoleId])
   @@map("user")
+}
+
+model AccessRole {
+  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String                 @unique
+  description String?
+  baseRole    Role
+  isSystem    Boolean                @default(false)
+  permissions AccessRolePermission[] @relation("ACCESS_ROLE_X_PERMISSION")
+  users       User[]                 @relation("USER_X_ACCESS_ROLE")
+
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  updatedAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("accessRole")
+}
+
+model AccessRolePermission {
+  roleId     String     @db.Uuid
+  role       AccessRole @relation("ACCESS_ROLE_X_PERMISSION", fields: [roleId], references: [id], onDelete: Cascade)
+  permission String
+
+  @@id([roleId, permission])
+  @@map("accessRolePermission")
 }
 
 model Tag {
@@ -191,6 +218,7 @@ model EventQuestion {
   answers   TicketGroupAnswer[] @relation("QUESTION_X_ANSWER")
   createdAt DateTime            @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([eventId])
   @@map("eventQuestion")
 }
 
@@ -269,6 +297,7 @@ model TicketGroup {
   invitedBy        User?             @relation("ORGANIZER_X_TICKET_GROUP", fields: [invitedById], references: [id], onDelete: SetNull)
   invitedBySimple  String?
   isOrganizerGroup Boolean           @default(false)
+  paymentMethod    PaymentMethod?
 
   tickets            EmittedTicket[]      @relation("TICKET_X_TICKET_GROUP")
   ticketTypePerGroup TicketTypePerGroup[] @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP")
@@ -277,6 +306,8 @@ model TicketGroup {
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([eventId])
+  @@index([invitedById])
   @@map("ticketGroup")
 }
 
@@ -289,6 +320,8 @@ model TicketGroupAnswer {
   ticketGroup   TicketGroup   @relation("TICKET_GROUP_X_ANSWER", fields: [ticketGroupId], references: [id], onDelete: Cascade)
   createdAt     DateTime      @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([questionId])
+  @@index([ticketGroupId])
   @@map("ticketGroupAnswer")
 }
 
@@ -301,6 +334,7 @@ model TicketTypePerGroup {
   ticketGroup   TicketGroup? @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP", fields: [ticketGroupId], references: [id], onDelete: Cascade)
 
   @@id([ticketTypeId, ticketGroupId])
+  @@index([ticketGroupId])
   @@map("ticketTypePerGroup")
 }
 
@@ -341,6 +375,9 @@ model EmittedTicket {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@unique([eventId, shortId])
+  @@index([ticketTypeId])
+  @@index([ticketGroupId])
+  @@index([dni, createdAt(sort: Desc)])
   @@map("emittedTicket")
 }
 
@@ -380,6 +417,16 @@ model Feature {
   @@map("feature")
 }
 
+// Fila única (id = 1) con la configuración de cobros de la plataforma
+model PaymentSettings {
+  id            Int     @id @default(1)
+  transferAlias String?
+
+  updatedAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("paymentSettings")
+}
+
 model TicketXOrganizer {
   ticketId String?        @db.Uuid
   ticket   EmittedTicket? @relation("TICKET_X_ORGANIZER", fields: [ticketId], references: [id], onDelete: Cascade)
@@ -406,6 +453,7 @@ model TicketXOrganizer {
   @@unique([ticketId])
   @@index([organizerId])
   @@index([code])
+  @@index([ticketGroupId])
   @@map("ticketXOrganizer")
 }
 
@@ -422,6 +470,7 @@ model EventXOrganizer {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@id([eventId, organizerId])
+  @@index([organizerId])
   @@map("eventXOrganizer")
 }
 
@@ -437,6 +486,11 @@ enum TicketGroupStatus {
   BOOKED
   PAID
   FREE
+}
+
+enum PaymentMethod {
+  MERCADO_PAGO
+  TRANSFER
 }
 
 enum TicketTypeCategory {

@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
-import { differenceInYears, format } from 'date-fns';
-import { and, count, desc, eq, inArray, or } from 'drizzle-orm';
+import { format } from 'date-fns';
+import { and, count, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -13,7 +13,7 @@ import {
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
-import { dateOnlyToLocalDate, dateToDateOnlyString } from '@/lib/date-only';
+import { ageFromBirthDate, dateToDateOnlyString } from '@/lib/date-only';
 import {
   createManyTicketSchema,
   createTicketSchema,
@@ -21,12 +21,11 @@ import {
 } from '@/server/schemas/emitted-tickets';
 import { sendMail } from '@/server/services/mail';
 import {
-  adminProcedure,
-  controlTicketingProcedure,
-  organizerProcedure,
+  anyPermissionProcedure,
+  forbidden,
+  permissionProcedure,
   publicProcedure,
   router,
-  ticketingProcedure,
 } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { getBuyersCodeByDni } from '@/server/utils/db/utils';
@@ -41,7 +40,7 @@ import {
 import { decryptString, generateSlug } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
-  create: ticketingProcedure
+  create: permissionProcedure('tickets:create')
     .input(createTicketSchema)
     .mutation(async ({ ctx, input }) => {
       const ticketCreated = await ctx.db.transaction(async (tx) => {
@@ -252,39 +251,40 @@ export const emittedTicketsRouter = router({
         throw new Error('Error al crear ticket/s', { cause: error });
       }
     }),
-  getAllUniqueBuyer: adminProcedure.query(async ({ ctx }) => {
-    const data = await ctx.db
-      .selectDistinctOn([emittedTicket.dni], {
-        dni: emittedTicket.dni,
-        fullName: emittedTicket.fullName,
-        mail: emittedTicket.mail,
-        gender: emittedTicket.gender,
-        instagram: emittedTicket.instagram,
-        birthDate: emittedTicket.birthDate,
-        phoneNumber: emittedTicket.phoneNumber,
-      })
-      .from(emittedTicket)
-      .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
+  getAllUniqueBuyer: permissionProcedure('database:read_all').query(
+    async ({ ctx }) => {
+      const data = await ctx.db
+        .selectDistinctOn([emittedTicket.dni], {
+          dni: emittedTicket.dni,
+          fullName: emittedTicket.fullName,
+          mail: emittedTicket.mail,
+          gender: emittedTicket.gender,
+          instagram: emittedTicket.instagram,
+          birthDate: emittedTicket.birthDate,
+          phoneNumber: emittedTicket.phoneNumber,
+        })
+        .from(emittedTicket)
+        .orderBy(emittedTicket.dni, desc(emittedTicket.createdAt));
 
-    const dnis = data.map((item) => item.dni);
-    const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
+      const dnis = data.map((item) => item.dni);
+      const buyerCodes = await getBuyersCodeByDni(ctx.db, dnis);
 
-    const dataWithAge = data.map((buyer) => ({
-      ...buyer,
-      age: differenceInYears(
-        new Date(),
-        dateOnlyToLocalDate(buyer.birthDate),
-      ).toString(),
-      buyerCode:
-        buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
-        '---',
-    }));
+      const dataWithAge = data.map((buyer) => ({
+        ...buyer,
+        age: ageFromBirthDate(buyer.birthDate),
+        buyerCode: buyerCodes.get(buyer.dni)?.toString() || '---',
+      }));
 
-    return dataWithAge;
-  }),
-  getAllUniqueBuyerByOrganizer: organizerProcedure
+      return dataWithAge;
+    },
+  ),
+  getAllUniqueBuyerByOrganizer: permissionProcedure('database:read')
     .input(z.uuid())
     .query(async ({ input, ctx }) => {
+      if (input !== ctx.session.user.id && !ctx.can('database:read_all')) {
+        throw forbidden();
+      }
+
       const data = await ctx.db
         .selectDistinctOn([emittedTicket.dni], {
           dni: emittedTicket.dni,
@@ -305,18 +305,13 @@ export const emittedTicketsRouter = router({
 
       const dataWithAge = data.map((buyer) => ({
         ...buyer,
-        age: differenceInYears(
-          new Date(),
-          dateOnlyToLocalDate(buyer.birthDate),
-        ).toString(),
-        buyerCode:
-          buyerCodes?.find((code) => code.dni === buyer.dni)?.id.toString() ||
-          '---',
+        age: ageFromBirthDate(buyer.birthDate),
+        buyerCode: buyerCodes.get(buyer.dni)?.toString() || '---',
       }));
 
       return dataWithAge;
     }),
-  getUniqueBuyer: organizerProcedure
+  getUniqueBuyer: permissionProcedure('database:read')
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
       const buyer = await ctx.db.query.emittedTicket.findFirst({
@@ -366,18 +361,13 @@ export const emittedTicketsRouter = router({
 
       const buyerWithAge = {
         ...buyer,
-        age: differenceInYears(
-          new Date(),
-          dateOnlyToLocalDate(buyer.birthDate),
-        ).toString(),
-        buyerCode:
-          buyerCode?.find((code) => code.dni === buyer.dni)?.id.toString() ||
-          '---',
+        age: ageFromBirthDate(buyer.birthDate),
+        buyerCode: buyerCode.get(buyer.dni)?.toString() || '---',
       };
 
       return { buyer: buyerWithAge, events };
     }),
-  getEmissionHistoryByDni: adminProcedure
+  getEmissionHistoryByDni: permissionProcedure('database:emission_history')
     .input(emittedTicketSchema.shape.dni)
     .query(async ({ input, ctx }) => {
       return ctx.db
@@ -397,7 +387,7 @@ export const emittedTicketsRouter = router({
         .where(eq(emittedTicket.dni, input))
         .orderBy(desc(emittedTicket.createdAt));
     }),
-  getPdf: ticketingProcedure
+  getPdf: permissionProcedure('tickets:download')
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -450,7 +440,7 @@ export const emittedTicketsRouter = router({
       const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
       return { base64 };
     }),
-  scan: controlTicketingProcedure
+  scan: permissionProcedure('scanner:use')
     .input(
       z.object({
         barcode: z.string(),
@@ -560,7 +550,7 @@ export const emittedTicketsRouter = router({
           `${extraInfo}${scanNumber > 1 ? ` - Escaneo #${scanNumber}` : ''} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`.trim(),
       };
     }),
-  manualScan: ticketingProcedure
+  manualScan: permissionProcedure('tickets:manual_scan')
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const ticket = await ctx.db.query.emittedTicket.findFirst({
@@ -592,7 +582,7 @@ export const emittedTicketsRouter = router({
 
       return { success: true, ticket: updatedTicket };
     }),
-  getByEventId: ticketingProcedure
+  getByEventId: anyPermissionProcedure(['tickets:read', 'organizer:act'])
     .input(
       z.object({
         eventId: z.string(),
@@ -602,11 +592,9 @@ export const emittedTicketsRouter = router({
     .query(async ({ ctx, input }) => {
       let ticketGroupIds: string[] = [];
       let organizersEmittedTicketsIds: string[] = [];
-      const canSeeAllTickets =
-        ctx.session?.user.role === 'ADMIN' ||
-        ctx.session?.user.role === 'TICKETING';
+      const canSeeAllTickets = ctx.can('tickets:read_all');
 
-      if (ctx.session?.user.role === 'CHIEF_ORGANIZER') {
+      if (!canSeeAllTickets && ctx.can('organizer:team')) {
         const organizers = await ctx.db.query.user.findMany({
           where: eq(user.chiefOrganizerId, ctx.session.user.id),
         });
@@ -650,7 +638,7 @@ export const emittedTicketsRouter = router({
             .filter((t) => organizers.some((o) => o.email === t.mail))
             .map((t) => t.id);
         }
-      } else if (ctx.session?.user.role === 'ORGANIZER') {
+      } else if (!canSeeAllTickets) {
         const groups = await ctx.db.query.ticketGroup.findMany({
           where: and(
             eq(ticketGroup.eventId, input.eventId),
@@ -670,11 +658,26 @@ export const emittedTicketsRouter = router({
         return [];
       }
 
+      const pendingTransferGroups = ctx.db
+        .select({ id: ticketGroup.id })
+        .from(ticketGroup)
+        .where(
+          and(
+            eq(ticketGroup.eventId, input.eventId),
+            eq(ticketGroup.status, 'BOOKED'),
+            eq(ticketGroup.paymentMethod, 'TRANSFER'),
+          ),
+        );
+
       const tickets = await ctx.db.query.emittedTicket.findMany({
         where: canSeeAllTickets
-          ? eq(emittedTicket.eventId, input.eventId)
+          ? and(
+              eq(emittedTicket.eventId, input.eventId),
+              notInArray(emittedTicket.ticketGroupId, pendingTransferGroups),
+            )
           : and(
               eq(emittedTicket.eventId, input.eventId),
+              notInArray(emittedTicket.ticketGroupId, pendingTransferGroups),
               hasGroups && hasOrganizerTickets
                 ? or(
                     inArray(emittedTicket.ticketGroupId, ticketGroupIds),
@@ -750,16 +753,14 @@ export const emittedTicketsRouter = router({
         ...ticket,
         buyerCode: isInvitation
           ? (invitationShortIdByTicketId.get(ticket.id)?.toString() ?? '-')
-          : buyerCodes
-              ?.find((code) => code.dni === ticket.dni)
-              ?.id.toString() || '---',
+          : buyerCodes?.get(ticket.dni)?.toString() || '---',
         ticketGroup: {
           ...ticket.ticketGroup,
           invitedBy: ticket.ticketGroup.user?.fullName || '-',
         },
       }));
     }),
-  send: ticketingProcedure
+  send: permissionProcedure('tickets:resend')
     .input(
       z.object({
         ticketId: z.string(),
@@ -831,7 +832,7 @@ export const emittedTicketsRouter = router({
       return { success: true, data };
     }),
 
-  delete: adminProcedure
+  delete: permissionProcedure('tickets:delete')
     .input(z.object({ ticketId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db

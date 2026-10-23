@@ -12,13 +12,15 @@ import { DeleteUserModal } from '@/components/admin/users/DeleteUserModal';
 import EditOrganizerForm from '@/components/admin/users/EditOrganizerForm';
 import { ResetPasswordForm } from '@/components/admin/users/ResetPasswordForm';
 import { TagModal } from '@/components/admin/users/TagModal';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
 export const organizerColumns: StrictColumnDef<
-  RouterOutputs['user']['getAll'][number]
+  RouterOutputs['user']['getOrganizers'][number]
 >[] = [
   {
     id: 'shortId',
@@ -454,7 +456,20 @@ export const organizerColumns: StrictColumnDef<
       return batchesA.localeCompare(batchesB);
     },
     cell: ({ row }) => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const { can } = usePermissions();
       const currentUserTagIds = row.original.userXTags.map(({ tag }) => tag.id);
+      if (!can('organizers:groups')) {
+        return (
+          <div className='flex flex-wrap gap-1'>
+            {row.original.userXTags.map(({ tag }) => (
+              <Badge key={tag.id} variant='outline'>
+                {tag.name}
+              </Badge>
+            ))}
+          </div>
+        );
+      }
       return (
         <div
           className='flex flex-wrap gap-1'
@@ -487,19 +502,25 @@ export const organizerColumns: StrictColumnDef<
     cell: ({ row }) => {
       // eslint-disable-next-line react-hooks/rules-of-hooks
       const session = useSession();
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const { can } = usePermissions();
       if (session.data?.user.id === row.original.id) return null;
       return (
         <div
           className='flex items-center gap-2'
           onClick={(e) => e.stopPropagation()}
         >
-          <EditOrganizerForm organizer={row.original} />
-          <ResetPasswordForm
-            userId={row.original.id}
-            userName={row.original.name}
-            userRole={row.original.role}
-          />
-          <DeleteUserModal user={row.original} />
+          {can('organizers:update') && (
+            <>
+              <EditOrganizerForm organizer={row.original} />
+              <ResetPasswordForm
+                userId={row.original.id}
+                userName={row.original.name}
+                credentialsType='organizer'
+              />
+            </>
+          )}
+          {can('organizers:delete') && <DeleteUserModal user={row.original} />}
         </div>
       );
     },

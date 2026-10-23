@@ -3,16 +3,21 @@
 import { parseAsString, useQueryState } from 'nuqs';
 
 import { cn } from '@/lib/utils';
-import { trpc } from '@/server/trpc/client';
+import { type RouterOutputs } from '@/server/routers/app';
 
-export function CategoryFilter() {
-  const { data: categories } = trpc.eventCategory.getActive.useQuery();
+type ActiveCategory = RouterOutputs['eventCategory']['getActive'][number];
+
+export function CategoryFilter({
+  categories,
+}: {
+  categories: ActiveCategory[];
+}) {
   const [selectedCategory, setSelectedCategory] = useQueryState(
     'cat',
     parseAsString,
   );
 
-  if (!categories || categories.length === 0) return null;
+  if (categories.length === 0) return null;
 
   return (
     <div className='mt-2 min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain scrollbar-none'>

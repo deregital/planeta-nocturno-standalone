@@ -5,10 +5,10 @@ import {
   featureKeySchema,
   updateFeaturesSchema,
 } from '@/server/schemas/feature';
-import { adminProcedure, publicProcedure, router } from '@/server/trpc';
+import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 
 export const featureRouter = router({
-  getAll: adminProcedure.query(async ({ ctx }) => {
+  getAll: permissionProcedure('settings:read').query(async ({ ctx }) => {
     return await ctx.db.query.feature.findMany();
   }),
   getByKey: publicProcedure
@@ -29,7 +29,7 @@ export const featureRouter = router({
 
       return feature.enabled;
     }),
-  update: adminProcedure
+  update: permissionProcedure('settings:update')
     .input(updateFeaturesSchema)
     .mutation(async ({ ctx, input }) => {
       const updatedFeatures = await Promise.all(

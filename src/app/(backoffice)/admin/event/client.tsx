@@ -7,13 +7,13 @@ import {
 } from '@radix-ui/react-accordion';
 import { Calendar, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ActiveEventsOrder from '@/components/events/admin/ActiveEventsOrder';
 import EventFolderModal from '@/components/events/admin/EventFolderModal';
 import EventList from '@/components/events/admin/EventList';
 import EventSearch from '@/components/events/admin/EventSearch';
+import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -29,7 +29,7 @@ export default function Client({
 }: {
   events: RouterOutputs['events']['getAll'];
 }) {
-  const session = useSession();
+  const { can } = usePermissions();
   const router = useRouter();
   const [filters, setFilters] = useState<EventFilters>({ query: '' });
 
@@ -57,15 +57,17 @@ export default function Client({
     <div className='flex w-full p-4 flex-col gap-6'>
       <h1 className='text-3xl font-bold text-accent'>Gestor de Eventos</h1>
       <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-        {session.data?.user.role === 'ADMIN' && (
+        {(can('events:create') || can('events:folders')) && (
           <div className='flex gap-2'>
-            <Button
-              className='w-fit py-4 px-8'
-              onClick={() => router.push('/admin/event/create')}
-            >
-              <Calendar /> Crear evento
-            </Button>
-            <EventFolderModal action='CREATE' />
+            {can('events:create') && (
+              <Button
+                className='w-fit py-4 px-8'
+                onClick={() => router.push('/admin/event/create')}
+              >
+                <Calendar /> Crear evento
+              </Button>
+            )}
+            {can('events:folders') && <EventFolderModal action='CREATE' />}
           </div>
         )}
         <EventSearch filters={filters} onFiltersChange={setFilters} />
@@ -79,7 +81,7 @@ export default function Client({
           No se encontraron eventos próximos
         </p>
       )}
-      {session.data?.user.role === 'ADMIN' && !isFiltering && (
+      {can('events:reorder') && !isFiltering && (
         <>
           <Separator className='border rounded-full border-accent-light' />
           <Accordion type='single' collapsible className='w-full'>

@@ -22,7 +22,7 @@ const errorOptions: ExternalToast = {
 export default function ScanClient({
   event,
 }: {
-  event: NonNullable<RouterOutputs['events']['getBySlug']>;
+  event: NonNullable<RouterOutputs['events']['getPublicBySlug']>;
 }) {
   const [lastScans, setLastScans] = useState<
     RouterOutputs['emittedTickets']['scan'][]

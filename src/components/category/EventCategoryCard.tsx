@@ -6,6 +6,7 @@ import { GripVertical, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import EventCategoryModal from '@/components/category/EventCategoryModal';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import { Switch } from '@/components/ui/switch';
 import { type EventCategory } from '@/server/schemas/event-category';
 import { trpc } from '@/server/trpc/client';
@@ -47,6 +48,7 @@ export default function EventCategoryCard({
   };
 
   const isActive = category.isActive ?? false;
+  const canUpdate = useCan('categories:update');
 
   return (
     <div
@@ -54,18 +56,20 @@ export default function EventCategoryCard({
       style={style}
       className='shrink-0 rounded-md p-2 flex gap-3 items-center bg-accent text-on-accent pl-2'
     >
-      <button
-        className='cursor-grab active:cursor-grabbing touch-none text-on-accent/50 hover:text-on-accent'
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className='size-4' />
-      </button>
+      {canUpdate && (
+        <button
+          className='cursor-grab active:cursor-grabbing touch-none text-on-accent/50 hover:text-on-accent'
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className='size-4' />
+        </button>
+      )}
 
       <div className='relative'>
         <Switch
           checked={isActive}
-          disabled={toggleMutation.isPending}
+          disabled={!canUpdate || toggleMutation.isPending}
           className='cursor-pointer'
           onCheckedChange={(checked) =>
             toggleMutation.mutate({ id: category.id, isActive: checked })
@@ -79,7 +83,7 @@ export default function EventCategoryCard({
       <span className={isActive ? '' : 'opacity-50 line-through'}>
         {category.name}
       </span>
-      <EventCategoryModal action='EDIT' category={category} />
+      {canUpdate && <EventCategoryModal action='EDIT' category={category} />}
     </div>
   );
 }

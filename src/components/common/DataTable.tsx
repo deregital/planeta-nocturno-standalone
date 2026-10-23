@@ -11,7 +11,6 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Download, Loader } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import {
   startTransition,
   useActionState,
@@ -23,6 +22,7 @@ import {
 
 import { validatePassword } from '@/app/actions/DataTable';
 import { Pagination } from '@/components/event/individual/ticketsTable/Pagination';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -88,8 +88,7 @@ export function DataTable<
   requirePasswordForExport = false,
   headerActions,
 }: DataTableProps<TData, TValue, TDisableExport>) {
-  const { data: session } = useSession();
-  const isTicketing = session?.user.role === 'TICKETING';
+  const canExport = useCan('exports:tables');
 
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
@@ -214,12 +213,12 @@ export function DataTable<
         divClassName,
       )}
     >
-      {((!disableExport && !isTicketing) || headerActions) && (
+      {((!disableExport && canExport) || headerActions) && (
         <div className='flex justify-between items-center p-2'>
           {headerActions && (
             <div className='flex items-center gap-2'>{headerActions}</div>
           )}
-          {!disableExport && !isTicketing && (
+          {!disableExport && canExport && (
             <div>
               {requirePasswordForExport ? (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

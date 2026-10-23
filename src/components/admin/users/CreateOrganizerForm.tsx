@@ -11,6 +11,7 @@ import {
   OrganizerForm,
   type OrganizerData,
 } from '@/components/admin/users/OrganizerForm';
+import { useCan } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -33,6 +34,7 @@ export function CreateOrganizerForm({
 }) {
   const isControlled = openProp !== undefined;
   const session = useSession();
+  const canReadAllOrganizers = useCan('organizers:read_all');
   const [state, formAction, isPending] = useActionState(createOrganizer, {});
   const [internalOpen, setInternalOpen] = useState(false);
   const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
@@ -96,11 +98,8 @@ export function CreateOrganizerForm({
             isPending={isPending}
             errors={state.errors ?? undefined}
             chiefOrganizerId={
-              session.data?.user.role === 'CHIEF_ORGANIZER'
-                ? session.data?.user.id
-                : undefined
+              canReadAllOrganizers ? undefined : session.data?.user.id
             }
-            isAdmin={session.data?.user.role === 'ADMIN'}
           />
         </DialogContent>
       </Dialog>

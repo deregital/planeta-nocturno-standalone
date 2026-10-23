@@ -21,6 +21,8 @@ import {
   ticketXorganizer,
   authenticator,
   account,
+  accessRole,
+  accessRolePermission,
 } from './schema';
 
 export const emittedTicketScanRelations = relations(
@@ -73,6 +75,10 @@ export const userRelations = relations(user, ({ one, many }) => ({
   }),
   users: many(user, {
     relationName: 'user_chiefOrganizerId_user_id',
+  }),
+  accessRole: one(accessRole, {
+    fields: [user.accessRoleId],
+    references: [accessRole.id],
   }),
   tags: many(tag),
   eventXUsers: many(eventXUser),
@@ -275,6 +281,21 @@ export const authenticatorRelations = relations(authenticator, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const accessRoleRelations = relations(accessRole, ({ many }) => ({
+  users: many(user),
+  accessRolePermissions: many(accessRolePermission),
+}));
+
+export const accessRolePermissionRelations = relations(
+  accessRolePermission,
+  ({ one }) => ({
+    accessRole: one(accessRole, {
+      fields: [accessRolePermission.roleId],
+      references: [accessRole.id],
+    }),
+  }),
+);
 
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {

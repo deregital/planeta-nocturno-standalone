@@ -14,6 +14,7 @@ import {
   inArray,
   isNull,
   lt,
+  ne,
   not,
   or,
   sql,
@@ -21,6 +22,8 @@ import {
 import { revalidatePath } from 'next/cache';
 import * as XLSX from 'xlsx';
 import z from 'zod';
+
+import type { Db } from '@/drizzle';
 
 import {
   emittedTicket,
@@ -37,7 +40,7 @@ import {
   ticketXorganizer,
   user,
 } from '@/drizzle/schema';
-import { dateOnlyToLocalDate } from '@/lib/date-only';
+import { tryDateOnlyToLocalDate } from '@/lib/date-only';
 import {
   isEventPast,
   isEventUpcoming,
@@ -60,12 +63,11 @@ import {
 import { logger } from '@/server/observability/logger';
 import { sendMail } from '@/server/services/mail';
 import {
-  adminProcedure,
-  chiefOrganizerProcedure,
-  controlTicketingProcedure,
+  anyPermissionProcedure,
+  forbidden,
+  permissionProcedure,
   publicProcedure,
   router,
-  ticketingProcedure,
 } from '@/server/trpc';
 import { type TicketType } from '@/server/types';
 import { applyChiefOrganizerInvitationDistribution } from '@/server/utils/chief-organizer-invitation-distribution';
@@ -104,6 +106,35 @@ const ticketeraEventsOrderBy = [
   asc(eventSchema.sortOrder),
   asc(eventSchema.startingDate),
 ];
+
+const BOOKED_TICKET_GROUP_TTL_MS = 1000 * 60 * 10;
+
+/** Libera las reservas sin pagar vencidas (salvo transferencias) para que el cupo vuelva a estar disponible. */
+function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
+  const eventIds = db
+    .select({ id: eventSchema.id })
+    .from(eventSchema)
+    .where(
+      and(eq(eventSchema.slug, eventSlug), eq(eventSchema.isDeleted, false)),
+    );
+
+  return db
+    .delete(ticketGroup)
+    .where(
+      and(
+        eq(ticketGroup.status, 'BOOKED'),
+        inArray(ticketGroup.eventId, eventIds),
+        or(
+          isNull(ticketGroup.paymentMethod),
+          ne(ticketGroup.paymentMethod, 'TRANSFER'),
+        ),
+        lt(
+          ticketGroup.createdAt,
+          new Date(Date.now() - BOOKED_TICKET_GROUP_TTL_MS).toISOString(),
+        ),
+      ),
+    );
+}
 
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -179,45 +210,43 @@ export const eventsRouter = router({
 
     return { pastEvents, upcomingEvents };
   }),
-  getAllForTicketing: controlTicketingProcedure.query(async ({ ctx }) => {
-    const isTicketing =
-      ctx.session.user.role === 'TICKETING' ||
-      ctx.session.user.role === 'CONTROL_TICKETING';
+  getAllForTicketing: permissionProcedure('scanner:use').query(
+    async ({ ctx }) => {
+      const authorizedEventIds = !ctx.can('events:read_all')
+        ? (
+            await ctx.db.query.eventXUser.findMany({
+              where: eq(eventXUser.b, ctx.session.user.id),
+              columns: { a: true },
+            })
+          ).map((r) => r.a)
+        : null;
 
-    const authorizedEventIds = isTicketing
-      ? (
-          await ctx.db.query.eventXUser.findMany({
-            where: eq(eventXUser.b, ctx.session.user.id),
-            columns: { a: true },
-          })
-        ).map((r) => r.a)
-      : null;
-
-    return ctx.db.query.event.findMany({
-      where: and(
-        eq(eventSchema.isDeleted, false),
-        authorizedEventIds
-          ? inArray(eventSchema.id, authorizedEventIds)
-          : undefined,
-        or(
-          isNull(eventSchema.startingDate),
-          gte(eventSchema.startingDate, startOfYesterday().toISOString()),
+      return ctx.db.query.event.findMany({
+        where: and(
+          eq(eventSchema.isDeleted, false),
+          authorizedEventIds
+            ? inArray(eventSchema.id, authorizedEventIds)
+            : undefined,
+          or(
+            isNull(eventSchema.startingDate),
+            gte(eventSchema.startingDate, startOfYesterday().toISOString()),
+          ),
         ),
-      ),
-      columns: {
-        id: true,
-        name: true,
-        startingDate: true,
-        endingDate: true,
-      },
-      with: {
-        location: {
-          columns: { name: true },
+        columns: {
+          id: true,
+          name: true,
+          startingDate: true,
+          endingDate: true,
         },
-      },
-      orderBy: asc(eventSchema.startingDate),
-    });
-  }),
+        with: {
+          location: {
+            columns: { name: true },
+          },
+        },
+        orderBy: asc(eventSchema.startingDate),
+      });
+    },
+  ),
   getAllWithoutFolders: publicProcedure.query(async ({ ctx }) => {
     const events = await ctx.db.query.event.findMany({
       where: eq(eventSchema.isDeleted, false),
@@ -235,9 +264,13 @@ export const eventsRouter = router({
     });
     return events;
   }),
-  getAuthorized: ticketingProcedure
+  getAuthorized: permissionProcedure('events:read')
     .input(z.string())
     .query(async ({ ctx, input }) => {
+      if (input !== ctx.session.user.id && !ctx.can('events:read_all')) {
+        throw forbidden();
+      }
+
       const userFound = await ctx.db.query.user.findFirst({
         where: eq(user.id, input),
         with: {
@@ -334,44 +367,41 @@ export const eventsRouter = router({
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
       where: ticketeraVisibleEventsWhere(),
-      with: {
-        ticketTypes: true,
-        location: {
-          columns: {
-            id: true,
-            name: true,
-            address: true,
-          },
-        },
-        eventCategory: {
-          columns: {
-            id: true,
-            name: true,
-            isActive: true,
-          },
-        },
-      },
-      orderBy: ticketeraEventsOrderBy,
-    });
-  }),
-  getActiveForOrdering: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.query.event.findMany({
-      where: ticketeraVisibleEventsWhere(),
       columns: {
         id: true,
         name: true,
-        startingDate: true,
+        slug: true,
         coverImageUrl: true,
+        startingDate: true,
       },
       with: {
-        location: {
-          columns: { name: true, address: true },
+        eventCategory: {
+          columns: { id: true },
         },
       },
       orderBy: ticketeraEventsOrderBy,
     });
   }),
-  reorderActive: adminProcedure
+  getActiveForOrdering: permissionProcedure('events:reorder').query(
+    async ({ ctx }) => {
+      return ctx.db.query.event.findMany({
+        where: ticketeraVisibleEventsWhere(),
+        columns: {
+          id: true,
+          name: true,
+          startingDate: true,
+          coverImageUrl: true,
+        },
+        with: {
+          location: {
+            columns: { name: true, address: true },
+          },
+        },
+        orderBy: ticketeraEventsOrderBy,
+      });
+    },
+  ),
+  reorderActive: permissionProcedure('events:reorder')
     .input(z.array(z.uuid()).min(1))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.transaction(async (tx) => {
@@ -435,94 +465,129 @@ export const eventsRouter = router({
 
     return data;
   }),
-  getBySlug: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    const event = await ctx.db.query.event.findFirst({
-      where: and(eq(eventSchema.slug, input), eq(eventSchema.isDeleted, false)),
-      with: {
-        ticketGroups: {
+  /** Lo que necesita la página de compra: sin compradores ni organizadores. */
+  getPublicBySlug: publicProcedure
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const [event] = await Promise.all([
+        ctx.db.query.event.findFirst({
+          where: and(
+            eq(eventSchema.slug, input),
+            eq(eventSchema.isDeleted, false),
+          ),
+          columns: { emailNotification: false },
           with: {
-            emittedTickets: {
-              with: {
-                ticketType: true,
+            ticketTypes: {
+              orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
+            },
+            location: {
+              columns: {
+                id: true,
+                address: true,
+                name: true,
               },
             },
-            ticketGroupAnswers: {
-              with: {
-                eventQuestion: true,
-              },
-            },
-          },
-        },
-        eventQuestions: {
-          orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
-        },
-        ticketTypes: {
-          orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
-          with: {
-            ticketTypeXOrganizers: true,
-          },
-        },
-        location: {
-          columns: {
-            id: true,
-            address: true,
-            name: true,
-          },
-        },
-        eventCategory: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-        eventXUsers: {
-          with: {
-            user: {
+            eventCategory: {
               columns: {
                 id: true,
                 name: true,
               },
             },
           },
-        },
-        eventXorganizers: {
-          columns: {
-            discountPercentage: true,
-            ticketAmount: true,
-          },
+        }),
+        deleteExpiredBookedTicketGroups(ctx.db, input),
+      ]);
+
+      return event ?? null;
+    }),
+  getBySlug: anyPermissionProcedure([
+    'events:read',
+    'events:update',
+    'organizer:act',
+  ])
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const [event] = await Promise.all([
+        ctx.db.query.event.findFirst({
+          where: and(
+            eq(eventSchema.slug, input),
+            eq(eventSchema.isDeleted, false),
+          ),
           with: {
-            user: {
+            ticketGroups: {
+              with: {
+                emittedTickets: {
+                  with: {
+                    ticketType: true,
+                  },
+                },
+                ticketGroupAnswers: {
+                  with: {
+                    eventQuestion: true,
+                  },
+                },
+              },
+            },
+            eventQuestions: {
+              orderBy: [
+                asc(eventQuestion.sortOrder),
+                asc(eventQuestion.createdAt),
+              ],
+            },
+            ticketTypes: {
+              orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
+              with: {
+                ticketTypeXOrganizers: true,
+              },
+            },
+            location: {
               columns: {
-                dni: true,
                 id: true,
-                fullName: true,
-                phoneNumber: true,
-                chiefOrganizerId: true,
-                role: true,
+                address: true,
+                name: true,
+              },
+            },
+            eventCategory: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
+            eventXUsers: {
+              with: {
+                user: {
+                  columns: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            eventXorganizers: {
+              columns: {
+                discountPercentage: true,
+                ticketAmount: true,
+              },
+              with: {
+                user: {
+                  columns: {
+                    dni: true,
+                    id: true,
+                    fullName: true,
+                    phoneNumber: true,
+                    chiefOrganizerId: true,
+                    role: true,
+                  },
+                },
               },
             },
           },
-        },
-      },
-    });
+        }),
+        deleteExpiredBookedTicketGroups(ctx.db, input),
+      ]);
 
-    if (!event) return null;
-
-    await ctx.db
-      .delete(ticketGroup)
-      .where(
-        and(
-          eq(ticketGroup.status, 'BOOKED'),
-          eq(ticketGroup.eventId, event.id),
-          lt(
-            ticketGroup.createdAt,
-            new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-          ),
-        ),
-      );
-
-    return event;
-  }),
+      return event ?? null;
+    }),
   validateOrganizerCode: publicProcedure
     .input(
       z.object({
@@ -653,7 +718,7 @@ export const eventsRouter = router({
         alreadyUsed: false,
       };
     }),
-  create: adminProcedure
+  create: permissionProcedure('events:create')
     .input(
       z.object({
         event: createEventSchema,
@@ -971,7 +1036,7 @@ export const eventsRouter = router({
 
       return { eventCreated, ticketTypesCreated };
     }),
-  update: adminProcedure
+  update: permissionProcedure('events:update')
     .input(
       z.object({
         event: eventSchemaZod,
@@ -1961,7 +2026,7 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  duplicate: adminProcedure
+  duplicate: permissionProcedure('events:duplicate')
     .input(eventSchemaZod.shape.id)
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
@@ -2039,7 +2104,7 @@ export const eventsRouter = router({
 
       return newEvent;
     }),
-  generatePresentismoOrderNamePDF: ticketingProcedure
+  generatePresentismoOrderNamePDF: permissionProcedure('events:export')
     .input(
       z.object({
         eventId: z.string(),
@@ -2154,7 +2219,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  exportXlsxByTicketType: adminProcedure
+  exportXlsxByTicketType: permissionProcedure('events:export')
     .input(z.string())
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
@@ -2222,7 +2287,9 @@ export const eventsRouter = router({
                   t.gender as keyof typeof genderTranslation
                 ] ?? t.gender)
               : '',
-            t.birthDate ? dateOnlyToLocalDate(t.birthDate) : '',
+            t.birthDate
+              ? (tryDateOnlyToLocalDate(t.birthDate) ?? t.birthDate)
+              : '',
             t.createdAt ? new Date(t.createdAt) : '',
             t.scanned ? 'Sí' : 'No',
             t.ticketGroup.user?.fullName ?? '-',
@@ -2235,7 +2302,7 @@ export const eventsRouter = router({
       const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       return new Uint8Array(out as ArrayBuffer);
     }),
-  generatePresentismoGroupedTicketTypePDF: ticketingProcedure
+  generatePresentismoGroupedTicketTypePDF: permissionProcedure('events:export')
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { eventId } = input;
@@ -2376,7 +2443,7 @@ export const eventsRouter = router({
         throw error;
       }
     }),
-  toggleActivate: adminProcedure
+  toggleActivate: permissionProcedure('events:publish')
     .input(z.object({ id: z.string(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const { id, isActive } = input;
@@ -2385,7 +2452,7 @@ export const eventsRouter = router({
         .set({ isActive })
         .where(eq(eventSchema.id, id));
     }),
-  delete: adminProcedure
+  delete: permissionProcedure('events:delete')
     .input(eventSchemaZod.shape.id)
     .mutation(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
@@ -2421,7 +2488,11 @@ export const eventsRouter = router({
 
       return deletedEvent[0];
     }),
-  getOrganizerDeliveredTicketCounts: chiefOrganizerProcedure
+  getOrganizerDeliveredTicketCounts: anyPermissionProcedure([
+    'events:create',
+    'events:update',
+    'organizers:distribute',
+  ])
     .input(z.object({ eventId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
@@ -2442,7 +2513,9 @@ export const eventsRouter = router({
         rows.map((row) => [row.organizerId, row.count]),
       ) as Record<string, number>;
     }),
-  updateChiefOrganizerTicketDistribution: chiefOrganizerProcedure
+  updateChiefOrganizerTicketDistribution: permissionProcedure(
+    'organizers:distribute',
+  )
     .input(
       z.object({
         eventId: z.uuid(),
@@ -2450,7 +2523,7 @@ export const eventsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'CHIEF_ORGANIZER') {
+      if (!ctx.can('organizer:team')) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Solo los jefes de organizadores pueden usar esta acción.',

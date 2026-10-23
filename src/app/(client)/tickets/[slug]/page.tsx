@@ -5,6 +5,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import TicketsClient from '@/app/(client)/tickets/[slug]/client';
 import TicketsPendingClient from '@/app/(client)/tickets/[slug]/pending';
+import TicketsTransferPending from '@/app/(client)/tickets/[slug]/transfer-pending';
 import { trpc } from '@/server/trpc/server';
 
 interface PaymentPageProps {
@@ -30,6 +31,19 @@ export default async function TicketsPage({ params }: PaymentPageProps) {
     });
 
   if (!data) {
+    const transfer = await trpc.ticketGroup.getTransferInstructions(slug);
+    if (transfer?.transferAlias) {
+      return (
+        <TicketsTransferPending
+          eventName={transfer.eventName}
+          buyerName={transfer.buyerName}
+          totalAmount={transfer.totalAmount}
+          transferAlias={transfer.transferAlias}
+          contactEmail={transfer.contactEmail}
+        />
+      );
+    }
+
     const cookieStore = await cookies();
     const paymentUrl = cookieStore.get('pendingPaymentUrl')?.value;
     return (

@@ -1,8 +1,10 @@
-import { formatInTimeZone } from 'date-fns-tz';
 import { CalendarIcon, ClockIcon, MapPin } from 'lucide-react';
 import Image from 'next/image';
 
+import { formatZonedDateTime } from '@/lib/format-date';
 import { type RouterOutputs } from '@/server/routers/app';
+
+const TIME_ZONE = 'America/Argentina/Buenos_Aires';
 
 export function EventBasicInformation({
   event,
@@ -29,34 +31,26 @@ export function EventBasicInformation({
           <>
             <h3 className='flex items-center gap-x-1 p-2 text-center align-middle text-sm sm:text-base'>
               <CalendarIcon className='inline h-5 w-5' />
-              {formatInTimeZone(
-                event.startingDate,
-                'America/Argentina/Buenos_Aires',
-                'dd/MM/yyyy',
-              )}
+              {formatZonedDateTime(event.startingDate, TIME_ZONE, 'dd/MM/yyyy')}
             </h3>
             <h3 className='flex items-center gap-x-1 p-2 text-center align-middle text-sm sm:text-base'>
               <ClockIcon className='inline h-5 w-5' />
-              {formatInTimeZone(
-                event.startingDate,
-                'America/Argentina/Buenos_Aires',
-                'HH:mm',
-              )}
+              {formatZonedDateTime(event.startingDate, TIME_ZONE, 'HH:mm')}
               {event.endingDate ? (
                 <>
                   {' '}
                   -{' '}
-                  {formatInTimeZone(
+                  {formatZonedDateTime(
                     event.endingDate,
-                    'America/Argentina/Buenos_Aires',
-                    formatInTimeZone(
+                    TIME_ZONE,
+                    formatZonedDateTime(
                       event.startingDate,
-                      'America/Argentina/Buenos_Aires',
+                      TIME_ZONE,
                       'yyyy-MM-dd',
                     ) ===
-                      formatInTimeZone(
+                      formatZonedDateTime(
                         event.endingDate,
-                        'America/Argentina/Buenos_Aires',
+                        TIME_ZONE,
                         'yyyy-MM-dd',
                       )
                       ? 'HH:mm'
