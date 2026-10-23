@@ -1,7 +1,6 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Check, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -21,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatLocalDateTime } from '@/lib/format-date';
 import { cn, formatCurrency } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -119,13 +119,15 @@ export function TicketGroupsTable({
         accessorKey: 'createdAt',
         header: () => <div>Fecha</div>,
         cell: ({ row }) =>
-          format(new Date(row.original.createdAt), 'dd/MM/yyyy HH:mm', {
+          formatLocalDateTime(row.original.createdAt, 'dd/MM/yyyy HH:mm', {
             locale: es,
           }),
         meta: {
           exportHeader: 'Fecha',
           exportValue: (row) =>
-            format(new Date(row.original.createdAt), 'dd/MM/yyyy HH:mm'),
+            formatLocalDateTime(row.original.createdAt, 'dd/MM/yyyy HH:mm', {
+              locale: es,
+            }),
         },
       },
       {

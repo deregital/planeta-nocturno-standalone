@@ -1,6 +1,6 @@
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { formatInTimeZone } from 'date-fns-tz';
 
+import { formatZonedDateTime } from '@/lib/format-date';
 import { DataTable } from '@/components/common/DataTable';
 import { Input } from '@/components/ui/input';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -9,8 +9,8 @@ type EmittedTicketHistory =
   RouterOutputs['emittedTickets']['getEmissionHistoryByDni'][number];
 
 function formatEmissionDate(createdAt: string) {
-  return formatInTimeZone(
-    new Date(createdAt),
+  return formatZonedDateTime(
+    createdAt,
     'America/Argentina/Buenos_Aires',
     'dd/MM/yyyy HH:mm',
   );

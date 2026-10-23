@@ -1,7 +1,6 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { formatInTimeZone } from 'date-fns-tz';
 import { format as formatPhoneNumber } from 'libphonenumber-js';
 import {
   ArrowDownAZ,
@@ -40,7 +39,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { VirtualizedCombobox } from '@/components/ui/virtualized-combobox';
-import { formatDateOnly } from '@/lib/date-only';
+import { formatDateOnly, tryDateOnlyToLocalDate } from '@/lib/date-only';
+import { formatZonedDateTime } from '@/lib/format-date';
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -186,13 +186,11 @@ export function generateTicketColumns({
       accessorKey: 'scannedAt',
       meta: {
         exportValue: (row) =>
-          row.original.scannedAt
-            ? formatInTimeZone(
-                new Date(row.original.scannedAt),
-                'America/Argentina/Buenos_Aires',
-                'dd/MM/yyyy HH:mm:ss',
-              )
-            : '-',
+          formatZonedDateTime(
+            row.original.scannedAt,
+            'America/Argentina/Buenos_Aires',
+            'dd/MM/yyyy HH:mm:ss',
+          ),
         exportHeader: 'Fecha de ingreso',
       },
       header: ({ column }) => {
@@ -291,8 +289,16 @@ export function generateTicketColumns({
       maxSize: 30,
       enableResizing: false,
       cell: ({ row }) => {
+        const parsed = tryDateOnlyToLocalDate(row.original.birthDate);
         return (
-          <p className='w-full text-center'>
+          <p
+            className={
+              parsed
+                ? 'w-full text-center'
+                : 'w-full text-center text-amber-800'
+            }
+            title={parsed ? undefined : 'Fecha inválida'}
+          >
             {formatDateOnly(row.original.birthDate)}
           </p>
         );
@@ -588,13 +594,11 @@ export function generateTicketColumns({
       accessorKey: 'createdAt',
       meta: {
         exportValue: (row) =>
-          row.original.createdAt
-            ? formatInTimeZone(
-                new Date(row.original.createdAt),
-                'America/Argentina/Buenos_Aires',
-                'dd/MM/yyyy HH:mm:ss',
-              )
-            : '-',
+          formatZonedDateTime(
+            row.original.createdAt,
+            'America/Argentina/Buenos_Aires',
+            'dd/MM/yyyy HH:mm:ss',
+          ),
         exportHeader: 'Fecha de emisión',
       },
       header: ({ column }) => {
@@ -626,13 +630,11 @@ export function generateTicketColumns({
       cell: ({ row }) => {
         return (
           <p className='w-full text-center'>
-            {row.original.createdAt
-              ? formatInTimeZone(
-                  new Date(row.original.createdAt),
-                  'America/Argentina/Buenos_Aires',
-                  'dd/MM/yyyy HH:mm:ss',
-                )
-              : '-'}
+            {formatZonedDateTime(
+              row.original.createdAt,
+              'America/Argentina/Buenos_Aires',
+              'dd/MM/yyyy HH:mm:ss',
+            )}
           </p>
         );
       },

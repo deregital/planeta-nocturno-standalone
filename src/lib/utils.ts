@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { twMerge } from 'tailwind-merge';
 
-import { dateOnlyToLocalDate } from '@/lib/date-only';
+import { tryDateOnlyToLocalDate } from '@/lib/date-only';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -23,7 +23,8 @@ export function formatEventDate(dateString: string) {
 
 export function daysUntilBirthday(dateStr: string): number {
   const today = new Date();
-  const birthDate = dateOnlyToLocalDate(dateStr);
+  const birthDate = tryDateOnlyToLocalDate(dateStr);
+  if (!birthDate) return Number.POSITIVE_INFINITY;
 
   const thisYear = new Date(
     today.getFullYear(),
