@@ -54,3 +54,5 @@ certificates
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+# load tests
+/tests/load/results
