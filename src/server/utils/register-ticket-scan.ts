@@ -1,5 +1,5 @@
 import { formatInTimeZone } from 'date-fns-tz';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { type Db } from '@/drizzle';
 
@@ -64,6 +64,48 @@ export function canRegisterScan(ticket: {
   }
 
   return { allowed: true };
+}
+
+/**
+ * Marca el ingreso de forma atómica: el UPDATE sólo gana si el ticket todavía
+ * no fue escaneado (o si el tipo permite multiescaneo). Dos lectores que
+ * escanean el mismo QR a la vez se serializan en el lock de fila, así que sólo
+ * uno registra el ingreso. Devuelve `registered: false` cuando ya estaba.
+ */
+export async function tryRegisterTicketScan(
+  db: Db,
+  ticketId: string,
+  scannedByUserId: string,
+  allowMultipleScans: boolean,
+): Promise<{ registered: true; scannedAt: string } | { registered: false }> {
+  const now = new Date().toISOString();
+
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(emittedTicket)
+      .set({ scanned: true, scannedAt: now, scannedByUserId })
+      .where(
+        allowMultipleScans
+          ? eq(emittedTicket.id, ticketId)
+          : and(
+              eq(emittedTicket.id, ticketId),
+              eq(emittedTicket.scanned, false),
+            ),
+      )
+      .returning({ id: emittedTicket.id });
+
+    if (updated.length === 0) {
+      return { registered: false };
+    }
+
+    await tx.insert(emittedTicketScan).values({
+      emittedTicketId: ticketId,
+      scannedAt: now,
+      scannedByUserId,
+    });
+
+    return { registered: true, scannedAt: now };
+  });
 }
 
 export function formatLastScanTime(scannedAt: string | null) {

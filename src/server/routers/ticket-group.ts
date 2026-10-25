@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -8,6 +8,7 @@ import {
   ticketGroup,
   ticketGroupAnswer,
   ticketTypePerGroup,
+  ticketType as ticketTypeTable,
   ticketXorganizer,
 } from '@/drizzle/schema';
 import { logger } from '@/server/observability/logger';
@@ -18,6 +19,7 @@ import {
   generateTicketGroupPdfs,
 } from '@/server/services/ticketGroup';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
+import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { generatePdf } from '@/server/utils/ticket-template';
 
 export const ticketGroupSchema = z.object({
@@ -47,7 +49,91 @@ export const ticketGroupRouter = router({
         throw new Error('No se han seleccionado tickets para comprar');
       }
 
+      const requested = input.ticketsPerType.filter(
+        (ticket) => ticket.amount > 0,
+      );
+      const requestedTypeIds = requested.map((ticket) => ticket.ticketTypeId);
+
       const result = await ctx.db.transaction(async (tx) => {
+        // El stock sólo se controlaba en el navegador. Validar en el servidor,
+        // con los tipos de entrada bloqueados para serializar compras simultáneas
+        // del mismo tipo y que dos no superen juntas el cupo.
+        const types = await tx
+          .select({
+            id: ticketTypeTable.id,
+            name: ticketTypeTable.name,
+            maxAvailable: ticketTypeTable.maxAvailable,
+            maxPerPurchase: ticketTypeTable.maxPerPurchase,
+            maxSellDate: ticketTypeTable.maxSellDate,
+          })
+          .from(ticketTypeTable)
+          .where(
+            and(
+              inArray(ticketTypeTable.id, requestedTypeIds),
+              eq(ticketTypeTable.eventId, input.eventId),
+            ),
+          )
+          .orderBy(ticketTypeTable.id)
+          .for('update');
+        const typeById = new Map(types.map((type) => [type.id, type]));
+
+        const takenRows = await tx
+          .select({
+            ticketTypeId: ticketTypePerGroup.ticketTypeId,
+            taken: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)::int`,
+          })
+          .from(ticketTypePerGroup)
+          .innerJoin(
+            ticketGroup,
+            eq(ticketTypePerGroup.ticketGroupId, ticketGroup.id),
+          )
+          .where(
+            and(
+              eq(ticketGroup.eventId, input.eventId),
+              inArray(ticketTypePerGroup.ticketTypeId, requestedTypeIds),
+            ),
+          )
+          .groupBy(ticketTypePerGroup.ticketTypeId);
+        const takenByType = new Map(
+          takenRows.map((row) => [row.ticketTypeId, row.taken]),
+        );
+
+        const now = new Date();
+        for (const line of requested) {
+          const type = typeById.get(line.ticketTypeId);
+          if (!type) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Tipo de entrada inválido para este evento',
+            });
+          }
+          if (type.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim()) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Ese tipo de entrada no está a la venta',
+            });
+          }
+          if (type.maxSellDate && new Date(type.maxSellDate) < now) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `La venta de ${type.name} ya cerró`,
+            });
+          }
+          if (line.amount > type.maxPerPurchase) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `No se pueden comprar más de ${type.maxPerPurchase} entradas de ${type.name} por compra`,
+            });
+          }
+          const taken = takenByType.get(line.ticketTypeId) ?? 0;
+          if (taken + line.amount > type.maxAvailable) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: `No hay suficientes entradas de ${type.name} disponibles`,
+            });
+          }
+        }
+
         // Si hay un invitedBy explícito, usarlo
         const invitedById = input.invitedBy ?? null;
 
@@ -452,7 +538,7 @@ export const ticketGroupRouter = router({
         with: {
           ticketType: { columns: { name: true, startingDate: true } },
           ticketGroup: {
-            columns: { id: true },
+            columns: { id: true, status: true },
             with: {
               user: { columns: { fullName: true } },
               event: {
@@ -472,6 +558,15 @@ export const ticketGroupRouter = router({
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Ticket no encontrado',
+        });
+      }
+
+      // Sin pago confirmado no hay PDF público (ni QR escaneable). El staff
+      // logueado (p. ej. emisión manual desde admin) sí puede generarlo.
+      if (ticket.ticketGroup.status === 'BOOKED' && !(await ctx.getAccess())) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'El grupo de entradas no está pago',
         });
       }
 
@@ -499,9 +594,21 @@ export const ticketGroupRouter = router({
     }),
   generatePdfsByTicketGroupId: publicProcedure
     .input(ticketGroupSchema.shape.id)
-    .query(({ ctx, input }) =>
-      generateTicketGroupPdfs(ctx.db, ctx.instance, input),
-    ),
+    .query(async ({ ctx, input }) => {
+      // Sin pago confirmado no hay PDF público; el staff logueado (emisión
+      // manual desde admin) sí puede generarlo aunque el grupo siga BOOKED.
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        columns: { status: true },
+      });
+      if (group?.status === 'BOOKED' && !(await ctx.getAccess())) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'El grupo de entradas no está pago',
+        });
+      }
+      return generateTicketGroupPdfs(ctx.db, ctx.instance, input);
+    }),
   getTransferInstructions: publicProcedure
     .input(ticketGroupSchema.shape.id)
     .query(async ({ ctx, input }) => {
