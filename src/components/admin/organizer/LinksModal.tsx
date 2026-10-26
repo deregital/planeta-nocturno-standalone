@@ -127,7 +127,7 @@ export default function LinksModal({
                 Cancelar
               </Button>
             </DialogTrigger>
-            <Button type='submit' disabled={isPending}>
+            <Button type='submit' loading={isPending}>
               Guardar
             </Button>
           </DialogFooter>

@@ -82,7 +82,7 @@ export default function DuplicateEventModal({
           </DialogClose>
           <Button
             onClick={() => duplicateEvent.mutate(eventId)}
-            disabled={duplicateEvent.isPending}
+            loading={duplicateEvent.isPending}
           >
             Duplicar evento
           </Button>

@@ -88,7 +88,8 @@ export default function DeleteEventModal({
             <DialogFooter>
               <Button
                 onClick={handleDelete}
-                disabled={disabled || deleteEvent.isPending}
+                disabled={disabled}
+                loading={deleteEvent.isPending}
                 variant={'destructive'}
               >
                 {confirm ? '¿Estás seguro?' : 'Eliminar evento'}

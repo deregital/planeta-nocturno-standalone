@@ -295,7 +295,7 @@ export function TicketGroupsTable({
             </DialogClose>
             <Button
               variant={isRelease ? 'success' : 'destructive'}
-              disabled={isMutating}
+              loading={isMutating}
               onClick={() => {
                 if (!pendingAction) return;
                 if (isRelease) releaseTransfer.mutate(pendingAction.row.id);

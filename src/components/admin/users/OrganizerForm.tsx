@@ -229,7 +229,7 @@ export function OrganizerForm({
       {errors?.general && (
         <p className='pl-1 font-bold text-xs text-red-500'>{errors?.general}</p>
       )}
-      <Button type='submit' disabled={isPending}>
+      <Button type='submit' loading={isPending}>
         Guardar
       </Button>
     </form>

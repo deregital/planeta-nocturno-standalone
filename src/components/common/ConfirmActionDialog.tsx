@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -37,9 +37,23 @@ export function ConfirmActionDialog({
   confirmVariant?: React.ComponentProps<typeof Button>['variant'];
 }) {
   const [open, setOpen] = useState(false);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      setOpen(false);
+    }
+    wasPending.current = pending;
+  }, [pending]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (pending) return;
+        setOpen(next);
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           type='button'
@@ -66,11 +80,11 @@ export function ConfirmActionDialog({
           >
             Cancelar
           </Button>
-          <form action={action} onSubmit={() => setOpen(false)}>
+          <form action={action}>
             {Object.entries(fields).map(([name, value]) => (
               <input key={name} type='hidden' name={name} value={value} />
             ))}
-            <Button type='submit' variant={confirmVariant} disabled={pending}>
+            <Button type='submit' variant={confirmVariant} loading={pending}>
               {confirmLabel}
             </Button>
           </form>

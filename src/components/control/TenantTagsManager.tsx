@@ -186,7 +186,7 @@ function TagRow({ tag, onEdit }: { tag: TenantTag; onEdit: () => void }) {
           type='button'
           variant='destructiveGhost'
           size={confirmDelete ? 'sm' : 'icon'}
-          disabled={pending}
+          loading={pending}
           onClick={handleDelete}
           aria-label={`Eliminar ${tag.name}`}
         >
@@ -279,7 +279,8 @@ function TagEditor({
           type='submit'
           variant='accent'
           size='sm'
-          disabled={pending || !name.trim()}
+          disabled={!name.trim()}
+          loading={pending}
         >
           {pending ? 'Guardando...' : submitLabel}
         </Button>
