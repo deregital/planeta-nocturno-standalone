@@ -102,7 +102,7 @@ export default function EditableCommentsCell({
                 Cancelar
               </Button>
             </DialogClose>
-            <Button type='submit' disabled={pending}>
+            <Button type='submit' loading={pending}>
               {pending ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogFooter>

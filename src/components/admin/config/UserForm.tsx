@@ -268,7 +268,7 @@ export function UserForm({
         )}
       </fieldset>
       {!readOnly && (
-        <Button type='submit' disabled={isPending}>
+        <Button type='submit' loading={isPending}>
           Guardar
         </Button>
       )}

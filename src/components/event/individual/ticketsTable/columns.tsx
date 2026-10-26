@@ -7,6 +7,7 @@ import {
   ArrowUpDown,
   ClipboardList,
   DownloadIcon,
+  Loader2,
   MoreHorizontal,
   ScanBarcode,
   SendIcon,
@@ -670,6 +671,8 @@ export function generateTicketColumns({
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const [sure, setSure] = useState(false);
         // eslint-disable-next-line react-hooks/rules-of-hooks
+        const [isDownloading, setIsDownloading] = useState(false);
+        // eslint-disable-next-line react-hooks/rules-of-hooks
         const [open, setOpen] = useState(false);
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const [openOrganizerModal, setOpenOrganizerModal] = useState(false);
@@ -785,7 +788,21 @@ export function generateTicketColumns({
 
         return (
           <>
-            <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenu
+              open={open}
+              onOpenChange={(next) => {
+                if (
+                  !next &&
+                  (isDownloading ||
+                    sendTicketMutation.isPending ||
+                    deleteTicketMutation.isPending ||
+                    manualScanTicketMutation.isPending)
+                ) {
+                  return;
+                }
+                setOpen(next);
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   variant='ghost'
@@ -800,8 +817,8 @@ export function generateTicketColumns({
                   <DropdownMenuItem
                     disabled={sendTicketMutation.isPending}
                     className='flex cursor-pointer items-center justify-between'
-                    onClick={async (e) => {
-                      e.preventDefault();
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={async () => {
                       await sendTicketMutation.mutateAsync({
                         ticketId: ticket.id,
                       });
@@ -809,53 +826,71 @@ export function generateTicketColumns({
                     }}
                   >
                     <span>Reenviar</span>
-                    <SendIcon />
+                    {sendTicketMutation.isPending ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <SendIcon />
+                    )}
                   </DropdownMenuItem>
                 )}
                 {can('tickets:download') && (
                   <DropdownMenuItem
-                    disabled={deleteTicketMutation.isPending}
+                    disabled={isDownloading || deleteTicketMutation.isPending}
                     className='flex cursor-pointer items-center justify-between'
-                    onClick={async (e) => {
-                      e.preventDefault();
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={async () => {
+                      if (isDownloading) return;
+                      setIsDownloading(true);
                       toast.loading('Descargando ticket...', {
                         id: `downloading-ticket-${ticket.id}`,
                       });
-                      const result = await downloadTicket(ticket.id);
-                      if (result?.base64) {
-                        const byteCharacters = atob(result.base64);
-                        const byteNumbers = new Array(byteCharacters.length);
-                        for (let i = 0; i < byteCharacters.length; i++) {
-                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                      try {
+                        const result = await downloadTicket(ticket.id);
+                        if (result?.base64) {
+                          const byteCharacters = atob(result.base64);
+                          const byteNumbers = new Array(byteCharacters.length);
+                          for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                          }
+                          const blob = new Blob([new Uint8Array(byteNumbers)], {
+                            type: 'application/pdf',
+                          });
+                          const url = URL.createObjectURL(blob);
+
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `Ticket-${ticket.fullName}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+
+                          URL.revokeObjectURL(url);
+                          setOpen(false);
+                        } else {
+                          toast.error('Error al descargar ticket');
                         }
-                        const blob = new Blob([new Uint8Array(byteNumbers)], {
-                          type: 'application/pdf',
-                        });
-                        const url = URL.createObjectURL(blob);
-
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `Ticket-${ticket.fullName}.pdf`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-
-                        URL.revokeObjectURL(url);
-                        setOpen(false);
-                        toast.dismiss(`downloading-ticket-${ticket.id}`);
-                      } else {
+                      } catch {
                         toast.error('Error al descargar ticket');
+                      } finally {
+                        setIsDownloading(false);
+                        toast.dismiss(`downloading-ticket-${ticket.id}`);
                       }
                     }}
                   >
                     Descargar
-                    <DownloadIcon className='size-4' />
+                    {isDownloading ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <DownloadIcon className='size-4' />
+                    )}
                   </DropdownMenuItem>
                 )}
                 {can('tickets:manual_scan') && (
                   <DropdownMenuItem
                     className='flex cursor-pointer items-center justify-between'
+                    onSelect={(e) => e.preventDefault()}
                     onClick={() => {
+                      if (manualScanTicketMutation.isPending) return;
                       if (
                         ticket.scanned &&
                         !ticket.ticketType.allowMultipleScans
@@ -863,20 +898,30 @@ export function generateTicketColumns({
                         toast.error('Ticket ya escaneado');
                         return;
                       }
-                      manualScanTicketMutation.mutate({
-                        ticketId: ticket.id,
-                      });
+                      manualScanTicketMutation.mutate(
+                        {
+                          ticketId: ticket.id,
+                        },
+                        {
+                          onSuccess: () => setOpen(false),
+                        },
+                      );
                       utils.emittedTickets.getByEventId.invalidate({
                         eventId: ticket.eventId ?? '',
                       });
                       utils.events.getById.invalidate(ticket.eventId ?? '');
                     }}
                     disabled={
-                      ticket.scanned && !ticket.ticketType.allowMultipleScans
+                      manualScanTicketMutation.isPending ||
+                      (ticket.scanned && !ticket.ticketType.allowMultipleScans)
                     }
                   >
                     Escaneo manual
-                    <ScanBarcode className='size-5' />
+                    {manualScanTicketMutation.isPending ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <ScanBarcode className='size-5' />
+                    )}
                   </DropdownMenuItem>
                 )}
                 {canChangeOrganizer &&
@@ -899,8 +944,9 @@ export function generateTicketColumns({
                   )}
                 {can('tickets:delete') && (
                   <DropdownMenuItem
-                    onClick={async (e) => {
-                      e.preventDefault();
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={async () => {
+                      if (deleteTicketMutation.isPending) return;
                       if (sure) {
                         await deleteTicketMutation.mutateAsync({
                           ticketId: ticket.id,
@@ -920,7 +966,11 @@ export function generateTicketColumns({
                     className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
                   >
                     {sure ? 'Estás seguro?' : 'Eliminar ticket'}
-                    <TrashIcon className='text-white' />
+                    {deleteTicketMutation.isPending ? (
+                      <Loader2 className='animate-spin text-white' />
+                    ) : (
+                      <TrashIcon className='text-white' />
+                    )}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -1010,7 +1060,7 @@ export function generateTicketColumns({
                     </DialogClose>
                     {previewOrganizer && (
                       <Button
-                        disabled={updateInvitedByMutation.isPending}
+                        loading={updateInvitedByMutation.isPending}
                         onClick={() => {
                           updateInvitedByMutation.mutate({
                             id: ticket.ticketGroupId,

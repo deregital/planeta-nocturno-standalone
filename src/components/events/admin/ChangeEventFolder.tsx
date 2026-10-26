@@ -149,7 +149,7 @@ export default function ChangeEventFolder({
           <DialogClose asChild>
             <Button variant='ghost'>Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleSubmit} disabled={changeEventFolder.isPending}>
+          <Button onClick={handleSubmit} loading={changeEventFolder.isPending}>
             {changeEventFolder.isPending ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogFooter>

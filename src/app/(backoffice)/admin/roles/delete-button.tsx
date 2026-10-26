@@ -62,7 +62,8 @@ export default function DeleteRoleButton({
           </Button>
           <Button
             variant='destructive'
-            disabled={userCount > 0 || deleteRole.isPending}
+            disabled={userCount > 0}
+            loading={deleteRole.isPending}
             onClick={() => deleteRole.mutate(roleId)}
           >
             Eliminar rol

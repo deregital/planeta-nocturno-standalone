@@ -108,7 +108,7 @@ export function ResetPasswordForm({
               >
                 Cancelar
               </Button>
-              <Button type='submit' disabled={isPending}>
+              <Button type='submit' loading={isPending}>
                 {isPending ? 'Restableciendo...' : 'Restablecer'}
               </Button>
             </div>

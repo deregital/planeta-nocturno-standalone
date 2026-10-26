@@ -3,6 +3,7 @@ import { Loader2, LogOut } from 'lucide-react';
 import { type Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 import { useNavRoutes } from '@/components/admin/SideBar';
 import SideBarTile from '@/components/admin/SideBarTile';
@@ -45,9 +46,15 @@ export default function TopBar({ auth }: { auth: Session | null }) {
       : null,
   );
 
+  const [signingOut, setSigningOut] = useState(false);
   const handleSignOut = async () => {
+    setSigningOut(true);
     resetPostHogUser();
-    await signOut();
+    try {
+      await signOut();
+    } catch {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -72,7 +79,11 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                 {auth.user.fullName} ({roleLabel})
               </span>
             </div>
-            <Button variant={'accent'} onClick={() => void handleSignOut()}>
+            <Button
+              variant={'accent'}
+              loading={signingOut}
+              onClick={() => void handleSignOut()}
+            >
               Cerrar Sesión
             </Button>
           </div>
@@ -118,6 +129,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                     ))}
                     <Button
                       onClick={() => void handleSignOut()}
+                      loading={signingOut}
                       variant={'ghost'}
                       className='flex gap-2 justify-baseline items-center py-2 px-4! m-0 h-fit text-xl font-normal text-brand'
                     >

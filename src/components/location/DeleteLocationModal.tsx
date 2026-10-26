@@ -58,7 +58,7 @@ export default function DeleteLocationModal({ id }: { id: string }) {
           <Button
             variant='destructive'
             onClick={() => deleteLocation.mutate(id)}
-            disabled={deleteLocation.isPending}
+            loading={deleteLocation.isPending}
           >
             Eliminar
           </Button>
