@@ -25,7 +25,10 @@ type OrganizerEvent =
 function toEventList(events: OrganizerEvent[]) {
   return {
     folders: [],
-    withoutFolders: events,
+    withoutFolders: events.map((event, index) => ({
+      ...event,
+      listPosition: index,
+    })),
   };
 }
 
