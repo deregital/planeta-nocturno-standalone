@@ -1,9 +1,9 @@
-import { Loader2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
+import AdminEventDetailSkeleton from '@/components/event/individual/AdminEventDetailSkeleton';
 import { AdminInvitationEventView } from '@/components/event/individual/AdminInvitationEventView';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
@@ -179,13 +179,7 @@ export default async function EventPage({
   const { slug } = await params;
 
   return (
-    <Suspense
-      fallback={
-        <div className='flex h-full w-full items-center justify-center'>
-          <Loader2 className='animate-spin' />
-        </div>
-      }
-    >
+    <Suspense fallback={<AdminEventDetailSkeleton />}>
       <NuqsAdapter>
         <EventDetails slug={slug} />
       </NuqsAdapter>
