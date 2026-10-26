@@ -1,3 +1,3 @@
-import { PageLoader } from '@/components/common/PageLoader';
+import EventManagerSkeleton from '@/components/events/admin/EventManagerSkeleton';
 
-export default PageLoader;
+export default EventManagerSkeleton;
