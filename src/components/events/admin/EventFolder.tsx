@@ -4,7 +4,9 @@ import { Folder } from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 
-import EventCardHorizontal from '@/components/events/admin/EventCardHorizontal';
+import EventCardHorizontal, {
+  type ListedEvent,
+} from '@/components/events/admin/EventCardHorizontal';
 import EventFolderModal from '@/components/events/admin/EventFolderModal';
 import EventListDragHandle from '@/components/events/admin/EventListDragHandle';
 import { useCan } from '@/components/rbac/PermissionsProvider';
@@ -20,9 +22,12 @@ import { type EventListScope } from '@/lib/event-list-order';
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
-type FolderEvents = RouterOutputs['events']['getAll'][
-  | 'pastEvents'
-  | 'upcomingEvents']['folders'][number];
+type FolderEvents = Omit<
+  RouterOutputs['events']['getAll'][
+    | 'pastEvents'
+    | 'upcomingEvents']['folders'][number],
+  'events'
+> & { events: ListedEvent[] };
 
 export default function EventFolder({
   folder,

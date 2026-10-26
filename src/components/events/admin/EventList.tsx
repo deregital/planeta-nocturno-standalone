@@ -4,7 +4,9 @@ import { type Route } from 'next';
 import Link from 'next/link';
 import { useMemo } from 'react';
 
-import EventCardHorizontal from '@/components/events/admin/EventCardHorizontal';
+import EventCardHorizontal, {
+  type ListedEvent,
+} from '@/components/events/admin/EventCardHorizontal';
 import EventFolder from '@/components/events/admin/EventFolder';
 import {
   EventListSortLockProvider,
@@ -17,9 +19,16 @@ import {
 import { cn } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 
-type EventListType = RouterOutputs['events']['getAll'][
+type EventGroup = RouterOutputs['events']['getAll'][
   | 'upcomingEvents'
   | 'pastEvents'];
+
+type EventListType = {
+  folders: Array<
+    Omit<EventGroup['folders'][number], 'events'> & { events: ListedEvent[] }
+  >;
+  withoutFolders: ListedEvent[];
+};
 
 type RootFolder = EventListType['folders'][number];
 type RootEvent = EventListType['withoutFolders'][number];

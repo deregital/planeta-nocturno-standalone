@@ -67,6 +67,7 @@ import {
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
 import { logger } from '@/server/observability/logger';
+import { countIssuedTicketsByEventId } from '@/server/services/issuedTicketCounts';
 import { sendMail } from '@/server/services/mail';
 import {
   anyPermissionProcedure,
@@ -96,6 +97,42 @@ import {
   getDMSansFonts,
   nextAvailableSlugInFamily,
 } from '@/server/utils/utils';
+
+async function withIssuedTicketCounts<
+  TEvent extends { id: string },
+  TFolder extends { events: TEvent[] },
+>(
+  db: Db,
+  eventsWithFolders: TFolder[],
+  eventsWithoutFolders: TEvent[],
+): Promise<{
+  eventsWithFolders: Array<
+    Omit<TFolder, 'events'> & {
+      events: Array<TEvent & { issuedTickets: number }>;
+    }
+  >;
+  eventsWithoutFolders: Array<TEvent & { issuedTickets: number }>;
+}> {
+  const counts = await countIssuedTicketsByEventId(db, [
+    ...eventsWithFolders.flatMap((folder) =>
+      folder.events.map((event) => event.id),
+    ),
+    ...eventsWithoutFolders.map((event) => event.id),
+  ]);
+
+  const withCount = (event: TEvent): TEvent & { issuedTickets: number } => ({
+    ...event,
+    issuedTickets: counts.get(event.id) ?? 0,
+  });
+
+  return {
+    eventsWithFolders: eventsWithFolders.map((folder) => ({
+      ...folder,
+      events: folder.events.map(withCount),
+    })),
+    eventsWithoutFolders: eventsWithoutFolders.map(withCount),
+  };
+}
 
 function ticketeraVisibleEventsWhere() {
   return and(
@@ -305,8 +342,14 @@ export const eventsRouter = router({
       orderBy: desc(eventSchema.endingDate),
     });
 
+    const counted = await withIssuedTicketCounts(
+      ctx.db,
+      eventsWithFolders,
+      eventsWithoutFolders,
+    );
+
     const pastEvents = {
-      folders: eventsWithFolders.map((folder) => {
+      folders: counted.eventsWithFolders.map((folder) => {
         return {
           id: folder.id,
           name: folder.name,
@@ -316,13 +359,13 @@ export const eventsRouter = router({
           ),
         };
       }),
-      withoutFolders: eventsWithoutFolders.filter((event) =>
+      withoutFolders: counted.eventsWithoutFolders.filter((event) =>
         isEventPast(event.endingDate),
       ),
     };
 
     const upcomingEvents = {
-      folders: eventsWithFolders.map((folder) => {
+      folders: counted.eventsWithFolders.map((folder) => {
         return {
           id: folder.id,
           name: folder.name,
@@ -332,7 +375,7 @@ export const eventsRouter = router({
           ),
         };
       }),
-      withoutFolders: eventsWithoutFolders.filter((event) =>
+      withoutFolders: counted.eventsWithoutFolders.filter((event) =>
         isEventUpcoming(event.endingDate),
       ),
     };
@@ -460,8 +503,14 @@ export const eventsRouter = router({
         orderBy: desc(eventSchema.endingDate),
       });
 
+      const counted = await withIssuedTicketCounts(
+        ctx.db,
+        eventsWithFolders,
+        eventsWithoutFolders,
+      );
+
       const pastEvents = {
-        folders: eventsWithFolders.map((folder) => {
+        folders: counted.eventsWithFolders.map((folder) => {
           return {
             id: folder.id,
             name: folder.name,
@@ -471,13 +520,13 @@ export const eventsRouter = router({
             ),
           };
         }),
-        withoutFolders: eventsWithoutFolders.filter((event) =>
+        withoutFolders: counted.eventsWithoutFolders.filter((event) =>
           isEventPast(event.endingDate),
         ),
       };
 
       const upcomingEvents = {
-        folders: eventsWithFolders.map((folder) => {
+        folders: counted.eventsWithFolders.map((folder) => {
           return {
             id: folder.id,
             name: folder.name,
@@ -487,7 +536,7 @@ export const eventsRouter = router({
             ),
           };
         }),
-        withoutFolders: eventsWithoutFolders.filter((event) =>
+        withoutFolders: counted.eventsWithoutFolders.filter((event) =>
           isEventUpcoming(event.endingDate),
         ),
       };

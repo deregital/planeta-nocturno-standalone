@@ -9,6 +9,7 @@ import {
   Link2,
   MoreVertical,
   Pencil,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -41,15 +42,21 @@ import { lightenColor } from '@/lib/utils-client';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
+type ListedEventBase = RouterOutputs['events']['getAll'][
+  | 'upcomingEvents'
+  | 'pastEvents']['withoutFolders'][number];
+
+export type ListedEvent = Omit<ListedEventBase, 'issuedTickets'> & {
+  issuedTickets?: number;
+};
+
 export default function EventCardHorizontal({
   event,
   folderColor,
   showActions = true,
   dragHandleProps,
 }: {
-  event: RouterOutputs['events']['getAll'][
-    | 'upcomingEvents'
-    | 'pastEvents']['folders'][number]['events'][number];
+  event: ListedEvent;
   folderColor?: string;
   showActions?: boolean;
   dragHandleProps?: SortableHandleProps;
@@ -81,6 +88,10 @@ export default function EventCardHorizontal({
 
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
   const manageHref = `/admin/event/${event.slug}`;
+  const issuedTicketsLabel =
+    event.issuedTickets === 1
+      ? '1 entrada emitida'
+      : `${(event.issuedTickets ?? 0).toLocaleString('es-AR')} entradas emitidas`;
 
   const handleActivate = () => {
     if (!activateSure) {
@@ -168,6 +179,21 @@ export default function EventCardHorizontal({
             </span>
           </p>
         </div>
+        {typeof event.issuedTickets === 'number' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className='inline-flex shrink-0 items-center gap-1 text-sm font-medium tabular-nums text-on-accent'
+                tabIndex={0}
+                aria-label={issuedTicketsLabel}
+              >
+                <Users className='size-4 shrink-0' />
+                {event.issuedTickets.toLocaleString('es-AR')}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Entradas emitidas</TooltipContent>
+          </Tooltip>
+        )}
         {showActions && (
           <div className='flex shrink-0 flex-row items-center gap-0.5'>
             {event.inviteCondition !== 'INVITATION' && (
