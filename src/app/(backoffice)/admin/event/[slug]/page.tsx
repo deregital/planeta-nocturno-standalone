@@ -119,7 +119,7 @@ async function EventDetails({ slug }: { slug: string }) {
                   tickets={tickets.map((ticket) => ({
                     shortId: ticket.shortId,
                     fullName: ticket.fullName,
-                    dni: ticket.dni,
+                    mail: ticket.mail,
                   }))}
                 />
               </div>
