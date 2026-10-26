@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { type Route } from 'next';
 
 import ChangeEventFolder from '@/components/events/admin/ChangeEventFolder';
+import EventListDragHandle from '@/components/events/admin/EventListDragHandle';
 import DuplicateEventModal from '@/components/events/admin/DuplicateEventModal';
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
@@ -34,6 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { type SortableHandleProps } from '@/hooks/useSortableList';
 import { cn } from '@/lib/utils';
 import { lightenColor } from '@/lib/utils-client';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -43,12 +45,14 @@ export default function EventCardHorizontal({
   event,
   folderColor,
   showActions = true,
+  dragHandleProps,
 }: {
   event: RouterOutputs['events']['getAll'][
     | 'upcomingEvents'
     | 'pastEvents']['folders'][number]['events'][number];
   folderColor?: string;
   showActions?: boolean;
+  dragHandleProps?: SortableHandleProps;
 }) {
   const router = useRouter();
   const { can } = usePermissions();
@@ -117,7 +121,18 @@ export default function EventCardHorizontal({
         backgroundColor: lighterColor || undefined,
       }}
     >
-      <CardContent className='flex w-full min-w-0 items-center justify-between gap-2 px-4 text-on-accent'>
+      <CardContent
+        className={cn(
+          'flex w-full min-w-0 items-center justify-between gap-2 text-on-accent',
+          dragHandleProps ? 'py-0 pl-1 pr-4' : 'px-4',
+        )}
+      >
+        {dragHandleProps ? (
+          <EventListDragHandle
+            {...dragHandleProps}
+            className='self-stretch px-2'
+          />
+        ) : null}
         <div
           role={showActions ? 'link' : undefined}
           tabIndex={showActions ? 0 : undefined}

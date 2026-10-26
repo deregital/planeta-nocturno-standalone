@@ -33,6 +33,7 @@ import {
   eventXorganizer,
   eventXUser,
   location as locationSchema,
+  userEventListOrder,
   ticketGroup,
   ticketType,
   ticketTypePerGroup,
@@ -41,6 +42,11 @@ import {
   user,
 } from '@/drizzle/schema';
 import { tryDateOnlyToLocalDate } from '@/lib/date-only';
+import {
+  applyUserEventListOrder,
+  EVENT_LIST_ROOT_KEY,
+  type EventListScope,
+} from '@/lib/event-list-order';
 import {
   isEventPast,
   isEventUpcoming,
@@ -136,6 +142,129 @@ function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
     );
 }
 
+type ReorderMyListInput = {
+  scope: EventListScope;
+  containerKey: string;
+  items: { kind: 'folder' | 'event'; id: string }[];
+};
+
+function invalidListOrder() {
+  return new TRPCError({
+    code: 'BAD_REQUEST',
+    message: 'No se puede guardar ese orden',
+  });
+}
+
+async function withUserListOrder<
+  TEvent extends { id: string },
+  TFolder extends { id: string; events: TEvent[] },
+>(
+  db: Db,
+  userId: string | undefined,
+  groups: {
+    pastEvents: { folders: TFolder[]; withoutFolders: TEvent[] };
+    upcomingEvents: { folders: TFolder[]; withoutFolders: TEvent[] };
+  },
+) {
+  const rows = userId
+    ? await db
+        .select({
+          scope: userEventListOrder.scope,
+          containerKey: userEventListOrder.containerKey,
+          itemKind: userEventListOrder.itemKind,
+          itemId: userEventListOrder.itemId,
+          position: userEventListOrder.position,
+        })
+        .from(userEventListOrder)
+        .where(eq(userEventListOrder.userId, userId))
+    : [];
+
+  return {
+    pastEvents: applyUserEventListOrder(groups.pastEvents, 'past', rows),
+    upcomingEvents: applyUserEventListOrder(
+      groups.upcomingEvents,
+      'upcoming',
+      rows,
+    ),
+  };
+}
+
+async function assertReorderMyList(
+  db: Db,
+  userId: string,
+  canReadAll: boolean,
+  input: ReorderMyListInput,
+) {
+  const isRoot = input.containerKey === EVENT_LIST_ROOT_KEY;
+  if (!isRoot && !z.uuid().safeParse(input.containerKey).success) {
+    throw invalidListOrder();
+  }
+
+  const seen = new Set<string>();
+  for (const item of input.items) {
+    const key = `${item.kind}:${item.id}`;
+    if (seen.has(key)) throw invalidListOrder();
+    seen.add(key);
+    if (item.kind === 'folder' && !isRoot) throw invalidListOrder();
+  }
+
+  const eventIds = input.items
+    .filter((item) => item.kind === 'event')
+    .map((item) => item.id);
+  const folderIds = input.items
+    .filter((item) => item.kind === 'folder')
+    .map((item) => item.id);
+
+  if (!isRoot) {
+    const folder = await db.query.eventFolder.findFirst({
+      where: eq(eventFolder.id, input.containerKey),
+      columns: { id: true },
+    });
+    if (!folder) throw invalidListOrder();
+  }
+
+  if (folderIds.length > 0) {
+    const folders = await db.query.eventFolder.findMany({
+      where: inArray(eventFolder.id, folderIds),
+      columns: { id: true },
+    });
+    if (folders.length !== folderIds.length) throw invalidListOrder();
+  }
+
+  if (eventIds.length === 0) return;
+
+  const events = await db.query.event.findMany({
+    where: inArray(eventSchema.id, eventIds),
+    columns: {
+      id: true,
+      folderId: true,
+      endingDate: true,
+      isDeleted: true,
+    },
+  });
+  if (events.length !== eventIds.length) throw invalidListOrder();
+
+  for (const found of events) {
+    const inScope =
+      input.scope === 'past'
+        ? isEventPast(found.endingDate)
+        : isEventUpcoming(found.endingDate);
+    if (found.isDeleted || !inScope) throw invalidListOrder();
+    const inContainer = isRoot
+      ? found.folderId === null
+      : found.folderId === input.containerKey;
+    if (!inContainer) throw invalidListOrder();
+  }
+
+  if (canReadAll) return;
+
+  const allowed = await db.query.eventXUser.findMany({
+    where: and(eq(eventXUser.b, userId), inArray(eventXUser.a, eventIds)),
+    columns: { a: true },
+  });
+  if (allowed.length !== eventIds.length) throw forbidden();
+}
+
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
     const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
@@ -208,7 +337,10 @@ export const eventsRouter = router({
       ),
     };
 
-    return { pastEvents, upcomingEvents };
+    return withUserListOrder(ctx.db, ctx.session?.user?.id, {
+      pastEvents,
+      upcomingEvents,
+    });
   }),
   getAllForTicketing: permissionProcedure('scanner:use').query(
     async ({ ctx }) => {
@@ -360,9 +492,10 @@ export const eventsRouter = router({
         ),
       };
 
-      return { pastEvents, upcomingEvents };
-
-      return { pastEvents, upcomingEvents };
+      return withUserListOrder(ctx.db, ctx.session.user.id, {
+        pastEvents,
+        upcomingEvents,
+      });
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
@@ -411,6 +544,52 @@ export const eventsRouter = router({
             .set({ sortOrder: index + 1 })
             .where(eq(eventSchema.id, eventId));
         }
+      });
+    }),
+  reorderMyList: permissionProcedure('events:read')
+    .input(
+      z.object({
+        scope: z.enum(['upcoming', 'past']),
+        containerKey: z.string().min(1),
+        items: z
+          .array(
+            z.object({
+              kind: z.enum(['folder', 'event']),
+              id: z.uuid(),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertReorderMyList(
+        ctx.db,
+        ctx.session.user.id,
+        ctx.can('events:read_all'),
+        input,
+      );
+
+      const userId = ctx.session.user.id;
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .delete(userEventListOrder)
+          .where(
+            and(
+              eq(userEventListOrder.userId, userId),
+              eq(userEventListOrder.scope, input.scope),
+              eq(userEventListOrder.containerKey, input.containerKey),
+            ),
+          );
+        await tx.insert(userEventListOrder).values(
+          input.items.map((item, index) => ({
+            userId,
+            scope: input.scope,
+            containerKey: input.containerKey,
+            itemKind: item.kind,
+            itemId: item.id,
+            position: index,
+          })),
+        );
       });
     }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
