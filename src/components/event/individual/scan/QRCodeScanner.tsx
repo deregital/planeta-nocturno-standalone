@@ -10,6 +10,11 @@ import { Check, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { SCAN_BEEP } from '@/components/event/individual/scan/scan-beep';
+import {
+  scanRequestErrorCode,
+  useScannerTelemetry,
+} from '@/components/event/individual/scan/useScannerTelemetry';
+import { type RouterOutputs } from '@/server/routers/app';
 
 // El Scanner reinicia su loop de detección cada vez que cambian `onScan`,
 // `sound` o `formats`, y el loop anterior sigue corriendo. Si cambian en cada
@@ -44,9 +49,12 @@ export function QRCodeScanner({
   onScanSuccessAction,
   isLoading,
 }: {
-  onScanSuccessAction: (result: string) => Promise<string>;
+  onScanSuccessAction: (
+    result: string,
+  ) => Promise<RouterOutputs['emittedTickets']['scan']>;
   isLoading: boolean;
 }) {
+  const telemetry = useScannerTelemetry();
   const [feedback, setFeedback] = useState<ScanFeedback>('idle');
   const isProcessingRef = useRef(false);
   const lastScannedRef = useRef<{ code: string; timestamp: number } | null>(
@@ -88,17 +96,29 @@ export function QRCodeScanner({
     isProcessingRef.current = true;
     lastScannedRef.current = { code: result, timestamp: Date.now() };
     playBeep();
+    const startedAt = performance.now();
 
     try {
       const res = await onScanSuccessAction(result);
-      if (res === 'success') {
+      if (res.status === 'success') {
         setFeedback('success');
       } else {
-        setFeedback(res as ScanFeedback);
+        setFeedback(res.status as ScanFeedback);
       }
+      telemetry.trackScan({
+        outcome: res.status,
+        startedAt,
+        eventId: res.ticket?.eventId,
+        serverMs: res.serverMs,
+      });
     } catch (error) {
       setFeedback('server-error');
       console.error('Error al procesar escaneo:', error);
+      telemetry.trackScan({
+        outcome: 'request-error',
+        startedAt,
+        errorCode: scanRequestErrorCode(error),
+      });
     } finally {
       scheduleFeedbackReset();
       isProcessingRef.current = false;
@@ -129,6 +149,7 @@ export function QRCodeScanner({
         allowMultiple
         formats={SCANNER_FORMATS}
         onScan={onScan}
+        onError={telemetry.trackError}
       />
       <div
         className={`absolute inset-0 flex items-center justify-center ${
