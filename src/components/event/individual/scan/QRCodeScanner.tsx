@@ -1,8 +1,35 @@
 'use client';
 
-import { Scanner } from '@yudiel/react-qr-scanner';
+import {
+  type IDetectedBarcode,
+  type IScannerComponents,
+  type IScannerProps,
+  Scanner,
+} from '@yudiel/react-qr-scanner';
 import { Check, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { SCAN_BEEP } from '@/components/event/individual/scan/scan-beep';
+
+// El Scanner reinicia su loop de detección cada vez que cambian `onScan`,
+// `sound` o `formats`, y el loop anterior sigue corriendo. Si cambian en cada
+// render, cada escaneo suma loops hasta trabar el celular: todo lo que recibe
+// tiene que ser estable.
+const SCANNER_FORMATS: IScannerProps['formats'] = ['qr_code'];
+const SCANNER_COMPONENTS: IScannerComponents = {
+  finder: true,
+  onOff: true,
+  torch: true,
+  // Debug
+  // tracker: (detectedCodes, ctx) => {
+  //   detectedCodes.forEach((code) => {
+  //     const { x, y, width, height } = code.boundingBox;
+  //     ctx.strokeStyle = 'magenta';
+  //     ctx.lineWidth = 2;
+  //     ctx.strokeRect(x, y, width, height);
+  //   });
+  // },
+};
 
 type ScanFeedback =
   | 'idle'
@@ -26,11 +53,21 @@ export function QRCodeScanner({
     null,
   );
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const beepRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
+    beepRef.current = new Audio(SCAN_BEEP);
     return () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
   }, []);
+
+  function playBeep() {
+    const beep = beepRef.current;
+    if (!beep) return;
+    beep.currentTime = 0;
+    // El navegador puede bloquearlo si no hubo interacción con la página.
+    beep.play().catch(() => {});
+  }
 
   function scheduleFeedbackReset() {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -38,7 +75,7 @@ export function QRCodeScanner({
   }
 
   async function handleScan(result: string) {
-    if (isProcessingRef.current) return;
+    if (isLoading || isProcessingRef.current) return;
 
     const current = lastScannedRef.current;
     if (
@@ -50,6 +87,7 @@ export function QRCodeScanner({
 
     isProcessingRef.current = true;
     lastScannedRef.current = { code: result, timestamp: Date.now() };
+    playBeep();
 
     try {
       const res = await onScanSuccessAction(result);
@@ -67,24 +105,17 @@ export function QRCodeScanner({
     }
   }
 
+  const handleScanRef = useRef(handleScan);
+  handleScanRef.current = handleScan;
+  const onScan = useCallback((result: IDetectedBarcode[]) => {
+    if (result[0]?.rawValue) handleScanRef.current(result[0].rawValue);
+  }, []);
+
   return (
     <div className='relative bg-accent-dark'>
       <Scanner
-        sound={feedback === 'idle' && !isLoading}
-        components={{
-          finder: true,
-          onOff: true,
-          torch: true,
-          // Debug
-          // tracker: (detectedCodes, ctx) => {
-          //   detectedCodes.forEach((code) => {
-          //     const { x, y, width, height } = code.boundingBox;
-          //     ctx.strokeStyle = 'magenta';
-          //     ctx.lineWidth = 2;
-          //     ctx.strokeRect(x, y, width, height);
-          //   });
-          // },
-        }}
+        sound={false}
+        components={SCANNER_COMPONENTS}
         classNames={{
           container: 'w-full h-fit my-auto',
           video: 'w-full h-fit my-auto',
@@ -96,12 +127,8 @@ export function QRCodeScanner({
           },
         }}
         allowMultiple
-        formats={['qr_code']}
-        onScan={(result) => {
-          if (!isLoading && result[0]?.rawValue) {
-            handleScan(result[0].rawValue);
-          }
-        }}
+        formats={SCANNER_FORMATS}
+        onScan={onScan}
       />
       <div
         className={`absolute inset-0 flex items-center justify-center ${
