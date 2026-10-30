@@ -2086,6 +2086,20 @@ export const eventsRouter = router({
 
             const ticketTypesUpdated: TicketType[] = [];
 
+            // El ticket único de una invitación no tiene fecha propia: sigue a la del evento.
+            const startingDateForTicketType = (type: {
+              name: string;
+              startingDate?: Date | null;
+            }) => {
+              if (
+                eventUpdated.inviteCondition === 'INVITATION' &&
+                type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim()
+              ) {
+                return eventUpdated.startingDate;
+              }
+              return type.startingDate?.toISOString() ?? null;
+            };
+
             for (const [index, type] of ticketTypes.entries()) {
               // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
               const { id, organizers, ...rest } = type;
@@ -2099,7 +2113,7 @@ export const eventsRouter = router({
                   .set({
                     ...rest,
                     maxSellDate: type.maxSellDate?.toISOString() ?? null,
-                    startingDate: type.startingDate?.toISOString() ?? null,
+                    startingDate: startingDateForTicketType(type),
                     scanLimit: type.scanLimit?.toISOString() ?? null,
                     sortOrder: temporarySortOrder,
                     slug: ticketTypeSlug,
@@ -2133,7 +2147,7 @@ export const eventsRouter = router({
                 .values({
                   ...rest,
                   maxSellDate: type.maxSellDate?.toISOString() ?? null,
-                  startingDate: type.startingDate?.toISOString() ?? null,
+                  startingDate: startingDateForTicketType(type),
                   scanLimit: type.scanLimit?.toISOString() ?? null,
                   sortOrder: temporarySortOrder,
                   slug: ticketTypeSlug,
