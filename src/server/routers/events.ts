@@ -91,7 +91,10 @@ import {
 } from '@/server/utils/presentismo-pdf';
 import { generatePdf } from '@/server/utils/ticket-template';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
-import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
+import {
+  allocateTicketXOrganizerShortIds,
+  insertInvitationCodes,
+} from '@/server/utils/ticketXOrganizerInvite';
 import {
   generateSlug,
   getDMSansFonts,
@@ -1237,15 +1240,16 @@ export const eventsRouter = router({
                     organizer.ticketAmount,
                   );
 
-                  // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles
-                  await tx.insert(ticketXorganizer).values(
+                  // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles.
+                  // Un código repetido reintenta la tanda; no revierte el evento.
+                  await insertInvitationCodes(
+                    tx,
                     Array.from({ length: organizer.ticketAmount }).map(
                       (_, i) => ({
                         eventId: eventCreated.id,
                         organizerId: organizer.id,
                         ticketGroupId: thisOrganizerTicketGroup.id,
                         shortId: shortIds[i]!,
-                        // ticketId será null hasta que se use el código
                       }),
                     ),
                   );
@@ -1813,13 +1817,13 @@ export const eventsRouter = router({
                     );
 
                     // Crear registros TicketsXOrganizer con ticketId null
-                    await tx.insert(ticketXorganizer).values(
+                    await insertInvitationCodes(
+                      tx,
                       Array.from({ length: ticketAmount }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: addedOrganizerId,
                         ticketGroupId: thisOrganizerTicketGroup.id,
                         shortId: shortIds[i]!,
-                        // ticketId será null hasta que se use el código
                       })),
                     );
                   }
@@ -2001,13 +2005,13 @@ export const eventsRouter = router({
                     );
 
                     // Crear los registros faltantes
-                    await tx.insert(ticketXorganizer).values(
+                    await insertInvitationCodes(
+                      tx,
                       Array.from({ length: difference }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: organizerInput.id,
                         ticketGroupId: organizerTicketGroup.id,
                         shortId: shortIds[i]!,
-                        // ticketId será null hasta que se use el código
                       })),
                     );
                   }
