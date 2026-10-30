@@ -15,26 +15,29 @@ require.cache[serverOnlyPath] = {
   exports: {},
 } as NodeJS.Module;
 
-// tsx resuelve `require('../metadata.min.json')` de libphonenumber-js al wrapper
-// ESM `metadata.min.json.js` y la validación de teléfonos falla. Se fija el JSON.
-const phoneMetadataDir = require('node:path').dirname(
-  require.resolve('libphonenumber-js/package.json'),
+// tsx resuelve `require('../metadata.min.json')` al wrapper ESM
+// `metadata.min.json.js` y el require devuelve `{ default }`. La validación
+// de teléfonos necesita el objeto con `.countries`.
+const Module = require('node:module');
+const phoneMetadataPath = require('node:path').join(
+  require('node:path').dirname(
+    require.resolve('libphonenumber-js/package.json'),
+  ),
+  'metadata.min.json',
 );
 const phoneMetadata = JSON.parse(
-  require('node:fs').readFileSync(
-    `${phoneMetadataDir}/metadata.min.json`,
-    'utf8',
-  ),
+  require('node:fs').readFileSync(phoneMetadataPath, 'utf8'),
 );
-for (const file of ['metadata.min.json', 'metadata.min.json.js']) {
-  const filename = `${phoneMetadataDir}/${file}`;
-  require.cache[filename] = {
-    id: filename,
-    filename,
-    loaded: true,
-    exports: phoneMetadata,
-  } as NodeJS.Module;
-}
+const originalLoad = Module._load;
+Module._load = function loadPhoneMetadata(
+  this: NodeJS.Module,
+  request: string,
+  parent: NodeJS.Module,
+  isMain: boolean,
+) {
+  if (request.includes('metadata.min.json')) return phoneMetadata;
+  return originalLoad.call(this, request, parent, isMain);
+};
 
 // Algunos módulos del servidor importan componentes .tsx (runtime JSX clásico).
 (globalThis as Record<string, unknown>).React = require('react');
