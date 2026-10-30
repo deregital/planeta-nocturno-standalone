@@ -458,7 +458,7 @@ model TicketXOrganizer {
 
   shortId Int
 
-  code String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+  code String @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
 
   shared Boolean @default(false)
 

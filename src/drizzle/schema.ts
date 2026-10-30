@@ -812,10 +812,6 @@ export const ticketXorganizer = pgTable(
       'btree',
       table.code.asc().nullsLast().op('text_ops'),
     ),
-    uniqueIndex('ticketXOrganizer_code_key').using(
-      'btree',
-      table.code.asc().nullsLast().op('text_ops'),
-    ),
     uniqueIndex('ticketXOrganizer_eventId_shortId_key').using(
       'btree',
       table.eventId.asc().nullsLast().op('uuid_ops'),

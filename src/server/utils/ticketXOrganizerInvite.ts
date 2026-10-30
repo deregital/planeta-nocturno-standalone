@@ -10,7 +10,11 @@ type InvitationCodeTx = Parameters<Parameters<Db['transaction']>[0]>[0];
 const INVITATION_CODE_CHUNK = 500;
 const INVITATION_CODE_ATTEMPTS = 5;
 const SINGLE_CODE_ATTEMPTS = 40;
-const INVITATION_CODE_UNIQUE = 'ticketXOrganizer_code_key';
+/** `code_key` es el índice global, hasta que corre la migración. Después el choque lo tira la PK `(eventId, code)`. */
+const INVITATION_CODE_COLLISIONS = [
+  'ticketXOrganizer_pkey',
+  'ticketXOrganizer_code_key',
+];
 
 export type InvitationCodeInsert = {
   eventId: string;
@@ -29,18 +33,16 @@ function isInvitationCodeCollision(error: unknown) {
       message?: string;
       cause?: unknown;
     };
-    if (
-      record.constraint === INVITATION_CODE_UNIQUE ||
-      (typeof record.message === 'string' &&
-        record.message.includes(INVITATION_CODE_UNIQUE))
-    ) {
-      return true;
-    }
-    if (
-      record.code === '23505' &&
-      record.constraint &&
-      record.constraint !== INVITATION_CODE_UNIQUE
-    ) {
+    const constraint = record.constraint;
+    const message = record.message;
+    const namesConstraint =
+      typeof constraint === 'string' &&
+      INVITATION_CODE_COLLISIONS.includes(constraint);
+    const namesMessage =
+      typeof message === 'string' &&
+      INVITATION_CODE_COLLISIONS.some((name) => message.includes(name));
+    if (namesConstraint || namesMessage) return true;
+    if (record.code === '23505' && record.constraint && !namesConstraint) {
       return false;
     }
     if (!record.cause) return false;

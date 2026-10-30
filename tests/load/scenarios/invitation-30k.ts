@@ -588,7 +588,7 @@ export default async function run(log: (...args: unknown[]) => void) {
       await raw.query(`SELECT count(*)::int AS n FROM "ticketXOrganizer"`)
     ).rows[0].n as number;
     log(
-      `creación real de otro evento de 2000 con ${existingAfterSeed} códigos ya existentes`,
+      `creación real de otro evento de 2000 con ${existingAfterSeed} códigos en otros eventos`,
     );
     const createWithHistory = await tryCreate(
       db,
@@ -597,7 +597,7 @@ export default async function run(log: (...args: unknown[]) => void) {
       'Invitation 2000 con historial',
       single,
       new Map([[singleId, 2000]]),
-      existingAfterSeed,
+      0,
     );
     log(createWithHistory);
 
