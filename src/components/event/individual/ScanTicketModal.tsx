@@ -53,6 +53,7 @@ export function ScanTicketModal({
                   barcode: inputValue,
                 });
                 posthog.capture('ticket_scan_completed', {
+                  source: 'modal',
                   event_id: eventId,
                   outcome: result.status,
                 });

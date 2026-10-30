@@ -19,6 +19,7 @@ import {
   createTicketSchema,
   emittedTicketSchema,
 } from '@/server/schemas/emitted-tickets';
+import { logger } from '@/server/observability/logger';
 import { sendMail } from '@/server/services/mail';
 import {
   anyPermissionProcedure,
@@ -515,16 +516,34 @@ export const emittedTicketsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const startedAt = performance.now();
+      // Cada respuesta informa cuánto tardó el servidor, así el scanner puede
+      // separar la demora de red de la del servidor.
+      const respond = <
+        T extends { status: string; ticket: { eventId: string } | null },
+      >(
+        result: T,
+      ) => {
+        const serverMs = Math.round(performance.now() - startedAt);
+        logger.info('Ticket scan', {
+          operation: 'ticket_scan',
+          status: result.status,
+          eventId: result.ticket?.eventId,
+          serverMs,
+        });
+        return { ...result, serverMs };
+      };
+
       let decryptedTicketId: string;
       try {
         decryptedTicketId = decryptString(input.barcode);
       } catch {
-        return {
+        return respond({
           ticket: null,
           status: 'not-found',
           text: 'Ticket no encontrado',
           extraInfo: 'El ticket no pertenece a este evento',
-        };
+        });
       }
 
       const ticketReturned = await ctx.db.query.emittedTicket.findFirst({
@@ -551,12 +570,12 @@ export const emittedTicketsRouter = router({
       });
 
       if (!ticketReturned) {
-        return {
+        return respond({
           ticket: null,
           status: 'not-found',
           text: 'Ticket no encontrado',
           extraInfo: 'El ticket no pertenece a este evento',
-        };
+        });
       }
       let extraInfo: string = '';
       const ticket = {
@@ -574,12 +593,12 @@ export const emittedTicketsRouter = router({
         ticket.ticketType.allowMultipleScans,
       );
       if (!scanResult.registered) {
-        return {
+        return respond({
           ticket,
           status: 'already-scanned',
           text: 'Ticket ya escaneado',
           extraInfo: `Escaneado a las ${formatLastScanTime(ticket.scannedAt)}`,
-        };
+        });
       }
 
       const scannedAt = scanResult.scannedAt;
@@ -609,13 +628,13 @@ export const emittedTicketsRouter = router({
         )}`;
       }
 
-      return {
+      return respond({
         ticket,
         status: 'success',
         text: `Escaneado con éxito: ${ticket.fullName}`,
         extraInfo:
           `${extraInfo}${scanNumber > 1 ? ` - Escaneo #${scanNumber}` : ''} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`.trim(),
-      };
+      });
     }),
   manualScan: permissionProcedure('tickets:manual_scan')
     .input(z.object({ ticketId: z.string() }))

@@ -54,7 +54,7 @@ export default function ScanMultiClient({ eventIds }: { eventIds: string[] }) {
             .mutateAsync({ eventIds, barcode: raw })
             .then((result) => {
               setLastScans((prev) => [result, ...prev].slice(0, 20));
-              return result.status;
+              return result;
             });
         }}
       />
