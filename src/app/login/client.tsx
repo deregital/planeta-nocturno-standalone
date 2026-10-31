@@ -48,7 +48,7 @@ function LoginPage() {
               </p>
             )}
           </div>
-          <Button disabled={isPending} type='submit'>
+          <Button loading={isPending} type='submit'>
             {isPending ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </Button>
         </form>

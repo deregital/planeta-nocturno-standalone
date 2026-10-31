@@ -521,6 +521,41 @@ export const eventFolder = pgTable('eventFolder', {
     .notNull(),
 });
 
+export const userEventListOrder = pgTable(
+  'userEventListOrder',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid().notNull(),
+    scope: text().notNull(),
+    containerKey: text().notNull(),
+    itemKind: text().notNull(),
+    itemId: uuid().notNull(),
+    position: integer().notNull(),
+  },
+  (table) => [
+    uniqueIndex('userEventListOrder_identity_key').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops'),
+      table.scope.asc().nullsLast().op('text_ops'),
+      table.containerKey.asc().nullsLast().op('text_ops'),
+      table.itemKind.asc().nullsLast().op('text_ops'),
+      table.itemId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('userEventListOrder_userId_scope_idx').using(
+      'btree',
+      table.userId.asc().nullsLast().op('uuid_ops'),
+      table.scope.asc().nullsLast().op('text_ops'),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'userEventListOrder_userId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
 export const eventQuestion = pgTable(
   'eventQuestion',
   {
@@ -774,10 +809,6 @@ export const ticketXorganizer = pgTable(
       table.ticketGroupId.asc().nullsLast().op('uuid_ops'),
     ),
     index('ticketXOrganizer_code_idx').using(
-      'btree',
-      table.code.asc().nullsLast().op('text_ops'),
-    ),
-    uniqueIndex('ticketXOrganizer_code_key').using(
       'btree',
       table.code.asc().nullsLast().op('text_ops'),
     ),

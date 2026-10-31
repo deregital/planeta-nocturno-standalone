@@ -53,6 +53,7 @@ export function ScanTicketModal({
                   barcode: inputValue,
                 });
                 posthog.capture('ticket_scan_completed', {
+                  source: 'modal',
                   event_id: eventId,
                   outcome: result.status,
                 });
@@ -74,7 +75,7 @@ export function ScanTicketModal({
             <Button
               className='rounded-l-none'
               type='submit'
-              disabled={scanMutation.isPending}
+              loading={scanMutation.isPending}
             >
               Escanear
             </Button>

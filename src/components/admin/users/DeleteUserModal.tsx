@@ -49,7 +49,7 @@ export function DeleteUserModal({ user }: { user: User }) {
           <Button
             variant={'destructive'}
             onClick={() => deleteUser.mutate(user.id)}
-            disabled={deleteUser.isPending}
+            loading={deleteUser.isPending}
           >
             Eliminar
           </Button>

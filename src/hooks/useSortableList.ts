@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, type DragEvent } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 
 type SortableItem = { id: string };
 
@@ -6,6 +13,19 @@ type UseSortableListParams<T extends SortableItem> = {
   items: T[];
   onReorder?: (activeId: string, overId: string) => void;
   isEnabled?: (item: T) => boolean;
+  /** Solo el asa inicia el arrastre; la fila sigue siendo el destino. */
+  handleOnly?: boolean;
+  onDragStarted?: () => void;
+  onDragFinished?: () => void;
+};
+
+export type SortableHandleProps = {
+  draggable: boolean;
+  disabled: boolean;
+  onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd: (event: DragEvent<HTMLButtonElement>) => void;
+  onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
 /** Long enough to read on screen; reorder is throttled so this can actually finish. */
@@ -19,10 +39,23 @@ function flushLayout(element: HTMLElement) {
   void element.offsetHeight;
 }
 
+function isEventFromNestedList(event: DragEvent<HTMLElement>) {
+  if (!(event.target instanceof Element)) return false;
+  const nested = event.target.closest('[data-sortable-nested]');
+  return Boolean(
+    nested &&
+      nested !== event.currentTarget &&
+      event.currentTarget.contains(nested),
+  );
+}
+
 export function useSortableList<T extends SortableItem>({
   items,
   onReorder,
   isEnabled = () => true,
+  handleOnly = false,
+  onDragStarted,
+  onDragFinished,
 }: UseSortableListParams<T>) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -32,6 +65,7 @@ export function useSortableList<T extends SortableItem>({
   const draggedIdRef = useRef<string | null>(null);
   const flipAnimByIdRef = useRef<Map<string, Animation>>(new Map());
   const lastReorderAtRef = useRef(0);
+  const orderKeyRef = useRef<string | null>(null);
   const pendingReorderRef = useRef<{ active: string; over: string } | null>(
     null,
   );
@@ -94,8 +128,14 @@ export function useSortableList<T extends SortableItem>({
     const elements = itemRefs.current;
     if (elements.size === 0) return;
 
-    cancelFlipAnimations();
-    clearInlineTransformStyles();
+    const nextOrderKey = items.map((item) => item.id).join('|');
+    const orderChanged = orderKeyRef.current !== nextOrderKey;
+    orderKeyRef.current = nextOrderKey;
+
+    if (orderChanged) {
+      cancelFlipAnimations();
+      clearInlineTransformStyles();
+    }
 
     const firstEl = elements.values().next().value;
     if (firstEl) flushLayout(firstEl);
@@ -103,6 +143,11 @@ export function useSortableList<T extends SortableItem>({
     const currentTops = new Map<string, number>();
     for (const [id, element] of elements.entries()) {
       currentTops.set(id, element.getBoundingClientRect().top);
+    }
+
+    if (!orderChanged) {
+      previousTops.current = currentTops;
+      return;
     }
 
     const activeDragId = draggedIdRef.current;
@@ -144,6 +189,69 @@ export function useSortableList<T extends SortableItem>({
     previousTops.current = currentTops;
   }, [items]);
 
+  function beginDrag(item: T, event?: DragEvent<HTMLElement>) {
+    if (!isEnabled(item)) return;
+
+    if (event) {
+      event.stopPropagation();
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', item.id);
+        const row = event.currentTarget.closest('li');
+        if (row instanceof HTMLElement) {
+          const rect = row.getBoundingClientRect();
+          event.dataTransfer.setDragImage(
+            row,
+            Math.max(0, event.clientX - rect.left),
+            Math.max(0, event.clientY - rect.top),
+          );
+        }
+      }
+    }
+
+    cancelFlipAnimations();
+    clearInlineTransformStyles();
+
+    const first = itemRefs.current.values().next().value;
+    if (first) flushLayout(first);
+
+    const initialTops = new Map<string, number>();
+    for (const [id, element] of itemRefs.current.entries()) {
+      initialTops.set(id, element.getBoundingClientRect().top);
+    }
+    previousTops.current = initialTops;
+
+    draggedIdRef.current = item.id;
+    setDraggedId(item.id);
+    lastMoveRef.current = null;
+    lastReorderAtRef.current = 0;
+    pendingReorderRef.current = null;
+    if (reorderFlushTimerRef.current) {
+      clearTimeout(reorderFlushTimerRef.current);
+      reorderFlushTimerRef.current = null;
+    }
+    onDragStarted?.();
+  }
+
+  function finishDrag() {
+    if (reorderFlushTimerRef.current) {
+      clearTimeout(reorderFlushTimerRef.current);
+      reorderFlushTimerRef.current = null;
+    }
+    const pending = pendingReorderRef.current;
+    pendingReorderRef.current = null;
+    const stillDragging = draggedIdRef.current;
+    if (pending && stillDragging === pending.active) {
+      onReorder?.(pending.active, pending.over);
+    }
+    onDragFinished?.();
+
+    draggedIdRef.current = null;
+    setDraggedId(null);
+    setHoveredId(null);
+    lastMoveRef.current = null;
+  }
+
   function getItemProps(item: T) {
     const enabled = isEnabled(item);
 
@@ -155,33 +263,13 @@ export function useSortableList<T extends SortableItem>({
           itemRefs.current.delete(item.id);
         }
       },
-      draggable: enabled,
+      draggable: handleOnly ? false : enabled,
       onDragStart: () => {
-        if (!enabled) return;
-
-        cancelFlipAnimations();
-        clearInlineTransformStyles();
-
-        const first = itemRefs.current.values().next().value;
-        if (first) flushLayout(first);
-
-        const initialTops = new Map<string, number>();
-        for (const [id, element] of itemRefs.current.entries()) {
-          initialTops.set(id, element.getBoundingClientRect().top);
-        }
-        previousTops.current = initialTops;
-
-        draggedIdRef.current = item.id;
-        setDraggedId(item.id);
-        lastMoveRef.current = null;
-        lastReorderAtRef.current = 0;
-        pendingReorderRef.current = null;
-        if (reorderFlushTimerRef.current) {
-          clearTimeout(reorderFlushTimerRef.current);
-          reorderFlushTimerRef.current = null;
-        }
+        if (handleOnly) return;
+        beginDrag(item);
       },
       onDragOver: (e: DragEvent<HTMLLIElement>) => {
+        if (isEventFromNestedList(e)) return;
         if (!enabled) return;
         e.preventDefault();
         const active = draggedIdRef.current;
@@ -206,7 +294,8 @@ export function useSortableList<T extends SortableItem>({
         lastMoveRef.current = moveKey;
         scheduleOrInvokeReorder(active, item.id);
       },
-      onDragEnter: () => {
+      onDragEnter: (e: DragEvent<HTMLLIElement>) => {
+        if (isEventFromNestedList(e)) return;
         if (!enabled || !draggedIdRef.current) return;
         if (item.id !== draggedIdRef.current) {
           setHoveredId(item.id);
@@ -217,26 +306,41 @@ export function useSortableList<T extends SortableItem>({
           setHoveredId(null);
         }
       },
-      onDrop: () => {
+      onDrop: (e: DragEvent<HTMLLIElement>) => {
+        if (isEventFromNestedList(e)) return;
         setHoveredId(null);
         lastMoveRef.current = null;
       },
       onDragEnd: () => {
-        if (reorderFlushTimerRef.current) {
-          clearTimeout(reorderFlushTimerRef.current);
-          reorderFlushTimerRef.current = null;
-        }
-        const p = pendingReorderRef.current;
-        pendingReorderRef.current = null;
-        const stillDragging = draggedIdRef.current;
-        if (p && stillDragging === p.active) {
-          onReorder?.(p.active, p.over);
-        }
+        if (handleOnly) return;
+        finishDrag();
+      },
+    };
+  }
 
-        draggedIdRef.current = null;
-        setDraggedId(null);
-        setHoveredId(null);
-        lastMoveRef.current = null;
+  function getHandleProps(item: T): SortableHandleProps {
+    const enabled = isEnabled(item);
+
+    return {
+      draggable: enabled,
+      disabled: !enabled,
+      onDragStart: (event) => {
+        if (!enabled) {
+          event.preventDefault();
+          return;
+        }
+        beginDrag(item, event);
+      },
+      onDragEnd: (event) => {
+        event.stopPropagation();
+        finishDrag();
+      },
+      onPointerDown: (event) => {
+        event.stopPropagation();
+      },
+      onClick: (event) => {
+        event.preventDefault();
+        event.stopPropagation();
       },
     };
   }
@@ -245,5 +349,6 @@ export function useSortableList<T extends SortableItem>({
     draggedId,
     hoveredId,
     getItemProps,
+    getHandleProps,
   };
 }

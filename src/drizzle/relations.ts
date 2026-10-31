@@ -23,6 +23,7 @@ import {
   account,
   accessRole,
   accessRolePermission,
+  userEventListOrder,
 } from './schema';
 
 export const emittedTicketScanRelations = relations(
@@ -88,6 +89,7 @@ export const userRelations = relations(user, ({ one, many }) => ({
   ticketXorganizers: many(ticketXorganizer),
   authenticators: many(authenticator),
   accounts: many(account),
+  eventListOrders: many(userEventListOrder),
 }));
 
 export const ticketTypeRelations = relations(ticketType, ({ one, many }) => ({
@@ -148,6 +150,16 @@ export const eventCategoryRelations = relations(eventCategory, ({ many }) => ({
 export const eventFolderRelations = relations(eventFolder, ({ many }) => ({
   events: many(event),
 }));
+
+export const userEventListOrderRelations = relations(
+  userEventListOrder,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [userEventListOrder.userId],
+      references: [user.id],
+    }),
+  }),
+);
 
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {

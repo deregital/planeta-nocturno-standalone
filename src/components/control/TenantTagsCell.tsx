@@ -2,8 +2,14 @@
 
 import type { TenantTag } from '@/server/control/tenant-tags';
 
-import { Check, Plus, Tag } from 'lucide-react';
-import { useMemo, useOptimistic, useState, useTransition } from 'react';
+import { Check, Loader2, Plus, Tag } from 'lucide-react';
+import {
+  useEffect,
+  useMemo,
+  useOptimistic,
+  useState,
+  useTransition,
+} from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -43,6 +49,11 @@ export default function TenantTagsCell({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [pending, startTransition] = useTransition();
+  const [busyTagId, setBusyTagId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pending) setBusyTagId(null);
+  }, [pending]);
   const [optimisticTagIds, applyChange] = useOptimistic(
     assignedTagIds,
     (current: string[], { tagId, assigned }: AssignmentChange) =>
@@ -67,6 +78,8 @@ export default function TenantTagsCell({
     !tags.some((tag) => tag.name.toLocaleLowerCase('es') === normalizedQuery);
 
   function toggleTag(tagId: string) {
+    if (pending) return;
+    setBusyTagId(tagId);
     const assigned = !optimisticTagIds.includes(tagId);
     startTransition(async () => {
       applyChange({ tagId, assigned });
@@ -80,6 +93,8 @@ export default function TenantTagsCell({
   }
 
   function createAndAssign() {
+    if (pending) return;
+    setBusyTagId('__create__');
     const name = query.trim();
     startTransition(async () => {
       const created = await createTenantTag({
@@ -109,6 +124,7 @@ export default function TenantTagsCell({
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {
+          if (pending) return;
           setOpen(nextOpen);
           if (!nextOpen) setQuery('');
         }}
@@ -158,6 +174,7 @@ export default function TenantTagsCell({
                         key={tag.id}
                         value={tag.id}
                         onSelect={() => toggleTag(tag.id)}
+                        disabled={pending}
                         className='cursor-pointer'
                       >
                         <span
@@ -165,7 +182,11 @@ export default function TenantTagsCell({
                           style={{ backgroundColor: tag.color }}
                         />
                         <span className='flex-1 truncate'>{tag.name}</span>
-                        {assigned && <Check className='size-4' />}
+                        {busyTagId === tag.id ? (
+                          <Loader2 className='size-4 animate-spin' />
+                        ) : (
+                          assigned && <Check className='size-4' />
+                        )}
                       </CommandItem>
                     );
                   })}
@@ -179,7 +200,11 @@ export default function TenantTagsCell({
                     disabled={pending}
                     className='cursor-pointer'
                   >
-                    <Plus className='size-4' />
+                    {busyTagId === '__create__' ? (
+                      <Loader2 className='size-4 animate-spin' />
+                    ) : (
+                      <Plus className='size-4' />
+                    )}
                     <span className='truncate'>
                       Crear &quot;{query.trim()}&quot;
                     </span>

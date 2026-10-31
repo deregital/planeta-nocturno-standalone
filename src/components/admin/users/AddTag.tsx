@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -82,7 +82,13 @@ export function AddTag({ userId, currentUserTagIds = [] }: AddTagProps) {
 
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (addUserToTagMutation.isPending) return;
+          setOpen(next);
+        }}
+      >
         <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Badge
             variant='outline'
@@ -114,7 +120,11 @@ export function AddTag({ userId, currentUserTagIds = [] }: AddTagProps) {
                     onSelect={() => handleSelectTag(tag.id)}
                     disabled={addUserToTagMutation.isPending}
                   >
-                    {tag.name}
+                    <span className='flex-1 truncate'>{tag.name}</span>
+                    {addUserToTagMutation.isPending &&
+                      addUserToTagMutation.variables?.tagId === tag.id && (
+                        <Loader2 className='size-4 animate-spin' />
+                      )}
                   </CommandItem>
                 ))}
               </CommandGroup>

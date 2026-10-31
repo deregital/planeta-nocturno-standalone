@@ -152,7 +152,8 @@ export default function UpdateFeatures() {
       {canEdit && (
         <Button
           type='submit'
-          disabled={isPending || !isDirty}
+          disabled={!isDirty}
+          loading={isPending}
           className='w-fit'
         >
           Actualizar

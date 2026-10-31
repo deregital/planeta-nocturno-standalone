@@ -1,3 +1,3 @@
-import { PageLoader } from '@/components/common/PageLoader';
+import UsersPageSkeleton from '@/components/admin/users/UsersPageSkeleton';
 
-export default PageLoader;
+export default UsersPageSkeleton;

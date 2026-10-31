@@ -42,7 +42,8 @@ model User {
 
   scannedTickets       EmittedTicket[]       @relation("USER_X_EMITTED_TICKET")
   emittedTicketScans   EmittedTicketScan[]   @relation("USER_X_EMITTED_TICKET_SCAN")
-  authorizedEvents     Event[]            @relation("EVENT_X_USER")
+  authorizedEvents     Event[]               @relation("EVENT_X_USER")
+  eventListOrders      UserEventListOrder[]  @relation("USER_X_EVENT_LIST_ORDER")
   eventsOrganized      EventXOrganizer[]  @relation("ORGANIZER_X_EVENT")
   ticketXOrganizer     TicketXOrganizer[] @relation("ORGANIZER_X_TICKET")
   ticketGroups         TicketGroup[]      @relation("ORGANIZER_X_TICKET_GROUP")
@@ -231,6 +232,21 @@ model EventFolder {
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("eventFolder")
+}
+
+model UserEventListOrder {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String @db.Uuid
+  user         User   @relation("USER_X_EVENT_LIST_ORDER", fields: [userId], references: [id], onDelete: Cascade)
+  scope        String
+  containerKey String
+  itemKind     String
+  itemId       String @db.Uuid
+  position     Int
+
+  @@unique([userId, scope, containerKey, itemKind, itemId], map: "userEventListOrder_identity_key")
+  @@index([userId, scope], map: "userEventListOrder_userId_scope_idx")
+  @@map("userEventListOrder")
 }
 
 model Location {
@@ -442,7 +458,7 @@ model TicketXOrganizer {
 
   shortId Int
 
-  code String @unique @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
+  code String @default(dbgenerated("upper(substr(md5(random()::text), 1, 6))"))
 
   shared Boolean @default(false)
 

@@ -33,6 +33,7 @@ import {
   eventXorganizer,
   eventXUser,
   location as locationSchema,
+  userEventListOrder,
   ticketGroup,
   ticketType,
   ticketTypePerGroup,
@@ -41,6 +42,11 @@ import {
   user,
 } from '@/drizzle/schema';
 import { tryDateOnlyToLocalDate } from '@/lib/date-only';
+import {
+  applyUserEventListOrder,
+  EVENT_LIST_ROOT_KEY,
+  type EventListScope,
+} from '@/lib/event-list-order';
 import {
   isEventPast,
   isEventUpcoming,
@@ -61,6 +67,7 @@ import {
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
 import { logger } from '@/server/observability/logger';
+import { countIssuedTicketsByEventId } from '@/server/services/issuedTicketCounts';
 import { sendMail } from '@/server/services/mail';
 import {
   anyPermissionProcedure,
@@ -84,12 +91,51 @@ import {
 } from '@/server/utils/presentismo-pdf';
 import { generatePdf } from '@/server/utils/ticket-template';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
-import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
+import {
+  allocateTicketXOrganizerShortIds,
+  insertInvitationCodes,
+} from '@/server/utils/ticketXOrganizerInvite';
 import {
   generateSlug,
   getDMSansFonts,
   nextAvailableSlugInFamily,
 } from '@/server/utils/utils';
+
+async function withIssuedTicketCounts<
+  TEvent extends { id: string },
+  TFolder extends { events: TEvent[] },
+>(
+  db: Db,
+  eventsWithFolders: TFolder[],
+  eventsWithoutFolders: TEvent[],
+): Promise<{
+  eventsWithFolders: Array<
+    Omit<TFolder, 'events'> & {
+      events: Array<TEvent & { issuedTickets: number }>;
+    }
+  >;
+  eventsWithoutFolders: Array<TEvent & { issuedTickets: number }>;
+}> {
+  const counts = await countIssuedTicketsByEventId(db, [
+    ...eventsWithFolders.flatMap((folder) =>
+      folder.events.map((event) => event.id),
+    ),
+    ...eventsWithoutFolders.map((event) => event.id),
+  ]);
+
+  const withCount = (event: TEvent): TEvent & { issuedTickets: number } => ({
+    ...event,
+    issuedTickets: counts.get(event.id) ?? 0,
+  });
+
+  return {
+    eventsWithFolders: eventsWithFolders.map((folder) => ({
+      ...folder,
+      events: folder.events.map(withCount),
+    })),
+    eventsWithoutFolders: eventsWithoutFolders.map(withCount),
+  };
+}
 
 function ticketeraVisibleEventsWhere() {
   return and(
@@ -136,6 +182,129 @@ function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
     );
 }
 
+type ReorderMyListInput = {
+  scope: EventListScope;
+  containerKey: string;
+  items: { kind: 'folder' | 'event'; id: string }[];
+};
+
+function invalidListOrder() {
+  return new TRPCError({
+    code: 'BAD_REQUEST',
+    message: 'No se puede guardar ese orden',
+  });
+}
+
+async function withUserListOrder<
+  TEvent extends { id: string },
+  TFolder extends { id: string; events: TEvent[] },
+>(
+  db: Db,
+  userId: string | undefined,
+  groups: {
+    pastEvents: { folders: TFolder[]; withoutFolders: TEvent[] };
+    upcomingEvents: { folders: TFolder[]; withoutFolders: TEvent[] };
+  },
+) {
+  const rows = userId
+    ? await db
+        .select({
+          scope: userEventListOrder.scope,
+          containerKey: userEventListOrder.containerKey,
+          itemKind: userEventListOrder.itemKind,
+          itemId: userEventListOrder.itemId,
+          position: userEventListOrder.position,
+        })
+        .from(userEventListOrder)
+        .where(eq(userEventListOrder.userId, userId))
+    : [];
+
+  return {
+    pastEvents: applyUserEventListOrder(groups.pastEvents, 'past', rows),
+    upcomingEvents: applyUserEventListOrder(
+      groups.upcomingEvents,
+      'upcoming',
+      rows,
+    ),
+  };
+}
+
+async function assertReorderMyList(
+  db: Db,
+  userId: string,
+  canReadAll: boolean,
+  input: ReorderMyListInput,
+) {
+  const isRoot = input.containerKey === EVENT_LIST_ROOT_KEY;
+  if (!isRoot && !z.uuid().safeParse(input.containerKey).success) {
+    throw invalidListOrder();
+  }
+
+  const seen = new Set<string>();
+  for (const item of input.items) {
+    const key = `${item.kind}:${item.id}`;
+    if (seen.has(key)) throw invalidListOrder();
+    seen.add(key);
+    if (item.kind === 'folder' && !isRoot) throw invalidListOrder();
+  }
+
+  const eventIds = input.items
+    .filter((item) => item.kind === 'event')
+    .map((item) => item.id);
+  const folderIds = input.items
+    .filter((item) => item.kind === 'folder')
+    .map((item) => item.id);
+
+  if (!isRoot) {
+    const folder = await db.query.eventFolder.findFirst({
+      where: eq(eventFolder.id, input.containerKey),
+      columns: { id: true },
+    });
+    if (!folder) throw invalidListOrder();
+  }
+
+  if (folderIds.length > 0) {
+    const folders = await db.query.eventFolder.findMany({
+      where: inArray(eventFolder.id, folderIds),
+      columns: { id: true },
+    });
+    if (folders.length !== folderIds.length) throw invalidListOrder();
+  }
+
+  if (eventIds.length === 0) return;
+
+  const events = await db.query.event.findMany({
+    where: inArray(eventSchema.id, eventIds),
+    columns: {
+      id: true,
+      folderId: true,
+      endingDate: true,
+      isDeleted: true,
+    },
+  });
+  if (events.length !== eventIds.length) throw invalidListOrder();
+
+  for (const found of events) {
+    const inScope =
+      input.scope === 'past'
+        ? isEventPast(found.endingDate)
+        : isEventUpcoming(found.endingDate);
+    if (found.isDeleted || !inScope) throw invalidListOrder();
+    const inContainer = isRoot
+      ? found.folderId === null
+      : found.folderId === input.containerKey;
+    if (!inContainer) throw invalidListOrder();
+  }
+
+  if (canReadAll) return;
+
+  const allowed = await db.query.eventXUser.findMany({
+    where: and(eq(eventXUser.b, userId), inArray(eventXUser.a, eventIds)),
+    columns: { a: true },
+  });
+  if (allowed.length !== eventIds.length) throw forbidden();
+}
+
 export const eventsRouter = router({
   getAll: publicProcedure.query(async ({ ctx }) => {
     const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
@@ -176,8 +345,14 @@ export const eventsRouter = router({
       orderBy: desc(eventSchema.endingDate),
     });
 
+    const counted = await withIssuedTicketCounts(
+      ctx.db,
+      eventsWithFolders,
+      eventsWithoutFolders,
+    );
+
     const pastEvents = {
-      folders: eventsWithFolders.map((folder) => {
+      folders: counted.eventsWithFolders.map((folder) => {
         return {
           id: folder.id,
           name: folder.name,
@@ -187,13 +362,13 @@ export const eventsRouter = router({
           ),
         };
       }),
-      withoutFolders: eventsWithoutFolders.filter((event) =>
+      withoutFolders: counted.eventsWithoutFolders.filter((event) =>
         isEventPast(event.endingDate),
       ),
     };
 
     const upcomingEvents = {
-      folders: eventsWithFolders.map((folder) => {
+      folders: counted.eventsWithFolders.map((folder) => {
         return {
           id: folder.id,
           name: folder.name,
@@ -203,12 +378,15 @@ export const eventsRouter = router({
           ),
         };
       }),
-      withoutFolders: eventsWithoutFolders.filter((event) =>
+      withoutFolders: counted.eventsWithoutFolders.filter((event) =>
         isEventUpcoming(event.endingDate),
       ),
     };
 
-    return { pastEvents, upcomingEvents };
+    return withUserListOrder(ctx.db, ctx.session?.user?.id, {
+      pastEvents,
+      upcomingEvents,
+    });
   }),
   getAllForTicketing: permissionProcedure('scanner:use').query(
     async ({ ctx }) => {
@@ -328,8 +506,14 @@ export const eventsRouter = router({
         orderBy: desc(eventSchema.endingDate),
       });
 
+      const counted = await withIssuedTicketCounts(
+        ctx.db,
+        eventsWithFolders,
+        eventsWithoutFolders,
+      );
+
       const pastEvents = {
-        folders: eventsWithFolders.map((folder) => {
+        folders: counted.eventsWithFolders.map((folder) => {
           return {
             id: folder.id,
             name: folder.name,
@@ -339,13 +523,13 @@ export const eventsRouter = router({
             ),
           };
         }),
-        withoutFolders: eventsWithoutFolders.filter((event) =>
+        withoutFolders: counted.eventsWithoutFolders.filter((event) =>
           isEventPast(event.endingDate),
         ),
       };
 
       const upcomingEvents = {
-        folders: eventsWithFolders.map((folder) => {
+        folders: counted.eventsWithFolders.map((folder) => {
           return {
             id: folder.id,
             name: folder.name,
@@ -355,14 +539,15 @@ export const eventsRouter = router({
             ),
           };
         }),
-        withoutFolders: eventsWithoutFolders.filter((event) =>
+        withoutFolders: counted.eventsWithoutFolders.filter((event) =>
           isEventUpcoming(event.endingDate),
         ),
       };
 
-      return { pastEvents, upcomingEvents };
-
-      return { pastEvents, upcomingEvents };
+      return withUserListOrder(ctx.db, ctx.session.user.id, {
+        pastEvents,
+        upcomingEvents,
+      });
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.query.event.findMany({
@@ -411,6 +596,52 @@ export const eventsRouter = router({
             .set({ sortOrder: index + 1 })
             .where(eq(eventSchema.id, eventId));
         }
+      });
+    }),
+  reorderMyList: permissionProcedure('events:read')
+    .input(
+      z.object({
+        scope: z.enum(['upcoming', 'past']),
+        containerKey: z.string().min(1),
+        items: z
+          .array(
+            z.object({
+              kind: z.enum(['folder', 'event']),
+              id: z.uuid(),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertReorderMyList(
+        ctx.db,
+        ctx.session.user.id,
+        ctx.can('events:read_all'),
+        input,
+      );
+
+      const userId = ctx.session.user.id;
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .delete(userEventListOrder)
+          .where(
+            and(
+              eq(userEventListOrder.userId, userId),
+              eq(userEventListOrder.scope, input.scope),
+              eq(userEventListOrder.containerKey, input.containerKey),
+            ),
+          );
+        await tx.insert(userEventListOrder).values(
+          input.items.map((item, index) => ({
+            userId,
+            scope: input.scope,
+            containerKey: input.containerKey,
+            itemKind: item.kind,
+            itemId: item.id,
+            position: index,
+          })),
+        );
       });
     }),
   getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
@@ -1009,15 +1240,16 @@ export const eventsRouter = router({
                     organizer.ticketAmount,
                   );
 
-                  // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles
-                  await tx.insert(ticketXorganizer).values(
+                  // MODO INVITACIÓN: Crear solo registros TicketXOrganizer para códigos distribuibles.
+                  // Un código repetido reintenta la tanda; no revierte el evento.
+                  await insertInvitationCodes(
+                    tx,
                     Array.from({ length: organizer.ticketAmount }).map(
                       (_, i) => ({
                         eventId: eventCreated.id,
                         organizerId: organizer.id,
                         ticketGroupId: thisOrganizerTicketGroup.id,
                         shortId: shortIds[i]!,
-                        // ticketId será null hasta que se use el código
                       }),
                     ),
                   );
@@ -1585,13 +1817,13 @@ export const eventsRouter = router({
                     );
 
                     // Crear registros TicketsXOrganizer con ticketId null
-                    await tx.insert(ticketXorganizer).values(
+                    await insertInvitationCodes(
+                      tx,
                       Array.from({ length: ticketAmount }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: addedOrganizerId,
                         ticketGroupId: thisOrganizerTicketGroup.id,
                         shortId: shortIds[i]!,
-                        // ticketId será null hasta que se use el código
                       })),
                     );
                   }
@@ -1773,13 +2005,13 @@ export const eventsRouter = router({
                     );
 
                     // Crear los registros faltantes
-                    await tx.insert(ticketXorganizer).values(
+                    await insertInvitationCodes(
+                      tx,
                       Array.from({ length: difference }).map((_, i) => ({
                         eventId: eventUpdated.id,
                         organizerId: organizerInput.id,
                         ticketGroupId: organizerTicketGroup.id,
                         shortId: shortIds[i]!,
-                        // ticketId será null hasta que se use el código
                       })),
                     );
                   }
@@ -1854,6 +2086,20 @@ export const eventsRouter = router({
 
             const ticketTypesUpdated: TicketType[] = [];
 
+            // El ticket único de una invitación no tiene fecha propia: sigue a la del evento.
+            const startingDateForTicketType = (type: {
+              name: string;
+              startingDate?: Date | null;
+            }) => {
+              if (
+                eventUpdated.inviteCondition === 'INVITATION' &&
+                type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim()
+              ) {
+                return eventUpdated.startingDate;
+              }
+              return type.startingDate?.toISOString() ?? null;
+            };
+
             for (const [index, type] of ticketTypes.entries()) {
               // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
               const { id, organizers, ...rest } = type;
@@ -1867,7 +2113,7 @@ export const eventsRouter = router({
                   .set({
                     ...rest,
                     maxSellDate: type.maxSellDate?.toISOString() ?? null,
-                    startingDate: type.startingDate?.toISOString() ?? null,
+                    startingDate: startingDateForTicketType(type),
                     scanLimit: type.scanLimit?.toISOString() ?? null,
                     sortOrder: temporarySortOrder,
                     slug: ticketTypeSlug,
@@ -1901,7 +2147,7 @@ export const eventsRouter = router({
                 .values({
                   ...rest,
                   maxSellDate: type.maxSellDate?.toISOString() ?? null,
-                  startingDate: type.startingDate?.toISOString() ?? null,
+                  startingDate: startingDateForTicketType(type),
                   scanLimit: type.scanLimit?.toISOString() ?? null,
                   sortOrder: temporarySortOrder,
                   slug: ticketTypeSlug,

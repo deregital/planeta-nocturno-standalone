@@ -75,7 +75,11 @@ export default function Client({
 
       <p className='text-2xl font-bold text-accent'>Próximos Eventos</p>
       {hasUpcoming || !isFiltering ? (
-        <EventList events={upcomingEvents} />
+        <EventList
+          events={upcomingEvents}
+          sortable={!isFiltering}
+          scope='upcoming'
+        />
       ) : (
         <p className='text-lg font-medium text-accent'>
           No se encontraron eventos próximos
@@ -120,7 +124,11 @@ export default function Client({
               </AccordionTrigger>
               <AccordionContent className='overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'>
                 <div className='pt-4 pb-2'>
-                  <EventList events={pastEvents} />
+                  <EventList
+                    events={pastEvents}
+                    sortable={!isFiltering}
+                    scope='past'
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>

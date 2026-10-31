@@ -135,7 +135,8 @@ export function EventCoverSquareCropDialog({
           </Button>
           <Button
             type='button'
-            disabled={!croppedAreaPixels || !imageSrc || isWorking}
+            disabled={!croppedAreaPixels || !imageSrc}
+            loading={isWorking}
             onClick={() => void handleConfirm()}
           >
             {isWorking ? 'Procesando…' : 'Usar recorte'}

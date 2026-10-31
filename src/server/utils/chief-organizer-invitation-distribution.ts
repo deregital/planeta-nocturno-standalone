@@ -20,7 +20,10 @@ import {
 import { type OrganizerInvitationSchema } from '@/server/schemas/organizer';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
-import { allocateTicketXOrganizerShortIds } from '@/server/utils/ticketXOrganizerInvite';
+import {
+  allocateTicketXOrganizerShortIds,
+  insertInvitationCodes,
+} from '@/server/utils/ticketXOrganizerInvite';
 import { generateSlug } from '@/server/utils/utils';
 
 type Transaction = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -506,7 +509,8 @@ async function addChiefOrganizerToEvent(
       ticketAmount,
     );
 
-    await tx.insert(ticketXorganizer).values(
+    await insertInvitationCodes(
+      tx,
       Array.from({ length: ticketAmount }).map((_, i) => ({
         eventId: event.id,
         organizerId: organizerInput.id,

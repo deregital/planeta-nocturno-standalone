@@ -1,3 +1,3 @@
-import { PageLoader } from '@/components/common/PageLoader';
+import AdminEventDetailSkeleton from '@/components/event/individual/AdminEventDetailSkeleton';
 
-export default PageLoader;
+export default AdminEventDetailSkeleton;

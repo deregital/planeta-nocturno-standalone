@@ -2,8 +2,8 @@
 
 import confetti from 'canvas-confetti';
 import { formatInTimeZone } from 'date-fns-tz';
-import { Dices } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Dices, RotateCcw } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 export type RaffleTicket = {
   shortId: number;
   fullName: string;
-  dni: string;
+  mail: string;
 };
 
 type RaffleWinner = RaffleTicket & {
@@ -41,10 +41,30 @@ function getStorageKey(eventId: string) {
   return `ticket-raffle-winner:${eventId}`;
 }
 
-function readStoredWinner(eventId: string): RaffleWinner | null {
+function readStoredWinner(
+  eventId: string,
+  tickets: RaffleTicket[],
+): RaffleWinner | null {
   try {
     const raw = localStorage.getItem(getStorageKey(eventId));
-    return raw ? (JSON.parse(raw) as RaffleWinner) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<RaffleWinner>;
+    if (
+      typeof parsed.shortId !== 'number' ||
+      typeof parsed.drawnAt !== 'string'
+    ) {
+      return null;
+    }
+    const current = tickets.find((ticket) => ticket.shortId === parsed.shortId);
+    const fullName = current?.fullName ?? parsed.fullName;
+    const mail = current?.mail ?? parsed.mail ?? '';
+    if (!fullName) return null;
+    return {
+      shortId: parsed.shortId,
+      fullName,
+      mail,
+      drawnAt: parsed.drawnAt,
+    };
   } catch {
     return null;
   }
@@ -243,6 +263,20 @@ export function TicketRaffle({
   const [spinKey, setSpinKey] = useState(0);
 
   const isDrawing = phase === 'spinning';
+  const blurSession = useRef(0);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (!open) return;
+    const session = ++blurSession.current;
+    root.dataset.ticketRaffleOpen = '';
+    return () => {
+      window.setTimeout(() => {
+        if (blurSession.current !== session) return;
+        delete root.dataset.ticketRaffleOpen;
+      }, 250);
+    };
+  }, [open]);
 
   const digitCount = useMemo(() => {
     if (tickets.length === 0) return 2;
@@ -253,10 +287,23 @@ export function TicketRaffle({
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (!next) return;
-    const stored = readStoredWinner(eventId);
+    const stored = readStoredWinner(eventId, tickets);
+    if (stored) {
+      localStorage.setItem(getStorageKey(eventId), JSON.stringify(stored));
+    }
     setPhase(stored ? 'revealed' : 'idle');
     setWinner(stored);
     setDisplayNumber(stored?.shortId ?? null);
+    setJustDrawn(false);
+    setSpinKey((k) => k + 1);
+  };
+
+  const reset = () => {
+    if (isDrawing) return;
+    localStorage.removeItem(getStorageKey(eventId));
+    setPhase('idle');
+    setWinner(null);
+    setDisplayNumber(null);
     setJustDrawn(false);
     setSpinKey((k) => k + 1);
   };
@@ -283,7 +330,10 @@ export function TicketRaffle({
           <Dices className='size-5' />
         </Button>
       </DialogTrigger>
-      <DialogContent className='sm:max-w-xl'>
+      <DialogContent
+        className='sm:max-w-xl'
+        overlayClassName='bg-black/55 backdrop-blur-3xl'
+      >
         <DialogHeader>
           <DialogTitle className='text-2xl font-bold text-accent'>
             Sorteo de tickets
@@ -303,7 +353,12 @@ export function TicketRaffle({
             spinKey={spinKey}
             onSpinComplete={() => {
               setPhase('revealed');
-              confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+              confetti({
+                particleCount: 150,
+                spread: 90,
+                origin: { y: 0.6 },
+                zIndex: 200,
+              });
             }}
           />
 
@@ -320,13 +375,17 @@ export function TicketRaffle({
                 <p className='text-xs font-semibold uppercase tracking-[0.2em] text-accent'>
                   {justDrawn ? 'Ganador' : 'Último ganador'}
                 </p>
-                <p className='mt-1 text-2xl font-bold text-accent-dark'>
+                <p className='mt-1 text-sm font-medium text-gray-500'>
                   #{winner.shortId}
                 </p>
-                <p className='mt-1 text-base font-medium text-accent-dark'>
+                <p className='mt-1 text-2xl font-bold leading-tight text-accent-dark'>
                   {winner.fullName}
                 </p>
-                <p className='text-sm text-gray-500'>DNI {winner.dni}</p>
+                {winner.mail ? (
+                  <p className='text-sm text-gray-500 break-all'>
+                    {winner.mail}
+                  </p>
+                ) : null}
                 <p className='mt-1 text-xs text-gray-400'>
                   Sorteado el{' '}
                   {formatInTimeZone(
@@ -347,30 +406,44 @@ export function TicketRaffle({
             )}
           </div>
 
-          <div className='flex justify-center gap-3'>
+          <div className='flex flex-col items-center gap-2'>
             {phase === 'revealed' && (
               <Button
                 type='button'
                 variant='ghost'
-                className='min-w-[160px]'
-                onClick={() => handleOpenChange(false)}
+                size='sm'
+                className='h-7 gap-1.5 px-2 text-xs font-normal text-gray-400 hover:bg-transparent hover:text-gray-600'
+                onClick={reset}
               >
-                Cerrar
+                <RotateCcw className='size-3.5' />
+                Restablecer
               </Button>
             )}
-            <Button
-              type='button'
-              variant='accent'
-              className={cn('min-w-[160px]', isDrawing && 'animate-pulse')}
-              onClick={spin}
-              disabled={tickets.length === 0 || isDrawing}
-            >
-              {isDrawing
-                ? 'Sorteando...'
-                : phase === 'revealed'
-                  ? 'Volver a sortear'
-                  : '¡Sortear!'}
-            </Button>
+            <div className='flex flex-wrap justify-center gap-3'>
+              {phase === 'revealed' && (
+                <Button
+                  type='button'
+                  variant='ghost'
+                  className='min-w-[160px]'
+                  onClick={() => handleOpenChange(false)}
+                >
+                  Cerrar
+                </Button>
+              )}
+              <Button
+                type='button'
+                variant='accent'
+                className={cn('min-w-[160px]', isDrawing && 'animate-pulse')}
+                onClick={spin}
+                disabled={tickets.length === 0 || isDrawing}
+              >
+                {isDrawing
+                  ? 'Sorteando...'
+                  : phase === 'revealed'
+                    ? 'Volver a sortear'
+                    : '¡Sortear!'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

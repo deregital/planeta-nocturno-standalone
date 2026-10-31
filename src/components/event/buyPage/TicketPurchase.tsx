@@ -87,7 +87,7 @@ function TicketPurchase({
                       if (
                         original?.startingDate &&
                         (!eventStartingDate ||
-                          new Date(original.startingDate).getTime() !==
+                          new Date(original.startingDate).getTime() >
                             new Date(eventStartingDate).getTime())
                       ) {
                         return (
@@ -176,9 +176,9 @@ function TicketPurchase({
           disabled={
             ticketsTypeAvailable.every((ticket) => ticket.disabled) ||
             isLoading ||
-            pending ||
             quantity.every((q) => q.amount === 0)
           }
+          loading={pending}
         >
           {isLoading
             ? 'CARGANDO'

@@ -16,6 +16,11 @@
   --color-stroke: var(--stroke-color);
 }
 
+/* Blurs the page behind the raffle dialog so buyer data is not readable in screenshots. The confetti canvas stays sharp. */
+html[data-ticket-raffle-open] body > :not([data-slot='dialog-overlay']):not([data-slot='dialog-content']):not(:has([data-slot='dialog-overlay'])):not(:has([data-slot='dialog-content'])):not(canvas) {
+  filter: blur(28px);
+}
+
 @layer utilities {
   .h-main-screen {
     @apply lg:h-[calc(100dvh-16vh)] md:h-[calc(100dvh-12vh)] h-[calc(100dvh-8vh)];
