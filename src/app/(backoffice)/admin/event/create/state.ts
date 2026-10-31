@@ -37,6 +37,9 @@ type EventActions = {
   deleteTicketType: (id: string) => void;
   setTicketTypes: (ticketTypes: TicketTypeSchema[]) => void;
   setEvent: (event: Partial<CreateEventSchema>) => void;
+  setEventDates: (
+    dates: Partial<Pick<CreateEventSchema, 'startingDate' | 'endingDate'>>,
+  ) => void;
   setSendOrganizerTicketEmail: (value: boolean) => void;
   resetOrganizers: () => void;
   addOrganizer: (
@@ -89,6 +92,16 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
 
   next.splice(toIndex, 0, moved);
   return next;
+}
+
+/** Mueve `date` lo mismo que se movió la fecha del evento de `from` a `to`. */
+function shiftDate(
+  date: Date | null,
+  from: Date | null | undefined,
+  to: Date | null | undefined,
+): Date | null {
+  if (!date || !from || !to) return date;
+  return new Date(date.getTime() + (to.getTime() - from.getTime()));
 }
 
 const initialStartingDate = new Date();
@@ -163,6 +176,31 @@ export const createEventStore = (initState: EventState = initialState) => {
     ...initState,
     setEvent: (event) => {
       set((state) => ({ event: { ...state.event, ...event } }));
+    },
+    // Las fechas de los ticket types se inicializan con las del evento; si el
+    // evento se mueve, se mueven con él para no quedar desfasadas.
+    setEventDates: (dates) => {
+      set((state) => ({
+        event: { ...state.event, ...dates },
+        ticketTypes: state.ticketTypes.map((t) => ({
+          ...t,
+          startingDate: shiftDate(
+            t.startingDate,
+            state.event.startingDate,
+            dates.startingDate,
+          ),
+          scanLimit: shiftDate(
+            t.scanLimit,
+            state.event.endingDate,
+            dates.endingDate,
+          ),
+          maxSellDate: shiftDate(
+            t.maxSellDate,
+            state.event.endingDate,
+            dates.endingDate,
+          ),
+        })),
+      }));
     },
     setSendOrganizerTicketEmail: (sendOrganizerTicketEmail) => {
       set(() => ({ sendOrganizerTicketEmail }));
