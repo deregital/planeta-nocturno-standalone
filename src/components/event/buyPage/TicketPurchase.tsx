@@ -87,7 +87,7 @@ function TicketPurchase({
                       if (
                         original?.startingDate &&
                         (!eventStartingDate ||
-                          new Date(original.startingDate).getTime() !==
+                          new Date(original.startingDate).getTime() >
                             new Date(eventStartingDate).getTime())
                       ) {
                         return (
