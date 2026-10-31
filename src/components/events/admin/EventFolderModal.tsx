@@ -255,13 +255,30 @@ export default function EventFolderModal({
         </div>
         <DialogFooter>
           {action === 'CREATE' ? (
-            <Button onClick={handleSubmit}>Crear</Button>
+            <Button
+              onClick={handleSubmit}
+              loading={createFolder.isPending}
+              disabled={updateFolder.isPending || deleteFolder.isPending}
+            >
+              Crear
+            </Button>
           ) : (
             <>
-              <Button onClick={handleDelete} variant='destructive'>
+              <Button
+                onClick={handleDelete}
+                variant='destructive'
+                loading={deleteFolder.isPending}
+                disabled={createFolder.isPending || updateFolder.isPending}
+              >
                 {isDeleteConfirmed ? '¿Estás seguro?' : 'Eliminar'}
               </Button>
-              <Button onClick={handleSubmit}>Editar</Button>
+              <Button
+                onClick={handleSubmit}
+                loading={updateFolder.isPending}
+                disabled={createFolder.isPending || deleteFolder.isPending}
+              >
+                Editar
+              </Button>
             </>
           )}
         </DialogFooter>

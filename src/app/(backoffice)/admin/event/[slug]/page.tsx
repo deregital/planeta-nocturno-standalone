@@ -1,9 +1,9 @@
-import { Loader2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { Suspense } from 'react';
 
 import GoBack from '@/components/common/GoBack';
+import AdminEventDetailSkeleton from '@/components/event/individual/AdminEventDetailSkeleton';
 import { AdminInvitationEventView } from '@/components/event/individual/AdminInvitationEventView';
 import DeleteEventModal from '@/components/event/individual/DeleteEventModal';
 import { EmitTicketModal } from '@/components/event/individual/EmitTicketModal';
@@ -119,7 +119,7 @@ async function EventDetails({ slug }: { slug: string }) {
                   tickets={tickets.map((ticket) => ({
                     shortId: ticket.shortId,
                     fullName: ticket.fullName,
-                    dni: ticket.dni,
+                    mail: ticket.mail,
                   }))}
                 />
               </div>
@@ -162,7 +162,11 @@ async function EventDetails({ slug }: { slug: string }) {
         </>
       )}
       {can('tickets:read_all') && event.inviteCondition !== 'INVITATION' && (
-        <TicketGroupsTable eventId={event.id} eventSlug={event.slug} />
+        <TicketGroupsTable
+          eventId={event.id}
+          eventSlug={event.slug}
+          extraTicketData={event.extraTicketData}
+        />
       )}
       {can('tickets:answers') && hasVisibleQuestions && (
         <SurveyAnswersTable event={event} />
@@ -179,13 +183,7 @@ export default async function EventPage({
   const { slug } = await params;
 
   return (
-    <Suspense
-      fallback={
-        <div className='flex h-full w-full items-center justify-center'>
-          <Loader2 className='animate-spin' />
-        </div>
-      }
-    >
+    <Suspense fallback={<AdminEventDetailSkeleton />}>
       <NuqsAdapter>
         <EventDetails slug={slug} />
       </NuqsAdapter>

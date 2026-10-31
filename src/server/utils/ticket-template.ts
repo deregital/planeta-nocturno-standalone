@@ -573,6 +573,22 @@ function formatTicketStartingDateLabel(startingDate: string): string {
   return `${formattedDate} - ${formattedTime} hs`;
 }
 
+/**
+ * El inicio de escaneo del ticket type se copia de la fecha del evento al crearlo
+ * y puede quedar desfasado si el evento se mueve (ej. evento duplicado). Nunca se
+ * muestra una fecha anterior al inicio del evento.
+ */
+function resolveTicketStartingDate(
+  ticketStartingDate: string | null,
+  eventStartingDate: string | null,
+): string | null {
+  if (!ticketStartingDate) return eventStartingDate;
+  if (!eventStartingDate) return ticketStartingDate;
+  return new Date(ticketStartingDate) < new Date(eventStartingDate)
+    ? eventStartingDate
+    : ticketStartingDate;
+}
+
 export async function generatePdf(
   ticket: GenerateTicketProps,
   instance: ResolvedInstance,
@@ -581,8 +597,10 @@ export async function generatePdf(
     throw new Error('Ticket no encontrado');
   }
 
-  const resolvedStartingDate =
-    ticket.startingDate ?? ticket.eventStartingDate ?? null;
+  const resolvedStartingDate = resolveTicketStartingDate(
+    ticket.startingDate,
+    ticket.eventStartingDate ?? null,
+  );
   // pdfme no acepta string vacío en campos de texto; un espacio mantiene el layout.
   const startingDateLabel = resolvedStartingDate
     ? formatTicketStartingDateLabel(resolvedStartingDate)

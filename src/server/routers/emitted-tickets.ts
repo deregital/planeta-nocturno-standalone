@@ -19,6 +19,7 @@ import {
   createTicketSchema,
   emittedTicketSchema,
 } from '@/server/schemas/emitted-tickets';
+import { logger } from '@/server/observability/logger';
 import { sendMail } from '@/server/services/mail';
 import {
   anyPermissionProcedure,
@@ -32,10 +33,9 @@ import { getBuyersCodeByDni } from '@/server/utils/db/utils';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { generatePdf } from '@/server/utils/ticket-template';
 import {
-  canRegisterScan,
   formatLastScanTime,
-  registerTicketScan,
   registerTicketScanInTx,
+  tryRegisterTicketScan,
 } from '@/server/utils/register-ticket-scan';
 import { decryptString, generateSlug } from '@/server/utils/utils';
 
@@ -126,6 +126,18 @@ export const emittedTicketsRouter = router({
   createMany: publicProcedure
     .input(createManyTicketSchema)
     .mutation(async ({ ctx, input }) => {
+      if (input.length === 0) return [];
+
+      // Todas las entradas tienen que pertenecer al mismo ticketGroup: la emisión
+      // se valida contra lo que ese grupo reservó, no contra lo que manda el form.
+      const ticketGroupId = input[0].ticketGroupId;
+      if (input.some((ticket) => ticket.ticketGroupId !== ticketGroupId)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Las entradas deben pertenecer al mismo grupo',
+        });
+      }
+
       try {
         const uniqueTicketTypeIds = input.map((ticket) => ticket.ticketTypeId);
 
@@ -152,6 +164,60 @@ export const emittedTicketsRouter = router({
         const newTicketCounts = new Map<string, number>();
 
         const res = await ctx.db.transaction(async (tx) => {
+          // Lock del grupo: serializa dos envíos simultáneos del mismo checkout.
+          const [group] = await tx
+            .select({ id: ticketGroup.id })
+            .from(ticketGroup)
+            .where(eq(ticketGroup.id, ticketGroupId))
+            .for('update');
+          if (!group) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Grupo de entradas no encontrado',
+            });
+          }
+
+          // Idempotencia: si el grupo ya emitió (reintento tras fallo de mail,
+          // doble click), devolver lo existente en vez de duplicar.
+          const alreadyEmitted = await tx.query.emittedTicket.findMany({
+            where: eq(emittedTicket.ticketGroupId, ticketGroupId),
+          });
+          if (alreadyEmitted.length > 0) {
+            return alreadyEmitted;
+          }
+
+          // Emitir exactamente lo reservado: tipo y cantidad salen del grupo,
+          // no del input (si no, se paga 1 General y se emiten 6 VIP).
+          const reserved = await tx
+            .select({
+              ticketTypeId: ticketTypePerGroup.ticketTypeId,
+              amount: ticketTypePerGroup.amount,
+            })
+            .from(ticketTypePerGroup)
+            .where(eq(ticketTypePerGroup.ticketGroupId, ticketGroupId));
+
+          const reservedByType = new Map(
+            reserved.map((row) => [row.ticketTypeId, row.amount]),
+          );
+          const requestedByType = new Map<string, number>();
+          for (const ticket of input) {
+            requestedByType.set(
+              ticket.ticketTypeId,
+              (requestedByType.get(ticket.ticketTypeId) ?? 0) + 1,
+            );
+          }
+          const typesMatch =
+            reservedByType.size === requestedByType.size &&
+            [...requestedByType].every(
+              ([typeId, amount]) => reservedByType.get(typeId) === amount,
+            );
+          if (!typesMatch) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Las entradas no coinciden con la reserva del grupo',
+            });
+          }
+
           const countByEventId = new Map<string, number>();
           for (const ticket of input) {
             const eventId = ticket.eventId ?? '';
@@ -248,6 +314,8 @@ export const emittedTicketsRouter = router({
 
         return res;
       } catch (error) {
+        // Dejar pasar los rechazos de validación con su mensaje real.
+        if (error instanceof TRPCError) throw error;
         throw new Error('Error al crear ticket/s', { cause: error });
       }
     }),
@@ -448,16 +516,34 @@ export const emittedTicketsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const startedAt = performance.now();
+      // Cada respuesta informa cuánto tardó el servidor, así el scanner puede
+      // separar la demora de red de la del servidor.
+      const respond = <
+        T extends { status: string; ticket: { eventId: string } | null },
+      >(
+        result: T,
+      ) => {
+        const serverMs = Math.round(performance.now() - startedAt);
+        logger.info('Ticket scan', {
+          operation: 'ticket_scan',
+          status: result.status,
+          eventId: result.ticket?.eventId,
+          serverMs,
+        });
+        return { ...result, serverMs };
+      };
+
       let decryptedTicketId: string;
       try {
         decryptedTicketId = decryptString(input.barcode);
       } catch {
-        return {
+        return respond({
           ticket: null,
           status: 'not-found',
           text: 'Ticket no encontrado',
           extraInfo: 'El ticket no pertenece a este evento',
-        };
+        });
       }
 
       const ticketReturned = await ctx.db.query.emittedTicket.findFirst({
@@ -484,12 +570,12 @@ export const emittedTicketsRouter = router({
       });
 
       if (!ticketReturned) {
-        return {
+        return respond({
           ticket: null,
           status: 'not-found',
           text: 'Ticket no encontrado',
           extraInfo: 'El ticket no pertenece a este evento',
-        };
+        });
       }
       let extraInfo: string = '';
       const ticket = {
@@ -500,22 +586,22 @@ export const emittedTicketsRouter = router({
         },
       };
 
-      const scanCheck = canRegisterScan(ticket);
-      if (!scanCheck.allowed) {
-        return {
+      const scanResult = await tryRegisterTicketScan(
+        ctx.db,
+        decryptedTicketId,
+        ctx.session.user.id,
+        ticket.ticketType.allowMultipleScans,
+      );
+      if (!scanResult.registered) {
+        return respond({
           ticket,
           status: 'already-scanned',
           text: 'Ticket ya escaneado',
           extraInfo: `Escaneado a las ${formatLastScanTime(ticket.scannedAt)}`,
-        };
+        });
       }
 
-      const scannedAt = await registerTicketScan(
-        ctx.db,
-        decryptedTicketId,
-        ctx.session.user.id,
-      );
-
+      const scannedAt = scanResult.scannedAt;
       const scanNumber = ticket.emittedTicketScans.length + 1;
 
       ticket.scanned = true;
@@ -542,13 +628,13 @@ export const emittedTicketsRouter = router({
         )}`;
       }
 
-      return {
+      return respond({
         ticket,
         status: 'success',
         text: `Escaneado con éxito: ${ticket.fullName}`,
         extraInfo:
           `${extraInfo}${scanNumber > 1 ? ` - Escaneo #${scanNumber}` : ''} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`.trim(),
-      };
+      });
     }),
   manualScan: permissionProcedure('tickets:manual_scan')
     .input(z.object({ ticketId: z.string() }))
@@ -566,15 +652,18 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      const scanCheck = canRegisterScan(ticket);
-      if (!scanCheck.allowed) {
+      const scanResult = await tryRegisterTicketScan(
+        ctx.db,
+        input.ticketId,
+        ctx.session.user.id,
+        ticket.ticketType.allowMultipleScans,
+      );
+      if (!scanResult.registered) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Ticket ya escaneado',
         });
       }
-
-      await registerTicketScan(ctx.db, input.ticketId, ctx.session.user.id);
 
       const updatedTicket = await ctx.db.query.emittedTicket.findFirst({
         where: eq(emittedTicket.id, input.ticketId),

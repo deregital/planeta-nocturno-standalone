@@ -66,7 +66,7 @@ const columns: StrictColumnDef<EmittedTicket>[] = [
       });
       return (
         <Button
-          disabled={sendTicketMutation.isPending}
+          loading={sendTicketMutation.isPending}
           variant='accent'
           size='sm'
           onClick={() =>

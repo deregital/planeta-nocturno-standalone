@@ -8,6 +8,7 @@ import {
   Shield,
   Users,
 } from 'lucide-react';
+import { useFormStatus } from 'react-dom';
 import { type Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -122,10 +123,10 @@ export default function ControlHeader({
           onSubmit={resetPostHogUser}
           className='hidden sm:block'
         >
-          <Button type='submit' variant='accent' size='sm'>
+          <SignOutSubmit variant='accent' size='sm'>
             <LogOut />
             Cerrar sesión
-          </Button>
+          </SignOutSubmit>
         </form>
 
         <Sheet>
@@ -166,20 +167,45 @@ export default function ControlHeader({
                 onSubmit={resetPostHogUser}
                 className='border-t border-white/10'
               >
-                <Button
-                  type='submit'
+                <SignOutSubmit
                   variant='ghost'
                   className='h-auto w-full justify-start gap-2 rounded-none px-4 py-3 text-base font-normal text-brand hover:bg-white/10 hover:text-white'
                 >
                   <LogOut className='size-4' />
                   Cerrar sesión
-                </Button>
+                </SignOutSubmit>
               </form>
             </nav>
           </SheetContent>
         </Sheet>
       </div>
     </header>
+  );
+}
+
+function SignOutSubmit({
+  variant,
+  size,
+  className,
+  children,
+}: {
+  variant: React.ComponentProps<typeof Button>['variant'];
+  size?: React.ComponentProps<typeof Button>['size'];
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      type='submit'
+      variant={variant}
+      size={size}
+      className={className}
+      loading={pending}
+    >
+      {children}
+    </Button>
   );
 }
 

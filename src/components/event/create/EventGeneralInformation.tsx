@@ -89,6 +89,7 @@ export function EventGeneralInformation({
 }: EventGeneralInformationProps) {
   const event = useCreateEventStore((state) => state.event);
   const setEvent = useCreateEventStore((state) => state.setEvent);
+  const setEventDates = useCreateEventStore((state) => state.setEventDates);
   const utils = trpc.useUtils();
 
   const { data: locations } = trpc.location.getAll.useQuery();
@@ -378,7 +379,7 @@ export function EventGeneralInformation({
                   selected={event.startingDate ?? undefined}
                   className='flex-1 max-h-min'
                   onChange={(date) => {
-                    handleChange('startingDate', date);
+                    setEventDates({ startingDate: date });
                     setError((prev) => ({
                       ...prev,
                       startingDate: '',
@@ -401,7 +402,7 @@ export function EventGeneralInformation({
                       : undefined
                   }
                   onChange={(date) => {
-                    handleChange('endingDate', date);
+                    setEventDates({ endingDate: date });
                     setError((prev) => ({ ...prev, endingDate: '' }));
                   }}
                   error={error.endingDate}

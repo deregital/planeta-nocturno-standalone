@@ -7,8 +7,10 @@ import {
   FileSpreadsheet,
   Folder,
   Link2,
+  Loader2,
   MoreVertical,
   Pencil,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,6 +19,7 @@ import { toast } from 'sonner';
 import { type Route } from 'next';
 
 import ChangeEventFolder from '@/components/events/admin/ChangeEventFolder';
+import EventListDragHandle from '@/components/events/admin/EventListDragHandle';
 import DuplicateEventModal from '@/components/events/admin/DuplicateEventModal';
 import { FileMarkdown } from '@/components/icons/FileMarkdown';
 import { FileSmile } from '@/components/icons/FileSmile';
@@ -34,27 +37,37 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { type SortableHandleProps } from '@/hooks/useSortableList';
 import { cn } from '@/lib/utils';
 import { lightenColor } from '@/lib/utils-client';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
+type ListedEventBase = RouterOutputs['events']['getAll'][
+  | 'upcomingEvents'
+  | 'pastEvents']['withoutFolders'][number];
+
+export type ListedEvent = Omit<ListedEventBase, 'issuedTickets'> & {
+  issuedTickets?: number;
+};
+
 export default function EventCardHorizontal({
   event,
   folderColor,
   showActions = true,
+  dragHandleProps,
 }: {
-  event: RouterOutputs['events']['getAll'][
-    | 'upcomingEvents'
-    | 'pastEvents']['folders'][number]['events'][number];
+  event: ListedEvent;
   folderColor?: string;
   showActions?: boolean;
+  dragHandleProps?: SortableHandleProps;
 }) {
   const router = useRouter();
   const { can } = usePermissions();
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [activateSure, setActivateSure] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const canPublish = can('events:publish');
   const canDuplicate = can('events:duplicate');
@@ -74,9 +87,17 @@ export default function EventCardHorizontal({
 
   const utils = trpc.useUtils();
   const toggleActivate = trpc.events.toggleActivate.useMutation();
+  const exportPending =
+    generatePresentismoOrdenAlfPDF.isPending ||
+    generatePresentismoGroupedTicketTypePDF.isPending ||
+    exportXlsxByTicketType.isPending;
 
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
   const manageHref = `/admin/event/${event.slug}`;
+  const issuedTicketsLabel =
+    event.issuedTickets === 1
+      ? '1 entrada emitida'
+      : `${(event.issuedTickets ?? 0).toLocaleString('es-AR')} entradas emitidas`;
 
   const handleActivate = () => {
     if (!activateSure) {
@@ -117,7 +138,18 @@ export default function EventCardHorizontal({
         backgroundColor: lighterColor || undefined,
       }}
     >
-      <CardContent className='flex w-full min-w-0 items-center justify-between gap-2 px-4 text-on-accent'>
+      <CardContent
+        className={cn(
+          'flex w-full min-w-0 items-center justify-between gap-2 text-on-accent',
+          dragHandleProps ? 'py-0 pl-1 pr-4' : 'px-4',
+        )}
+      >
+        {dragHandleProps ? (
+          <EventListDragHandle
+            {...dragHandleProps}
+            className='self-stretch px-2'
+          />
+        ) : null}
         <div
           role={showActions ? 'link' : undefined}
           tabIndex={showActions ? 0 : undefined}
@@ -153,6 +185,21 @@ export default function EventCardHorizontal({
             </span>
           </p>
         </div>
+        {typeof event.issuedTickets === 'number' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className='inline-flex shrink-0 items-center gap-1 text-sm font-medium tabular-nums text-on-accent'
+                tabIndex={0}
+                aria-label={issuedTicketsLabel}
+              >
+                <Users className='size-4 shrink-0' />
+                {event.issuedTickets.toLocaleString('es-AR')}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Entradas emitidas</TooltipContent>
+          </Tooltip>
+        )}
         {showActions && (
           <div className='flex shrink-0 flex-row items-center gap-0.5'>
             {event.inviteCondition !== 'INVITATION' && (
@@ -161,7 +208,7 @@ export default function EventCardHorizontal({
                   <Button
                     variant='success'
                     size='sm'
-                    disabled={toggleActivate.isPending}
+                    loading={toggleActivate.isPending}
                     onClick={handleActivate}
                     className='mr-1'
                   >
@@ -246,7 +293,13 @@ export default function EventCardHorizontal({
               </>
             )}
             {hasMoreOptions && (
-              <DropdownMenu>
+              <DropdownMenu
+                open={moreOpen}
+                onOpenChange={(open) => {
+                  if (exportPending) return;
+                  setMoreOpen(open);
+                }}
+              >
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
@@ -255,7 +308,11 @@ export default function EventCardHorizontal({
                         size={'icon'}
                         className='text-on-accent'
                       >
-                        <MoreVertical className='w-4 h-4' />
+                        {exportPending ? (
+                          <Loader2 className='w-4 h-4 animate-spin' />
+                        ) : (
+                          <MoreVertical className='w-4 h-4' />
+                        )}
                       </Button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
@@ -265,6 +322,7 @@ export default function EventCardHorizontal({
                   {event.inviteCondition !== 'INVITATION' && (
                     <DropdownMenuItem
                       asChild
+                      disabled={exportPending}
                       className='sm:hidden cursor-pointer'
                     >
                       <Link
@@ -280,6 +338,7 @@ export default function EventCardHorizontal({
                   {canManageFolders && (
                     <DropdownMenuItem
                       className='sm:hidden cursor-pointer'
+                      disabled={exportPending}
                       onClick={() => setFolderDialogOpen(true)}
                     >
                       <Folder className='mr-2 h-4 w-4' />
@@ -289,6 +348,7 @@ export default function EventCardHorizontal({
                   {canDuplicate && (
                     <DropdownMenuItem
                       className='sm:hidden cursor-pointer'
+                      disabled={exportPending}
                       onClick={() => setDuplicateDialogOpen(true)}
                     >
                       <CopyIcon className='mr-2 h-4 w-4' />
@@ -298,6 +358,8 @@ export default function EventCardHorizontal({
                   {canExport && (
                     <>
                       <DropdownMenuItem
+                        disabled={exportPending}
+                        onSelect={(e) => e.preventDefault()}
                         onClick={() => {
                           generatePresentismoOrdenAlfPDF.mutate(
                             { eventId: event.id },
@@ -317,6 +379,7 @@ export default function EventCardHorizontal({
                                 a.href = url;
                                 a.download = `Asistencia ${event.slug}.pdf`;
                                 a.click();
+                                setMoreOpen(false);
                               },
                             },
                           );
@@ -324,11 +387,17 @@ export default function EventCardHorizontal({
                         className='cursor-pointer'
                       >
                         <span className='mr-2 inline-flex'>
-                          <FileMarkdown />
+                          {generatePresentismoOrdenAlfPDF.isPending ? (
+                            <Loader2 className='animate-spin' />
+                          ) : (
+                            <FileMarkdown />
+                          )}
                         </span>
                         PDF en orden alfabético
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        disabled={exportPending}
+                        onSelect={(e) => e.preventDefault()}
                         onClick={() => {
                           generatePresentismoGroupedTicketTypePDF.mutate(
                             { eventId: event.id },
@@ -348,6 +417,7 @@ export default function EventCardHorizontal({
                                 a.href = url;
                                 a.download = `Asistencia ${event.slug}.pdf`;
                                 a.click();
+                                setMoreOpen(false);
                               },
                             },
                           );
@@ -355,13 +425,19 @@ export default function EventCardHorizontal({
                         className='cursor-pointer'
                       >
                         <span className='mr-2 inline-flex'>
-                          <FileSmile />
+                          {generatePresentismoGroupedTicketTypePDF.isPending ? (
+                            <Loader2 className='animate-spin' />
+                          ) : (
+                            <FileSmile />
+                          )}
                         </span>
                         PDF agrupado por tipo de ticket
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={async () => {
-                          await exportXlsxByTicketType.mutateAsync(event.id, {
+                        disabled={exportPending}
+                        onSelect={(e) => e.preventDefault()}
+                        onClick={() => {
+                          exportXlsxByTicketType.mutate(event.id, {
                             onError: (error) => {
                               toast.error(error.message);
                             },
@@ -375,13 +451,18 @@ export default function EventCardHorizontal({
                               a.download = `tickets-${event.slug}.xlsx`;
                               a.click();
                               URL.revokeObjectURL(url);
+                              setMoreOpen(false);
                             },
                           });
                         }}
                         className='cursor-pointer'
                       >
                         <span className='mr-2 inline-flex'>
-                          <FileSpreadsheet />
+                          {exportXlsxByTicketType.isPending ? (
+                            <Loader2 className='animate-spin' />
+                          ) : (
+                            <FileSpreadsheet />
+                          )}
                         </span>
                         Excel por tipo de ticket
                       </DropdownMenuItem>

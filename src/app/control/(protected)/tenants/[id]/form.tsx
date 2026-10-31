@@ -179,7 +179,7 @@ export default function TenantEditForm({
       )}
 
       <div className='flex justify-end'>
-        <Button type='submit' disabled={pending}>
+        <Button type='submit' loading={pending}>
           {pending ? 'Guardando...' : 'Guardar cambios'}
         </Button>
       </div>

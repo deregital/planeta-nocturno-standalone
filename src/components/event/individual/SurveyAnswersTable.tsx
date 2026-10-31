@@ -3,11 +3,16 @@
 import { type Row, type StrictColumnDef } from '@tanstack/react-table';
 import { es } from 'date-fns/locale';
 import { Search } from 'lucide-react';
-import { parseAsString, useQueryState } from 'nuqs';
+import { useQueryStates } from 'nuqs';
 import { useMemo } from 'react';
 
 import { DataTable } from '@/components/common/DataTable';
-import { FORM_SEARCH_PARAM } from '@/components/event/individual/ticketsTable/columns';
+import {
+  FORM_SEARCH_PARAM,
+  FORM_TICKET_PARAM,
+  formAnswerSearchParams,
+} from '@/components/event/individual/ticketsTable/columns';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatLocalDateTime } from '@/lib/format-date';
 import { type RouterOutputs } from '@/server/routers/app';
@@ -60,10 +65,22 @@ function generateSurveyAnswerColumns(
 }
 
 export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
-  const [search, setSearch] = useQueryState(
-    FORM_SEARCH_PARAM,
-    parseAsString.withDefault(''),
-  );
+  const [formParams, setFormParams] = useQueryStates(formAnswerSearchParams);
+  const search = formParams[FORM_SEARCH_PARAM];
+  const ticketId = formParams[FORM_TICKET_PARAM];
+
+  const selectedTicket = useMemo(() => {
+    if (!ticketId) return null;
+    for (const ticketGroup of event.ticketGroups) {
+      const ticket = ticketGroup.emittedTickets.find(
+        (emittedTicket) => emittedTicket.id === ticketId,
+      );
+      if (ticket) {
+        return { ticket, groupId: ticketGroup.id };
+      }
+    }
+    return null;
+  }, [event.ticketGroups, ticketId]);
 
   const rows = useMemo(
     () =>
@@ -105,10 +122,20 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
   );
 
   const filteredRows = useMemo(() => {
+    if (ticketId) {
+      if (!selectedTicket) return [];
+      return rows
+        .filter((row) => row.id === selectedTicket.groupId)
+        .map((row) => ({
+          ...row,
+          purchase: `${selectedTicket.ticket.fullName} - DNI ${selectedTicket.ticket.dni} (${selectedTicket.ticket.mail})`,
+        }));
+    }
+
     const term = normalize(search ?? '');
     if (!term) return rows;
     return rows.filter((row) => row.searchable.includes(term));
-  }, [rows, search]);
+  }, [rows, search, selectedTicket, ticketId]);
 
   // Mostrar preguntas activas o eliminadas que aún tengan respuestas, para no
   // perder la visualización de respuestas históricas.
@@ -145,17 +172,56 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
           <Input
             placeholder='Buscar por nombre, DNI, email o respuesta...'
             value={search ?? ''}
-            onChange={(e) => setSearch(e.target.value || null)}
+            onChange={(e) =>
+              setFormParams({
+                [FORM_SEARCH_PARAM]: e.target.value || null,
+                [FORM_TICKET_PARAM]: null,
+              })
+            }
             className='pl-10'
           />
         </div>
+        {ticketId && (
+          <div className='mx-auto mt-3 flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/40 px-4 py-2 text-sm'>
+            <p>
+              {selectedTicket ? (
+                <>
+                  Respuestas de{' '}
+                  <span className='font-medium capitalize'>
+                    {selectedTicket.ticket.fullName}
+                  </span>{' '}
+                  · DNI {selectedTicket.ticket.dni} · Ticket #
+                  {selectedTicket.ticket.shortId}
+                </>
+              ) : (
+                'No se encontró el ticket seleccionado.'
+              )}
+            </p>
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={() =>
+                setFormParams({
+                  [FORM_TICKET_PARAM]: null,
+                })
+              }
+            >
+              Ver todas
+            </Button>
+          </div>
+        )}
       </div>
       <div className='w-[calc(100vw-16px)] md:w-[calc(100vw-16px-var(--sidebar-width))] mb-8 overflow-x-hidden'>
         <DataTable
           columns={columns}
           data={filteredRows}
           exportFileName={`Formulario-${event.slug}`}
-          noResultsPlaceholder='Todavía no hay respuestas para las preguntas de este evento.'
+          noResultsPlaceholder={
+            ticketId
+              ? 'Este ticket no tiene respuestas de formulario.'
+              : 'Todavía no hay respuestas para las preguntas de este evento.'
+          }
         />
       </div>
     </div>

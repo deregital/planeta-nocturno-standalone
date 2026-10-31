@@ -104,7 +104,7 @@ export function ConfirmAdminCreationModal({
               >
                 Cancelar
               </Button>
-              <Button type='submit' disabled={isPending}>
+              <Button type='submit' loading={isPending}>
                 {isPending ? 'Validando...' : 'Confirmar'}
               </Button>
             </DialogFooter>
