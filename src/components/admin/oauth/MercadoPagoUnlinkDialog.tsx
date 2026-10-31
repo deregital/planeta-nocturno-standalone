@@ -159,7 +159,8 @@ export default function MercadoPagoUnlinkDialog() {
           <DialogFooter className='sm:justify-end'>
             <Button
               variant='destructive'
-              disabled={requestUnlink.isPending || requirementsLoading}
+              disabled={requirementsLoading}
+              loading={requestUnlink.isPending}
               onClick={handleRequestUnlink}
             >
               {requestUnlink.isPending

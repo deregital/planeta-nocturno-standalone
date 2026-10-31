@@ -109,7 +109,7 @@ export default function EventCategoryModal({
               <Button
                 onClick={() => editMutation.mutate({ id: category.id, name })}
                 type='submit'
-                disabled={editMutation.isPending}
+                loading={editMutation.isPending}
                 className='rounded-md'
               >
                 Editar
@@ -118,7 +118,8 @@ export default function EventCategoryModal({
           ) : (
             <Button
               onClick={() => createMutation.mutate({ name })}
-              disabled={name.length === 0 || createMutation.isPending}
+              disabled={name.length === 0}
+              loading={createMutation.isPending}
               className='w-full rounded-md'
             >
               Crear

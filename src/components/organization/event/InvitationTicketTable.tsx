@@ -1,7 +1,7 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { ShareIcon } from 'lucide-react';
+import { Loader2, ShareIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -33,17 +33,23 @@ function InvitationSharedSwitch({
   });
 
   return (
-    <Switch
-      checked={shared}
-      className='cursor-pointer **:data-[slot=switch-thumb]:duration-200 **:data-[slot=switch-thumb]:ease-out'
-      onCheckedChange={(checked) => {
-        onSharedChange(code, checked);
-        setCodeShared.mutate({ eventId, code, shared: checked });
-      }}
-      aria-label={
-        shared ? 'Marcar como no compartido' : 'Marcar como compartido'
-      }
-    />
+    <span className='inline-flex items-center gap-2'>
+      <Switch
+        checked={shared}
+        disabled={setCodeShared.isPending}
+        className='cursor-pointer **:data-[slot=switch-thumb]:duration-200 **:data-[slot=switch-thumb]:ease-out'
+        onCheckedChange={(checked) => {
+          onSharedChange(code, checked);
+          setCodeShared.mutate({ eventId, code, shared: checked });
+        }}
+        aria-label={
+          shared ? 'Marcar como no compartido' : 'Marcar como compartido'
+        }
+      />
+      {setCodeShared.isPending && (
+        <Loader2 className='size-3 animate-spin text-accent' />
+      )}
+    </span>
   );
 }
 
@@ -52,11 +58,13 @@ function buildColumns({
   eventSlug,
   onSharedChange,
   onCopy,
+  sharingCode,
 }: {
   eventId: string;
   eventSlug: string;
   onSharedChange: (code: string, shared: boolean) => void;
   onCopy: (code: string) => void;
+  sharingCode: string | null;
 }): StrictColumnDef<InvitationCode>[] {
   return [
     {
@@ -91,6 +99,7 @@ function buildColumns({
             type='button'
             variant='ghost'
             className='justify-start gap-2'
+            loading={sharingCode === row.original.code}
             onClick={copyToClipboard}
           >
             {row.original.shared
@@ -140,6 +149,7 @@ export function InvitationTicketTable({
     setSharedByCode(new Map(codes.map((code) => [code.code, code.shared])));
   }, [codes]);
 
+  const [sharingCode, setSharingCode] = useState<string | null>(null);
   const setCodeShared = trpc.organizer.setCodeShared.useMutation({
     onError: (_error, variables) => {
       setSharedByCode((current) => {
@@ -149,6 +159,7 @@ export function InvitationTicketTable({
       });
       toast.error('No se pudo actualizar el estado de compartido');
     },
+    onSettled: () => setSharingCode(null),
   });
 
   const setCodeSharedRef = useRef(setCodeShared);
@@ -174,6 +185,7 @@ export function InvitationTicketTable({
       const alreadyShared = sharedByCodeRef.current.get(code) ?? false;
       handlersRef.current.onSharedChange(code, true);
       if (!alreadyShared) {
+        setSharingCode(code);
         setCodeSharedRef.current.mutate({ eventId, code, shared: true });
       }
     },
@@ -196,8 +208,9 @@ export function InvitationTicketTable({
         onSharedChange: (code, shared) =>
           handlersRef.current.onSharedChange(code, shared),
         onCopy: (code) => handlersRef.current.onCopy(code),
+        sharingCode,
       }),
-    [eventId, eventSlug],
+    [eventId, eventSlug, sharingCode],
   );
 
   return <DataTable columns={tableColumns} data={tableData} />;

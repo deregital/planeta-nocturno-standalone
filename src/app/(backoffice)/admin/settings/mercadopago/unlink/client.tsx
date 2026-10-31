@@ -78,7 +78,7 @@ export default function UnlinkMercadoPagoClient({
           <Button
             variant='destructive'
             className='h-10 w-full'
-            disabled={confirmUnlink.isPending}
+            loading={confirmUnlink.isPending}
             onClick={() => confirmUnlink.mutate({ token })}
           >
             {confirmUnlink.isPending

@@ -114,7 +114,7 @@ export default function ControlAdminForm({
         </p>
       )}
 
-      <Button type='submit' disabled={pending}>
+      <Button type='submit' loading={pending}>
         {pending
           ? 'Guardando...'
           : mode === 'create'

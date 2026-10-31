@@ -41,7 +41,7 @@ export function ToggleActivateButton({
     <div>
       <Button
         variant={event.isActive ? 'destructive' : 'success'}
-        disabled={isPending}
+        loading={isPending}
         onClick={handleToggle}
         className='w-full'
       >

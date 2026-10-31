@@ -149,18 +149,26 @@ export default function MercadoPagoConnect({
     setTransferAlias(savedTransferAlias ?? '');
   }, [savedTransferAlias]);
 
-  function handleConnectClick(event: React.MouseEvent<HTMLAnchorElement>) {
+  function handleConnectClick() {
     const error = validateTransferAlias(transferAlias, false);
     if (error) {
-      event.preventDefault();
       setTransferAliasError(error);
       return;
     }
 
+    const openAuth = () => {
+      if (!authUrl) return;
+      window.open(authUrl, '_blank', 'noopener,noreferrer');
+    };
     const value = transferAlias.trim();
     if (value && value !== (savedTransferAlias ?? '')) {
-      updateTransferAlias.mutate({ transferAlias: value });
+      updateTransferAlias.mutate(
+        { transferAlias: value },
+        { onSuccess: openAuth },
+      );
+      return;
     }
+    openAuth();
   }
 
   return (
@@ -273,14 +281,14 @@ export default function MercadoPagoConnect({
               description='Opcional. Si Mercado Pago falla al cobrar, los compradores van a ver este alias para transferir el total.'
             />
             <DialogFooter className='sm:justify-end'>
-              <a
-                href={authUrl}
-                target='_blank'
-                rel='noopener noreferrer'
+              <Button
+                type='button'
+                className='px-8'
+                loading={updateTransferAlias.isPending}
                 onClick={handleConnectClick}
               >
-                <Button className='px-8'>Conectar con Mercado Pago</Button>
-              </a>
+                Conectar con Mercado Pago
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -1,6 +1,6 @@
 /**
  * Modo invitación a volumen:
- *  - colisiones del código de 6 hex (único global en ticketXOrganizer.code)
+ *  - colisiones del código de 6 hex (único por evento: clave ("eventId", code))
  *  - canje de invitaciones con 5000 cupos y miles ya canjeados
  */
 import { callerFor } from '@tests/load/lib/caller';
@@ -176,8 +176,9 @@ async function codeCollisions(log: (...a: unknown[]) => void) {
       codesPerEvent: 500,
       trials: trialsPerSize,
       failedEventCreations: failures,
+      // Los 40.000 están en otro evento y no comparten el espacio de códigos.
       expectedFailureRate:
-        Math.round(expectedCollisionProbability(40_000, 500) * 1000) / 10,
+        Math.round(expectedCollisionProbability(0, 500) * 1000) / 10,
       observedFailureRate: Math.round((failures / trialsPerSize) * 1000) / 10,
     };
     runs.push(withHistory);

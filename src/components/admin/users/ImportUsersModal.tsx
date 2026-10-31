@@ -379,7 +379,8 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
               </DialogClose>
               <Button
                 onClick={handleImport}
-                disabled={!file || !batchName.trim() || isLoading}
+                disabled={!file || !batchName.trim()}
+                loading={isLoading}
               >
                 {isLoading ? 'Procesando...' : 'Importar usuarios'}
               </Button>

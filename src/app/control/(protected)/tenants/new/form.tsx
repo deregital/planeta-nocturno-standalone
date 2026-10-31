@@ -304,7 +304,7 @@ export default function TenantForm({
         )}
 
         <div className='flex items-center justify-end gap-4'>
-          <Button type='submit' disabled={pending}>
+          <Button type='submit' loading={pending}>
             {pending
               ? 'Preparando plataforma...'
               : retrying

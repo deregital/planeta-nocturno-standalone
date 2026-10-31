@@ -103,7 +103,8 @@ export function TransferAliasForm() {
         type='submit'
         variant='outline'
         className='w-fit'
-        disabled={update.isPending || value.trim() === (savedAlias ?? '')}
+        disabled={value.trim() === (savedAlias ?? '')}
+        loading={update.isPending}
       >
         {update.isPending ? 'Guardando...' : 'Guardar alias'}
       </Button>

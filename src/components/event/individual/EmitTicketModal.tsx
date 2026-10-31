@@ -287,7 +287,7 @@ export function EmitTicketModal({
                 error={error.paidOnLocation}
               />
             </FormRow>
-            <Button type='submit' disabled={emitTicketLoading}>
+            <Button type='submit' loading={emitTicketLoading}>
               Emitir ticket
             </Button>
           </form>

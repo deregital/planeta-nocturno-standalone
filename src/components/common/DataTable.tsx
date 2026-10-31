@@ -151,6 +151,7 @@ export function DataTable<
   });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleExportXlsx = useCallback(() => {
     const headerGroup = table.getHeaderGroups()[0];
@@ -188,23 +189,35 @@ export function DataTable<
     exportTableToXlsx(headers, flatRows, exportFileName);
   }, [table, exportExcludeColumnIds, exportFileName]);
 
+  const exportWithFeedback = useCallback(() => {
+    setIsExporting(true);
+    window.setTimeout(() => {
+      try {
+        handleExportXlsx();
+      } finally {
+        setIsExporting(false);
+      }
+    }, 0);
+  }, [handleExportXlsx]);
+
   useEffect(() => {
     if (state.ok && requirePasswordForExport) {
-      handleExportXlsx();
       setIsDialogOpen(false);
+      exportWithFeedback();
       startTransition(() => {
         action(new FormData());
       });
     }
-  }, [state.ok, action, handleExportXlsx, requirePasswordForExport]);
+  }, [state.ok, action, exportWithFeedback, requirePasswordForExport]);
 
   const handleExportClick = useCallback(() => {
+    if (isExporting) return;
     if (requirePasswordForExport) {
       setIsDialogOpen(true);
     } else {
-      handleExportXlsx();
+      exportWithFeedback();
     }
-  }, [requirePasswordForExport, handleExportXlsx]);
+  }, [requirePasswordForExport, exportWithFeedback, isExporting]);
 
   return (
     <div
@@ -223,7 +236,7 @@ export function DataTable<
               {requirePasswordForExport ? (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant='outline' size='sm'>
+                    <Button variant='outline' size='sm' loading={isExporting}>
                       <Download className='size-4 mr-2' /> Exportar a Excel
                     </Button>
                   </DialogTrigger>
@@ -250,7 +263,7 @@ export function DataTable<
                         )}
                       </div>
                       <DialogFooter>
-                        <Button size='sm' type='submit' disabled={isPending}>
+                        <Button size='sm' type='submit' loading={isPending}>
                           Verificar y exportar
                         </Button>
                       </DialogFooter>
@@ -258,7 +271,12 @@ export function DataTable<
                   </DialogContent>
                 </Dialog>
               ) : (
-                <Button variant='outline' size='sm' onClick={handleExportClick}>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  loading={isExporting}
+                  onClick={handleExportClick}
+                >
                   <Download className='size-4 mr-2' /> Exportar a Excel
                 </Button>
               )}

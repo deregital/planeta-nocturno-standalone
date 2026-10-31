@@ -1,5 +1,5 @@
 'use client';
-import { Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -255,7 +255,7 @@ export function TagModal({
               />
             </div>
             <DialogFooter>
-              <Button type='submit' disabled={isPending || !name.trim()}>
+              <Button type='submit' disabled={!name.trim()} loading={isPending}>
                 {isPending ? 'Guardando...' : 'Crear'}
               </Button>
             </DialogFooter>
@@ -306,6 +306,9 @@ export function TagModal({
               disabled={removeUserFromTag.isPending}
               className='text-red-500 focus:cursor-pointer'
             >
+              {removeUserFromTag.isPending ? (
+                <Loader2 className='size-4 animate-spin' />
+              ) : null}
               {removeUserFromTag.isPending
                 ? 'Removiendo...'
                 : sure
@@ -349,11 +352,11 @@ export function TagModal({
                 type='button'
                 variant='destructive'
                 onClick={handleDelete}
+                loading={deleteTag.isPending}
                 disabled={
                   createTag.isPending ||
                   updateTag.isPending ||
-                  removeUserFromTag.isPending ||
-                  deleteTag.isPending
+                  removeUserFromTag.isPending
                 }
               >
                 {deleteTag.isPending
@@ -364,9 +367,9 @@ export function TagModal({
               </Button>
               <Button
                 type='submit'
+                loading={updateTag.isPending}
                 disabled={
                   createTag.isPending ||
-                  updateTag.isPending ||
                   removeUserFromTag.isPending ||
                   deleteTag.isPending ||
                   !name.trim()

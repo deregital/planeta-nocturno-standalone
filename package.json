@@ -17,7 +17,7 @@
     "test:instance-resolution": "node --test tests/instance-resolution.test.mjs",
     "test:environment": "node --test tests/environment.test.mjs",
     "test:guide-videos": "node --test tests/guide-videos.test.mjs",
-    "test:load": "node --import tsx tests/load/run.ts",
+    "test:load": "node --import tsx --import ./tests/load/register-phone-metadata.mjs tests/load/run.ts",
     "test:isolation": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/isolation/tenant-data-isolation.test.ts",
     "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-ticket-slug.ts",
     "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",

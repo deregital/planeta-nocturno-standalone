@@ -150,6 +150,26 @@ function calculateOrganizerMaxAvailable(
   return organizers.length;
 }
 
+function sameInstant(
+  left: Date | null | undefined,
+  right: Date | null | undefined,
+) {
+  if (left == null || right == null) return left == null && right == null;
+  return left.getTime() === right.getTime();
+}
+
+/** El ticket único de invitación copia la fecha de inicio del evento. */
+function syncInvitationTicketStartingDate(
+  ticketTypes: EventState['ticketTypes'],
+  startingDate: Date | null,
+): EventState['ticketTypes'] {
+  return ticketTypes.map((ticketType) =>
+    ticketType.name.trim() === ORGANIZER_TICKET_TYPE_NAME.trim()
+      ? ticketType
+      : { ...ticketType, startingDate },
+  );
+}
+
 function updateOrganizerTicketTypeMaxAvailable(
   ticketTypes: EventState['ticketTypes'],
   maxAvailable: number,
@@ -175,7 +195,23 @@ export const createEventStore = (initState: EventState = initialState) => {
   return createStore<CreateEventStore>((set, get) => ({
     ...initState,
     setEvent: (event) => {
-      set((state) => ({ event: { ...state.event, ...event } }));
+      set((state) => {
+        const nextEvent = { ...state.event, ...event };
+        const startingDateChanged =
+          'startingDate' in event &&
+          !sameInstant(event.startingDate, state.event.startingDate);
+
+        return {
+          event: nextEvent,
+          ticketTypes:
+            nextEvent.inviteCondition === 'INVITATION' && startingDateChanged
+              ? syncInvitationTicketStartingDate(
+                  state.ticketTypes,
+                  event.startingDate ?? null,
+                )
+              : state.ticketTypes,
+        };
+      });
     },
     // Las fechas de los ticket types se inicializan con las del evento; si el
     // evento se mueve, se mueven con él para no quedar desfasadas.

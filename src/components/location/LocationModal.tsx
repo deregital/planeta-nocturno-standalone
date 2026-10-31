@@ -151,7 +151,7 @@ export default function LocationModal({
                 </DialogClose>
                 <Button
                   type='submit'
-                  disabled={isPending}
+                  loading={isPending}
                   className='rounded-md'
                 >
                   Editar
@@ -160,7 +160,7 @@ export default function LocationModal({
             ) : (
               <Button
                 type='submit'
-                disabled={isPending}
+                loading={isPending}
                 className='w-full rounded-md'
               >
                 Crear
