@@ -14,7 +14,7 @@ import {
   TrashIcon,
   UserCircle,
 } from 'lucide-react';
-import { parseAsString, useQueryState } from 'nuqs';
+import { parseAsString, useQueryStates } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -50,12 +50,15 @@ import { type InviteCondition } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export const FORM_SEARCH_PARAM = 'formulario';
+export const FORM_TICKET_PARAM = 'formularioTicket';
 
-function FormCell({ dni }: { dni: string }) {
-  const [, setFormularioSearch] = useQueryState(
-    FORM_SEARCH_PARAM,
-    parseAsString,
-  );
+export const formAnswerSearchParams = {
+  [FORM_SEARCH_PARAM]: parseAsString.withDefault(''),
+  [FORM_TICKET_PARAM]: parseAsString,
+};
+
+function FormCell({ ticketId }: { ticketId: string }) {
+  const [, setFormParams] = useQueryStates(formAnswerSearchParams);
 
   return (
     <div className='flex w-full items-center justify-center'>
@@ -64,7 +67,10 @@ function FormCell({ dni }: { dni: string }) {
         size='sm'
         className='h-8 gap-1 text-blue-500 hover:text-blue-500/75'
         onClick={async () => {
-          await setFormularioSearch(dni);
+          await setFormParams({
+            [FORM_SEARCH_PARAM]: null,
+            [FORM_TICKET_PARAM]: ticketId,
+          });
           document
             .getElementById('form-answers')
             ?.scrollIntoView({ behavior: 'smooth' });
@@ -651,7 +657,7 @@ export function generateTicketColumns({
       maxSize: 50,
       enableResizing: false,
       cell: ({ row }) => {
-        return <FormCell dni={row.original.dni} />;
+        return <FormCell ticketId={row.original.id} />;
       },
       meta: {
         exportValue: () => '',
