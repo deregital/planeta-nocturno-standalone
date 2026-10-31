@@ -162,7 +162,11 @@ async function EventDetails({ slug }: { slug: string }) {
         </>
       )}
       {can('tickets:read_all') && event.inviteCondition !== 'INVITATION' && (
-        <TicketGroupsTable eventId={event.id} eventSlug={event.slug} />
+        <TicketGroupsTable
+          eventId={event.id}
+          eventSlug={event.slug}
+          extraTicketData={event.extraTicketData}
+        />
       )}
       {can('tickets:answers') && hasVisibleQuestions && (
         <SurveyAnswersTable event={event} />
