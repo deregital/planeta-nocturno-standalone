@@ -30,27 +30,20 @@ export async function redeemInvitation(
   },
 ) {
   if (loadEventPage) await caller.events.getPublicBySlug(slug);
-  const validation = await caller.events.validateInvitationCode({
-    eventId,
-    code,
-  });
-  if (!validation.valid || !validation.organizerId) {
-    return {
-      status: validation.alreadyUsed ? 'code-used' : 'invalid',
-    } as const;
-  }
   const event = await caller.events.getById(eventId);
   const ticketType = event.ticketTypes.find((t) => t.name !== 'Organizador')!;
-  const ticketGroupId = await caller.ticketGroup.create({
+  const redeemed = await caller.ticketGroup.redeemInvitation({
     eventId,
-    ticketsPerType: [{ ticketTypeId: ticketType.id, amount: 1 }],
-    invitedBy: validation.organizerId,
-  });
-  await caller.ticketGroup.updateTicketXOrganizerTicketGroupId({
     code,
-    eventId,
-    ticketGroupId,
   });
+  if (redeemed.status === 'already_used') {
+    return { status: 'code-used' } as const;
+  }
+  if (redeemed.status !== 'ok') {
+    return { status: 'invalid' } as const;
+  }
+  const ticketGroupId = redeemed.ticketGroupId;
+  const organizerId = redeemed.organizerId;
 
   // Checkout
   await caller.events.getById(eventId);
@@ -62,7 +55,7 @@ export async function redeemInvitation(
   return {
     status: 'redeemed',
     ticketGroupId,
-    organizerId: validation.organizerId,
+    organizerId,
   } as const;
 }
 

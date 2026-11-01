@@ -1,6 +1,19 @@
 import { TRPCError } from '@trpc/server';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { z } from 'zod';
+
+import type { Db } from '@/drizzle';
 
 import {
   emittedTicket,
@@ -21,6 +34,30 @@ import {
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { generatePdf } from '@/server/utils/ticket-template';
+
+type Transaction = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+const BOOKED_TICKET_GROUP_TTL_MS = 1000 * 60 * 10;
+
+/** Suelta reservas sin pagar vencidas (salvo transferencias) antes de mirar el cupo. */
+function releaseExpiredBookedTicketGroups(tx: Transaction, eventId: string) {
+  return tx
+    .delete(ticketGroup)
+    .where(
+      and(
+        eq(ticketGroup.eventId, eventId),
+        eq(ticketGroup.status, 'BOOKED'),
+        or(
+          isNull(ticketGroup.paymentMethod),
+          ne(ticketGroup.paymentMethod, 'TRANSFER'),
+        ),
+        lt(
+          ticketGroup.createdAt,
+          new Date(Date.now() - BOOKED_TICKET_GROUP_TTL_MS).toISOString(),
+        ),
+      ),
+    );
+}
 
 export const ticketGroupSchema = z.object({
   id: z.uuid(), // uuid generado por defaultRandom()
@@ -58,6 +95,8 @@ export const ticketGroupRouter = router({
         // El stock sólo se controlaba en el navegador. Validar en el servidor,
         // con los tipos de entrada bloqueados para serializar compras simultáneas
         // del mismo tipo y que dos no superen juntas el cupo.
+        await releaseExpiredBookedTicketGroups(tx, input.eventId);
+
         const types = await tx
           .select({
             id: ticketTypeTable.id,
@@ -125,7 +164,8 @@ export const ticketGroupRouter = router({
               message: `No se pueden comprar más de ${type.maxPerPurchase} entradas de ${type.name} por compra`,
             });
           }
-          const taken = takenByType.get(line.ticketTypeId) ?? 0;
+          // El agregado puede volver como texto: "10" + 1 arma "101" y el cupo parece agotado.
+          const taken = Number(takenByType.get(line.ticketTypeId) ?? 0);
           if (taken + line.amount > type.maxAvailable) {
             throw new TRPCError({
               code: 'CONFLICT',
@@ -175,6 +215,140 @@ export const ticketGroupRouter = router({
 
       if (!result) throw 'Error al crear ticketGroup';
       return result;
+    }),
+  /**
+   * Canje de un código de invitación. El cupo real es el código, no
+   * maxAvailable: cada apertura del link creaba una reserva nueva y el
+   * código seguía libre, así que el control de stock lo rechazaba aunque
+   * quedaran invitaciones. Si ya hay una reserva abierta para ese código,
+   * se reutiliza.
+   */
+  redeemInvitation: publicProcedure
+    .input(
+      z.object({
+        eventId: z.uuid(),
+        code: z
+          .string()
+          .trim()
+          .regex(
+            /^[0-9A-Fa-f]{6}$/,
+            'El código debe ser de 6 dígitos hexadecimales',
+          ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const code = input.code.toUpperCase();
+
+      return ctx.db.transaction(async (tx) => {
+        await releaseExpiredBookedTicketGroups(tx, input.eventId);
+
+        const [invite] = await tx
+          .select({
+            organizerId: ticketXorganizer.organizerId,
+            ticketId: ticketXorganizer.ticketId,
+            ticketGroupId: ticketXorganizer.ticketGroupId,
+          })
+          .from(ticketXorganizer)
+          .where(
+            and(
+              eq(ticketXorganizer.eventId, input.eventId),
+              eq(ticketXorganizer.code, code),
+            ),
+          )
+          .for('update');
+
+        if (!invite) return { status: 'invalid_code' as const };
+        if (invite.ticketId) return { status: 'already_used' as const };
+
+        if (invite.ticketGroupId) {
+          const [existing] = await tx
+            .select({
+              id: ticketGroup.id,
+              status: ticketGroup.status,
+            })
+            .from(ticketGroup)
+            .where(eq(ticketGroup.id, invite.ticketGroupId));
+
+          // Reserva del checkout en curso. El grupo compartido del organizador
+          // queda en FREE y no tiene ticketTypePerGroup: ese no se reutiliza.
+          if (existing?.status === 'BOOKED') {
+            return {
+              status: 'ok' as const,
+              ticketGroupId: existing.id,
+              organizerId: invite.organizerId,
+            };
+          }
+
+          if (existing) {
+            const [hold] = await tx
+              .select({
+                ticketGroupId: ticketTypePerGroup.ticketGroupId,
+              })
+              .from(ticketTypePerGroup)
+              .where(eq(ticketTypePerGroup.ticketGroupId, existing.id))
+              .limit(1);
+            if (hold) return { status: 'already_used' as const };
+          }
+        }
+
+        const types = await tx
+          .select({
+            id: ticketTypeTable.id,
+            name: ticketTypeTable.name,
+            maxSellDate: ticketTypeTable.maxSellDate,
+          })
+          .from(ticketTypeTable)
+          .where(eq(ticketTypeTable.eventId, input.eventId));
+        const publicTypes = types.filter(
+          (type) => type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
+        );
+        if (publicTypes.length !== 1) {
+          return { status: 'invalid_configuration' as const };
+        }
+
+        const ticketType = publicTypes[0];
+        if (
+          ticketType.maxSellDate &&
+          new Date(ticketType.maxSellDate) < new Date()
+        ) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `La venta de ${ticketType.name} ya cerró`,
+          });
+        }
+
+        const [created] = await tx
+          .insert(ticketGroup)
+          .values({
+            eventId: input.eventId,
+            status: 'BOOKED',
+            amountTickets: 1,
+            invitedById: invite.organizerId,
+          })
+          .returning({ id: ticketGroup.id });
+
+        await tx.insert(ticketTypePerGroup).values({
+          ticketGroupId: created.id,
+          ticketTypeId: ticketType.id,
+          amount: 1,
+        });
+
+        await tx
+          .update(ticketXorganizer)
+          .set({ ticketGroupId: created.id })
+          .where(
+            and(
+              eq(ticketXorganizer.eventId, input.eventId),
+              eq(ticketXorganizer.code, code),
+            ),
+          );
+
+        return {
+          status: 'ok' as const,
+          ticketGroupId: created.id,
+          organizerId: invite.organizerId,
+        };
+      });
     }),
   getById: publicProcedure
     .input(ticketGroupSchema.shape.id)
