@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { trpc } from '@/server/trpc/server';
-import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
 export const handlePurchase = async (
   prevState: unknown,
@@ -61,13 +60,12 @@ export const handleInvitationCode = async ({
   eventId: string;
   code: string;
 }) => {
-  // Validar que el código sea válido para este evento
-  const validation = await trpc.events.validateInvitationCode({
+  const redeemed = await trpc.ticketGroup.redeemInvitation({
     eventId,
     code,
   });
 
-  if (!validation.valid || !validation.organizerId) {
+  if (redeemed.status === 'invalid_code') {
     return {
       error: 'Código de invitación inválido',
       message:
@@ -75,21 +73,15 @@ export const handleInvitationCode = async ({
     };
   }
 
-  // Obtener el evento para verificar los ticketTypes
-  const event = await trpc.events.getById(eventId);
-  if (!event) {
+  if (redeemed.status === 'already_used') {
     return {
-      error: 'Evento no encontrado',
-      message: 'El evento no existe o no se pudo encontrar.',
+      error: 'Código ya utilizado',
+      message:
+        'Este código de invitación ya fue utilizado anteriormente. Cada código solo puede ser usado una vez.',
     };
   }
 
-  // Verificar que el evento tenga exactamente 1 ticketType (excluyendo el de organizador)
-  const nonOrganizerTicketTypes = event.ticketTypes.filter(
-    (tt) => tt.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
-  );
-
-  if (nonOrganizerTicketTypes.length !== 1) {
+  if (redeemed.status === 'invalid_configuration') {
     return {
       error: 'Configuración inválida',
       message:
@@ -97,23 +89,8 @@ export const handleInvitationCode = async ({
     };
   }
 
-  const ticketType = nonOrganizerTicketTypes[0];
-
-  // Crear el ticketGroup automáticamente
-  const ticketGroupId = await trpc.ticketGroup.create({
-    eventId: event.id,
-    ticketsPerType: [
-      {
-        ticketTypeId: ticketType.id,
-        amount: 1,
-      },
-    ],
-    invitedBy: validation.organizerId,
-  });
-
-  // Guardar el ticketGroupId en la cookie y redirigir al checkout
   const cookiesStore = await cookies();
-  cookiesStore.set('carrito', ticketGroupId);
+  cookiesStore.set('carrito', redeemed.ticketGroupId);
 
   redirect('/checkout');
 };
