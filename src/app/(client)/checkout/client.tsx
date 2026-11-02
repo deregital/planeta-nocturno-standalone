@@ -213,6 +213,8 @@ export default function CheckoutClient({
   const handleCheckoutSubmit = () => {
     posthog.capture('checkout_submitted', {
       event_id: ticketGroup.eventId,
+      // Cruza con `purchase_completed`, que en pagos se manda sin persona.
+      ticket_group_id: ticketGroup.id,
       ticket_count: ticketGroup.ticketTypePerGroups.reduce(
         (count, ticketType) => count + ticketType.amount,
         0,

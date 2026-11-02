@@ -13,7 +13,9 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    posthog.captureException(error);
+    // Los errores de servidor llegan sin mensaje pero con digest: sirve para
+    // cruzarlos con el $exception que manda instrumentation.ts.
+    posthog.captureException(error, { error_digest: error.digest });
   }, [error]);
 
   return (

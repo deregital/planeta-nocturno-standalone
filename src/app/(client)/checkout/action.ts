@@ -4,9 +4,14 @@ import type { Route } from 'next';
 import type z from 'zod';
 
 import { differenceInYears, parseISO } from 'date-fns';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 
+import {
+  buyerFromHeaders,
+  capturePurchaseCompleted,
+} from '@/server/analytics/purchase-events';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import { logger } from '@/server/observability/logger';
 import {
@@ -274,6 +279,16 @@ export const handlePurchase = async (
 
     if (totalPrice === 0) {
       await updateTicketGroupStatus(db, ticketGroupId, 'FREE');
+
+      // Se manda al terminar la respuesta para no demorar el checkout.
+      const buyer = buyerFromHeaders(await headers());
+      after(() =>
+        capturePurchaseCompleted(db, instance, {
+          ticketGroupId,
+          paymentMethod: 'free',
+          buyer,
+        }),
+      );
 
       const group = await trpc.ticketGroup.getById(ticketGroupId);
 
