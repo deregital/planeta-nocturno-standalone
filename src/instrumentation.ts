@@ -3,15 +3,14 @@ import { type Instrumentation } from 'next';
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
-  const [{ getLoggerProvider }, { getPostHogErrorTracking }] =
-    await Promise.all([
-      import('@/server/observability/logger'),
-      import('@/server/observability/posthog-error-tracking'),
-    ]);
+  const [{ getLoggerProvider }, { getPostHogServer }] = await Promise.all([
+    import('@/server/observability/logger'),
+    import('@/server/observability/posthog-server'),
+  ]);
   getLoggerProvider();
   // Crear el cliente activa la captura de excepciones no manejadas: se crea
   // al arrancar y no recién con el primer error de request.
-  getPostHogErrorTracking();
+  getPostHogServer();
 }
 
 // Cualquier error no manejado del servidor (render, route handler, server
@@ -25,11 +24,17 @@ export const onRequestError: Instrumentation.onRequestError = async (
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
   const [
-    { exportLog, flushLogs, requestLogAttributes },
-    { getPostHogErrorTracking },
+    {
+      exportLog,
+      flushLogs,
+      requestLogAttributes,
+      POSTHOG_DISTINCT_ID_HEADER,
+      POSTHOG_SESSION_HEADER,
+    },
+    { getPostHogServer },
   ] = await Promise.all([
     import('@/server/observability/logger'),
-    import('@/server/observability/posthog-error-tracking'),
+    import('@/server/observability/posthog-server'),
   ]);
 
   const readHeader = (name: string) => {
@@ -55,9 +60,9 @@ export const onRequestError: Instrumentation.onRequestError = async (
   // Mismas propiedades que los eventos del navegador: el tenant para filtrar y
   // $session_id para vincular el error con el replay. error_digest es el mismo
   // que recibe error.tsx, así se cruzan ambos lados.
-  const posthog = getPostHogErrorTracking();
-  posthog?.captureException(error, readHeader('x-posthog-distinct-id'), {
-    $session_id: readHeader('x-posthog-session-id'),
+  const posthog = getPostHogServer();
+  posthog?.captureException(error, readHeader(POSTHOG_DISTINCT_ID_HEADER), {
+    $session_id: readHeader(POSTHOG_SESSION_HEADER),
     instance_key: requestAttributes.instance_key,
     instance_mode: requestAttributes.instance_mode,
     error_digest: digest,

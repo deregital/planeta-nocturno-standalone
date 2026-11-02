@@ -3,11 +3,12 @@ import 'server-only';
 import { PostHog } from 'posthog-node';
 
 const globalForPostHog = globalThis as typeof globalThis & {
-  __posthogErrorTracking?: PostHog | null;
+  __posthogServer?: PostHog | null;
 };
 
-export function getPostHogErrorTracking() {
-  if (globalForPostHog.__posthogErrorTracking === undefined) {
+/** Cliente de PostHog del servidor: excepciones y eventos como `purchase_completed`. */
+export function getPostHogServer() {
+  if (globalForPostHog.__posthogServer === undefined) {
     const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
     const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
@@ -23,9 +24,9 @@ export function getPostHogErrorTracking() {
         }
       }
 
-      globalForPostHog.__posthogErrorTracking = null;
+      globalForPostHog.__posthogServer = null;
     } else {
-      globalForPostHog.__posthogErrorTracking = new PostHog(token, {
+      globalForPostHog.__posthogServer = new PostHog(token, {
         host,
         flushAt: 1,
         flushInterval: 0,
@@ -34,5 +35,5 @@ export function getPostHogErrorTracking() {
     }
   }
 
-  return globalForPostHog.__posthogErrorTracking;
+  return globalForPostHog.__posthogServer;
 }
