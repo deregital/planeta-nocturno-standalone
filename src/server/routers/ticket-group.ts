@@ -24,6 +24,7 @@ import {
   ticketType as ticketTypeTable,
   ticketXorganizer,
 } from '@/drizzle/schema';
+import { capturePurchaseCompleted } from '@/server/analytics/purchase-events';
 import { logger } from '@/server/observability/logger';
 import { invitedBySchema } from '@/server/schemas/emitted-tickets';
 import { getTransferAlias } from '@/server/services/paymentSettings';
@@ -859,6 +860,12 @@ export const ticketGroupRouter = router({
             'La compra no existe o ya no está pendiente de transferencia',
         });
       }
+
+      // Sin comprador: el request es del admin que libera la transferencia.
+      await capturePurchaseCompleted(ctx.db, ctx.instance, {
+        ticketGroupId: input,
+        paymentMethod: 'transfer',
+      });
 
       try {
         await deliverPaidTicketGroup(ctx.db, ctx.instance, input);

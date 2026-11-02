@@ -26,8 +26,8 @@ const SEVERITY: Record<LogLevel, SeverityNumber> = {
 
 // Headers que posthog-js agrega a los fetch del mismo host (`tracing_headers`).
 // Permiten vincular cada log con la persona y el session replay del navegador.
-const POSTHOG_SESSION_HEADER = 'x-posthog-session-id';
-const POSTHOG_DISTINCT_ID_HEADER = 'x-posthog-distinct-id';
+export const POSTHOG_SESSION_HEADER = 'x-posthog-session-id';
+export const POSTHOG_DISTINCT_ID_HEADER = 'x-posthog-distinct-id';
 
 // Un único provider por proceso: Next compila instrumentation, middleware y
 // rutas en bundles separados, así que un singleton de módulo se duplicaría.

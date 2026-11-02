@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 
+import { withPostHogConfig } from '@posthog/nextjs-config';
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 
 import { posthogProxyRewrites } from '@/lib/analytics/posthog-proxy';
@@ -47,7 +48,22 @@ const config: NextConfig = {
   },
 };
 
-export default function nextConfig(phase: string): NextConfig {
+function nextConfig(phase: string): NextConfig {
   if (phase === PHASE_PRODUCTION_BUILD) validateEnvironment(process.env);
   return config;
 }
+
+export default withPostHogConfig(nextConfig, {
+  personalApiKey: process.env.POSTHOG_API_KEY ?? '',
+  projectId: process.env.POSTHOG_PROJECT_ID,
+  host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  sourcemaps: {
+    enabled: Boolean(
+      process.env.POSTHOG_API_KEY && process.env.POSTHOG_PROJECT_ID,
+    ),
+    deleteAfterUpload: true,
+    // Si PostHog no responde o la key falla, el deploy sigue: los maps se
+    // borran igual y sólo quedan minificados los errores de ese deploy.
+    failOnError: false,
+  },
+});

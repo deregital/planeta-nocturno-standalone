@@ -1,6 +1,9 @@
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { ticketGroup } from '@/drizzle/schema';
+import { capturePurchaseCompleted } from '@/server/analytics/purchase-events';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { logger } from '@/server/observability/logger';
 import { verifySignedRequest } from '@/server/security/signed-request';
@@ -59,7 +62,20 @@ export async function POST(request: Request) {
 async function fulfillTicketGroup(headers: Headers, ticketGroupId: string) {
   const { db, instance } = await resolveRequestContext(headers);
 
+  // El webhook se reintenta: la compra se registra sólo la primera vez que pasa a PAID.
+  const previous = await db.query.ticketGroup.findFirst({
+    where: eq(ticketGroup.id, ticketGroupId),
+    columns: { status: true },
+  });
+
   await updateTicketGroupStatus(db, ticketGroupId, 'PAID');
+
+  if (previous?.status !== 'PAID') {
+    await capturePurchaseCompleted(db, instance, {
+      ticketGroupId,
+      paymentMethod: 'mercado_pago',
+    });
+  }
 
   const { eventId, ticketCount } = await deliverPaidTicketGroup(
     db,
