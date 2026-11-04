@@ -346,7 +346,12 @@ export function DataTable<
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className='h-24 text-center'>
+              {/* whitespace-normal: el mensaje largo cortaba línea fuera de la
+                  tabla angosta del celular y quedaba tapado. */}
+              <TableCell
+                colSpan={columns.length}
+                className='h-24 text-center whitespace-normal'
+              >
                 {noResultsPlaceholder}
               </TableCell>
             </TableRow>

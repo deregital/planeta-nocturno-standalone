@@ -131,7 +131,7 @@ export default function EventCardHorizontal({
       variant={'accent'}
       className={cn(
         'flex flex-row items-center rounded-lg py-2',
-        'h-20 sm:h-auto sm:min-h-14',
+        'min-h-20 sm:h-auto sm:min-h-14',
         !showActions && 'border-accent-light py-4',
       )}
       style={{
@@ -173,17 +173,48 @@ export default function EventCardHorizontal({
             {event.isActive && (
               <BadgeCheck className='size-4 shrink-0 text-on-accent' />
             )}
-            <CardTitle className='truncate'>{event.name}</CardTitle>
+            {/* En el celular, con los íconos al lado, quedaban unos 70 px: dos
+                líneas y una fecha corta para distinguir un evento de su copia. */}
+            <CardTitle className='line-clamp-2 break-words sm:truncate'>
+              {event.name}
+            </CardTitle>
           </div>
           <p className='truncate text-sm'>
-            {event.startingDate
-              ? format(event.startingDate, 'dd/MM/yyyy HH:mm')
-              : null}
+            {event.startingDate ? (
+              <>
+                <span className='sm:hidden'>
+                  {format(event.startingDate, 'dd/MM HH:mm')}
+                </span>
+                <span className='hidden sm:inline'>
+                  {format(event.startingDate, 'dd/MM/yyyy HH:mm')}
+                </span>
+              </>
+            ) : null}
             <span className='hidden sm:inline'>
               {event.startingDate && event.location?.address ? ' - ' : ''}
               {event.location?.address}
             </span>
           </p>
+          {/* En el celular "Activar" va debajo del nombre: al lado de los
+              íconos dejaba el nombre en tres letras ("Eve nt…"). */}
+          {showActions &&
+            event.inviteCondition !== 'INVITATION' &&
+            canPublish &&
+            !event.isActive && (
+              <Button
+                variant='success'
+                size='sm'
+                loading={toggleActivate.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleActivate();
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className='w-fit sm:hidden'
+              >
+                {activateSure ? '¿Estás seguro?' : 'Activar'}
+              </Button>
+            )}
         </div>
         {typeof event.issuedTickets === 'number' && (
           <Tooltip>
@@ -210,7 +241,7 @@ export default function EventCardHorizontal({
                     size='sm'
                     loading={toggleActivate.isPending}
                     onClick={handleActivate}
-                    className='mr-1'
+                    className='mr-1 hidden sm:inline-flex'
                   >
                     {activateSure ? '¿Estás seguro?' : 'Activar'}
                   </Button>

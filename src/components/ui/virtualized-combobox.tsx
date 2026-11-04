@@ -224,7 +224,9 @@ function VirtualizedCommand({
       <CommandList
         ref={parentRef}
         style={{
-          maxHeight: height,
+          // La lista se achica al lugar que queda en la pantalla (menos el
+          // buscador), así el popover entero entra y sólo scrollea la lista.
+          maxHeight: `min(${height}, calc(var(--radix-popover-content-available-height, 100dvh) - 3rem))`,
           height: 'auto',
           width: '100%',
           overflow: 'auto',

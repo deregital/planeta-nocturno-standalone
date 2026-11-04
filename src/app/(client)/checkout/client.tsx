@@ -226,7 +226,7 @@ export default function CheckoutClient({
   };
 
   return (
-    <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
+    <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-4 sm:mx-8 my-6'>
       <div className='hidden sm:flex justify-baseline w-full'>
         <GoBack />
       </div>

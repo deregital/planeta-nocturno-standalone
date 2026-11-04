@@ -201,7 +201,7 @@ export default async function ControlCalendarPage({
 
       {/* Desktop: grilla mensual */}
       <div className='hidden overflow-hidden rounded-xl border border-stroke bg-white shadow-sm md:block'>
-        <div className='grid grid-cols-7 border-b border-stroke bg-gray-50'>
+        <div className='grid md:grid-cols-7 border-b border-stroke bg-gray-50'>
           {WEEKDAYS.map((weekday) => (
             <p
               key={weekday}
@@ -211,7 +211,7 @@ export default async function ControlCalendarPage({
             </p>
           ))}
         </div>
-        <div className='grid grid-cols-7'>
+        <div className='grid md:grid-cols-7'>
           {days.map((day) => {
             const inMonth = day.startsWith(params.month);
             return (

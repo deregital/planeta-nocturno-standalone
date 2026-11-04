@@ -231,40 +231,45 @@ export default function InputDateWithLabel({
       error={error || dateError}
     >
       {isMobileLike && dateType === 'date' ? (
-        <div className='flex gap-2'>
-          <div className='flex-1'>
+        // En una celda angosta los tres campos quedaban de 35 px y se veía '0'
+        // en vez de '02': menos padding, centrado y el año un poco más ancho.
+        <div className='flex gap-1'>
+          <div className='min-w-0 flex-1'>
             <p className='mb-1 text-xs text-muted-foreground'>Día</p>
             <Input
               type='text'
               inputMode='numeric'
               placeholder='dd'
-              aria-label='Dia'
+              aria-label='Día'
+              className='px-1 text-center'
               value={dateParts.day}
               onChange={handlePartChange('day')}
               maxLength={2}
             />
           </div>
           <div className='self-end pb-2 text-muted-foreground'>/</div>
-          <div className='flex-1'>
+          <div className='min-w-0 flex-1'>
             <p className='mb-1 text-xs text-muted-foreground'>Mes</p>
             <Input
               type='text'
               inputMode='numeric'
               placeholder='mm'
               aria-label='Mes'
+              className='px-1 text-center'
               value={dateParts.month}
               onChange={handlePartChange('month')}
               maxLength={2}
             />
           </div>
           <div className='self-end pb-2 text-muted-foreground'>/</div>
-          <div className='flex-1'>
+          <div className='min-w-0 flex-[1.5]'>
             <p className='mb-1 text-xs text-muted-foreground'>Año</p>
             <Input
               type='text'
               inputMode='numeric'
               placeholder='aaaa'
               aria-label='Año'
+              className='px-1 text-center'
               value={dateParts.year}
               onChange={handlePartChange('year')}
               maxLength={4}

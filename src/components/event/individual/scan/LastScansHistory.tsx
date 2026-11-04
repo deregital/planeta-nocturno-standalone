@@ -25,11 +25,14 @@ export function LastScansHistory({
           <History className='size-6 text-white' />
         </Button>
       </DrawerTrigger>
-      <DrawerContent className='px-4'>
+      {/* Alto fijo del panel y la lista ocupa lo que sobra: con min-h-[500px]
+          adentro de un panel de 80vh, en pantallas bajas el final de la lista
+          quedaba debajo del borde. */}
+      <DrawerContent className='h-[80dvh] px-4'>
         <DrawerHeader>
           <DrawerTitle>Historial de escaneos</DrawerTitle>
         </DrawerHeader>
-        <div className='flex flex-col gap-4 min-h-[500px] max-h-[80vh] overflow-y-auto'>
+        <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4'>
           {lastScans.map((scan, idx) => (
             <LastScanCard key={idx} lastScan={scan} />
           ))}

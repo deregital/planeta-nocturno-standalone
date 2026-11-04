@@ -77,7 +77,7 @@ export default function TicketsClient({
         title='Volver al inicio'
         className='absolute top-24 md:left-26 left-4'
       />
-      <Card className='max-w-md mx-auto text-center shadow-lg m-4 min-w-96'>
+      <Card className='w-full max-w-md mx-auto text-center shadow-lg m-4'>
         <CardHeader>
           <CardTitle className='text-2xl font-bold'>
             ¡Ya podés descargar tus tickets!
