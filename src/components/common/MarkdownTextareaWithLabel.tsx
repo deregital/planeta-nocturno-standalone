@@ -135,7 +135,7 @@ export default function MarkdownTextareaWithLabel({
       >
         <div className='flex w-full flex-col gap-1'>
           {(isEditable || toolbarEnd) && (
-            <div className='flex items-center gap-1 rounded-md border border-stroke bg-accent-ultra-light/40 p-1'>
+            <div className='flex flex-wrap items-center gap-1 rounded-md border border-stroke bg-accent-ultra-light/40 p-1'>
               {isEditable && (
                 <>
                   {FORMAT_TOOLBAR_ITEMS.map(({ format, icon: Icon, label }) => (
@@ -169,7 +169,7 @@ export default function MarkdownTextareaWithLabel({
                 </>
               )}
               {toolbarEnd && (
-                <div className='ml-auto flex shrink-0 items-center'>
+                <div className='ml-auto flex min-w-0 items-center'>
                   {toolbarEnd}
                 </div>
               )}

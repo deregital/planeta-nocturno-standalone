@@ -58,7 +58,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
   };
 
   return (
-    <div className='w-full h-16 flex items-center justify-between px-8 bg-accent-dark'>
+    <div className='w-full h-16 flex items-center justify-between gap-4 px-8 bg-accent-dark'>
       <InstanceLogo size='sm' />
       {auth && (
         <>
@@ -95,9 +95,11 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                   side='top'
                   className='w-full bg-accent-dark text-on-accent border-0 gap-0'
                 >
-                  <div className='flex items-center'>
+                  {/* El nombre va en su propia línea: al lado del logo quedaba
+                      apretado, cortado contra el borde y debajo de la X. */}
+                  <div className='flex flex-wrap items-center pr-12'>
                     <SheetTitle asChild>
-                      <div className='p-4 font-bold text-white'>
+                      <div className='min-w-0 p-4 font-bold text-white'>
                         <InstanceLogo size='sm' />
                       </div>
                     </SheetTitle>
@@ -112,7 +114,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                         <GoogleDrive />
                       </a>
                     )}
-                    <span className='text-brand'>
+                    <span className='w-full px-4 pb-2 break-words text-brand'>
                       {auth.user.fullName} ({roleLabel})
                     </span>
                   </div>

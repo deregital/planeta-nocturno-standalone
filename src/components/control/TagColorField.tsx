@@ -65,7 +65,11 @@ export default function TagColorField({
         align='end'
         collisionPadding={16}
       >
-        <div className='grid grid-cols-6 justify-items-center gap-2'>
+        <div
+          // Muestras de color de 28px dentro de un popover de 256px: entran.
+          // eslint-disable-next-line mobile/no-overflowing-classes
+          className='grid grid-cols-6 justify-items-center gap-2'
+        >
           {TAG_COLOR_PRESETS.map((preset) => (
             <button
               key={preset}

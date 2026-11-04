@@ -10,7 +10,9 @@ export function FormRow({ children, className, ...props }: FormRowProps) {
   return (
     <div
       className={cn(
-        'flex flex-row gap-3 items-start w-full [&>*]:flex-1',
+        // En el celular un campo por fila: de a dos quedaban de ~150px y no se
+        // leía lo escrito (fecha, teléfono).
+        'flex flex-col sm:flex-row gap-3 sm:items-start w-full [&>*]:min-w-0 sm:[&>*]:flex-1',
         className,
       )}
       {...props}

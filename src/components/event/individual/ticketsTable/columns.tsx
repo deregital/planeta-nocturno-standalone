@@ -992,7 +992,7 @@ export function generateTicketColumns({
                 }}
               >
                 <DialogContent
-                  className='max-w-xl! md:max-w-3xl! w-full'
+                  className='max-w-xl! md:max-w-3xl!'
                   onInteractOutside={(e) => {
                     // No cerrar si el clic fue en el popover del combobox
                     const target = e.target as HTMLElement;
