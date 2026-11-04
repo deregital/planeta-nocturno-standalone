@@ -90,7 +90,7 @@ export default function EventFolder({
               >
                 <Folder className='size-5 shrink-0' />
                 <p className='flex min-w-0 flex-1 items-center gap-1 font-bold'>
-                  <span className='min-w-0 truncate text-[clamp(0.875rem,0.8rem+0.45vw,1.125rem)] leading-tight'>
+                  <span className='line-clamp-2 min-w-0 flex-1 text-[clamp(0.875rem,0.8rem+0.45vw,1.125rem)] leading-snug'>
                     {folder.name}
                   </span>
                   {isEmpty && (

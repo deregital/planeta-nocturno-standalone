@@ -131,7 +131,7 @@ export default function EventCardHorizontal({
       variant={'accent'}
       className={cn(
         'flex flex-row items-center rounded-lg py-2',
-        'h-20 sm:h-auto sm:min-h-14',
+        'min-h-20 sm:h-auto sm:min-h-14',
         !showActions && 'border-accent-light py-4',
       )}
       style={{
@@ -173,7 +173,9 @@ export default function EventCardHorizontal({
             {event.isActive && (
               <BadgeCheck className='size-4 shrink-0 text-on-accent' />
             )}
-            <CardTitle className='truncate'>{event.name}</CardTitle>
+            <CardTitle className='line-clamp-2 min-w-0 flex-1 leading-snug'>
+              {event.name}
+            </CardTitle>
           </div>
           <p className='truncate text-sm'>
             {event.startingDate
