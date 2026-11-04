@@ -11,6 +11,25 @@ import {
 
 const INSTANCE_GROUP_TYPE = 'instance';
 
+// Firma (id + propiedades) del último identify enviado desde este navegador.
+const SENT_IDENTITY_KEY = 'ph_sent_identity';
+
+function readSentIdentity() {
+  try {
+    return localStorage.getItem(SENT_IDENTITY_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberSentIdentity(signature: string) {
+  try {
+    localStorage.setItem(SENT_IDENTITY_KEY, signature);
+  } catch {
+    // Sin storage se vuelve a identificar en la próxima carga; no es grave.
+  }
+}
+
 type AnalyticsUser = {
   id: string;
   email: string | null | undefined;
@@ -39,7 +58,7 @@ export function usePostHogIdentify(user: AnalyticsUser | null | undefined) {
       posthog.reset();
     }
 
-    posthog.identify(id, {
+    const properties = {
       // PostHog muestra `name` si se pone primero en
       // Settings → Product analytics → Person display name.
       name: personDisplayName(name, instance),
@@ -49,7 +68,17 @@ export function usePostHogIdentify(user: AnalyticsUser | null | undefined) {
       app_area: instance.area,
       instance_key: instance.key,
       instance_name: tenantLabel(instance),
-    });
+    };
+
+    // Ya identificado como este usuario, `identify` manda un `$set` en cada
+    // carga de página aunque nada cambie (era ~4% del volumen de eventos).
+    const signature = JSON.stringify([id, properties]);
+    const alreadyIdentified =
+      posthog._isIdentified() && posthog.get_distinct_id() === id;
+    if (!alreadyIdentified || readSentIdentity() !== signature) {
+      posthog.identify(id, properties);
+      rememberSentIdentity(signature);
+    }
 
     if (
       instance.key &&
