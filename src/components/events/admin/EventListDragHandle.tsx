@@ -20,7 +20,9 @@ export default function EventListDragHandle({
         disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing',
       )}
     >
-      <GripVertical className={cn('size-4', disabled && 'opacity-40')} />
+      <GripVertical
+        className={cn('size-4 shrink-0', disabled && 'opacity-40')}
+      />
     </button>
   );
 }

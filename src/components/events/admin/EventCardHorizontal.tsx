@@ -234,7 +234,12 @@ export default function EventCardHorizontal({
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={'ghost'} size={'icon'} asChild>
+                <Button
+                  variant={'ghost'}
+                  size={'icon'}
+                  asChild
+                  className='hidden sm:inline-flex'
+                >
                   <Link href={manageHref as Route<string>}>
                     <Calendar className='w-4 h-4 text-on-accent' />
                   </Link>

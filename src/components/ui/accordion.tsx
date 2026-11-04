@@ -34,7 +34,7 @@ function AccordionTrigger({
   chevronClassName?: string;
 }) {
   return (
-    <AccordionPrimitive.Header className='flex'>
+    <AccordionPrimitive.Header className='flex w-full min-w-0'>
       <AccordionPrimitive.Trigger
         data-slot='accordion-trigger'
         className={cn(
