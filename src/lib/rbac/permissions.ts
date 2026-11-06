@@ -82,9 +82,22 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     parent: 'events:read',
   },
   {
+    key: 'events:folders_read',
+    label: 'Ver carpetas de los eventos asignados',
+    description:
+      'Solo se ven las carpetas que contienen eventos que el usuario ve. Sin este permiso los eventos se listan sin carpetas',
+    parent: 'events:read',
+  },
+  {
+    key: 'events:folders_read_all',
+    label: 'Ver todas las carpetas',
+    description: 'Incluidas las carpetas vacías o sin eventos asignados',
+    parent: 'events:folders_read',
+  },
+  {
     key: 'events:folders',
     label: 'Gestionar carpetas de eventos',
-    parent: 'events:read',
+    parent: 'events:folders_read_all',
   },
   {
     key: 'events:export',
@@ -647,6 +660,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<
   TICKETING: [
     'events:read',
     'events:statistics',
+    'events:folders_read',
     'events:staff',
     'tickets:read',
     'tickets:read_all',
@@ -708,6 +722,17 @@ export function getTicketScope(
   if (hasPermission(permissions, 'tickets:read_all')) return 'all';
   if (hasPermission(permissions, 'organizer:team')) return 'team';
   return 'own';
+}
+
+/** Qué carpetas ve el usuario en el gestor de eventos. */
+export type FolderScope = 'all' | 'assigned' | 'none';
+
+export function getFolderScope(
+  permissions: readonly TenantPermission[] | ReadonlySet<TenantPermission>,
+): FolderScope {
+  if (hasPermission(permissions, 'events:folders_read_all')) return 'all';
+  if (hasPermission(permissions, 'events:folders_read')) return 'assigned';
+  return 'none';
 }
 
 export function hasPermission(

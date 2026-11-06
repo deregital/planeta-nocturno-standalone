@@ -52,6 +52,7 @@ import {
   isEventUpcoming,
   toNullableIsoString,
 } from '@/lib/event-dates';
+import { type FolderScope, getFolderScope } from '@/lib/rbac/permissions';
 import { genderTranslation } from '@/lib/translations';
 import {
   createEventSchema,
@@ -134,6 +135,39 @@ async function withIssuedTicketCounts<
       events: folder.events.map(withCount),
     })),
     eventsWithoutFolders: eventsWithoutFolders.map(withCount),
+  };
+}
+
+function endingTime(event: { endingDate: string | null }) {
+  if (event.endingDate == null) return Number.POSITIVE_INFINITY;
+  const time = new Date(event.endingDate).getTime();
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+}
+
+/**
+ * Aplica qué carpetas ve el usuario a un grupo del listado (próximos o
+ * pasados). Sin permiso de carpetas, sus eventos se listan sueltos.
+ */
+function applyFolderScope<
+  TEvent extends { endingDate: string | null },
+  TFolder extends { events: TEvent[] },
+>(
+  group: { folders: TFolder[]; withoutFolders: TEvent[] },
+  scope: FolderScope,
+): { folders: TFolder[]; withoutFolders: TEvent[] } {
+  if (scope === 'all') return group;
+  if (scope === 'assigned') {
+    return {
+      folders: group.folders.filter((folder) => folder.events.length > 0),
+      withoutFolders: group.withoutFolders,
+    };
+  }
+  return {
+    folders: [],
+    withoutFolders: [
+      ...group.withoutFolders,
+      ...group.folders.flatMap((folder) => folder.events),
+    ].sort((a, b) => endingTime(b) - endingTime(a)),
   };
 }
 
@@ -233,19 +267,25 @@ async function assertReorderMyList(
   db: Db,
   userId: string,
   canReadAll: boolean,
+  folderScope: FolderScope,
   input: ReorderMyListInput,
 ) {
   const isRoot = input.containerKey === EVENT_LIST_ROOT_KEY;
   if (!isRoot && !z.uuid().safeParse(input.containerKey).success) {
     throw invalidListOrder();
   }
+  // Sin permiso de carpetas no hay carpetas en el listado: todo va en la raíz.
+  const seesFolders = folderScope !== 'none';
+  if (!isRoot && !seesFolders) throw forbidden();
 
   const seen = new Set<string>();
   for (const item of input.items) {
     const key = `${item.kind}:${item.id}`;
     if (seen.has(key)) throw invalidListOrder();
     seen.add(key);
-    if (item.kind === 'folder' && !isRoot) throw invalidListOrder();
+    if (item.kind === 'folder' && (!isRoot || !seesFolders)) {
+      throw invalidListOrder();
+    }
   }
 
   const eventIds = input.items
@@ -291,7 +331,7 @@ async function assertReorderMyList(
         : isEventUpcoming(found.endingDate);
     if (found.isDeleted || !inScope) throw invalidListOrder();
     const inContainer = isRoot
-      ? found.folderId === null
+      ? found.folderId === null || !seesFolders
       : found.folderId === input.containerKey;
     if (!inContainer) throw invalidListOrder();
   }
@@ -306,7 +346,7 @@ async function assertReorderMyList(
 }
 
 export const eventsRouter = router({
-  getAll: publicProcedure.query(async ({ ctx }) => {
+  getAll: permissionProcedure('events:read_all').query(async ({ ctx }) => {
     const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
       with: {
         events: {
@@ -383,9 +423,10 @@ export const eventsRouter = router({
       ),
     };
 
-    return withUserListOrder(ctx.db, ctx.session?.user?.id, {
-      pastEvents,
-      upcomingEvents,
+    const folderScope = getFolderScope(ctx.access.permissions);
+    return withUserListOrder(ctx.db, ctx.session.user.id, {
+      pastEvents: applyFolderScope(pastEvents, folderScope),
+      upcomingEvents: applyFolderScope(upcomingEvents, folderScope),
     });
   }),
   getAllForTicketing: permissionProcedure('scanner:use').query(
@@ -544,9 +585,10 @@ export const eventsRouter = router({
         ),
       };
 
+      const folderScope = getFolderScope(ctx.access.permissions);
       return withUserListOrder(ctx.db, ctx.session.user.id, {
-        pastEvents,
-        upcomingEvents,
+        pastEvents: applyFolderScope(pastEvents, folderScope),
+        upcomingEvents: applyFolderScope(upcomingEvents, folderScope),
       });
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
@@ -618,6 +660,7 @@ export const eventsRouter = router({
         ctx.db,
         ctx.session.user.id,
         ctx.can('events:read_all'),
+        getFolderScope(ctx.access.permissions),
         input,
       );
 
