@@ -872,19 +872,21 @@ export const eventsRouter = router({
         };
       }
 
-      // Si no está asociado al evento, verificar si está asociado a alguno de los ticketTypes
+      // Si no está asociado al evento, verificar si está asociado a alguno de los ticketTypes.
+      // La columna B vive en _TICKET_TYPE_X_ORGANIZERS, no en ticketType.
       if (input.ticketTypeIds && input.ticketTypeIds.length > 0) {
-        const ticketTypeWithOrganizer = await ctx.db.query.ticketType.findFirst(
-          {
-            where: and(
+        const [ticketTypeWithOrganizer] = await ctx.db
+          .select({ id: ticketType.id })
+          .from(ticketTypeXOrganizers)
+          .innerJoin(ticketType, eq(ticketType.id, ticketTypeXOrganizers.a))
+          .where(
+            and(
+              eq(ticketType.eventId, input.eventId),
               inArray(ticketType.id, input.ticketTypeIds),
-              inArray(ticketTypeXOrganizers.b, [userByCode.id]),
+              eq(ticketTypeXOrganizers.b, userByCode.id),
             ),
-            columns: {
-              id: true,
-            },
-          },
-        );
+          )
+          .limit(1);
 
         if (ticketTypeWithOrganizer) {
           // Si está asociado a un ticketType, retornar válido pero sin descuento (ya que no está en el evento)
