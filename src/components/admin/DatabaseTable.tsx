@@ -581,6 +581,7 @@ export function DatabaseTable({
         }}
         exportFileName={'Base de Datos'}
         requirePasswordForExport={true}
+        exportPermission='exports:database'
       />
     </div>
   );

@@ -161,6 +161,7 @@ export function UsersTableWithFilters({ data, onClickRow }: UsersTableProps) {
         exportFileName={`Usuarios`}
         onClickRow={handleRowClick}
         requirePasswordForExport={true}
+        exportPermission='exports:organizers'
       />
     </div>
   );

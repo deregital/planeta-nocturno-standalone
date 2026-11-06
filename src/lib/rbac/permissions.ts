@@ -375,6 +375,20 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     key: 'exports:tables',
     label: 'Exportar tablas a Excel',
   },
+  {
+    key: 'exports:database',
+    label: 'Exportar base de datos',
+    description:
+      'Descargar en Excel la base de datos de compradores. Datos sensibles: por defecto solo lo tiene el superadministrador',
+    parent: 'exports:tables',
+  },
+  {
+    key: 'exports:organizers',
+    label: 'Exportar organizadores',
+    description:
+      'Descargar en Excel la lista de organizadores. Datos sensibles: por defecto solo lo tiene el superadministrador',
+    parent: 'exports:tables',
+  },
 
   // Perfil
   {
@@ -593,10 +607,20 @@ export const ALL_ACCESS_PERMISSIONS: readonly TenantPermission[] =
 /** Módulos reservados al superadministrador: el Administrador no los tiene por defecto. */
 const SUPERADMIN_ONLY_MODULES = new Set(['roles']);
 
+/**
+ * Permisos sueltos reservados al superadministrador (exportan datos sensibles).
+ * Se pueden otorgar a otros roles desde la matriz de roles.
+ */
+const SUPERADMIN_ONLY_PERMISSIONS = new Set<TenantPermission>([
+  'exports:database',
+  'exports:organizers',
+]);
+
 export const ADMIN_ACCESS_PERMISSIONS: readonly TenantPermission[] =
   ALL_ACCESS_PERMISSIONS.filter(
     (permission) =>
-      !SUPERADMIN_ONLY_MODULES.has(getPermissionModule(permission)),
+      !SUPERADMIN_ONLY_MODULES.has(getPermissionModule(permission)) &&
+      !SUPERADMIN_ONLY_PERMISSIONS.has(permission),
   );
 
 const ORGANIZER_SYSTEM_PERMISSIONS = [
