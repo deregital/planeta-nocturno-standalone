@@ -173,7 +173,7 @@ function TicketCard({
 
         <div className='mt-auto'>
           <Button
-            variant='outline'
+            variant='default'
             onClick={onDownload}
             disabled={disabled}
             className='w-full'
