@@ -31,8 +31,14 @@ export async function GET(
   if (redeemed.status === 'invalid_code') {
     redirect(`/event/${slug}?error=invalid_code`);
   }
+  if (redeemed.status === 'rate_limited') {
+    redirect(`/event/${slug}?error=too_many_attempts`);
+  }
   if (redeemed.status === 'already_used') {
-    redirect(`/event/${slug}?error=code_already_used`);
+    // El ticket ya fue emitido: se muestra recién después de confirmar el DNI.
+    redirect(
+      `/event/${slug}/ticket?invite=${encodeURIComponent(invitationCode)}`,
+    );
   }
   if (redeemed.status === 'invalid_configuration') {
     redirect(`/event/${slug}?error=invalid_configuration`);

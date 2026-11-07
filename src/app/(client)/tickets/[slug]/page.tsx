@@ -51,7 +51,5 @@ export default async function TicketsPage({ params }: PaymentPageProps) {
     );
   }
 
-  return (
-    <TicketsClient ticketGroupId={data.ticketGroupId} tickets={data.tickets} />
-  );
+  return <TicketsClient data={data} />;
 }
