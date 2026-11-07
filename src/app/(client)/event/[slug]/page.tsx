@@ -57,6 +57,16 @@ async function EventPage({ params, searchParams }: EventPageProps) {
       );
     }
 
+    if (error === 'too_many_attempts') {
+      return (
+        <ServerErrorCard
+          title='Demasiados intentos'
+          description='Se hicieron demasiados intentos con códigos inválidos desde tu conexión. Esperá unos minutos y volvé a abrir el enlace de tu invitación.'
+          route='/'
+        />
+      );
+    }
+
     if (error === 'code_already_used') {
       return (
         <ServerErrorCard
