@@ -11,6 +11,7 @@ import {
   or,
   sql,
 } from 'drizzle-orm';
+import QRCode from 'qrcode';
 import { z } from 'zod';
 
 import type { Db } from '@/drizzle';
@@ -34,7 +35,11 @@ import {
 } from '@/server/services/ticketGroup';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
-import { generatePdf } from '@/server/utils/ticket-template';
+import {
+  generatePdf,
+  resolveTicketStartingDate,
+} from '@/server/utils/ticket-template';
+import { encryptString } from '@/server/utils/utils';
 
 type Transaction = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -654,10 +659,34 @@ export const ticketGroupRouter = router({
     .query(async ({ ctx, input }) => {
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input),
-        columns: { id: true, status: true },
+        columns: { id: true, status: true, createdAt: true },
         with: {
+          event: {
+            columns: {
+              name: true,
+              coverImageUrl: true,
+              startingDate: true,
+              minAge: true,
+              ticketSlugVisibleInPdf: true,
+            },
+            with: {
+              location: {
+                columns: { name: true, address: true, googleMapsUrl: true },
+              },
+            },
+          },
           emittedTickets: {
-            columns: { id: true, slug: true },
+            columns: {
+              id: true,
+              slug: true,
+              fullName: true,
+              dni: true,
+              scanned: true,
+            },
+            with: {
+              ticketType: { columns: { name: true, startingDate: true } },
+            },
+            orderBy: [asc(emittedTicket.createdAt)],
           },
         },
       });
@@ -685,9 +714,41 @@ export const ticketGroupRouter = router({
         });
       }
 
+      const { event } = group;
+
+      const tickets = await Promise.all(
+        group.emittedTickets.map(async (t) => ({
+          id: t.id,
+          slug: t.slug,
+          fullName: t.fullName,
+          dni: t.dni,
+          scanned: t.scanned,
+          ticketTypeName: t.ticketType.name,
+          startingDate: resolveTicketStartingDate(
+            t.ticketType.startingDate,
+            event.startingDate,
+          ),
+          // Mismo contenido que el QR del PDF, así se puede escanear desde el celular.
+          qrDataUrl: await QRCode.toDataURL(encryptString(t.id), {
+            errorCorrectionLevel: 'M',
+            margin: 1,
+            width: 512,
+          }),
+        })),
+      );
+
       return {
         ticketGroupId: group.id,
-        tickets: group.emittedTickets.map((t) => ({ id: t.id, slug: t.slug })),
+        purchasedAt: group.createdAt,
+        contactEmail: ctx.instance.contactEmail,
+        showSlug: event.ticketSlugVisibleInPdf,
+        event: {
+          name: event.name,
+          coverImageUrl: event.coverImageUrl,
+          minAge: event.minAge,
+          location: event.location,
+        },
+        tickets,
       };
     }),
   getPdfByEmittedTicketId: publicProcedure
