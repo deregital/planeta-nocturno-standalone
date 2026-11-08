@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -53,18 +54,101 @@ function InvitationSharedSwitch({
   );
 }
 
+function InvitationSharedWithInput({
+  code,
+  eventId,
+  sharedWith,
+  autoFocus,
+  onSharedWithChange,
+}: {
+  code: string;
+  eventId: string;
+  sharedWith: string;
+  autoFocus: boolean;
+  onSharedWithChange: (code: string, sharedWith: string) => void;
+}) {
+  const [draft, setDraft] = useState(sharedWith);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDraft(sharedWith);
+  }, [sharedWith]);
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
+
+  const setCodeSharedWith = trpc.organizer.setCodeSharedWith.useMutation({
+    onError: () => {
+      toast.error('No se pudo guardar a quién se compartió');
+    },
+  });
+
+  function save() {
+    const value = draft.trim();
+    if (value === sharedWith) {
+      setDraft(value);
+      return;
+    }
+    const previous = sharedWith;
+    onSharedWithChange(code, value);
+    setCodeSharedWith.mutate(
+      { eventId, code, sharedWith: value },
+      {
+        onError: () => {
+          onSharedWithChange(code, previous);
+          setDraft(previous);
+        },
+      },
+    );
+  }
+
+  return (
+    <span className='inline-flex items-center gap-2'>
+      <Input
+        ref={inputRef}
+        value={draft}
+        maxLength={200}
+        placeholder='¿A quién se lo compartiste?'
+        aria-label='A quién se compartió'
+        className='h-8 min-w-48'
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={save}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.currentTarget.blur();
+          }
+          if (event.key === 'Escape') {
+            setDraft(sharedWith);
+            event.currentTarget.blur();
+          }
+        }}
+      />
+      {setCodeSharedWith.isPending && (
+        <Loader2 className='size-3 animate-spin text-accent' />
+      )}
+    </span>
+  );
+}
+
 function buildColumns({
   eventId,
   eventSlug,
   onSharedChange,
+  onSharedWithChange,
   onCopy,
   sharingCode,
+  lastCopiedCode,
 }: {
   eventId: string;
   eventSlug: string;
   onSharedChange: (code: string, shared: boolean) => void;
+  onSharedWithChange: (code: string, sharedWith: string) => void;
   onCopy: (code: string) => void;
   sharingCode: string | null;
+  lastCopiedCode: string | null;
 }): StrictColumnDef<InvitationCode>[] {
   return [
     {
@@ -127,6 +211,30 @@ function buildColumns({
         />
       ),
     },
+    {
+      id: 'sharedWith',
+      accessorFn: (row) => row.sharedWith ?? '',
+      meta: {
+        exportValue: (row) => row.original.sharedWith ?? '',
+        exportHeader: 'Compartido con',
+      },
+      header: 'Compartido con',
+      cell: ({ row }) => {
+        const sharedWith = row.original.sharedWith ?? '';
+        if (!row.original.shared && !sharedWith) {
+          return <span className='text-accent/50'>—</span>;
+        }
+        return (
+          <InvitationSharedWithInput
+            code={row.original.code}
+            eventId={eventId}
+            sharedWith={sharedWith}
+            autoFocus={lastCopiedCode === row.original.code}
+            onSharedWithChange={onSharedWithChange}
+          />
+        );
+      },
+    },
   ];
 }
 
@@ -149,6 +257,18 @@ export function InvitationTicketTable({
     setSharedByCode(new Map(codes.map((code) => [code.code, code.shared])));
   }, [codes]);
 
+  const [sharedWithByCode, setSharedWithByCode] = useState(
+    () => new Map(codes.map((code) => [code.code, code.sharedWith ?? ''])),
+  );
+
+  useEffect(() => {
+    setSharedWithByCode(
+      new Map(codes.map((code) => [code.code, code.sharedWith ?? ''])),
+    );
+  }, [codes]);
+
+  const [lastCopiedCode, setLastCopiedCode] = useState<string | null>(null);
+
   const [sharingCode, setSharingCode] = useState<string | null>(null);
   const setCodeShared = trpc.organizer.setCodeShared.useMutation({
     onError: (_error, variables) => {
@@ -167,6 +287,7 @@ export function InvitationTicketTable({
 
   const handlersRef = useRef({
     onSharedChange: (_code: string, _shared: boolean) => {},
+    onSharedWithChange: (_code: string, _sharedWith: string) => {},
     onCopy: (_code: string) => {},
   });
 
@@ -181,9 +302,20 @@ export function InvitationTicketTable({
         return next;
       });
     },
+    onSharedWithChange: (code, sharedWith) => {
+      setSharedWithByCode((current) => {
+        if ((current.get(code) ?? '') === sharedWith) {
+          return current;
+        }
+        const next = new Map(current);
+        next.set(code, sharedWith);
+        return next;
+      });
+    },
     onCopy: (code) => {
       const alreadyShared = sharedByCodeRef.current.get(code) ?? false;
       handlersRef.current.onSharedChange(code, true);
+      setLastCopiedCode(code);
       if (!alreadyShared) {
         setSharingCode(code);
         setCodeSharedRef.current.mutate({ eventId, code, shared: true });
@@ -196,8 +328,9 @@ export function InvitationTicketTable({
       codes.map((code) => ({
         ...code,
         shared: sharedByCode.get(code.code) ?? code.shared,
+        sharedWith: sharedWithByCode.get(code.code) ?? code.sharedWith,
       })),
-    [codes, sharedByCode],
+    [codes, sharedByCode, sharedWithByCode],
   );
 
   const tableColumns = useMemo(
@@ -207,10 +340,13 @@ export function InvitationTicketTable({
         eventSlug,
         onSharedChange: (code, shared) =>
           handlersRef.current.onSharedChange(code, shared),
+        onSharedWithChange: (code, sharedWith) =>
+          handlersRef.current.onSharedWithChange(code, sharedWith),
         onCopy: (code) => handlersRef.current.onCopy(code),
         sharingCode,
+        lastCopiedCode,
       }),
-    [eventId, eventSlug, sharingCode],
+    [eventId, eventSlug, sharingCode, lastCopiedCode],
   );
 
   return <DataTable columns={tableColumns} data={tableData} />;

@@ -819,6 +819,7 @@ export const ticketXorganizer = pgTable(
       .notNull(),
     shortId: integer().notNull(),
     shared: boolean().default(false).notNull(),
+    sharedWith: text(),
   },
   (table) => [
     index('ticketXOrganizer_ticketGroupId_idx').using(
