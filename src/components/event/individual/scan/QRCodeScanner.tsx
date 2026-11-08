@@ -10,11 +10,11 @@ import { Check, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { SCAN_BEEP } from '@/components/event/individual/scan/scan-beep';
+import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
 import {
   scanRequestErrorCode,
   useScannerTelemetry,
 } from '@/components/event/individual/scan/useScannerTelemetry';
-import { type RouterOutputs } from '@/server/routers/app';
 
 // El Scanner reinicia su loop de detección cada vez que cambian `onScan`,
 // `sound` o `formats`, y el loop anterior sigue corriendo. Si cambian en cada
@@ -39,22 +39,29 @@ const SCANNER_COMPONENTS: IScannerComponents = {
 type ScanFeedback =
   | 'idle'
   | 'success'
+  | 'self-repeat'
   | 'error'
   | 'server-error'
   | 'duplicate'
   | 'already-scanned'
-  | 'too-early';
+  | 'not-found';
+
+/** Igual que el código no lo leyó: no se repite el mismo QR por este tiempo. */
+const SAME_CODE_WINDOW_MS = 5000;
 
 export function QRCodeScanner({
   onScanSuccessAction,
   isLoading,
+  mode = 'off',
+  getHealthExtra,
 }: {
-  onScanSuccessAction: (
-    result: string,
-  ) => Promise<RouterOutputs['emittedTickets']['scan']>;
+  onScanSuccessAction: (result: string) => Promise<ScanDisplayResult>;
   isLoading: boolean;
+  /** Modo del escáner, para la telemetría de los escaneos que fallan. */
+  mode?: string;
+  getHealthExtra?: () => Record<string, unknown>;
 }) {
-  const telemetry = useScannerTelemetry();
+  const telemetry = useScannerTelemetry(getHealthExtra);
   const [feedback, setFeedback] = useState<ScanFeedback>('idle');
   const isProcessingRef = useRef(false);
   const lastScannedRef = useRef<{ code: string; timestamp: number } | null>(
@@ -89,7 +96,7 @@ export function QRCodeScanner({
     if (
       current &&
       current.code === result &&
-      Date.now() - current.timestamp < 5000
+      Date.now() - current.timestamp < SAME_CODE_WINDOW_MS
     )
       return;
 
@@ -100,16 +107,16 @@ export function QRCodeScanner({
 
     try {
       const res = await onScanSuccessAction(result);
-      if (res.status === 'success') {
-        setFeedback('success');
-      } else {
-        setFeedback(res.status as ScanFeedback);
-      }
+      setFeedback(res.status as ScanFeedback);
       telemetry.trackScan({
         outcome: res.status,
         startedAt,
         eventId: res.ticket?.eventId,
         serverMs: res.serverMs,
+        mode: res.mode,
+        decidedBy: res.decidedBy,
+        fallbackReason: res.fallbackReason,
+        reclassified: res.reclassified,
       });
     } catch (error) {
       setFeedback('server-error');
@@ -118,8 +125,13 @@ export function QRCodeScanner({
         outcome: 'request-error',
         startedAt,
         errorCode: scanRequestErrorCode(error),
+        mode,
+        decidedBy: 'server',
       });
     } finally {
+      // La ventana para no repetir el mismo QR cuenta desde la respuesta: si
+      // tardó más que la ventana, la cámara lo volvía a leer apenas llegaba.
+      lastScannedRef.current = { code: result, timestamp: Date.now() };
       scheduleFeedbackReset();
       isProcessingRef.current = false;
     }
@@ -157,17 +169,21 @@ export function QRCodeScanner({
         } ${
           feedback === 'success'
             ? 'bg-green-500/60'
-            : feedback !== 'idle'
-              ? 'bg-red-500/60'
-              : ''
+            : feedback === 'self-repeat'
+              ? 'bg-sky-500/60'
+              : feedback !== 'idle'
+                ? 'bg-red-500/60'
+                : ''
         }`}
       >
-        {feedback === 'success' && (
+        {(feedback === 'success' || feedback === 'self-repeat') && (
           <Check className='size-32 text-white zoom-in' strokeWidth={3} />
         )}
-        {feedback !== 'success' && feedback !== 'idle' && (
-          <X className='size-32 text-white zoom-in' strokeWidth={3} />
-        )}
+        {feedback !== 'success' &&
+          feedback !== 'self-repeat' &&
+          feedback !== 'idle' && (
+            <X className='size-32 text-white zoom-in' strokeWidth={3} />
+          )}
       </div>
       {/* Debug */}
       {/* <span className='absolute bottom-0 right-0 text-fuchsia-500 text-lg'>

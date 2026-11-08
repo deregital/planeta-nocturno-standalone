@@ -4,7 +4,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { AppRouter } from '@/server/routers/app';
 
 import { QueryClientProvider } from '@tanstack/react-query';
-import { httpBatchLink, loggerLink } from '@trpc/client';
+import { httpBatchLink, httpLink, loggerLink, splitLink } from '@trpc/client';
 import { createTRPCReact } from '@trpc/react-query';
 import { useState } from 'react';
 import superjson from 'superjson';
@@ -40,16 +40,35 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
         loggerLink({
           enabled: (op) =>
             process.env.NODE_ENV === 'development' ||
-            (op.direction === 'down' && op.result instanceof Error),
+            (op.direction === 'down' &&
+              op.result instanceof Error &&
+              // Sin red, la sincronización del escáner falla cada pocos
+              // segundos a propósito: no ensuciar la consola.
+              // (el tipo de las respuestas no declara `path`, pero viene).
+              !(op as { path?: string }).path?.startsWith('scanner.')),
         }),
-        httpBatchLink({
-          transformer: superjson,
-          url: getUrl(),
-          headers: () => {
-            const headers = new Headers();
-            headers.set('x-trpc-source', 'nextjs-react');
-            return headers;
-          },
+        // La sincronización del escáner va sola: en un batch, un escaneo
+        // esperaría a que termine una bajada lenta (y al revés).
+        splitLink({
+          condition: (op) => op.path.startsWith('scanner.'),
+          true: httpLink({
+            transformer: superjson,
+            url: getUrl(),
+            headers: () => {
+              const headers = new Headers();
+              headers.set('x-trpc-source', 'nextjs-react');
+              return headers;
+            },
+          }),
+          false: httpBatchLink({
+            transformer: superjson,
+            url: getUrl(),
+            headers: () => {
+              const headers = new Headers();
+              headers.set('x-trpc-source', 'nextjs-react');
+              return headers;
+            },
+          }),
         }),
       ],
     }),

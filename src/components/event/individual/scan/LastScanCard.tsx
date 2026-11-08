@@ -1,12 +1,8 @@
 import { formatInTimeZone } from 'date-fns-tz';
 
-import { type RouterOutputs } from '@/server/routers/app';
+import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
 
-export function LastScanCard({
-  lastScan,
-}: {
-  lastScan: RouterOutputs['emittedTickets']['scan'];
-}) {
+export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
   return (
     <div className='relative w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
       {lastScan.ticket?.scannedAt && (
@@ -18,7 +14,16 @@ export function LastScanCard({
           )}
         </div>
       )}
-      {lastScan.status === 'success' ? (
+      {lastScan.status === 'self-repeat' ? (
+        <>
+          <div className='bg-sky-500 border-b border-stroke'>
+            <p className='text-on-accent text-lg font-bold p-2 truncate'>
+              {lastScan.text}: {lastScan.ticket?.fullName}
+            </p>
+          </div>
+          <p className='text-accent-dark p-2 text-sm'>{lastScan.extraInfo}</p>
+        </>
+      ) : lastScan.status === 'success' ? (
         <>
           <div className='bg-green-500 border-b border-stroke'>
             <p className='text-on-accent text-lg font-bold p-2 truncate'>
@@ -43,6 +48,11 @@ export function LastScanCard({
           {lastScan.extraInfo && (
             <p className='text-accent-dark p-2 text-sm bg-amber-300'>
               <span className='font-bold'>Extra:</span> {lastScan.extraInfo}
+            </p>
+          )}
+          {lastScan.decidedBy === 'local' && (
+            <p className='text-accent-dark/60 px-2 pb-2 text-xs'>
+              Decidido en este celular · se confirma con el servidor
             </p>
           )}
         </>
