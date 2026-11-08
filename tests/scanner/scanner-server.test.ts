@@ -27,6 +27,7 @@ import {
   insertUser,
 } from '@tests/load/lib/seed';
 import { decryptLegacyQr, importLegacyQrKey } from '@/lib/scan/legacy-qr';
+import { SCANNER_MIGRATION_MISSING_MESSAGE } from '@/server/routers/scanner';
 import { serverTicketHash } from '@/server/utils/scanner-crypto';
 import { encryptString } from '@/server/utils/utils';
 
@@ -507,5 +508,55 @@ describe('sincronización', () => {
       'FORBIDDEN',
     );
     assert.equal(await scanRows(ticketsA[7]), 0);
+  });
+});
+
+describe('base sin la migración del escaneo', () => {
+  it('leer anda (todo en off); cambiar el modo o subir escaneos da un error claro', async () => {
+    const { raw } = load;
+    await raw.query(
+      `ALTER TABLE "eventScannerConfig" RENAME TO "eventScannerConfig_hidden"`,
+    );
+    await raw.query(`ALTER TABLE "scanReceipt" RENAME TO "scanReceipt_hidden"`);
+    try {
+      const config = await door().scanner.config({ eventIds: [eventA] });
+      assert.equal(config.effective.mode, 'off');
+
+      const clear = (error: unknown) => {
+        assert.ok(error instanceof TRPCError, String(error));
+        assert.equal(error.code, 'PRECONDITION_FAILED');
+        assert.equal(error.message, SCANNER_MIGRATION_MISSING_MESSAGE);
+        return true;
+      };
+      await assert.rejects(
+        admin().scanner.setConfig({
+          eventId: eventA,
+          mode: 'shadow',
+          maxStaleSeconds: 60,
+        }),
+        clear,
+      );
+      const ticket = ticketsA[15];
+      await assert.rejects(
+        door().scanner.sync({
+          protocol: 1,
+          eventIds: [eventA],
+          deviceId: 'sin-migrar',
+          cursor: null,
+          scans: [
+            { id: randomUUID(), code: encryptString(ticket), at: Date.now() },
+          ],
+        }),
+        clear,
+      );
+      assert.equal(await scanRows(ticket), 0, 'se registró sin recibo');
+    } finally {
+      await raw.query(
+        `ALTER TABLE "eventScannerConfig_hidden" RENAME TO "eventScannerConfig"`,
+      );
+      await raw.query(
+        `ALTER TABLE "scanReceipt_hidden" RENAME TO "scanReceipt"`,
+      );
+    }
   });
 });

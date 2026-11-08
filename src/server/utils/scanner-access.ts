@@ -7,6 +7,10 @@ import { type Db } from '@/drizzle';
 
 import { eventXUser } from '@/drizzle/schema';
 import { type TenantPermission } from '@/lib/rbac/permissions';
+import { logger } from '@/server/observability/logger';
+
+export const SCANNER_ACCESS_DENIED_MESSAGE =
+  'No tenés acceso a este evento: pedile a un administrador que te asigne.';
 
 type AccessContext = {
   db: Db;
@@ -39,9 +43,17 @@ export async function assertEventsAccess(
     );
 
   if (assigned.length < uniqueIds.length) {
+    // Regla nueva para el escaneo: deja rastro para ver a quién le pega.
+    const allowed = new Set(assigned.map((row) => row.eventId));
+    logger.warn('Scanner access denied: user not assigned to the event', {
+      operation: 'scanner_access',
+      code: 'SCANNER_EVENT_NOT_ASSIGNED',
+      userId: ctx.session.user.id,
+      eventIds: uniqueIds.filter((id) => !allowed.has(id)).join(','),
+    });
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'No tenés acceso a este evento',
+      message: SCANNER_ACCESS_DENIED_MESSAGE,
     });
   }
 }

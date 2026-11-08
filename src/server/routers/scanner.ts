@@ -58,6 +58,26 @@ function isMissingTable(error: unknown) {
   return cause.code === '42P01' || cause.cause?.code === '42P01';
 }
 
+/** Código estable para filtrar en PostHog Logs. */
+export const SCANNER_MIGRATION_MISSING = 'SCANNER_MIGRATION_MISSING';
+export const SCANNER_MIGRATION_MISSING_MESSAGE =
+  'Falta actualizar la base de datos de esta productora para usar el escaneo rápido. Avisale al equipo técnico.';
+
+/**
+ * Escribir en las tablas nuevas sin la migración: error claro para quien lo
+ * pidió (no el SQL crudo) y un log con lo que hay que hacer.
+ */
+function migrationMissing(operation: string) {
+  logger.error(
+    'Scanner tables missing in this tenant: run `npm run migrate:tenants`',
+    { operation, code: SCANNER_MIGRATION_MISSING },
+  );
+  return new TRPCError({
+    code: 'PRECONDITION_FAILED',
+    message: SCANNER_MIGRATION_MISSING_MESSAGE,
+  });
+}
+
 async function loadEventConfigs(
   db: Db,
   eventIds: string[],
@@ -80,8 +100,9 @@ async function loadEventConfigs(
   } catch (error) {
     // Sin la tabla, todos los eventos escanean como siempre.
     if (!isMissingTable(error)) throw error;
-    logger.warn('Scanner config table missing', {
+    logger.warn('Scanner config table missing: every event scans as usual', {
       operation: 'scanner_config',
+      code: SCANNER_MIGRATION_MISSING,
     });
   }
 
@@ -410,13 +431,18 @@ export const scannerRouter = router({
         updatedAt: new Date().toISOString(),
         updatedByUserId: ctx.session.user.id,
       };
-      await ctx.db
-        .insert(eventScannerConfig)
-        .values({ eventId: input.eventId, ...values })
-        .onConflictDoUpdate({
-          target: eventScannerConfig.eventId,
-          set: values,
-        });
+      try {
+        await ctx.db
+          .insert(eventScannerConfig)
+          .values({ eventId: input.eventId, ...values })
+          .onConflictDoUpdate({
+            target: eventScannerConfig.eventId,
+            set: values,
+          });
+      } catch (error) {
+        if (isMissingTable(error)) throw migrationMissing('scanner_config');
+        throw error;
+      }
 
       logger.info('Scanner config changed', {
         operation: 'scanner_config',
@@ -509,15 +535,21 @@ export const scannerRouter = router({
       const startedAt = performance.now();
 
       const results: SyncScanResult[] = [];
-      for (const scan of input.scans) {
-        results.push(
-          await registerLocalScan(ctx.db, {
-            eventIds: input.eventIds,
-            deviceId: input.deviceId,
-            userId: ctx.session.user.id,
-            scan,
-          }),
-        );
+      try {
+        for (const scan of input.scans) {
+          results.push(
+            await registerLocalScan(ctx.db, {
+              eventIds: input.eventIds,
+              deviceId: input.deviceId,
+              userId: ctx.session.user.id,
+              scan,
+            }),
+          );
+        }
+      } catch (error) {
+        // El celular conserva los pendientes y los vuelve a subir después.
+        if (isMissingTable(error)) throw migrationMissing('scanner_sync');
+        throw error;
       }
 
       // Las novedades se leen después de registrar lo subido, así lo propio
