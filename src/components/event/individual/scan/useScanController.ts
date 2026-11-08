@@ -37,6 +37,7 @@ import {
 } from '@/components/event/individual/scan/scan-result';
 import { isSelfRepeat, SELF_REPEAT_WINDOW_MS } from '@/lib/scan/decision';
 import { OFF_CONFIG } from '@/lib/scan/protocol';
+import { classifyRequestError, ScanRequestError } from '@/lib/scan/scan-errors';
 import { formatScanTime } from '@/lib/scan/scan-texts';
 import { trpc } from '@/server/trpc/client';
 
@@ -58,6 +59,14 @@ const OFF_STATUS: EngineStatus = {
 };
 const getOffStatus = () => OFF_STATUS;
 const noopSubscribe = () => () => {};
+
+type NavigatorWithConnection = Navigator & {
+  connection?: Pick<EventTarget, 'addEventListener' | 'removeEventListener'>;
+};
+
+function isBrowserOnline() {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
 
 /** Intentos previos que cuentan para reconocer un reescaneo propio. */
 const SELF_ELIGIBLE = new Set(['pending', 'success', 'error', 'self-repeat']);
@@ -240,14 +249,20 @@ export function useScanController({
     const onVisible = () => {
       if (document.visibilityState === 'visible') engine.onVisible();
     };
-    const onOnline = () => void engine.poll();
+    // Volvió la red o cambió (wifi ↔ datos; `connection` solo existe en
+    // Android): subir lo pendiente ya, sin esperar el pedido colgado ni el
+    // backoff.
+    const onNetwork = () => void engine.onNetworkBack();
+    const connection = (navigator as NavigatorWithConnection).connection;
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onVisible);
-    window.addEventListener('online', onOnline);
+    window.addEventListener('online', onNetwork);
+    connection?.addEventListener?.('change', onNetwork);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
-      window.removeEventListener('online', onOnline);
+      window.removeEventListener('online', onNetwork);
+      connection?.removeEventListener?.('change', onNetwork);
     };
   }, [engine]);
 
@@ -338,10 +353,22 @@ export function useScanController({
 
       let server: ServerScanResult;
       try {
+        // Sin red ni se intenta: la puerta ve al instante que no se verificó.
+        if (!isBrowserOnline()) {
+          throw new ScanRequestError('OFFLINE', { fallbackReason });
+        }
         server = await onlineScan(code);
       } catch (error) {
         attemptsRef.current.set(code, { at: firstAt, outcome: 'error' });
-        throw error;
+        if (error instanceof ScanRequestError) throw error;
+        const classified = classifyRequestError(error, {
+          online: isBrowserOnline(),
+        });
+        throw new ScanRequestError(classified.code, {
+          cause: error,
+          fallbackReason,
+          serverMessage: classified.serverMessage,
+        });
       }
 
       let result = fromServer(server, mode, fallbackReason);

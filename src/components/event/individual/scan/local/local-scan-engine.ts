@@ -154,7 +154,15 @@ export const SNAPSHOT_TIMEOUT_MS = 45_000;
 export const PULL_INTERVAL_MS = 10_000;
 export const SNAPSHOT_REFRESH_MS = 5 * 60_000;
 const MAX_BACKOFF_MS = 15_000;
+/** Con escaneos sin subir se reintenta más seguido: son ingresos sin confirmar. */
+export const PENDING_MAX_BACKOFF_MS = 5_000;
 const RECENT_LOCAL_MS = 60_000;
+/** Motivo del corte de lo que estaba en vuelo cuando vuelve o cambia la red. */
+const NETWORK_CHANGED = 'network-changed';
+
+function browserOnline() {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
 
 /** TIMEOUT (lo cortó el celular), el código de tRPC, o NETWORK si no llegó. */
 function errorCode(error: unknown) {
@@ -206,6 +214,7 @@ export class LocalScanEngine {
   private readonly transport: ScannerTransport;
   private readonly store: OutboxStore;
   private readonly now: () => number;
+  private readonly isOnline: () => boolean;
   private readonly userId: string;
   private readonly eventIds: string[];
   private readonly deviceId: string;
@@ -234,6 +243,8 @@ export class LocalScanEngine {
   private recentLocal = new Map<string, number>();
 
   private syncing = false;
+  private syncRun: Promise<void> | null = null;
+  private snapshotRun: Promise<void> | null = null;
   private snapshotLoading = false;
   private snapshotWanted = false;
   private lastSyncAttemptAt = 0;
@@ -256,6 +267,8 @@ export class LocalScanEngine {
     eventIds: string[];
     deviceId: string;
     now?: () => number;
+    /** Si el navegador sabe que no hay red, no se intenta (ni suma backoff). */
+    isOnline?: () => boolean;
     onEvent?: (event: EngineEvent) => void;
   }) {
     this.transport = options.transport;
@@ -264,6 +277,7 @@ export class LocalScanEngine {
     this.eventIds = [...options.eventIds].sort();
     this.deviceId = options.deviceId;
     this.now = options.now ?? Date.now;
+    this.isOnline = options.isOnline ?? browserOnline;
     this.onEvent = options.onEvent ?? (() => {});
     this.status = this.computeStatus();
   }
@@ -332,6 +346,21 @@ export class LocalScanEngine {
     void this.poll();
   }
 
+  /**
+   * Volvió la red o cambió (wifi ↔ datos). Lo que estaba en vuelo salió por la
+   * red anterior y puede quedar colgado hasta el timeout (12 s), y después del
+   * último fallo había que esperar el backoff: se corta y se reintenta ya. Los
+   * reintentos son idempotentes (`clientScanId`), así que cortar no duplica.
+   */
+  async onNetworkBack() {
+    if (this.stopped) return;
+    for (const controller of this.inflight) controller.abort(NETWORK_CHANGED);
+    await Promise.all([this.syncRun, this.snapshotRun]);
+    this.nextAttemptAt = 0;
+    this.nextSnapshotAt = 0;
+    await this.poll();
+  }
+
   get mode(): ScannerMode {
     return minMode(this.serverConfig.mode, this.deviceMode);
   }
@@ -349,6 +378,12 @@ export class LocalScanEngine {
   /** Un paso del ciclo: recarga la tabla y sincroniza si toca. Corre cada segundo. */
   async poll() {
     if (this.stopped) return;
+    // Sin red no se intenta: fallaría al instante y el backoff atrasaría el
+    // primer intento cuando vuelva (`onNetworkBack`).
+    if (!this.isOnline()) {
+      this.notify();
+      return;
+    }
     const now = this.now();
 
     if (
@@ -356,7 +391,8 @@ export class LocalScanEngine {
       !this.snapshotLoading &&
       now >= this.nextSnapshotAt
     ) {
-      await this.refreshSnapshot();
+      this.snapshotRun = this.refreshSnapshot();
+      await this.snapshotRun;
     } else if (
       this.phase === 'ready' &&
       this.mode !== 'off' &&
@@ -374,7 +410,10 @@ export class LocalScanEngine {
         this.mode !== 'off' &&
         this.phase === 'ready' &&
         (this.needsResync || now - this.lastSyncAttemptAt >= PULL_INTERVAL_MS);
-      if (hasPending || pulling) await this.runSync();
+      if (hasPending || pulling) {
+        this.syncRun = this.runSync();
+        await this.syncRun;
+      }
     }
 
     this.notify();
@@ -589,8 +628,13 @@ export class LocalScanEngine {
       });
     } catch (error) {
       if (this.stopped) return;
-      this.snapshotFailures += 1;
       this.snapshotWanted = true;
+      if (controller.signal.reason === NETWORK_CHANGED) {
+        // Se cortó a propósito para reintentar por la red nueva.
+        this.nextSnapshotAt = 0;
+        return;
+      }
+      this.snapshotFailures += 1;
       this.nextSnapshotAt =
         this.now() + Math.min(60_000, 5_000 * 2 ** (this.snapshotFailures - 1));
       if (this.phase !== 'ready') this.phase = 'error';
@@ -733,14 +777,18 @@ export class LocalScanEngine {
       });
     } catch (error) {
       if (this.stopped) return;
+      if (controller.signal.reason === NETWORK_CHANGED) {
+        // Se cortó a propósito para reintentar por la red nueva.
+        this.nextAttemptAt = 0;
+        return;
+      }
       this.consecutiveFailures += 1;
       this.lastError = errorCode(error);
+      const cap =
+        this.ownPending().length > 0 ? PENDING_MAX_BACKOFF_MS : MAX_BACKOFF_MS;
       this.nextAttemptAt =
         this.now() +
-        Math.min(
-          MAX_BACKOFF_MS,
-          1_000 * 2 ** Math.min(4, this.consecutiveFailures),
-        );
+        Math.min(cap, 1_000 * 2 ** Math.min(4, this.consecutiveFailures));
       this.onEvent({
         type: 'sync',
         ok: false,

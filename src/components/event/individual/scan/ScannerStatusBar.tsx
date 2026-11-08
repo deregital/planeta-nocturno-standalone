@@ -18,8 +18,11 @@ function ago(lastSyncAt: number | null, now: number) {
  */
 export function ScannerStatusBar({
   controller,
+  online = true,
 }: {
   controller: ScanController;
+  /** Sin red el modo rápido sigue decidiendo: se avisa que sube después. */
+  online?: boolean;
 }) {
   const { status } = controller;
   const [now, setNow] = useState(() => Date.now());
@@ -62,7 +65,9 @@ export function ScannerStatusBar({
   } else if (status.canDecide) {
     tone = 'ok';
     icon = <Zap className='size-4' />;
-    text = `Modo rápido · sincronizado hace ${since ?? '—'}${pending}`;
+    text = online
+      ? `Modo rápido · sincronizado hace ${since ?? '—'}${pending}`
+      : `Modo rápido · sin conexión${pending}${status.pending > 0 ? ' (se suben cuando vuelva)' : ''}`;
   } else {
     switch (status.staleReason) {
       case 'loading':

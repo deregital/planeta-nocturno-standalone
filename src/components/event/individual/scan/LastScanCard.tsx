@@ -58,7 +58,16 @@ export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
         </>
       ) : (
         <>
-          <div className='bg-red-500 p-2 font-bold'>{lastScan.text}</div>
+          <div
+            className={
+              // Ámbar: no hubo decisión (sin red, servidor). Rojo: rechazada.
+              lastScan.status === 'error'
+                ? 'bg-amber-400 p-2 font-bold text-amber-950'
+                : 'bg-red-500 p-2 font-bold'
+            }
+          >
+            {lastScan.text}
+          </div>
           <div className='text-accent-dark p-2 text-sm'>
             {lastScan.ticket && (
               <>

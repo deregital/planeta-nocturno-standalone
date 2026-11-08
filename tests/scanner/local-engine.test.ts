@@ -14,6 +14,7 @@ import { beforeEach, describe, it } from 'node:test';
 import {
   LocalScanEngine,
   type EngineEvent,
+  PENDING_MAX_BACKOFF_MS,
   type ScannerTransport,
   type SnapshotPayload,
   type SyncPayload,
@@ -59,6 +60,8 @@ class FakeServer implements ScannerTransport {
   receipts = new Map<string, SyncPayload['results'][number]>();
   config: ScannerConfig = { mode: 'local', maxStaleSeconds: 60 };
   down = false;
+  /** El pedido sale por una red muerta y no vuelve hasta que se lo corta. */
+  hang = false;
   /** Registra pero la respuesta no llega (se corta en el camino). */
   loseNextResponse = false;
   syncCalls: SyncRequest[] = [];
@@ -138,7 +141,17 @@ class FakeServer implements ScannerTransport {
     };
   }
 
-  async sync(input: SyncRequest): Promise<SyncPayload> {
+  async sync(
+    input: SyncRequest,
+    options?: { signal?: AbortSignal },
+  ): Promise<SyncPayload> {
+    if (this.hang) {
+      return new Promise((_, reject) => {
+        options?.signal?.addEventListener('abort', () =>
+          reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+        );
+      });
+    }
     if (this.down)
       throw Object.assign(new Error('fetch failed'), {
         name: 'TRPCClientError',
@@ -222,7 +235,7 @@ let server: FakeServer;
 let store: MemoryOutboxStore;
 let events: EngineEvent[];
 
-function makeEngine() {
+function makeEngine(extra: { isOnline?: () => boolean } = {}) {
   return new LocalScanEngine({
     transport: server,
     store,
@@ -231,6 +244,7 @@ function makeEngine() {
     deviceId: 'device-1',
     now: clock.device,
     onEvent: (event) => events.push(event),
+    ...extra,
   });
 }
 
@@ -538,5 +552,73 @@ describe('motor local', () => {
     await off.start({ mode: 'off', maxStaleSeconds: 60 }, { tick: false });
     assert.equal(off.getStatus().phase, 'idle');
     assert.equal(off.canDecideLocally(), false);
+  });
+});
+
+describe('vuelta de la red', () => {
+  it('corta el pedido colgado y sube lo pendiente al instante', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    server.hang = true;
+    await commit(engine, ana.code);
+    assert.equal(
+      engine.getStatus().syncing,
+      true,
+      'el pedido no quedó colgado',
+    );
+
+    server.hang = false;
+    const startedAt = Date.now();
+    await engine.onNetworkBack();
+    assert.ok(Date.now() - startedAt < 1_000, 'esperó el timeout');
+    assert.equal(engine.getStatus().pending, 0);
+    assert.equal(server.registrations, 1);
+    // El corte no cuenta como fallo ni deja backoff.
+    assert.equal(engine.getStatus().consecutiveFailures, 0);
+    assert.ok(!events.some((e) => e.type === 'sync' && !e.ok));
+  });
+
+  it('sin red no intenta ni acumula backoff; al volver sube ya', async () => {
+    const ana = server.addTicket('Ana');
+    let online = true;
+    const engine = makeEngine({ isOnline: () => online });
+    await engine.start(server.config, { tick: false });
+    online = false;
+    const callsBefore = server.syncCalls.length;
+    await commit(engine, ana.code);
+    for (let i = 0; i < 5; i += 1) {
+      clock.advance(1_000);
+      await engine.poll();
+    }
+    assert.equal(server.syncCalls.length, callsBefore, 'intentó sin red');
+    assert.equal(engine.getStatus().consecutiveFailures, 0);
+    assert.equal(engine.getStatus().pending, 1);
+    assert.equal(
+      engine.canDecideLocally(),
+      true,
+      'sin red tiene que seguir decidiendo',
+    );
+
+    online = true;
+    await engine.onNetworkBack();
+    assert.equal(engine.getStatus().pending, 0);
+    assert.equal(server.registrations, 1);
+  });
+
+  it('con escaneos pendientes reintenta cada 5 s como mucho', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    server.down = true;
+    await commit(engine, ana.code);
+    for (let i = 0; i < 6; i += 1) {
+      clock.advance(20_000);
+      await engine.poll();
+    }
+    assert.ok(engine.getStatus().consecutiveFailures >= 4);
+
+    server.down = false;
+    clock.advance(PENDING_MAX_BACKOFF_MS);
+    await engine.poll();
+    assert.equal(engine.getStatus().pending, 0, 'esperó más de 5 s');
   });
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { Settings2 } from 'lucide-react';
+import posthog from 'posthog-js';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -19,6 +20,11 @@ import {
 } from '@/components/event/individual/scan/local/device';
 import { type ScanController } from '@/components/event/individual/scan/useScanController';
 import { type ScannerMode } from '@/lib/scan/protocol';
+import {
+  classifyRequestError,
+  isUnexpectedScanError,
+  requestErrorMessage,
+} from '@/lib/scan/scan-errors';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
@@ -96,7 +102,23 @@ export function ScannerSettings({
     onSuccess: () => {
       void controller.refetchConfig();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => {
+      toast.error(
+        requestErrorMessage(error, {
+          online: navigator.onLine,
+          action: 'cambiar el modo',
+        }),
+      );
+      if (
+        isUnexpectedScanError(
+          classifyRequestError(error, { online: navigator.onLine }).code,
+        )
+      ) {
+        posthog.captureException(error, {
+          scanner_error_code: 'SET_CONFIG_FAILED',
+        });
+      }
+    },
   });
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(false);

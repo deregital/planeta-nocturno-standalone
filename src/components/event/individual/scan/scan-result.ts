@@ -4,6 +4,11 @@ import {
 } from '@/components/event/individual/scan/local/local-scan-engine';
 import { type ScannerMode } from '@/lib/scan/protocol';
 import {
+  type ScanErrorCode,
+  scanErrorTexts,
+  type ScanRequestError,
+} from '@/lib/scan/scan-errors';
+import {
   ALREADY_SCANNED_TEXT,
   alreadyScannedExtraInfo,
   SELF_REPEAT_TEXT,
@@ -16,7 +21,14 @@ export type ServerScanResult = RouterOutputs['emittedTickets']['scan'];
 
 /** Lo que muestra la puerta, venga del servidor o del celular. */
 export type ScanDisplayResult = {
-  status: 'success' | 'already-scanned' | 'not-found' | 'self-repeat' | string;
+  status:
+    | 'success'
+    | 'already-scanned'
+    | 'not-found'
+    | 'self-repeat'
+    /** No hubo decisión: sin red, sesión vencida, error del servidor. */
+    | 'error'
+    | string;
   text: string;
   extraInfo?: string;
   ticket: {
@@ -36,7 +48,28 @@ export type ScanDisplayResult = {
   fallbackReason?: string;
   /** "Ya escaneado" que era el propio escaneo de este celular. */
   reclassified?: 'self-repeat';
+  /** Con `status: 'error'`: código estable para PostHog (OFFLINE, NETWORK…). */
+  errorCode?: ScanErrorCode;
 };
+
+/** Tarjeta de un escaneo que no llegó a una decisión. */
+export function scanErrorResult(
+  error: ScanRequestError,
+  mode: ScannerMode,
+): ScanDisplayResult {
+  return {
+    status: 'error',
+    ...scanErrorTexts(error.code, {
+      fallbackReason: error.fallbackReason,
+      serverMessage: error.serverMessage,
+    }),
+    ticket: null,
+    decidedBy: 'server',
+    mode,
+    fallbackReason: error.fallbackReason,
+    errorCode: error.code,
+  };
+}
 
 export function fromServer(
   result: ServerScanResult,

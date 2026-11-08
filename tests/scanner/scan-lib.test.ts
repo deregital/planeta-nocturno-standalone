@@ -25,6 +25,13 @@ import {
   dniTail,
   minMode,
 } from '@/lib/scan/protocol';
+import {
+  classifyRequestError,
+  isUnexpectedScanError,
+  ScanRequestError,
+  scanErrorTexts,
+  type ScanErrorCode,
+} from '@/lib/scan/scan-errors';
 import { successScanTexts } from '@/lib/scan/scan-texts';
 import { ticketHash } from '@/lib/scan/ticket-hash';
 import {
@@ -214,5 +221,93 @@ describe('configuración', () => {
   it('DNI: solo los últimos dígitos', () => {
     assert.equal(dniTail('40.123.456'), '456');
     assert.equal(dniTail('AB12'), '12');
+  });
+});
+
+describe('errores de escaneo', () => {
+  const trpcError = (code: string, httpStatus: number, message = 'motivo') =>
+    Object.assign(new Error(message), {
+      name: 'TRPCClientError',
+      data: { code, httpStatus },
+    });
+  const online = { online: true };
+
+  it('clasifica por red, sesión, permisos y servidor', () => {
+    assert.equal(
+      classifyRequestError(new Error('x'), { online: false }).code,
+      'OFFLINE',
+    );
+    const noResponse = Object.assign(new Error('Failed to fetch'), {
+      name: 'TRPCClientError',
+    });
+    assert.equal(classifyRequestError(noResponse, online).code, 'NETWORK');
+    assert.equal(
+      classifyRequestError(new TypeError('Failed to fetch'), online).code,
+      'NETWORK',
+    );
+    assert.equal(
+      classifyRequestError(trpcError('UNAUTHORIZED', 401), online).code,
+      'SESSION_EXPIRED',
+    );
+    assert.deepEqual(
+      classifyRequestError(trpcError('FORBIDDEN', 403, 'Sin acceso'), online),
+      { code: 'FORBIDDEN', serverMessage: 'Sin acceso' },
+    );
+    assert.equal(
+      classifyRequestError(
+        trpcError('INTERNAL_SERVER_ERROR', 500, 'Failed query: insert'),
+        online,
+      ).code,
+      'SERVER',
+    );
+    assert.deepEqual(
+      classifyRequestError(
+        trpcError('PRECONDITION_FAILED', 412, 'Falta actualizar'),
+        online,
+      ),
+      { code: 'REJECTED', serverMessage: 'Falta actualizar' },
+    );
+    assert.equal(classifyRequestError(new Error('?'), online).code, 'UNKNOWN');
+    const already = new ScanRequestError('OFFLINE', {
+      fallbackReason: 'unknown',
+    });
+    assert.equal(classifyRequestError(already, online).code, 'OFFLINE');
+  });
+
+  it('los textos dicen qué pasó, que no se registró y qué hacer, sin SQL ni inglés', () => {
+    const codes: ScanErrorCode[] = [
+      'OFFLINE',
+      'NETWORK',
+      'SESSION_EXPIRED',
+      'FORBIDDEN',
+      'SERVER',
+      'REJECTED',
+      'UNKNOWN',
+    ];
+    for (const code of codes) {
+      const texts = scanErrorTexts(code, {
+        serverMessage: code === 'SERVER' ? 'Failed query: insert' : undefined,
+      });
+      assert.ok(texts.text.length > 0, code);
+      assert.match(texts.extraInfo, /no se registró/i, code);
+      assert.doesNotMatch(texts.extraInfo, /failed|fetch|query/i, code);
+    }
+    assert.match(
+      scanErrorTexts('OFFLINE', { fallbackReason: 'unknown' }).extraInfo,
+      /no está en la lista del celular/,
+    );
+    assert.match(
+      scanErrorTexts('REJECTED', { serverMessage: 'Falta actualizar la base.' })
+        .extraInfo,
+      /^Falta actualizar la base\./,
+    );
+  });
+
+  it('solo lo inesperado va a Error Tracking', () => {
+    assert.equal(isUnexpectedScanError('SERVER'), true);
+    assert.equal(isUnexpectedScanError('UNKNOWN'), true);
+    assert.equal(isUnexpectedScanError('OFFLINE'), false);
+    assert.equal(isUnexpectedScanError('NETWORK'), false);
+    assert.equal(isUnexpectedScanError('SESSION_EXPIRED'), false);
   });
 });

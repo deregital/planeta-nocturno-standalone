@@ -6,7 +6,7 @@ import {
   type IScannerProps,
   Scanner,
 } from '@yudiel/react-qr-scanner';
-import { Check, X } from 'lucide-react';
+import { Check, TriangleAlert, WifiOff, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { SCAN_BEEP } from '@/components/event/individual/scan/scan-beep';
@@ -52,11 +52,14 @@ const SAME_CODE_WINDOW_MS = 5000;
 export function QRCodeScanner({
   onScanSuccessAction,
   isLoading,
+  paused = false,
   mode = 'off',
   getHealthExtra,
 }: {
   onScanSuccessAction: (result: string) => Promise<ScanDisplayResult>;
   isLoading: boolean;
+  /** Sin red y sin poder decidir en el celular: la cámara no lee. */
+  paused?: boolean;
   /** Modo del escáner, para la telemetría de los escaneos que fallan. */
   mode?: string;
   getHealthExtra?: () => Record<string, unknown>;
@@ -90,7 +93,7 @@ export function QRCodeScanner({
   }
 
   async function handleScan(result: string) {
-    if (isLoading || isProcessingRef.current) return;
+    if (isLoading || paused || isProcessingRef.current) return;
 
     const current = lastScannedRef.current;
     if (
@@ -107,9 +110,13 @@ export function QRCodeScanner({
 
     try {
       const res = await onScanSuccessAction(result);
-      setFeedback(res.status as ScanFeedback);
+      // 'error': no hubo decisión (sin red, sesión, servidor). No es un rechazo.
+      setFeedback(
+        res.status === 'error' ? 'server-error' : (res.status as ScanFeedback),
+      );
       telemetry.trackScan({
-        outcome: res.status,
+        outcome: res.status === 'error' ? 'request-error' : res.status,
+        errorCode: res.errorCode,
         startedAt,
         eventId: res.ticket?.eventId,
         serverMs: res.serverMs,
@@ -155,7 +162,7 @@ export function QRCodeScanner({
         styles={{
           video: {
             transition: 'opacity 0.2s ease-in-out',
-            opacity: isLoading ? 0.2 : 1,
+            opacity: isLoading || paused ? 0.2 : 1,
           },
         }}
         allowMultiple
@@ -171,20 +178,35 @@ export function QRCodeScanner({
             ? 'bg-green-500/60'
             : feedback === 'self-repeat'
               ? 'bg-sky-500/60'
-              : feedback !== 'idle'
-                ? 'bg-red-500/60'
-                : ''
+              : feedback === 'server-error'
+                ? 'bg-amber-500/70'
+                : feedback !== 'idle'
+                  ? 'bg-red-500/60'
+                  : ''
         }`}
       >
         {(feedback === 'success' || feedback === 'self-repeat') && (
           <Check className='size-32 text-white zoom-in' strokeWidth={3} />
         )}
+        {feedback === 'server-error' && (
+          <TriangleAlert
+            className='size-32 text-white zoom-in'
+            strokeWidth={2.5}
+          />
+        )}
         {feedback !== 'success' &&
           feedback !== 'self-repeat' &&
+          feedback !== 'server-error' &&
           feedback !== 'idle' && (
             <X className='size-32 text-white zoom-in' strokeWidth={3} />
           )}
       </div>
+      {paused && feedback === 'idle' && (
+        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none text-white'>
+          <WifiOff className='size-16' strokeWidth={2.5} />
+          <p className='text-xl font-bold'>Sin conexión</p>
+        </div>
+      )}
       {/* Debug */}
       {/* <span className='absolute bottom-0 right-0 text-fuchsia-500 text-lg'>
         {feedback}
