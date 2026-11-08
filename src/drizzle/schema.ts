@@ -274,6 +274,23 @@ export const feature = pgTable(
   ],
 );
 
+export const rateLimitBucket = pgTable(
+  'rateLimitBucket',
+  {
+    key: text().primaryKey().notNull(),
+    count: integer().default(0).notNull(),
+    windowStart: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index('rateLimitBucket_windowStart_idx').using(
+      'btree',
+      table.windowStart.asc().nullsLast().op('timestamptz_ops'),
+    ),
+  ],
+);
+
 export const paymentSettings = pgTable('paymentSettings', {
   id: integer().default(1).primaryKey().notNull(),
   transferAlias: text(),
@@ -802,6 +819,7 @@ export const ticketXorganizer = pgTable(
       .notNull(),
     shortId: integer().notNull(),
     shared: boolean().default(false).notNull(),
+    sharedWith: text(),
   },
   (table) => [
     index('ticketXOrganizer_ticketGroupId_idx').using(

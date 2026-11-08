@@ -81,6 +81,14 @@ export const handleInvitationCode = async ({
     };
   }
 
+  if (redeemed.status === 'rate_limited') {
+    return {
+      error: 'Demasiados intentos',
+      message:
+        'Hiciste demasiados intentos con códigos inválidos. Esperá unos minutos y volvé a intentar.',
+    };
+  }
+
   if (redeemed.status === 'invalid_configuration') {
     return {
       error: 'Configuración inválida',

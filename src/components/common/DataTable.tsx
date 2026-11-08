@@ -42,6 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { type TenantPermission } from '@/lib/rbac/permissions';
 import { cn } from '@/lib/utils';
 import { exportTableToXlsx } from '@/lib/utils-client';
 
@@ -65,6 +66,8 @@ interface DataTableProps<
   disableExport?: TDisableExport;
   noResultsPlaceholder?: string;
   requirePasswordForExport?: boolean;
+  /** Permiso necesario para exportar: las tablas con datos sensibles usan uno propio. */
+  exportPermission?: TenantPermission;
   headerActions?: React.ReactNode;
 }
 
@@ -86,9 +89,10 @@ export function DataTable<
   disableExport = false as TDisableExport,
   noResultsPlaceholder = 'No se encontraron resultados',
   requirePasswordForExport = false,
+  exportPermission = 'exports:tables',
   headerActions,
 }: DataTableProps<TData, TValue, TDisableExport>) {
-  const canExport = useCan('exports:tables');
+  const canExport = useCan(exportPermission);
 
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn

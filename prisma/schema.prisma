@@ -462,6 +462,8 @@ model TicketXOrganizer {
 
   shared Boolean @default(false)
 
+  sharedWith String?
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@id([eventId, code])
@@ -519,4 +521,14 @@ enum InviteCondition {
   TRADITIONAL
   INVITATION
   SIMPLE
+}
+
+// Contadores de intentos por ventana de tiempo (rate limiting de endpoints públicos)
+model RateLimitBucket {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@index([windowStart], map: "rateLimitBucket_windowStart_idx")
+  @@map("rateLimitBucket")
 }

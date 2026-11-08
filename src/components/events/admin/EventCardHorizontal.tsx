@@ -173,9 +173,7 @@ export default function EventCardHorizontal({
             {event.isActive && (
               <BadgeCheck className='size-4 shrink-0 text-on-accent' />
             )}
-            {/* En el celular, con los íconos al lado, quedaban unos 70 px: dos
-                líneas y una fecha corta para distinguir un evento de su copia. */}
-            <CardTitle className='line-clamp-2 break-words sm:truncate'>
+            <CardTitle className='line-clamp-2 min-w-0 flex-1 break-words leading-snug'>
               {event.name}
             </CardTitle>
           </div>
@@ -265,7 +263,12 @@ export default function EventCardHorizontal({
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={'ghost'} size={'icon'} asChild>
+                <Button
+                  variant={'ghost'}
+                  size={'icon'}
+                  asChild
+                  className='hidden sm:inline-flex'
+                >
                   <Link href={manageHref as Route<string>}>
                     <Calendar className='w-4 h-4 text-on-accent' />
                   </Link>
