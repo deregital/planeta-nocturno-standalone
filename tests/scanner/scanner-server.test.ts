@@ -204,6 +204,12 @@ describe('escaneo online (emittedTickets.scan)', () => {
       eventIds: [eventA],
     });
     assert.equal(otherEvent.status, 'not-found');
+    // Formato válido que descifra a algo que no es un id: antes era un 500.
+    const notAnId = await door().emittedTickets.scan({
+      barcode: encryptString('no-es-un-uuid'),
+      eventIds: [eventA],
+    });
+    assert.equal(notAnId.status, 'not-found');
   });
 });
 
@@ -409,10 +415,11 @@ describe('sincronización', () => {
       { id: randomUUID(), code: 'qr-invalido' },
       { id: randomUUID(), code: encryptString(ticketB) },
       { id: randomUUID(), code: encryptString(randomUUID()) },
+      { id: randomUUID(), code: encryptString('no-es-un-uuid') },
     ]);
     assert.deepEqual(
       result.results.map((r) => r.outcome),
-      ['not-found', 'not-found', 'not-found'],
+      ['not-found', 'not-found', 'not-found', 'not-found'],
     );
     assert.equal(await scanRows(ticketB), 0);
   });

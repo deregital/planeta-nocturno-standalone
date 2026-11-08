@@ -21,6 +21,7 @@ import {
   DELTA_OVERLAP_MS,
   dniTail,
   isScannerMode,
+  isTicketId,
   MAX_SCANNER_EVENTS,
   MAX_SYNC_SCANS,
   OFF_CONFIG,
@@ -42,9 +43,6 @@ import {
   serverTicketHash,
 } from '@/server/utils/scanner-crypto';
 import { decryptString } from '@/server/utils/utils';
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const eventIdsSchema = z
   .array(z.uuid())
@@ -301,7 +299,7 @@ async function registerLocalScan(
     let ticketId: string | null = null;
     try {
       const decrypted = decryptString(scan.code);
-      ticketId = UUID_PATTERN.test(decrypted) ? decrypted : null;
+      ticketId = isTicketId(decrypted) ? decrypted : null;
     } catch {
       ticketId = null;
     }

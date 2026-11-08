@@ -31,6 +31,7 @@ import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { getBuyersCodeByDni } from '@/server/utils/db/utils';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { generatePdf } from '@/server/utils/ticket-template';
+import { isTicketId } from '@/lib/scan/protocol';
 import {
   ALREADY_SCANNED_TEXT,
   alreadyScannedExtraInfo,
@@ -541,13 +542,19 @@ export const emittedTicketsRouter = router({
       };
 
       // Misma regla que la lista de eventos para escanear: sin "Ver todos los
-      // eventos" solo se escanean los asignados.
-      await assertEventsAccess(ctx, input.eventIds);
+      // eventos" solo se escanean los asignados. Corre en paralelo con la
+      // búsqueda de la entrada para no sumar un viaje a la base.
+      const access = assertEventsAccess(ctx, input.eventIds);
 
-      let decryptedTicketId: string;
+      let decryptedTicketId: string | null;
       try {
         decryptedTicketId = decryptString(input.barcode);
       } catch {
+        decryptedTicketId = null;
+      }
+      // Un QR con el formato pero de otra clave puede descifrar a basura.
+      if (!decryptedTicketId || !isTicketId(decryptedTicketId)) {
+        await access;
         return respond({
           ticket: null,
           status: 'not-found',
@@ -557,28 +564,31 @@ export const emittedTicketsRouter = router({
         });
       }
 
-      const ticketReturned = await ctx.db.query.emittedTicket.findFirst({
-        where: and(
-          eq(emittedTicket.id, decryptedTicketId),
-          inArray(emittedTicket.eventId, input.eventIds),
-        ),
-        with: {
-          ticketType: true,
-          emittedTicketScans: {
-            columns: { id: true },
-          },
-          ticketGroup: {
-            with: {
-              event: { columns: { id: true, name: true } },
-              user: {
-                columns: {
-                  fullName: true,
+      const [, ticketReturned] = await Promise.all([
+        access,
+        ctx.db.query.emittedTicket.findFirst({
+          where: and(
+            eq(emittedTicket.id, decryptedTicketId),
+            inArray(emittedTicket.eventId, input.eventIds),
+          ),
+          with: {
+            ticketType: true,
+            emittedTicketScans: {
+              columns: { id: true },
+            },
+            ticketGroup: {
+              with: {
+                event: { columns: { id: true, name: true } },
+                user: {
+                  columns: {
+                    fullName: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
+        }),
+      ]);
 
       if (!ticketReturned) {
         return respond({

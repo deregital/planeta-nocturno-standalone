@@ -7,9 +7,9 @@
  * null y el escaneo sigue por el servidor: el celular nunca rechaza un QR que
  * no pudo leer.
  */
+import { isTicketId } from '@/lib/scan/protocol';
+
 const LEGACY_QR_PATTERN = /^[A-Za-z0-9+/]{22}==:[A-Za-z0-9+/]+={0,2}$/;
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isLegacyQrFormat(code: string): boolean {
   return LEGACY_QR_PATTERN.test(code);
@@ -50,7 +50,7 @@ export async function decryptLegacyQr(
       cipher,
     );
     const ticketId = new TextDecoder().decode(plain);
-    return UUID_PATTERN.test(ticketId) ? ticketId.toLowerCase() : null;
+    return isTicketId(ticketId) ? ticketId.toLowerCase() : null;
   } catch {
     return null;
   }

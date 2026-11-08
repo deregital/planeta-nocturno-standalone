@@ -66,6 +66,14 @@ export function combineConfigs(configs: ScannerConfig[]): ScannerConfig {
   }));
 }
 
+const TICKET_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Un QR que descifra a algo que no es un uuid no es una entrada. */
+export function isTicketId(value: string): boolean {
+  return TICKET_ID_PATTERN.test(value);
+}
+
 export const MAX_SCANNER_EVENTS = 20;
 export const MAX_SYNC_SCANS = 50;
 
