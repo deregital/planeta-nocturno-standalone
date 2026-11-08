@@ -1,12 +1,13 @@
+import { type Route } from 'next';
 import { redirect } from 'next/navigation';
 
 import LoginClient from '@/app/login/client';
-import { auth, clearStaleControlSession } from '@/server/auth';
+import { auth, hasStaleControlSession } from '@/server/auth';
 import { getControlAdminPermissions } from '@/server/control/can-manage-tenants';
 import { getControlLandingPath } from '@/server/control/landing-path';
 
 export default async function ControlLoginPage() {
-  await clearStaleControlSession();
+  if (await hasStaleControlSession()) redirect('/session-expired' as Route);
 
   const session = await auth();
   if (session?.user.role === 'CONTROL_ADMIN') {

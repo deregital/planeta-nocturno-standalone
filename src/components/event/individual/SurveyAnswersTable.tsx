@@ -4,7 +4,7 @@ import { type Row, type StrictColumnDef } from '@tanstack/react-table';
 import { es } from 'date-fns/locale';
 import { Search } from 'lucide-react';
 import { useQueryStates } from 'nuqs';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { DataTable } from '@/components/common/DataTable';
 import {
@@ -66,8 +66,14 @@ function generateSurveyAnswerColumns(
 
 export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
   const [formParams, setFormParams] = useQueryStates(formAnswerSearchParams);
-  const search = formParams[FORM_SEARCH_PARAM];
   const ticketId = formParams[FORM_TICKET_PARAM];
+  // El texto vive en estado local y la URL sólo lo refleja: la paginación
+  // reescribía la URL con el valor anterior y el campo se quedaba con la
+  // primera letra.
+  const [search, setSearch] = useState(formParams[FORM_SEARCH_PARAM] ?? '');
+  useEffect(() => {
+    if (ticketId) setSearch('');
+  }, [ticketId]);
 
   const selectedTicket = useMemo(() => {
     if (!ticketId) return null;
@@ -171,13 +177,14 @@ export function SurveyAnswersTable({ event }: { event: SurveyEvent }) {
           <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
           <Input
             placeholder='Buscar por nombre, DNI, email o respuesta...'
-            value={search ?? ''}
-            onChange={(e) =>
-              setFormParams({
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              void setFormParams({
                 [FORM_SEARCH_PARAM]: e.target.value || null,
                 [FORM_TICKET_PARAM]: null,
-              })
-            }
+              });
+            }}
             className='pl-10'
           />
         </div>

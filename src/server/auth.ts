@@ -4,6 +4,7 @@ import NextAuth, { CredentialsSignin, type Session } from 'next-auth';
 import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { cache } from 'react';
+import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
 import { controlAdmins } from '@/db/control/schema';
@@ -18,12 +19,39 @@ import {
   resolveRequestContext,
 } from '@/server/instance/resolve-request-context';
 import { logger } from '@/server/observability/logger';
-import { userSchema } from '@/server/schemas/user';
+import {
+  CONTROL_LOGIN_ATTEMPTS,
+  loginLockedMinutes,
+  registerFailedLogin,
+  registerSuccessfulLogin,
+  TENANT_LOGIN_ATTEMPTS,
+} from '@/server/security/login-throttle';
 
-const credentialsSchema = userSchema.pick({
-  name: true,
-  password: true,
+// Sin el mínimo de largo de las altas: hay contraseñas viejas más cortas.
+const credentialsSchema = z.object({
+  name: z.string().trim().min(1),
+  password: z.string().min(1),
 });
+
+// Un solo mensaje: con 'Usuario no encontrado' y 'Contraseña incorrecta' se
+// podía averiguar qué usuarios existen.
+const INVALID_CREDENTIALS = 'Usuario o contraseña incorrectos';
+
+// Si el usuario no existe se compara contra este hash igual, para que el
+// tiempo de respuesta tampoco lo delate.
+const TIMING_DUMMY_HASH =
+  '$2b$10$hZLkP4azJ.3FhNVxZCVTqehulT6NDHbKx1B9EyibrmLg1raGehabK';
+
+async function passwordMatches(password: string, hash: string | undefined) {
+  const ok = await compare(password, hash ?? TIMING_DUMMY_HASH);
+  return ok && hash !== undefined;
+}
+
+function tooManyAttempts(minutes: number) {
+  return new CustomError(
+    `Demasiados intentos fallidos. Probá de nuevo en ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}.`,
+  );
+}
 
 const nextAuth = NextAuth({
   providers: [
@@ -43,13 +71,26 @@ const nextAuth = NextAuth({
         const { name, password } = credentialsSchema.parse(credentials);
 
         if (isControlRequest(request.headers)) {
-          const admin = await getControlDb().query.controlAdmins.findFirst({
+          const controlDb = getControlDb();
+          const locked = await loginLockedMinutes(
+            controlDb,
+            CONTROL_LOGIN_ATTEMPTS,
+            name,
+          );
+          if (locked) throw tooManyAttempts(locked);
+
+          const admin = await controlDb.query.controlAdmins.findFirst({
             where: eq(controlAdmins.username, name),
           });
-          if (!admin) throw new CustomError('Usuario no encontrado');
-          if (!(await compare(password, admin.password))) {
-            throw new CustomError('Contraseña incorrecta');
+          if (!(await passwordMatches(password, admin?.password)) || !admin) {
+            await registerFailedLogin(controlDb, CONTROL_LOGIN_ATTEMPTS, name);
+            throw new CustomError(INVALID_CREDENTIALS);
           }
+          await registerSuccessfulLogin(
+            controlDb,
+            CONTROL_LOGIN_ATTEMPTS,
+            name,
+          );
 
           return {
             id: admin.id,
@@ -64,12 +105,21 @@ const nextAuth = NextAuth({
         }
 
         const { db, instance } = await resolveRequestContext(request.headers);
+        const locked = await loginLockedMinutes(
+          db,
+          TENANT_LOGIN_ATTEMPTS,
+          name,
+        );
+        if (locked) throw tooManyAttempts(locked);
+
         const user = await db.query.user.findFirst({
           where: eq(userTable.name, name),
         });
-        if (!user) throw new CustomError('Usuario no encontrado');
-        if (!(await compare(password, user.password)))
-          throw new CustomError('Contraseña incorrecta');
+        if (!(await passwordMatches(password, user?.password)) || !user) {
+          await registerFailedLogin(db, TENANT_LOGIN_ATTEMPTS, name);
+          throw new CustomError(INVALID_CREDENTIALS);
+        }
+        await registerSuccessfulLogin(db, TENANT_LOGIN_ATTEMPTS, name);
         return {
           ...user,
           tenantSlug: instance.slug,
@@ -171,13 +221,14 @@ const touchControlAdminLastSeen = cache((adminId: string) => {
   });
 });
 
-/** Cierra sesión si el JWT de control apunta a un admin que ya no existe. */
-export async function clearStaleControlSession() {
+/**
+ * El JWT de control apunta a un admin que ya no existe. Quien llama redirige a
+ * /session-expired, que cierra la sesión (en el render no se pueden borrar cookies).
+ */
+export async function hasStaleControlSession() {
   const rawSession = await nextAuth.auth();
   if (!rawSession || !isControlSessionValid(rawSession)) return false;
-  if (await controlAdminExists(rawSession.user.id)) return false;
-  await signOut({ redirectTo: '/login' });
-  return true;
+  return !(await controlAdminExists(rawSession.user.id));
 }
 
 /** Memoizada por request: layouts y páginas la llaman varias veces por render. */

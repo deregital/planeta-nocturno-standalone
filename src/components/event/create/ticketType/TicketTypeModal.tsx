@@ -295,7 +295,7 @@ export default function TicketTypeModal({
       <DialogContent className='max-w-xl! md:max-w-3xl! lg:max-w-4xl! max-md:top-4 max-md:translate-y-0'>
         <DialogHeader className='max-md:pr-8'>
           <DialogTitle className='text-left'>
-            Crear ticket de tipo {text}
+            {action === 'CREATE' ? 'Crear' : 'Editar'} ticket de tipo {text}
           </DialogTitle>
           <DialogDescription hidden></DialogDescription>
         </DialogHeader>

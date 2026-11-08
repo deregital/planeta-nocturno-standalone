@@ -1,8 +1,8 @@
 import type { ComponentProps } from 'react';
 
 import PhoneInput from 'react-phone-number-input';
-import esPhoneLocale from 'react-phone-number-input/locale/es';
 
+import { PHONE_COUNTRY_LABELS as esPhoneLocale } from '@/lib/phone-labels';
 import GenericInputWithLabel from '@/components/common/GenericInputWithLabel';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';

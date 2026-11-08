@@ -1,6 +1,7 @@
 import { type ColumnDef } from '@tanstack/react-table';
 import { TrashIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { DataTable } from '@/components/common/DataTable';
 import { SortableColumnHeader } from '@/components/common/table/SortableColumnHeader';
@@ -72,10 +73,20 @@ function OrganizerNumberInput({
   const commitValue = (raw: string, syncInputToCommitted = false) => {
     if (raw === '') return;
 
-    const parsed = Number(raw);
+    const parsed = Math.round(Number(raw));
     if (Number.isNaN(parsed)) return;
 
     const clampedValue = Math.min(Math.max(parsed, minValue), upperBound);
+    // Se corregía en silencio y sólo cambiaba el contador de restantes.
+    if (syncInputToCommitted && clampedValue !== parsed) {
+      toast.info(
+        clampedValue === upperBound
+          ? `Le podés dar hasta ${upperBound} tickets`
+          : delivered > 0
+            ? `No puede tener menos de ${minValue}: ya canjeó ${delivered}`
+            : `Tiene que tener al menos ${minValue}`,
+      );
+    }
     updateOrganizerNumber(row, clampedValue, type, getTicketLimits?.());
 
     if (syncInputToCommitted) {
@@ -91,6 +102,8 @@ function OrganizerNumberInput({
       <Input
         className={cn('w-16 shrink-0', inputClassName)}
         type='number'
+        step={1}
+        inputMode='numeric'
         disabled={disableActions}
         min={minValue}
         max={upperBound}

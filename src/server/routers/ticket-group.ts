@@ -1,16 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  inArray,
-  isNull,
-  lt,
-  ne,
-  or,
-  sql,
-} from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import QRCode from 'qrcode';
 import { z } from 'zod';
 
@@ -40,6 +29,12 @@ import {
   deliverPaidTicketGroup,
   generateTicketGroupPdfs,
 } from '@/server/services/ticketGroup';
+import {
+  CHECKOUT_HOLD_TTL_MS,
+  eventHoldCondition,
+  MERCADO_PAGO_HOLD_TTL_MS,
+  releaseExpiredHolds,
+} from '@/server/services/ticketGroupHolds';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import {
@@ -47,10 +42,6 @@ import {
   resolveTicketStartingDate,
 } from '@/server/utils/ticket-template';
 import { encryptString } from '@/server/utils/utils';
-
-type Transaction = Parameters<Parameters<Db['transaction']>[0]>[0];
-
-const BOOKED_TICKET_GROUP_TTL_MS = 1000 * 60 * 10;
 
 const INVITATION_CODE_SCHEMA = z
   .string()
@@ -94,10 +85,18 @@ function normalizeDni(dni: string) {
   return dni.replace(/[^0-9a-z]/gi, '').toUpperCase();
 }
 
-/** Canjea un código de invitación: reutiliza o crea la reserva BOOKED. */
-function redeemInvitationCode(db: Db, eventId: string, code: string) {
+/**
+ * Canjea un código de invitación: reutiliza la reserva BOOKED del mismo
+ * navegador (`currentTicketGroupId`, cookie 'carrito') o crea una nueva.
+ */
+function redeemInvitationCode(
+  db: Db,
+  eventId: string,
+  code: string,
+  currentTicketGroupId: string | null | undefined,
+) {
   return db.transaction(async (tx) => {
-    await releaseExpiredBookedTicketGroups(tx, eventId);
+    await releaseExpiredHolds(tx, eventHoldCondition(eventId));
 
     const [invite] = await tx
       .select({
@@ -122,6 +121,7 @@ function redeemInvitationCode(db: Db, eventId: string, code: string) {
         .select({
           id: ticketGroup.id,
           status: ticketGroup.status,
+          paymentMethod: ticketGroup.paymentMethod,
         })
         .from(ticketGroup)
         .where(eq(ticketGroup.id, invite.ticketGroupId));
@@ -129,14 +129,22 @@ function redeemInvitationCode(db: Db, eventId: string, code: string) {
       // Reserva del checkout en curso. El grupo compartido del organizador
       // queda en FREE y no tiene ticketTypePerGroup: ese no se reutiliza.
       if (existing?.status === 'BOOKED') {
-        return {
-          status: 'ok' as const,
-          ticketGroupId: existing.id,
-          organizerId: invite.organizerId,
-        };
-      }
-
-      if (existing) {
+        if (existing.id === currentTicketGroupId) {
+          return {
+            status: 'ok' as const,
+            ticketGroupId: existing.id,
+            organizerId: invite.organizerId,
+          };
+        }
+        // Una reserva que ya está en un pago no se le saca a quien paga.
+        if (existing.paymentMethod) {
+          return { status: 'already_used' as const };
+        }
+        // Otro navegador (la misma persona en otro dispositivo, o alguien
+        // a quien le reenviaron el link): se suelta la reserva anterior y
+        // se crea una propia. El checkout viejo ya no puede completarse.
+        await tx.delete(ticketGroup).where(eq(ticketGroup.id, existing.id));
+      } else if (existing) {
         const [hold] = await tx
           .select({
             ticketGroupId: ticketTypePerGroup.ticketGroupId,
@@ -208,24 +216,28 @@ function redeemInvitationCode(db: Db, eventId: string, code: string) {
   });
 }
 
-/** Suelta reservas sin pagar vencidas (salvo transferencias) antes de mirar el cupo. */
-function releaseExpiredBookedTicketGroups(tx: Transaction, eventId: string) {
-  return tx
-    .delete(ticketGroup)
-    .where(
-      and(
-        eq(ticketGroup.eventId, eventId),
-        eq(ticketGroup.status, 'BOOKED'),
-        or(
-          isNull(ticketGroup.paymentMethod),
-          ne(ticketGroup.paymentMethod, 'TRANSFER'),
-        ),
-        lt(
-          ticketGroup.createdAt,
-          new Date(Date.now() - BOOKED_TICKET_GROUP_TTL_MS).toISOString(),
-        ),
-      ),
-    );
+function ticketGroupNotFound() {
+  return new TRPCError({
+    code: 'NOT_FOUND',
+    message: 'ticketGroup no encontrado',
+  });
+}
+
+/** Hasta cuándo retiene el cupo una reserva sin pagar, para avisarle al comprador. */
+function holdExpiresAt(group: {
+  status: string;
+  paymentMethod: string | null;
+  createdAt: string;
+}) {
+  if (group.status !== 'BOOKED') return null;
+  const ttl =
+    group.paymentMethod === null
+      ? CHECKOUT_HOLD_TTL_MS
+      : group.paymentMethod === 'MERCADO_PAGO'
+        ? MERCADO_PAGO_HOLD_TTL_MS
+        : null;
+  if (ttl === null) return null;
+  return new Date(new Date(group.createdAt).getTime() + ttl).toISOString();
 }
 
 export const ticketGroupSchema = z.object({
@@ -248,11 +260,16 @@ export const ticketGroupRouter = router({
           })
           .array(),
         invitedBy: invitedBySchema,
+        /** Reserva anterior del mismo navegador (cookie 'carrito'): se suelta. */
+        previousTicketGroupId: z.uuid().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       if (input.ticketsPerType.every((ticket) => ticket.amount <= 0)) {
-        throw new Error('No se han seleccionado tickets para comprar');
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No se han seleccionado tickets para comprar',
+        });
       }
 
       const requested = input.ticketsPerType.filter(
@@ -261,10 +278,46 @@ export const ticketGroupRouter = router({
       const requestedTypeIds = requested.map((ticket) => ticket.ticketTypeId);
 
       const result = await ctx.db.transaction(async (tx) => {
+        // Volver a tocar CONTINUAR (o Atrás y elegir de nuevo) dejaba la
+        // reserva anterior tomando cupo hasta que vencía.
+        if (input.previousTicketGroupId) {
+          await tx
+            .delete(ticketGroup)
+            .where(
+              and(
+                eq(ticketGroup.id, input.previousTicketGroupId),
+                eq(ticketGroup.status, 'BOOKED'),
+                isNull(ticketGroup.paymentMethod),
+              ),
+            );
+        }
+
+        // Un evento borrado o terminado no se vende aunque se tenga el link.
+        // (Desactivar un evento sólo lo saca del listado: se trata aparte.)
+        const [eventRow] = await tx
+          .select({
+            isDeleted: eventTable.isDeleted,
+            endingDate: eventTable.endingDate,
+          })
+          .from(eventTable)
+          .where(eq(eventTable.id, input.eventId));
+        if (!eventRow || eventRow.isDeleted) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Este evento no está a la venta',
+          });
+        }
+        if (eventRow.endingDate && new Date(eventRow.endingDate) < new Date()) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'El evento ya terminó',
+          });
+        }
+
         // El stock sólo se controlaba en el navegador. Validar en el servidor,
         // con los tipos de entrada bloqueados para serializar compras simultáneas
         // del mismo tipo y que dos no superen juntas el cupo.
-        await releaseExpiredBookedTicketGroups(tx, input.eventId);
+        await releaseExpiredHolds(tx, eventHoldCondition(input.eventId));
 
         const types = await tx
           .select({
@@ -389,14 +442,17 @@ export const ticketGroupRouter = router({
    * Canje de un código de invitación. El cupo real es el código, no
    * maxAvailable: cada apertura del link creaba una reserva nueva y el
    * código seguía libre, así que el control de stock lo rechazaba aunque
-   * quedaran invitaciones. Si ya hay una reserva abierta para ese código,
-   * se reutiliza.
+   * quedaran invitaciones. Si ya hay una reserva abierta para ese código, la
+   * reutiliza el mismo navegador; otro navegador la toma (la anterior se
+   * suelta), así dos personas con el mismo link nunca comparten una reserva.
    */
   redeemInvitation: publicProcedure
     .input(
       z.object({
         eventId: z.uuid(),
         code: INVITATION_CODE_SCHEMA,
+        /** Reserva del navegador que abre el link (cookie 'carrito'). */
+        currentTicketGroupId: z.uuid().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -412,7 +468,12 @@ export const ticketGroupRouter = router({
 
       let isInvalidCode = false;
       try {
-        const result = await redeemInvitationCode(ctx.db, input.eventId, code);
+        const result = await redeemInvitationCode(
+          ctx.db,
+          input.eventId,
+          code,
+          input.currentTicketGroupId,
+        );
         if (result.status === 'invalid_code') {
           isInvalidCode = true;
           logger.warn('Código de invitación inválido', {
@@ -506,6 +567,7 @@ export const ticketGroupRouter = router({
           createdAt: true,
           invitedById: true,
           isOrganizerGroup: true,
+          paymentMethod: true,
         },
         with: {
           user: {
@@ -569,7 +631,7 @@ export const ticketGroupRouter = router({
       });
 
       if (!group) {
-        throw new Error('ticketGroup no encontrado');
+        throw ticketGroupNotFound();
       }
 
       return {
@@ -577,6 +639,7 @@ export const ticketGroupRouter = router({
         invitedBy: group.user?.fullName ?? '',
         organizerCode: group.user?.code ?? null,
         organizerId: group.invitedById ?? null,
+        holdExpiresAt: holdExpiresAt(group),
       };
     }),
   getTicketTypePerGroupById: publicProcedure
@@ -610,7 +673,7 @@ export const ticketGroupRouter = router({
     });
 
     if (!group) {
-      throw new Error('ticketGroup no encontrado');
+      throw ticketGroupNotFound();
     }
 
     return group;
@@ -779,7 +842,7 @@ export const ticketGroupRouter = router({
       });
 
       if (!group) {
-        throw new Error('ticketGroup no encontrado');
+        throw ticketGroupNotFound();
       }
 
       const totalPrice = group.ticketTypePerGroups.reduce(
@@ -981,6 +1044,30 @@ export const ticketGroupRouter = router({
         });
       }
       return generateTicketGroupPdfs(ctx.db, ctx.instance, input);
+    }),
+  /** Lo que necesita la pantalla de espera del pago: volver al evento o a pagar. */
+  getPendingPaymentInfo: publicProcedure
+    .input(ticketGroupSchema.shape.id)
+    .query(async ({ ctx, input }) => {
+      const group = await ctx.db.query.ticketGroup.findFirst({
+        where: eq(ticketGroup.id, input),
+        columns: { status: true, paymentMethod: true, createdAt: true },
+        with: {
+          event: { columns: { slug: true } },
+          ticketTypePerGroups: { columns: { amount: true }, limit: 1 },
+        },
+      });
+      if (!group) return null;
+
+      const holdsQuota = group.ticketTypePerGroups.length > 0;
+      return {
+        eventSlug: group.event.slug,
+        holdExpiresAt: holdsQuota ? holdExpiresAt(group) : null,
+        canRetryPayment:
+          group.status === 'BOOKED' &&
+          group.paymentMethod === 'MERCADO_PAGO' &&
+          holdsQuota,
+      };
     }),
   getTransferInstructions: publicProcedure
     .input(ticketGroupSchema.shape.id)

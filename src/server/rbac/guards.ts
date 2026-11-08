@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 
 import { eventXUser } from '@/drizzle/schema';
-import { getLandingPath, NO_ACCESS_PATH } from '@/lib/rbac/navigation';
+import { getLandingPath } from '@/lib/rbac/navigation';
 import {
   hasAnyPermission,
   hasPermission,
@@ -29,8 +29,9 @@ export async function requireAccess(): Promise<UserAccess> {
   const access = await getCurrentAccess();
   if (access) return access;
 
+  // Sesión válida sin fila de usuario: lo eliminaron con la sesión abierta.
   const session = await auth();
-  redirect(session ? NO_ACCESS_PATH : ('/login' as Route));
+  redirect((session ? '/session-expired' : '/login') as Route);
 }
 
 /**

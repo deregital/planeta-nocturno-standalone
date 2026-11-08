@@ -136,6 +136,8 @@ export async function updateUser(
   }
 
   revalidatePath('/admin/users');
+  // La tabla de usuarios del staff vive en Configuración.
+  revalidatePath('/admin/settings');
   return {
     data: validation.data,
     errors: {},
@@ -248,6 +250,8 @@ export async function updateOrganizer(
   }
 
   revalidatePath('/admin/users');
+  // La tabla de usuarios del staff vive en Configuración.
+  revalidatePath('/admin/settings');
 
   return {
     data: validation.data,

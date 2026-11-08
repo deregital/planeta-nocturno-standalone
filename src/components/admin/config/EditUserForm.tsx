@@ -32,12 +32,14 @@ export function EditUserForm({ user }: { user: User }) {
     },
   });
 
+  // Depende del estado entero: con [state.success] el segundo guardado
+  // exitoso no cerraba el diálogo (el valor seguía en true).
   useEffect(() => {
     if (state.success) {
       setOpen(false);
       toast.success('Usuario actualizado correctamente');
     }
-  }, [state.success, setOpen]);
+  }, [state, setOpen]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

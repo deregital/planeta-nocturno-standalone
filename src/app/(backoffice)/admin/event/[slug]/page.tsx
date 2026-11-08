@@ -37,8 +37,14 @@ async function EventDetails({ slug }: { slug: string }) {
     notFound();
   }
 
+  // Las entradas de una compra sin pagar ya existen (se crean al tocar COMPRAR):
+  // no cuentan como emitidas ni entran al sorteo. Las de cobro en el lugar sí.
   const tickets = event.ticketGroups
-    .filter((tg) => !tg.isOrganizerGroup)
+    .filter(
+      (tg) =>
+        !tg.isOrganizerGroup &&
+        (tg.status !== 'BOOKED' || tg.paymentMethod === 'ON_SITE'),
+    )
     .flatMap((tg) => tg.emittedTickets);
   const maxAvailable =
     event.inviteCondition === 'INVITATION'

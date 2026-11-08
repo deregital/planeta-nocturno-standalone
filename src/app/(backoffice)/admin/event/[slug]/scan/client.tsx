@@ -1,61 +1,50 @@
 'use client';
 
-import { X } from 'lucide-react';
-import { useState } from 'react';
-import { type ExternalToast, toast } from 'sonner';
+import { useMemo, useState } from 'react';
 
 import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
 import { LastScansHistory } from '@/components/event/individual/scan/LastScansHistory';
 import { QRCodeScanner } from '@/components/event/individual/scan/QRCodeScanner';
+import {
+  OfflineBanner,
+  useScanSession,
+} from '@/components/event/individual/scan/useScanSession';
 import { type RouterOutputs } from '@/server/routers/app';
-import { trpc } from '@/server/trpc/client';
-
-const errorOptions: ExternalToast = {
-  dismissible: true,
-  richColors: true,
-  cancel: true,
-  duration: 10000,
-  position: 'bottom-center',
-  icon: <X className='size-4 text-red-500' />,
-};
 
 export default function ScanClient({
   event,
 }: {
   event: NonNullable<RouterOutputs['events']['getPublicBySlug']>;
 }) {
-  const [lastScans, setLastScans] = useState<
-    RouterOutputs['emittedTickets']['scan'][]
-  >([]);
-  const scanMutation = trpc.emittedTickets.scan.useMutation({
-    onError: (error) => {
-      toast.error(`${error.message}`, {
-        ...errorOptions,
-      });
-    },
-  });
+  const eventIds = useMemo(() => [event.id], [event.id]);
+  const { lastScans, scan, isPending, isOnline } = useScanSession(eventIds);
+  const [isForcing, setIsForcing] = useState(false);
 
   return (
     <div className='relative'>
       <div className='absolute top-2 right-2 z-10'>
         <LastScansHistory lastScans={lastScans} />
       </div>
+      {!isOnline && <OfflineBanner />}
+
       <QRCodeScanner
-        isLoading={scanMutation.isPending}
-        onScanSuccessAction={async (raw) => {
-          return await scanMutation
-            .mutateAsync({
-              eventIds: [event.id],
-              barcode: raw,
-            })
-            .then((result) => {
-              setLastScans((prev) => [result, ...prev].slice(0, 20));
-              return result;
-            });
-        }}
+        isLoading={isPending}
+        onScanSuccessAction={(raw) => scan(raw)}
       />
+
       <div className='p-4 w-full h-full'>
-        {lastScans.length > 0 && <LastScanCard lastScan={lastScans[0]} />}
+        {lastScans.length > 0 && (
+          <LastScanCard
+            lastScan={lastScans[0]}
+            isForcing={isForcing}
+            onForce={(barcode) => {
+              setIsForcing(true);
+              scan(barcode, true)
+                .catch(() => {})
+                .finally(() => setIsForcing(false));
+            }}
+          />
+        )}
       </div>
     </div>
   );

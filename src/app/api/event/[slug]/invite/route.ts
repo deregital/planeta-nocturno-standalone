@@ -1,9 +1,26 @@
 import type { NextRequest } from 'next/server';
 
+import { TRPCError } from '@trpc/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { trpc } from '@/server/trpc/server';
+
+/**
+ * Los links llegan copiados de WhatsApp o Instagram: con espacios, un punto
+ * final o en minúsculas. Lo que no sea un código de 6 hex es inválido (antes
+ * daba un 500 con la pantalla en blanco).
+ */
+function normalizeInvitationCode(raw: string) {
+  const code = raw
+    .trim()
+    .replace(/^[^0-9a-z]+|[^0-9a-z]+$/gi, '')
+    .toUpperCase();
+  return /^[0-9A-F]{6}$/.test(code) ? code : null;
+}
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
   request: NextRequest,
@@ -23,10 +40,26 @@ export async function GET(
     redirect(`/event/${slug}?error=event_not_found`);
   }
 
-  const redeemed = await trpc.ticketGroup.redeemInvitation({
-    eventId: event.id,
-    code: invitationCode,
-  });
+  const code = normalizeInvitationCode(invitationCode);
+  if (!code) {
+    redirect(`/event/${slug}?error=invalid_code`);
+  }
+
+  const cookiesStore = await cookies();
+  const cart = cookiesStore.get('carrito')?.value;
+  const redeemed = await trpc.ticketGroup
+    .redeemInvitation({
+      eventId: event.id,
+      code,
+      currentTicketGroupId: cart && UUID_PATTERN.test(cart) ? cart : null,
+    })
+    .catch((error: unknown) => {
+      // La venta del tipo ya cerró (maxSellDate): BAD_REQUEST con el motivo.
+      if (error instanceof TRPCError && error.code === 'BAD_REQUEST') {
+        return { status: 'sale_closed' as const };
+      }
+      throw error;
+    });
 
   if (redeemed.status === 'invalid_code') {
     redirect(`/event/${slug}?error=invalid_code`);
@@ -43,8 +76,10 @@ export async function GET(
   if (redeemed.status === 'invalid_configuration') {
     redirect(`/event/${slug}?error=invalid_configuration`);
   }
+  if (redeemed.status === 'sale_closed') {
+    redirect(`/event/${slug}?error=sale_closed`);
+  }
 
-  const cookiesStore = await cookies();
   cookiesStore.set('carrito', redeemed.ticketGroupId);
 
   redirect('/checkout');

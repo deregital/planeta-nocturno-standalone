@@ -13,8 +13,6 @@ import {
   gte,
   inArray,
   isNull,
-  lt,
-  ne,
   not,
   or,
   sql,
@@ -70,6 +68,7 @@ import {
 import { logger } from '@/server/observability/logger';
 import { countIssuedTicketsByEventId } from '@/server/services/issuedTicketCounts';
 import { sendMail } from '@/server/services/mail';
+import { releaseExpiredHolds } from '@/server/services/ticketGroupHolds';
 import {
   anyPermissionProcedure,
   forbidden,
@@ -187,9 +186,7 @@ const ticketeraEventsOrderBy = [
   asc(eventSchema.startingDate),
 ];
 
-const BOOKED_TICKET_GROUP_TTL_MS = 1000 * 60 * 10;
-
-/** Libera las reservas sin pagar vencidas (salvo transferencias) para que el cupo vuelva a estar disponible. */
+/** Libera las reservas sin pagar vencidas para que el cupo vuelva a estar disponible. */
 function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
   const eventIds = db
     .select({ id: eventSchema.id })
@@ -198,22 +195,7 @@ function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
       and(eq(eventSchema.slug, eventSlug), eq(eventSchema.isDeleted, false)),
     );
 
-  return db
-    .delete(ticketGroup)
-    .where(
-      and(
-        eq(ticketGroup.status, 'BOOKED'),
-        inArray(ticketGroup.eventId, eventIds),
-        or(
-          isNull(ticketGroup.paymentMethod),
-          ne(ticketGroup.paymentMethod, 'TRANSFER'),
-        ),
-        lt(
-          ticketGroup.createdAt,
-          new Date(Date.now() - BOOKED_TICKET_GROUP_TTL_MS).toISOString(),
-        ),
-      ),
-    );
+  return releaseExpiredHolds(db, inArray(ticketGroup.eventId, eventIds));
 }
 
 type ReorderMyListInput = {
@@ -687,58 +669,70 @@ export const eventsRouter = router({
         );
       });
     }),
-  getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
-    const data = await ctx.db.query.event.findFirst({
-      where: and(eq(eventSchema.id, input), eq(eventSchema.isDeleted, false)),
-      with: {
-        ticketTypes: {
-          columns: {
-            id: true,
-            description: true,
-            maxPerPurchase: true,
-            maxAvailable: true,
-            startingDate: true,
-            name: true,
-            price: true,
-            slug: true,
-            sortOrder: true,
+  // Trae nombre, DNI y mail de los organizadores: sólo para el staff. La
+  // compra usa getPublicBySlug.
+  getById: anyPermissionProcedure([
+    'events:read',
+    'events:update',
+    'tickets:create',
+    'tickets:change_organizer',
+  ])
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      const data = await ctx.db.query.event.findFirst({
+        where: and(eq(eventSchema.id, input), eq(eventSchema.isDeleted, false)),
+        with: {
+          ticketTypes: {
+            columns: {
+              id: true,
+              description: true,
+              maxPerPurchase: true,
+              maxAvailable: true,
+              startingDate: true,
+              name: true,
+              price: true,
+              slug: true,
+              sortOrder: true,
+            },
+            orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
+            with: {
+              ticketTypeXOrganizers: true,
+            },
           },
-          orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
-          with: {
-            ticketTypeXOrganizers: true,
+          location: {
+            columns: {
+              address: true,
+            },
           },
-        },
-        location: {
-          columns: {
-            address: true,
-          },
-        },
-        eventXorganizers: {
-          columns: {
-            organizerId: true,
-          },
-          with: {
-            user: {
-              columns: {
-                id: true,
-                fullName: true,
-                dni: true,
-                email: true,
+          eventXorganizers: {
+            columns: {
+              organizerId: true,
+            },
+            with: {
+              user: {
+                columns: {
+                  id: true,
+                  fullName: true,
+                  dni: true,
+                  email: true,
+                },
               },
             },
           },
+          eventQuestions: {
+            where: eq(eventQuestion.isDeleted, false),
+            orderBy: [
+              asc(eventQuestion.sortOrder),
+              asc(eventQuestion.createdAt),
+            ],
+          },
         },
-        eventQuestions: {
-          where: eq(eventQuestion.isDeleted, false),
-          orderBy: [asc(eventQuestion.sortOrder), asc(eventQuestion.createdAt)],
-        },
-      },
-    });
+      });
 
-    if (!data) throw 'Evento no encontrado'; // Otra forma manejar errores?
+      if (!data) throw 'Evento no encontrado'; // Otra forma manejar errores?
 
-    return data;
-  }),
+      return data;
+    }),
   /** Lo que necesita la página de compra: sin compradores ni organizadores. */
   getPublicBySlug: publicProcedure
     .input(z.string())
@@ -1321,6 +1315,8 @@ export const eventsRouter = router({
         organizersInput: organizerSchema.array(),
         sendOrganizerTicketEmail: z.boolean().optional().default(false),
         questions: eventQuestionsSchema,
+        /** Versión que tenía el evento al abrir la edición. */
+        expectedVersion: z.number().int().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1330,6 +1326,7 @@ export const eventsRouter = router({
         organizersInput,
         sendOrganizerTicketEmail,
         questions,
+        expectedVersion,
       } = input;
 
       if (
@@ -1351,7 +1348,8 @@ export const eventsRouter = router({
         startingDate: toNullableIsoString(event.startingDate),
         endingDate: toNullableIsoString(event.endingDate),
         minAge: event.minAge,
-        isActive: event.isActive,
+        // isActive no: se cambia desde el listado, y el formulario (que no lo
+        // muestra) lo reescribía con el valor de cuando se abrió la pestaña.
         slug: event.slug,
         locationId: event.locationId,
         categoryId: event.categoryId,
@@ -1366,28 +1364,73 @@ export const eventsRouter = router({
       const { eventUpdated, ticketTypesUpdated } = await ctx.db.transaction(
         async (tx) => {
           try {
+            // Una pestaña vieja guardaba el formulario entero encima de los
+            // cambios de otra sesión (y borraba los tipos que ella no conocía).
             const [eventUpdated] = await tx
               .update(eventSchema)
               .set({
                 ...eventData,
+                version: sql`${eventSchema.version} + 1`,
               })
-              .where(eq(eventSchema.id, eventData.id))
+              .where(
+                and(
+                  eq(eventSchema.id, eventData.id),
+                  expectedVersion === undefined
+                    ? undefined
+                    : eq(eventSchema.version, expectedVersion),
+                ),
+              )
               .returning();
 
-            if (!eventUpdated) throw 'Error al actualizar evento';
+            if (!eventUpdated) {
+              throw new TRPCError({
+                code: 'CONFLICT',
+                message:
+                  'Alguien más (u otra pestaña) cambió este evento mientras lo editabas. Recargá la página para ver los cambios y volvé a aplicar los tuyos.',
+              });
+            }
 
             const ticketTypesDB = await tx.query.ticketType.findMany({
               where: eq(ticketType.eventId, eventUpdated.id),
             });
-            const deletedTicketTypesIds = ticketTypesDB
+            const deletedTicketTypes = ticketTypesDB
               .filter((type) => !ticketTypes.some((t) => t.id === type.id))
               .filter(
                 (type) =>
                   type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
-              )
-              .map((type) => type.id);
+              );
+            const deletedTicketTypesIds = deletedTicketTypes.map(
+              (type) => type.id,
+            );
             if (deletedTicketTypesIds.length > 0) {
-              // ticketTypePerGroup and emittedTicket both RESTRICT ticketType deletes.
+              // Antes se borraban también las entradas emitidas, pagas incluidas,
+              // y el comprador se quedaba con un QR que ya no existía.
+              const emittedByType = await tx
+                .select({
+                  ticketTypeId: emittedTicket.ticketTypeId,
+                  emitted: sql<number>`count(*)::int`,
+                })
+                .from(emittedTicket)
+                .where(
+                  inArray(emittedTicket.ticketTypeId, deletedTicketTypesIds),
+                )
+                .groupBy(emittedTicket.ticketTypeId);
+              if (emittedByType.length > 0) {
+                const names = emittedByType
+                  .map((row) => {
+                    const type = deletedTicketTypes.find(
+                      (t) => t.id === row.ticketTypeId,
+                    );
+                    return `«${type?.name}» (${row.emitted})`;
+                  })
+                  .join(', ');
+                throw new TRPCError({
+                  code: 'BAD_REQUEST',
+                  message: `No se puede borrar un tipo con entradas emitidas: ${names}. Para dejar de venderlo, ocultalo de la web o cerrale la venta.`,
+                });
+              }
+
+              // Sin entradas sólo quedan reservas del checkout en curso.
               await tx
                 .delete(ticketTypePerGroup)
                 .where(
@@ -1397,13 +1440,52 @@ export const eventsRouter = router({
                   ),
                 );
               await tx
-                .delete(emittedTicket)
-                .where(
-                  inArray(emittedTicket.ticketTypeId, deletedTicketTypesIds),
-                );
-              await tx
                 .delete(ticketType)
                 .where(inArray(ticketType.id, deletedTicketTypesIds));
+            }
+
+            // Bajar el cupo por debajo de lo vendido cerraba la venta sin avisar
+            // ('2 de 1, 200 %'). En invitaciones el cupo del tipo no se usa.
+            if (eventUpdated.inviteCondition !== 'INVITATION') {
+              const keptTypes = ticketTypes.filter(
+                (type) =>
+                  ticketTypesDB.some((t) => t.id === type.id) &&
+                  type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim(),
+              );
+              if (keptTypes.length > 0) {
+                const soldByType = await tx
+                  .select({
+                    ticketTypeId: emittedTicket.ticketTypeId,
+                    sold: sql<number>`count(*)::int`,
+                  })
+                  .from(emittedTicket)
+                  .innerJoin(
+                    ticketGroup,
+                    eq(emittedTicket.ticketGroupId, ticketGroup.id),
+                  )
+                  .where(
+                    and(
+                      inArray(
+                        emittedTicket.ticketTypeId,
+                        keptTypes.map((type) => type.id),
+                      ),
+                      inArray(ticketGroup.status, ['PAID', 'FREE']),
+                    ),
+                  )
+                  .groupBy(emittedTicket.ticketTypeId);
+                for (const type of keptTypes) {
+                  const sold = Number(
+                    soldByType.find((row) => row.ticketTypeId === type.id)
+                      ?.sold ?? 0,
+                  );
+                  if (type.maxAvailable < sold) {
+                    throw new TRPCError({
+                      code: 'BAD_REQUEST',
+                      message: `El cupo de «${type.name}» no puede ser menor a lo ya vendido (${sold}).`,
+                    });
+                  }
+                }
+              }
             }
 
             // Obtener el grupo organizador actual para decrementar correctamente
@@ -1937,8 +2019,9 @@ export const eventsRouter = router({
                       ),
                     );
 
-                  // Contar registros TicketsXOrganizer existentes con ticketId null
-                  // Ordenar por createdAt ascendente para eliminar los primeros (más antiguos)
+                  // Contar registros TicketsXOrganizer existentes con ticketId null.
+                  // Se eliminan primero los no compartidos y, entre esos, los más
+                  // antiguos: borrar un link ya mandado deja a alguien sin entrada.
                   const existingTicketXOrganizers =
                     await tx.query.ticketXorganizer.findMany({
                       where: and(
@@ -1946,7 +2029,10 @@ export const eventsRouter = router({
                         eq(ticketXorganizer.organizerId, organizerInput.id),
                         isNull(ticketXorganizer.ticketId),
                       ),
-                      orderBy: [asc(ticketXorganizer.createdAt)],
+                      orderBy: [
+                        asc(ticketXorganizer.shared),
+                        asc(ticketXorganizer.createdAt),
+                      ],
                     });
 
                   const difference = newTicketAmount - currentTicketAmount;
@@ -2294,12 +2380,16 @@ export const eventsRouter = router({
 
             return { eventUpdated, ticketTypesUpdated };
           } catch (error) {
-            logger.error('Event update failed', { error });
             // Drizzle hace rollback automáticamente cuando se lanza un error
             // Si el error es un TRPCError, lo propagamos tal cual para mantener el mensaje
             if (error instanceof TRPCError) {
+              // Los rechazos esperados (pestaña vieja, tipo con ventas) no son errores del servidor.
+              if (error.code === 'INTERNAL_SERVER_ERROR') {
+                logger.error('Event update failed', { error });
+              }
               throw error;
             }
+            logger.error('Event update failed', { error });
             // Si es otro tipo de error, lo convertimos en un TRPCError
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',

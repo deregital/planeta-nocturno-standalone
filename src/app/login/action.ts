@@ -7,9 +7,11 @@ import { z } from 'zod';
 import { auth, signIn } from '@/server/auth';
 import { isControlRequest } from '@/server/control/is-control-request';
 import { getCurrentLandingPath } from '@/server/rbac/guards';
-import { userSchema } from '@/server/schemas/user';
 
-const loginSchema = userSchema.pick({ name: true, password: true });
+const loginSchema = z.object({
+  name: z.string().min(1, { error: 'El nombre de usuario es requerido' }),
+  password: z.string().min(1, { error: 'La contraseña es requerida' }),
+});
 type LoginActionState = {
   name?: string;
   password?: string;

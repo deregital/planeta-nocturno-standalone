@@ -12,11 +12,11 @@ import {
 } from '@tanstack/react-table';
 import { Download, Loader } from 'lucide-react';
 import {
-  startTransition,
   useActionState,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -71,6 +71,9 @@ interface DataTableProps<
   headerActions?: React.ReactNode;
 }
 
+// Constante: un `[]` por defecto en la firma es un arreglo nuevo en cada render.
+const NO_EXCLUDED_COLUMNS: string[] = [];
+
 export function DataTable<
   TData extends { id: string },
   TValue,
@@ -85,7 +88,7 @@ export function DataTable<
   initialSortingColumn,
   highlightedRowId,
   exportFileName = 'tabla',
-  exportExcludeColumnIds = [],
+  exportExcludeColumnIds = NO_EXCLUDED_COLUMNS,
   disableExport = false as TDisableExport,
   noResultsPlaceholder = 'No se encontraron resultados',
   requirePasswordForExport = false,
@@ -204,15 +207,20 @@ export function DataTable<
     }, 0);
   }, [handleExportXlsx]);
 
+  // Una exportación por cada contraseña validada. El efecto corría en cada
+  // render mientras state.ok seguía en true y bajaba el Excel en loop.
+  const exportedStateRef = useRef<typeof state | null>(null);
   useEffect(() => {
-    if (state.ok && requirePasswordForExport) {
+    if (
+      state.ok &&
+      requirePasswordForExport &&
+      exportedStateRef.current !== state
+    ) {
+      exportedStateRef.current = state;
       setIsDialogOpen(false);
       exportWithFeedback();
-      startTransition(() => {
-        action(new FormData());
-      });
     }
-  }, [state.ok, action, exportWithFeedback, requirePasswordForExport]);
+  }, [state, exportWithFeedback, requirePasswordForExport]);
 
   const handleExportClick = useCallback(() => {
     if (isExporting) return;
