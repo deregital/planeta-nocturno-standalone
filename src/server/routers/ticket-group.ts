@@ -24,6 +24,7 @@ import {
   type RateLimitRule,
   refundRateLimit,
 } from '@/server/security/rate-limit';
+import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
 import { getTransferAlias } from '@/server/services/paymentSettings';
 import {
   deliverPaidTicketGroup,
@@ -96,6 +97,15 @@ function redeemInvitationCode(
   currentTicketGroupId: string | null | undefined,
 ) {
   return db.transaction(async (tx) => {
+    const [eventRow] = await tx
+      .select({ isBlocked: eventTable.isBlocked })
+      .from(eventTable)
+      .where(eq(eventTable.id, eventId));
+    // Bloqueado: el link de invitación tampoco sirve.
+    if (eventRow?.isBlocked) {
+      return { status: 'event_blocked' as const };
+    }
+
     await releaseExpiredHolds(tx, eventHoldCondition(eventId));
 
     const [invite] = await tx
@@ -292,11 +302,12 @@ export const ticketGroupRouter = router({
             );
         }
 
-        // Un evento borrado o terminado no se vende aunque se tenga el link.
-        // (Desactivar un evento sólo lo saca del listado: se trata aparte.)
+        // Un evento borrado, bloqueado o terminado no se vende aunque se tenga
+        // el link. (Oculto, isActive = false, sólo lo saca del listado.)
         const [eventRow] = await tx
           .select({
             isDeleted: eventTable.isDeleted,
+            isBlocked: eventTable.isBlocked,
             endingDate: eventTable.endingDate,
           })
           .from(eventTable)
@@ -305,6 +316,12 @@ export const ticketGroupRouter = router({
           throw new TRPCError({
             code: 'BAD_REQUEST',
             message: 'Este evento no está a la venta',
+          });
+        }
+        if (eventRow.isBlocked) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: EVENT_BLOCKED_MESSAGE,
           });
         }
         if (eventRow.endingDate && new Date(eventRow.endingDate) < new Date()) {
@@ -603,6 +620,7 @@ export const ticketGroupRouter = router({
               emailNotification: true,
               serviceFee: true,
               hasSimpleInvitation: true,
+              isBlocked: true,
             },
             with: {
               location: {

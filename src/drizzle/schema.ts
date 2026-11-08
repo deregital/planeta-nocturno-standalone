@@ -322,6 +322,7 @@ export const event = pgTable(
     minAge: integer(),
     isDeleted: boolean().default(false).notNull(),
     isActive: boolean().default(false).notNull(),
+    isBlocked: boolean().default(false).notNull(),
     locationId: uuid(),
     categoryId: uuid(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })

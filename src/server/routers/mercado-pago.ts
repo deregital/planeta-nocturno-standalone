@@ -26,6 +26,7 @@ import {
   hasActivePaidEvents,
   setTransferAlias,
 } from '@/server/services/paymentSettings';
+import { assertTicketGroupEventNotBlocked } from '@/server/services/eventBlock';
 import { calculateAndSaveTotalAmount } from '@/server/services/ticketGroup';
 import { MERCADO_PAGO_PREFERENCE_TTL_MS } from '@/server/services/ticketGroupHolds';
 import {
@@ -260,6 +261,9 @@ export const mercadoPagoRouter = router({
           },
         },
       });
+
+      // Bloqueado después de reservar: la reserva sin pago no se completa.
+      await assertTicketGroupEventNotBlocked(ctx.db, input.ticketGroupId);
 
       // Sin reserva vigente (venció y soltó el cupo, o ya se pagó) no se cobra.
       if (

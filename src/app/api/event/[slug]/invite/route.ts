@@ -61,6 +61,10 @@ export async function GET(
       throw error;
     });
 
+  if (redeemed.status === 'event_blocked') {
+    // Mismo resultado que abrir el evento sin código: no se muestra.
+    redirect(`/event/${slug}`);
+  }
   if (redeemed.status === 'invalid_code') {
     redirect(`/event/${slug}?error=invalid_code`);
   }

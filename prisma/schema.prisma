@@ -168,7 +168,11 @@ model Event {
   minAge        Int?
 
   isDeleted Boolean @default(false)
+  // Visible en la ticketera. Oculto no impide entrar por link (borradores,
+  // eventos de invitación).
   isActive  Boolean @default(false)
+  // Bloqueado: nadie del público entra, ni por link ni por invitación.
+  isBlocked Boolean @default(false)
 
   locationId String?   @db.Uuid
   location   Location? @relation("EVENT_X_LOCATION", fields: [locationId], references: [id], onDelete: SetNull)

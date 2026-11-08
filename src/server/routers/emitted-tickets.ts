@@ -30,6 +30,7 @@ import {
   emittedTicketSchema,
 } from '@/server/schemas/emitted-tickets';
 import { logger } from '@/server/observability/logger';
+import { assertTicketGroupEventNotBlocked } from '@/server/services/eventBlock';
 import { sendMail } from '@/server/services/mail';
 import {
   anyPermissionProcedure,
@@ -184,6 +185,9 @@ export const emittedTicketsRouter = router({
           message: 'Las entradas deben pertenecer al mismo grupo',
         });
       }
+
+      // Bloqueado después de reservar: la compra en curso no se completa.
+      await assertTicketGroupEventNotBlocked(ctx.db, ticketGroupId);
 
       try {
         const uniqueTicketTypeIds = input.map((ticket) => ticket.ticketTypeId);

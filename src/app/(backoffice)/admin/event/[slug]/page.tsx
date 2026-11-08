@@ -17,6 +17,7 @@ import { TicketGroupsTable } from '@/components/event/individual/TicketGroupsTab
 import { TicketRaffle } from '@/components/event/individual/TicketRaffle';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
+import { ToggleBlockedButton } from '@/components/event/individual/ToggleBlockedButton';
 import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
 import {
   getTotalTicketsWithoutOrganizer,
@@ -140,6 +141,11 @@ async function EventDetails({ slug }: { slug: string }) {
             {can('events:update') && event.inviteCondition === 'INVITATION' && (
               <div className='md:order-7 order-6'>
                 <OrganizerDistribution event={event} />
+              </div>
+            )}
+            {can('events:publish') && (
+              <div className='md:order-8 order-8'>
+                <ToggleBlockedButton event={event} />
               </div>
             )}
           </div>

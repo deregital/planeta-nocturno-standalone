@@ -49,5 +49,15 @@ export default async function CheckoutPage() {
     redirect(`/tickets/${data.id}` as Route);
   }
 
+  if (data.event.isBlocked) {
+    return (
+      <ServerErrorCard
+        title='Este evento no está disponible'
+        description='El organizador cerró el acceso a este evento, así que no se puede completar la compra.'
+        route='/'
+      />
+    );
+  }
+
   return <CheckoutClient ticketGroup={data} lastPurchase={lastPurchase} />;
 }

@@ -8,6 +8,7 @@ import {
   Folder,
   Link2,
   Loader2,
+  Lock,
   MoreVertical,
   Pencil,
   Users,
@@ -170,8 +171,17 @@ export default function EventCardHorizontal({
           )}
         >
           <div className='flex min-w-0 items-center gap-2'>
-            {event.isActive && (
-              <BadgeCheck className='size-4 shrink-0 text-on-accent' />
+            {event.isActive && !event.isBlocked && (
+              <BadgeCheck
+                className='size-4 shrink-0 text-on-accent'
+                aria-label='Visible en la ticketera'
+              />
+            )}
+            {event.isBlocked && (
+              <Lock
+                className='size-4 shrink-0 text-on-accent'
+                aria-label='Acceso bloqueado'
+              />
             )}
             <CardTitle className='line-clamp-2 min-w-0 flex-1 break-words leading-snug'>
               {event.name}
@@ -210,7 +220,7 @@ export default function EventCardHorizontal({
                 onKeyDown={(e) => e.stopPropagation()}
                 className='w-fit sm:hidden'
               >
-                {activateSure ? '¿Estás seguro?' : 'Activar'}
+                {activateSure ? '¿Estás seguro?' : 'Mostrar'}
               </Button>
             )}
         </div>
@@ -241,7 +251,7 @@ export default function EventCardHorizontal({
                     onClick={handleActivate}
                     className='mr-1 hidden sm:inline-flex'
                   >
-                    {activateSure ? '¿Estás seguro?' : 'Activar'}
+                    {activateSure ? '¿Estás seguro?' : 'Mostrar'}
                   </Button>
                 )}
                 <Tooltip>

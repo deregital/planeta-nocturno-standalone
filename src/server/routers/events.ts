@@ -67,6 +67,7 @@ import {
 } from '@/server/schemas/ticket-type';
 import { logger } from '@/server/observability/logger';
 import { countIssuedTicketsByEventId } from '@/server/services/issuedTicketCounts';
+import { canSeeBlockedEvents } from '@/server/services/eventBlock';
 import { sendMail } from '@/server/services/mail';
 import { releaseExpiredHolds } from '@/server/services/ticketGroupHolds';
 import {
@@ -173,6 +174,7 @@ function applyFolderScope<
 function ticketeraVisibleEventsWhere() {
   return and(
     eq(eventSchema.isActive, true),
+    eq(eventSchema.isBlocked, false),
     eq(eventSchema.isDeleted, false),
     or(
       isNull(eventSchema.endingDate),
@@ -766,7 +768,15 @@ export const eventsRouter = router({
         deleteExpiredBookedTicketGroups(ctx.db, input),
       ]);
 
-      return event ?? null;
+      if (!event) return null;
+
+      // Bloqueado: el público no lo ve ni con el link. El staff sí (vista
+      // previa y la página del scanner, que también usa esta consulta).
+      if (event.isBlocked && !canSeeBlockedEvents(await ctx.getAccess())) {
+        return null;
+      }
+
+      return event;
     }),
   getBySlug: anyPermissionProcedure([
     'events:read',
@@ -2832,6 +2842,22 @@ export const eventsRouter = router({
         .update(eventSchema)
         .set({ isActive })
         .where(eq(eventSchema.id, id));
+    }),
+  /**
+   * Bloquear: nadie del público entra al evento, ni por link ni por
+   * invitación. Es independiente de isActive (visible en la ticketera).
+   */
+  toggleBlocked: permissionProcedure('events:publish')
+    .input(z.object({ id: z.string(), isBlocked: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(eventSchema)
+        .set({ isBlocked: input.isBlocked })
+        .where(eq(eventSchema.id, input.id));
+      logger.info('Evento bloqueado/desbloqueado', {
+        eventId: input.id,
+        isBlocked: input.isBlocked,
+      });
     }),
   delete: permissionProcedure('events:delete')
     .input(eventSchemaZod.shape.id)

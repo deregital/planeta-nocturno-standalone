@@ -373,8 +373,80 @@ async function main() {
     },
   );
 
-  // El bloqueo de eventos desactivados por link directo quedó fuera a
-  // propósito (desactivar sólo saca el evento del listado); se trata aparte.
+  await check(
+    'BLOQUEO',
+    'oculto se entra por link; bloqueado no entra nadie del público',
+    async () => {
+      // Oculto (isActive = false) sólo sale del listado.
+      assert(
+        (await anon.events.getPublicBySlug(event('borrador').slug)) !== null,
+        'un evento oculto no se ve por link',
+      );
+
+      const e = event('fiesta-paga');
+      const pending = await reserve('fiesta-paga', 'General');
+      await raw.query('UPDATE event SET "isBlocked" = true WHERE id = $1', [
+        e.id,
+      ]);
+      try {
+        assert(
+          (await anon.events.getPublicBySlug(e.slug)) === null,
+          'bloqueado se ve sin sesión',
+        );
+        assert(
+          (await admin.events.getPublicBySlug(e.slug)) !== null,
+          'el staff no lo ve',
+        );
+        assert(
+          !(await anon.events.getActive()).some((x) => x.id === e.id),
+          'bloqueado sigue en el listado',
+        );
+        await rejects(reserve('fiesta-paga', 'General'), 'BAD_REQUEST');
+        // La reserva hecha antes de bloquear no se completa.
+        await rejects(
+          anon.emittedTickets.createMany([
+            buyer(type('fiesta-paga', 'General').id, pending, e.id),
+          ]),
+          'BAD_REQUEST',
+        );
+        await rejects(
+          anon.mercadoPago.createPreference({ ticketGroupId: pending }),
+          'BAD_REQUEST',
+        );
+
+        const inv = event('egresados');
+        const {
+          rows: [{ code }],
+        } = await raw.query<{ code: string }>(
+          `SELECT code FROM "ticketXOrganizer" WHERE "eventId" = $1 AND "ticketId" IS NULL ORDER BY "shortId" LIMIT 1`,
+          [inv.id],
+        );
+        await raw.query('UPDATE event SET "isBlocked" = true WHERE id = $1', [
+          inv.id,
+        ]);
+        try {
+          const redeemed = await anon.ticketGroup.redeemInvitation({
+            eventId: inv.id,
+            code,
+          });
+          assert(
+            redeemed.status === 'event_blocked',
+            `la invitación de un evento bloqueado dio ${redeemed.status}`,
+          );
+        } finally {
+          await raw.query(
+            'UPDATE event SET "isBlocked" = false WHERE id = $1',
+            [inv.id],
+          );
+        }
+      } finally {
+        await raw.query('UPDATE event SET "isBlocked" = false WHERE id = $1', [
+          e.id,
+        ]);
+        await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [pending]);
+      }
+    },
+  );
 
   await check(
     'H10',

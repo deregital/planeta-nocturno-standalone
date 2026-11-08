@@ -32,6 +32,7 @@ import {
   sendMailService,
 } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
+import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
 import { getTransferAlias } from '@/server/services/paymentSettings';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { startTransferPayment } from '@/server/services/transferPayment';
@@ -103,7 +104,7 @@ export const handlePurchase = async (
       eq(eventTable.id, eventId.toString()),
       eq(eventTable.isDeleted, false),
     ),
-    columns: { minAge: true, slug: true },
+    columns: { minAge: true, slug: true, isBlocked: true },
     with: {
       eventQuestions: {
         where: eq(eventQuestion.isDeleted, false),
@@ -115,6 +116,15 @@ export const handlePurchase = async (
     return {
       ticketsInput: prevState.ticketsInput,
       errors: ['El evento ya no está disponible'],
+      formData: formDataRecord,
+    };
+  }
+  // Se bloqueó mientras la persona completaba los datos.
+  if (event.isBlocked) {
+    (await cookies()).delete('carrito');
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: [EVENT_BLOCKED_MESSAGE],
       formData: formDataRecord,
     };
   }
