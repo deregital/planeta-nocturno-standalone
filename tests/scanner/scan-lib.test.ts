@@ -37,7 +37,16 @@ import {
   sendWithGrace,
   type ScanErrorCode,
 } from '@/lib/scan/scan-errors';
+import {
+  type LastRead,
+  markSeen,
+  SAME_CODE_WINDOW_MS,
+  scanSound,
+  shouldEvaluateRead,
+  STILL_IN_VIEW_MS,
+} from '@/lib/scan/read-gate';
 import { successScanTexts } from '@/lib/scan/scan-texts';
+import { STOP_TONES, tonesWav } from '@/lib/scan/tones';
 import { ticketHash } from '@/lib/scan/ticket-hash';
 import {
   getLegacyQrKeyBase64,
@@ -538,5 +547,108 @@ describe('microcortes (sendWithGrace)', () => {
       );
       assert.equal(calls, 1, code);
     }
+  });
+});
+
+describe('lector: QR quieto y pasamanos', () => {
+  const QR = 'qr-de-sofia';
+  /** Simula la cámara: el QR se detecta cada 500 ms mientras está enfrente. */
+  function camera(outcome: string) {
+    let now = 0;
+    let last: LastRead | null = null;
+    const evaluations: number[] = [];
+    const see = (code = QR) => {
+      if (shouldEvaluateRead(last, code, now)) {
+        evaluations.push(now);
+        last = { code, respondedAt: now, seenAt: now, outcome };
+      } else {
+        markSeen(last, code, now);
+      }
+    };
+    return {
+      evaluations,
+      see,
+      /** El QR queda frente a la cámara `ms`. */
+      hold(ms: number) {
+        for (let t = 0; t < ms; t += 500) {
+          see();
+          now += 500;
+        }
+      },
+      away(ms: number) {
+        now += ms;
+      },
+    };
+  }
+
+  it('Sofía entra y se queda con el QR frente a la cámara: no se reevalúa', () => {
+    const cam = camera('success');
+    cam.hold(15_000);
+    assert.deepEqual(cam.evaluations, [0]);
+  });
+
+  it('el QR sale de cuadro y vuelve (captura a Martina): se reevalúa', () => {
+    const cam = camera('success');
+    cam.hold(3_000);
+    cam.away(30_000);
+    cam.hold(1_000);
+    assert.equal(cam.evaluations.length, 2);
+  });
+
+  it('un corte de detección de más de 2 s cuenta como otra presentación', () => {
+    const cam = camera('success');
+    cam.hold(6_000);
+    cam.away(STILL_IN_VIEW_MS + 500);
+    cam.hold(1_000);
+    assert.equal(cam.evaluations.length, 2);
+  });
+
+  it('dentro de los primeros 5 s nunca se repite, aunque salga y vuelva', () => {
+    const cam = camera('success');
+    cam.hold(1_000);
+    cam.away(2_500);
+    cam.hold(1_000);
+    assert.equal(cam.evaluations.length, 1);
+  });
+
+  it('después de un rechazo o un error, quieto se vuelve a evaluar cada 5 s', () => {
+    for (const outcome of ['already-scanned', 'error', 'not-found']) {
+      const cam = camera(outcome);
+      cam.hold(SAME_CODE_WINDOW_MS * 2 + 1_000);
+      assert.equal(cam.evaluations.length, 3, outcome);
+    }
+  });
+
+  it('otro QR se evalúa enseguida', () => {
+    const cam = camera('success');
+    cam.hold(1_000);
+    cam.see('qr-de-otra-persona');
+    assert.equal(cam.evaluations.length, 2);
+  });
+});
+
+describe('sonido por resultado', () => {
+  it('pasa: un pip; no pasa (rechazo, otro evento o sin decisión): tres', () => {
+    assert.equal(scanSound('success'), 'let-in');
+    assert.equal(scanSound('self-repeat'), 'let-in');
+    for (const status of [
+      'already-scanned',
+      'not-found',
+      'error',
+      'server-error',
+    ]) {
+      assert.equal(scanSound(status), 'stop', status);
+    }
+  });
+
+  it('el sonido de "no pasa" es un WAV válido de tres pips', () => {
+    const wav = tonesWav(STOP_TONES);
+    const view = new DataView(wav.buffer);
+    assert.equal(String.fromCharCode(...wav.subarray(0, 4)), 'RIFF');
+    assert.equal(String.fromCharCode(...wav.subarray(8, 12)), 'WAVE');
+    const sampleRate = view.getUint32(24, true);
+    const seconds = view.getUint32(40, true) / 2 / sampleRate;
+    assert.ok(seconds > 0.45 && seconds < 0.6, `dura ${seconds} s`);
+    assert.equal(STOP_TONES.filter((tone) => 'hz' in tone).length, 3);
   });
 });

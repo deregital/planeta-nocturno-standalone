@@ -12,6 +12,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { SCAN_BEEP } from '@/components/event/individual/scan/scan-beep';
 import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
 import {
+  type LastRead,
+  markSeen,
+  type ScanSound,
+  scanSound,
+  shouldEvaluateRead,
+} from '@/lib/scan/read-gate';
+import { STOP_TONES, tonesDataUri } from '@/lib/scan/tones';
+import {
   scanRequestErrorCode,
   useScannerTelemetry,
 } from '@/components/event/individual/scan/useScannerTelemetry';
@@ -46,9 +54,6 @@ type ScanFeedback =
   | 'already-scanned'
   | 'not-found';
 
-/** Igual que el código no lo leyó: no se repite el mismo QR por este tiempo. */
-const SAME_CODE_WINDOW_MS = 5000;
-
 export function QRCodeScanner({
   onScanSuccessAction,
   isLoading,
@@ -70,24 +75,28 @@ export function QRCodeScanner({
   const telemetry = useScannerTelemetry(getHealthExtra);
   const [feedback, setFeedback] = useState<ScanFeedback>('idle');
   const isProcessingRef = useRef(false);
-  const lastScannedRef = useRef<{ code: string; timestamp: number } | null>(
-    null,
-  );
+  const lastReadRef = useRef<LastRead | null>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const beepRef = useRef<HTMLAudioElement | null>(null);
+  const soundsRef = useRef<Record<ScanSound, HTMLAudioElement> | null>(null);
   useEffect(() => {
-    beepRef.current = new Audio(SCAN_BEEP);
+    soundsRef.current = {
+      'let-in': new Audio(SCAN_BEEP),
+      stop: new Audio(tonesDataUri(STOP_TONES)),
+    };
     return () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
   }, []);
 
-  function playBeep() {
-    const beep = beepRef.current;
-    if (!beep) return;
-    beep.currentTime = 0;
+  /** Un pip si pasa, tres graves si no pasa: la puerta no necesita mirar. */
+  function playSound(status: string) {
+    const sounds = soundsRef.current;
+    if (!sounds) return;
+    for (const audio of Object.values(sounds)) audio.pause();
+    const audio = sounds[scanSound(status)];
+    audio.currentTime = 0;
     // El navegador puede bloquearlo si no hubo interacción con la página.
-    beep.play().catch(() => {});
+    audio.play().catch(() => {});
   }
 
   function scheduleFeedbackReset() {
@@ -96,23 +105,29 @@ export function QRCodeScanner({
   }
 
   async function handleScan(result: string) {
-    if (isLoading || paused || isProcessingRef.current) return;
-
-    const current = lastScannedRef.current;
-    if (
-      current &&
-      current.code === result &&
-      Date.now() - current.timestamp < SAME_CODE_WINDOW_MS
-    )
-      return;
+    const now = Date.now();
+    const evaluate =
+      !isLoading &&
+      !paused &&
+      !isProcessingRef.current &&
+      shouldEvaluateRead(lastReadRef.current, result, now);
+    // Cada detección cuenta para saber si el QR sigue frente a la cámara.
+    markSeen(lastReadRef.current, result, now);
+    if (!evaluate) return;
 
     isProcessingRef.current = true;
-    lastScannedRef.current = { code: result, timestamp: Date.now() };
-    playBeep();
+    lastReadRef.current = {
+      code: result,
+      respondedAt: now,
+      seenAt: now,
+      outcome: null,
+    };
     const startedAt = performance.now();
+    let outcome = 'server-error';
 
     try {
       const res = await onScanSuccessAction(result);
+      outcome = res.status;
       // 'error': no hubo decisión (sin red, sesión, servidor). No es un rechazo.
       setFeedback(
         res.status === 'error' ? 'server-error' : (res.status as ScanFeedback),
@@ -139,9 +154,16 @@ export function QRCodeScanner({
         decidedBy: 'server',
       });
     } finally {
+      playSound(outcome);
       // La ventana para no repetir el mismo QR cuenta desde la respuesta: si
       // tardó más que la ventana, la cámara lo volvía a leer apenas llegaba.
-      lastScannedRef.current = { code: result, timestamp: Date.now() };
+      const doneAt = Date.now();
+      lastReadRef.current = {
+        code: result,
+        respondedAt: doneAt,
+        seenAt: doneAt,
+        outcome,
+      };
       scheduleFeedbackReset();
       isProcessingRef.current = false;
     }
