@@ -10,6 +10,7 @@ import { locationRouter } from '@/server/routers/location';
 import { mailRouter } from '@/server/routers/mail';
 import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
 import { organizerRouter } from '@/server/routers/organizer';
+import { scannerRouter } from '@/server/routers/scanner';
 import { statisticsRouter } from '@/server/routers/statistics';
 import { tagRouter } from '@/server/routers/tag';
 import { ticketGroupRouter } from '@/server/routers/ticket-group';
@@ -31,6 +32,7 @@ export const appRouter = router({
   eventFolder: eventFolderRouter,
   tag: tagRouter,
   accessRole: accessRoleRouter,
+  scanner: scannerRouter,
 });
 
 export type AppRouter = typeof appRouter;
