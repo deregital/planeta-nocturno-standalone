@@ -1,3 +1,5 @@
+import { NOT_REGISTERED_TEXT } from '@/lib/scan/scan-texts';
+
 /**
  * Escaneos que no llegaron a una decisión (sin red, sesión vencida, error del
  * servidor…). Cada uno tiene un código estable para PostHog y un texto para la
@@ -186,7 +188,20 @@ export function isUnexpectedScanError(code: ScanErrorCode) {
   return code === 'SERVER' || code === 'UNKNOWN';
 }
 
-const NOT_REGISTERED = 'La entrada no se registró';
+/**
+ * Por qué el celular tuvo que preguntarle al servidor (modo rápido), en
+ * palabras de la puerta: qué puede ser ese ticket.
+ */
+function whyServerNeeded(fallbackReason?: string) {
+  switch (fallbackReason) {
+    case 'unknown':
+      return 'Este celular no tiene este ticket: puede ser de otro evento, recién emitido, eliminado o falso. ';
+    case 'unreadable':
+      return 'El QR no es de un ticket: puede ser falso o de otro sistema. ';
+    default:
+      return '';
+  }
+}
 
 /** Título y detalle de la tarjeta de la puerta. */
 export function scanErrorTexts(
@@ -196,53 +211,48 @@ export function scanErrorTexts(
     serverMessage,
   }: { fallbackReason?: string; serverMessage?: string } = {},
 ): { text: string; extraInfo: string } {
-  const notInList =
-    fallbackReason === 'unknown'
-      ? 'Esta entrada no está en la lista del celular. '
-      : fallbackReason === 'unreadable'
-        ? 'El celular no puede leer este QR por su cuenta. '
-        : '';
+  const why = whyServerNeeded(fallbackReason);
 
   switch (code) {
     case 'OFFLINE':
       return {
-        text: 'Sin conexión: no se verificó',
-        extraInfo: `${notInList}Sin internet no se puede consultar. ${NOT_REGISTERED}: volvé a escanearla cuando vuelva la conexión.`,
+        text: 'Sin conexión: ticket no verificado',
+        extraInfo: `${why}${NOT_REGISTERED_TEXT}: que espere y volvé a escanearlo cuando vuelva la conexión.`,
       };
     case 'NETWORK':
       return {
         text: 'No se pudo conectar con el servidor',
-        extraInfo: `${notInList}${NOT_REGISTERED}. Revisá la conexión y volvé a escanearla.`,
+        extraInfo: `${why}${NOT_REGISTERED_TEXT}: revisá la conexión y volvé a escanearlo.`,
       };
     case 'TIMEOUT':
       return {
         text: 'El servidor no respondió a tiempo',
-        extraInfo: `${notInList}No se sabe si se registró: volvé a escanearla. Si ya había entrado por este celular, aparece como "Ya registrado".`,
+        extraInfo: `${why}No se sabe si se registró: volvé a escanearlo. Si ya había entrado por este celular, aparece como "Ya registrado".`,
       };
     case 'SESSION_EXPIRED':
       return {
         text: 'Se cerró tu sesión',
-        extraInfo: `${NOT_REGISTERED}. Volvé a iniciar sesión para seguir escaneando.`,
+        extraInfo: `${NOT_REGISTERED_TEXT}. Volvé a iniciar sesión para seguir escaneando.`,
       };
     case 'FORBIDDEN':
       return {
         text: 'Sin acceso a este evento',
-        extraInfo: `${serverMessage ?? 'Pedile a un administrador que te asigne al evento.'} ${NOT_REGISTERED}.`,
+        extraInfo: `${serverMessage ?? 'Pedile a un administrador que te asigne al evento.'} ${NOT_REGISTERED_TEXT}.`,
       };
     case 'SERVER':
       return {
         text: 'Error del servidor',
-        extraInfo: `${NOT_REGISTERED}. Volvé a escanearla; si se repite, avisá al equipo técnico.`,
+        extraInfo: `${NOT_REGISTERED_TEXT}. Volvé a escanearlo; si se repite, avisá al equipo técnico.`,
       };
     case 'REJECTED':
       return {
         text: 'No se pudo escanear',
-        extraInfo: `${serverMessage ? `${serverMessage} ` : ''}${NOT_REGISTERED}.`,
+        extraInfo: `${serverMessage ? `${serverMessage} ` : ''}${NOT_REGISTERED_TEXT}.`,
       };
     default:
       return {
         text: 'Error inesperado',
-        extraInfo: `${NOT_REGISTERED}. Volvé a escanearla; si se repite, avisá al equipo técnico.`,
+        extraInfo: `${NOT_REGISTERED_TEXT}. Volvé a escanearlo; si se repite, avisá al equipo técnico.`,
       };
   }
 }

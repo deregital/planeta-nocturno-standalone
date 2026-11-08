@@ -4,21 +4,33 @@ import { WifiOff } from 'lucide-react';
 import posthog from 'posthog-js';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 
+import { type EngineEvent } from '@/components/event/individual/scan/local/local-scan-engine';
 import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
 import { LastScansHistory } from '@/components/event/individual/scan/LastScansHistory';
 import { QRCodeScanner } from '@/components/event/individual/scan/QRCodeScanner';
+import {
+  CONFLICT_NOTICE_MS,
+  INFO_NOTICE_MS,
+  MAX_NOTICES,
+  ScanNotices,
+  type ScanNotice,
+} from '@/components/event/individual/scan/ScanNotices';
 import { ScannerSettings } from '@/components/event/individual/scan/ScannerSettings';
 import { ScannerStatusBar } from '@/components/event/individual/scan/ScannerStatusBar';
 import {
+  conflictResult,
   scanErrorResult,
   type ScanDisplayResult,
 } from '@/components/event/individual/scan/scan-result';
 import { useNetwork } from '@/components/event/individual/scan/useNetwork';
 import { useScanController } from '@/components/event/individual/scan/useScanController';
+import { useScanHistory } from '@/components/event/individual/scan/useScanHistory';
+import { historyKey } from '@/lib/scan/scan-history';
 import {
   isUnexpectedScanError,
   ScanRequestError,
 } from '@/lib/scan/scan-errors';
+import { restoredUploadTexts } from '@/lib/scan/scan-texts';
 import { trpc } from '@/server/trpc/client';
 
 /**
@@ -33,7 +45,6 @@ export function ScannerScreen({
   eventIds: string[];
   topLeft?: ReactNode;
 }) {
-  const [lastScans, setLastScans] = useState<ScanDisplayResult[]>([]);
   // Cliente directo (sin la cola de react-query): el pedido sale aunque el
   // navegador crea que no hay red, y se puede cortar si queda colgado.
   const utils = trpc.useUtils();
@@ -55,9 +66,75 @@ export function ScannerScreen({
     },
     [utils],
   );
-  const controller = useScanController({ eventIds, onlineScan });
+  // Avisos del motor: los resuelve `onEngineEventRef`, que ve el historial
+  // de este render.
+  const onEngineEventRef = useRef<(event: EngineEvent) => void>(() => {});
+  const onEngineEvent = useCallback(
+    (event: EngineEvent) => onEngineEventRef.current(event),
+    [],
+  );
+  const controller = useScanController({ eventIds, onlineScan, onEngineEvent });
   const statusRef = useRef(controller.status);
   statusRef.current = controller.status;
+
+  const userId = controller.config?.userId;
+  const {
+    items: historyItems,
+    itemsRef: historyRef,
+    add: addToHistory,
+    markSync,
+  } = useScanHistory(userId ? historyKey(userId, eventIds) : null);
+  // La tarjeta grande es solo de lo escaneado en esta sesión: al abrir, una
+  // tarjeta vieja confundiría a la puerta (está en el historial).
+  const [openedAt] = useState(() => Date.now());
+  const lastScan = historyItems.find(
+    (item) => item.status !== 'conflict' && (item.at ?? 0) >= openedAt,
+  );
+
+  const [notices, setNotices] = useState<ScanNotice[]>([]);
+  const showNotice = useCallback((notice: ScanNotice) => {
+    setNotices((prev) =>
+      [notice, ...prev.filter((n) => n.id !== notice.id)].slice(0, MAX_NOTICES),
+    );
+  }, []);
+  const dismissNotice = useCallback((id: string) => {
+    setNotices((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  onEngineEventRef.current = (event) => {
+    if (event.type === 'conflict') {
+      const card = conflictResult(event);
+      addToHistory(card);
+      markSync([event.clientScanId], event.outcome);
+      showNotice({
+        id: `conflict-${event.clientScanId}`,
+        tone: 'warn',
+        title: card.text,
+        body: card.extraInfo ?? '',
+        dni: event.dni,
+        autoHideMs: CONFLICT_NOTICE_MS,
+      });
+    } else if (event.type === 'confirmed') {
+      markSync(event.clientScanIds, 'confirmed');
+      if (event.restoredIds.length > 0) {
+        const restored = new Set(event.restoredIds);
+        const names = historyRef.current
+          .filter(
+            (item) => item.clientScanId && restored.has(item.clientScanId),
+          )
+          .map((item) => item.ticket?.fullName)
+          .filter((name): name is string => !!name);
+        const texts = restoredUploadTexts(event.restoredIds.length, names);
+        showNotice({
+          id: `restored-${event.restoredIds[0]}`,
+          tone: 'info',
+          title: texts.text,
+          body: texts.extraInfo,
+          autoHideMs: INFO_NOTICE_MS,
+        });
+      }
+    }
+  };
 
   // Un microcorte no bloquea: el escaneo espera a la red o reintenta (hasta
   // OFFLINE_GRACE_MS). Con más tiempo sin red, solo se escanea si el celular
@@ -106,10 +183,10 @@ export function ScannerScreen({
           });
         }
       }
-      setLastScans((prev) => [result, ...prev].slice(0, 20));
+      addToHistory(result);
       return result;
     },
-    [controller],
+    [controller, addToHistory],
   );
 
   return (
@@ -117,7 +194,7 @@ export function ScannerScreen({
       {topLeft && <div className='absolute top-2 left-2 z-10'>{topLeft}</div>}
       <div className='absolute top-2 right-2 z-10 flex gap-2'>
         <ScannerSettings controller={controller} />
-        <LastScansHistory lastScans={lastScans} />
+        <LastScansHistory lastScans={historyItems} />
       </div>
       <QRCodeScanner
         isLoading={scanInFlight || controller.waitingForNetwork}
@@ -139,7 +216,8 @@ export function ScannerScreen({
         ) : (
           <ScannerStatusBar controller={controller} online={online} />
         )}
-        {lastScans.length > 0 && <LastScanCard lastScan={lastScans[0]} />}
+        <ScanNotices notices={notices} onDismiss={dismissNotice} />
+        {lastScan && <LastScanCard lastScan={lastScan} />}
       </div>
     </div>
   );
@@ -155,7 +233,7 @@ function OfflineNotice({ pending }: { pending: number }) {
       <div className='text-sm'>
         <p className='font-bold'>Sin conexión a internet</p>
         <p>
-          No se pueden verificar entradas hasta que vuelva la conexión.
+          No se pueden verificar tickets hasta que vuelva la conexión.
           {pending > 0 &&
             ` ${pending} ${pending === 1 ? 'escaneo pendiente se sube' : 'escaneos pendientes se suben'} cuando vuelva.`}
         </p>

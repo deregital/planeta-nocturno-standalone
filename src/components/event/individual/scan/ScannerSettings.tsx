@@ -42,7 +42,7 @@ const EVENT_MODES: { value: ScannerMode; label: string; hint: string }[] = [
   {
     value: 'local',
     label: 'Rápido',
-    hint: 'El celular decide al instante las entradas que conoce y confirma por detrás.',
+    hint: 'El celular decide al instante los tickets que conoce y confirma por detrás.',
   },
 ];
 

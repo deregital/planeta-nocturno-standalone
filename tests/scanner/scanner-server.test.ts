@@ -279,7 +279,7 @@ describe('configuración por evento', () => {
 });
 
 describe('tabla para el celular (snapshot)', () => {
-  it('trae hashes, nunca ids, y la clave lee los QR', async () => {
+  it('trae hashes, nunca ids, el DNI completo y la clave lee los QR', async () => {
     await setMode(eventA, 'local');
     const snapshot = await door().scanner.snapshot({
       protocol: 1,
@@ -293,18 +293,10 @@ describe('tabla para el celular (snapshot)', () => {
     assert.equal(snapshot.config.mode, 'local');
 
     const payload = JSON.stringify(snapshot);
-    // En el seed el nombre es "Persona <dni>": se revisa sin los nombres.
-    const withoutNames = JSON.stringify(
-      snapshot.tickets.map((t) => t.filter((_, i) => i !== 3)),
-    );
     for (const row of rows) {
       assert.ok(
         !payload.includes(row.id),
         'el id de una entrada viajó al celular',
-      );
-      assert.ok(
-        !withoutNames.includes(row.dni),
-        'el DNI completo viajó al celular',
       );
     }
 
@@ -314,7 +306,8 @@ describe('tabla para el celular (snapshot)', () => {
     assert.ok(entry);
     assert.equal(entry[1], eventA);
     assert.equal(entry[3], sample.fullName);
-    assert.equal(entry[4], sample.dni.slice(-3));
+    // Completo: la puerta lo necesita para validar a la persona.
+    assert.equal(entry[4], sample.dni);
 
     const scanned = byHash.get(serverTicketHash(ticketsA[0]));
     assert.equal(scanned?.[6], true);
@@ -411,6 +404,13 @@ describe('sincronización', () => {
     assert.equal(second.results[0].outcome, 'duplicate');
     assert.equal(second.results[0].scannedByMe, false);
     assert.ok(second.results[0].scannedAt);
+    // Para el aviso de la puerta: quién la hizo pasar primero.
+    const {
+      rows: [firstDoor],
+    } = await load.raw.query(`SELECT "fullName" FROM "user" WHERE id = $1`, [
+      doorId,
+    ]);
+    assert.equal(second.results[0].scannedByName, firstDoor.fullName);
     assert.equal(await scanRows(ticket), 1);
   });
 
@@ -477,7 +477,7 @@ describe('sincronización', () => {
     );
     assert.ok(added, 'falta la entrada nueva');
     assert.equal(added[3], 'Persona Nueva');
-    assert.equal(added[4], '222');
+    assert.equal(added[4], '44111222');
     assert.equal(sync.delta.ticketCount, snapshot.tickets.length + 1);
 
     // Una entrada borrada baja el total: el celular sabe que tiene que recargar.

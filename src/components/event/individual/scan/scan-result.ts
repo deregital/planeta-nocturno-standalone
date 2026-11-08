@@ -1,4 +1,5 @@
 import {
+  type EngineEvent,
   type Evaluation,
   type LocalTicket,
 } from '@/components/event/individual/scan/local/local-scan-engine';
@@ -11,6 +12,7 @@ import {
 import {
   ALREADY_SCANNED_TEXT,
   alreadyScannedExtraInfo,
+  conflictTexts,
   ownEntryInfo,
   SELF_REPEAT_TEXT,
   selfRepeatExtraInfo,
@@ -29,6 +31,8 @@ export type ScanDisplayResult = {
     | 'self-repeat'
     /** No hubo decisión: sin red, sesión vencida, error del servidor. */
     | 'error'
+    /** Aviso del servidor sobre un ingreso que el celular ya dejó pasar. */
+    | 'conflict'
     | string;
   text: string;
   extraInfo?: string;
@@ -51,6 +55,12 @@ export type ScanDisplayResult = {
   reclassified?: 'self-repeat';
   /** Con `status: 'error'`: código estable para PostHog (OFFLINE, NETWORK…). */
   errorCode?: ScanErrorCode;
+  /** Cuándo se mostró (ms epoch); lo pone el historial. */
+  at?: number;
+  /** Ingreso decidido en el celular: su escaneo en la cola (clientScanId). */
+  clientScanId?: string;
+  /** Qué dijo el servidor de un ingreso decidido en el celular. */
+  sync?: 'pending' | 'confirmed' | 'duplicate' | 'not-found';
 };
 
 /** Tarjeta de un escaneo que no llegó a una decisión. */
@@ -87,8 +97,7 @@ function displayTicket(
   return {
     eventId: ticket.eventId,
     fullName: ticket.fullName,
-    // El celular solo tiene los últimos dígitos.
-    dni: `…${ticket.dniTail}`,
+    dni: ticket.dni,
     scannedAt: ticket.scannedAt,
     ticketType: { name: evaluation.type?.name ?? '-' },
     ticketGroup: {
@@ -100,7 +109,7 @@ function displayTicket(
 
 export function localSuccess(
   evaluation: Extract<Evaluation, { kind: 'known' }>,
-  updated: LocalTicket,
+  updated: LocalTicket & { clientScanId?: string },
 ): ScanDisplayResult {
   return {
     status: 'success',
@@ -114,6 +123,31 @@ export function localSuccess(
     ticket: displayTicket(evaluation, updated),
     decidedBy: 'local',
     mode: 'local',
+    clientScanId: updated.clientScanId,
+    sync: 'pending',
+  };
+}
+
+/** Tarjeta para el historial de un doble ingreso o una entrada anulada. */
+export function conflictResult(
+  event: Extract<EngineEvent, { type: 'conflict' }>,
+): ScanDisplayResult {
+  return {
+    status: 'conflict',
+    ...conflictTexts(event),
+    ticket: event.fullName
+      ? {
+          eventId: '',
+          fullName: event.fullName,
+          dni: event.dni ?? '-',
+          scannedAt: null,
+          ticketType: { name: '-' },
+          ticketGroup: { event: { name: '-' }, invitedBy: '-' },
+        }
+      : null,
+    decidedBy: 'server',
+    mode: 'local',
+    clientScanId: event.clientScanId,
   };
 }
 

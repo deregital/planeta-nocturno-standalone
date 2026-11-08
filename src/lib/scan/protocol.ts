@@ -83,7 +83,7 @@ export const DELTA_OVERLAP_MS = 30_000;
 /**
  * Entrada en la tabla del celular, en una tupla para que la bajada pese poco
  * (los ids repetidos se comprimen bien en la respuesta):
- * [hash, evento, tipo, nombre, últimos dígitos del DNI, quien invitó,
+ * [hash, evento, tipo, nombre, DNI, quien invitó,
  *  escaneada, hora del último escaneo (ISO o null), cantidad de escaneos].
  */
 export type SnapshotTicketRow = [
@@ -91,7 +91,7 @@ export type SnapshotTicketRow = [
   eventId: string,
   typeId: string,
   fullName: string,
-  dniTail: string,
+  dni: string,
   invitedBy: string | null,
   scanned: boolean,
   scannedAt: string | null,
@@ -124,12 +124,3 @@ export type SyncScanOutcome =
   | 'duplicate'
   /** La entrada no existe (o no es de estos eventos): se borró o era inválida. */
   | 'not-found';
-
-/** Cuántos dígitos del DNI viajan al celular para mostrar en la tarjeta. */
-export const DNI_TAIL_LENGTH = 3;
-
-export function dniTail(dni: string): string {
-  const digits = dni.replace(/\D/g, '');
-  const source = digits.length > 0 ? digits : dni.trim();
-  return source.slice(-DNI_TAIL_LENGTH);
-}

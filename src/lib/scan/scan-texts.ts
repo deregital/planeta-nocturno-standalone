@@ -55,6 +55,9 @@ export function alreadyScannedExtraInfo(scannedAt: string | null) {
 }
 
 export const NOT_FOUND_TEXT = 'Ticket no encontrado';
+
+/** Va en todo lo que la puerta tiene que saber que no quedó registrado. */
+export const NOT_REGISTERED_TEXT = 'El escaneo no se registró';
 export const NOT_FOUND_EXTRA_INFO = 'El ticket no pertenece a este evento';
 
 /** El mismo celular volvió a leer una entrada que acaba de registrar. */
@@ -76,4 +79,67 @@ export function ownEntryInfo(secondsAgo: number) {
   return seconds < 1
     ? 'Entró recién por este celular'
     : `Entró por este celular hace ${seconds} s`;
+}
+
+/**
+ * El servidor no aceptó un escaneo que el celular ya había dado por bueno
+ * (modo rápido): el ticket también se escaneó en otra puerta, o lo eliminaron.
+ */
+export function conflictTexts({
+  outcome,
+  fullName,
+  localAt,
+  scannedAt,
+  scannedByMe,
+  scannedByName,
+}: {
+  outcome: 'duplicate' | 'not-found';
+  fullName: string | null;
+  /** Cuándo lo escaneó este celular (ms epoch). */
+  localAt: number;
+  scannedAt: string | null;
+  scannedByMe: boolean;
+  scannedByName: string | null;
+}): { text: string; extraInfo: string } {
+  const title = (label: string) => (fullName ? `${label}: ${fullName}` : label);
+  const here = `Escaneado por este celular a las ${formatScanTime(new Date(localAt).toISOString())}`;
+  const check = 'Si hace falta revisarlo, avisale a un administrador.';
+  if (outcome === 'not-found') {
+    return {
+      text: title('Ticket eliminado'),
+      extraInfo: `${here}, pero el ticket ya no existe: lo eliminaron. ${NOT_REGISTERED_TEXT}. ${check}`,
+    };
+  }
+  const by = scannedByMe
+    ? ' por tu usuario en otro celular'
+    : scannedByName
+      ? ` por ${scannedByName}`
+      : ' en otra puerta';
+  const when = scannedAt ? ` a las ${formatScanTime(scannedAt)}` : '';
+  return {
+    text: title('Ticket escaneado dos veces'),
+    // Las dos horas, sin decir cuál fue primero: no siempre se sabe.
+    extraInfo: `${here} y${by}${when}. Puede ser una copia del ticket o la misma persona escaneada en dos puertas. Quedó registrado un solo escaneo. ${check}`,
+  };
+}
+
+/** Escaneos que quedaron sin subir de antes y el servidor ya registró. */
+export function restoredUploadTexts(count: number, names: string[]) {
+  const list =
+    names.length === 0
+      ? ''
+      : names.length === 1
+        ? `: ${names[0]}`
+        : `: ${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;
+  return {
+    text:
+      count === 1
+        ? 'Se subió un escaneo pendiente'
+        : `Se subieron ${count} escaneos pendientes`,
+    extraInfo: list
+      ? `${count === 1 ? 'Escaneado' : 'Escaneados'} con éxito${list}.`
+      : count === 1
+        ? 'Quedó registrado.'
+        : 'Quedaron registrados.',
+  };
 }

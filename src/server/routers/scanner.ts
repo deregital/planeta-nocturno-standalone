@@ -19,7 +19,6 @@ import {
   combineConfigs,
   DEFAULT_MAX_STALE_SECONDS,
   DELTA_OVERLAP_MS,
-  dniTail,
   isScannerMode,
   isTicketId,
   MAX_SCANNER_EVENTS,
@@ -201,7 +200,8 @@ async function loadTicketRows(
     ticket.eventId,
     ticket.ticketTypeId,
     ticket.fullName,
-    dniTail(ticket.dni),
+    // Completo: la puerta lo necesita para validar a la persona.
+    ticket.dni,
     ticket.invitedBy ?? null,
     ticket.scanned,
     toIso(ticket.scannedAt),
@@ -298,6 +298,8 @@ export type SyncScanResult = {
   scannedAt: string | null;
   /** El registro previo (si hubo doble ingreso) fue de este mismo usuario. */
   scannedByMe: boolean;
+  /** Quién hizo el registro previo (si hubo doble ingreso), para la puerta. */
+  scannedByName: string | null;
 };
 
 /**
@@ -369,6 +371,7 @@ async function registerLocalScan(
         hash: null,
         scannedAt: null,
         scannedByMe: false,
+        scannedByName: null,
       };
     }
 
@@ -400,6 +403,7 @@ async function registerLocalScan(
         hash: serverTicketHash(ticket.id),
         scannedAt: registration.scannedAt,
         scannedByMe: true,
+        scannedByName: null,
       };
     }
     // Se lee después del UPDATE que no ganó: si otro celular registró la
@@ -411,6 +415,7 @@ async function registerLocalScan(
       hash: serverTicketHash(ticket.id),
       scannedAt: previous.scannedAt,
       scannedByMe: previous.scannedByUserId === userId,
+      scannedByName: previous.scannedByName,
     };
   });
 }
@@ -423,13 +428,16 @@ async function currentScan(tx: Tx, ticketId: string) {
     .select({
       scannedAt: emittedTicket.scannedAt,
       scannedByUserId: emittedTicket.scannedByUserId,
+      scannedByName: user.fullName,
     })
     .from(emittedTicket)
+    .leftJoin(user, eq(user.id, emittedTicket.scannedByUserId))
     .where(eq(emittedTicket.id, ticketId))
     .limit(1);
   return {
     scannedAt: toIso(row?.scannedAt ?? null),
     scannedByUserId: row?.scannedByUserId ?? null,
+    scannedByName: row?.scannedByName ?? null,
   };
 }
 
@@ -461,6 +469,7 @@ async function replayReceipt(
       hash: null,
       scannedAt: null,
       scannedByMe: false,
+      scannedByName: null,
     };
   }
   if (existing.outcome === 'registered') {
@@ -469,6 +478,7 @@ async function replayReceipt(
       hash: serverTicketHash(ticketId),
       scannedAt: toIso(existing.registeredAt),
       scannedByMe: existing.userId === userId,
+      scannedByName: null,
     };
   }
   // Doble ingreso: sin multiescaneo la entrada no cambia después de su primer
@@ -480,6 +490,7 @@ async function replayReceipt(
     hash: serverTicketHash(ticketId),
     scannedAt: previous.scannedAt,
     scannedByMe: previous.scannedByUserId === userId,
+    scannedByName: previous.scannedByName,
   };
 }
 

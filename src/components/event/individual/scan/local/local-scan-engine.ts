@@ -47,6 +47,8 @@ export type SyncPayload = {
     hash: string | null;
     scannedAt: string | null;
     scannedByMe: boolean;
+    /** Quién hizo el registro previo en un doble ingreso. */
+    scannedByName?: string | null;
   }[];
   delta: {
     scans: DeltaScanRow[];
@@ -80,7 +82,7 @@ export type LocalTicket = {
   eventId: string;
   typeId: string;
   fullName: string;
-  dniTail: string;
+  dni: string;
   invitedBy: string | null;
   scanned: boolean;
   scannedAt: string | null;
@@ -148,11 +150,29 @@ export type EngineStatus = {
 
 export type EngineEvent =
   | {
+      /**
+       * El servidor no aceptó un ingreso decidido en el celular: la entrada
+       * ya había entrado (doble ingreso) o ya no existe.
+       */
       type: 'conflict';
       outcome: Exclude<SyncScanOutcome, 'registered'>;
+      /** El escaneo del celular (clientScanId). */
+      clientScanId: string;
       fullName: string | null;
+      dni: string | null;
+      /** Cuándo la dejó pasar este celular (ms epoch). */
+      localAt: number;
+      /** Hora del registro que ganó (doble ingreso). */
       scannedAt: string | null;
       scannedByMe: boolean;
+      scannedByName: string | null;
+    }
+  | {
+      /** El servidor registró estos escaneos decididos en el celular. */
+      type: 'confirmed';
+      clientScanIds: string[];
+      /** Los que habían quedado pendientes de antes de abrir el escáner. */
+      restoredIds: string[];
     }
   | {
       type: 'sync';
@@ -226,7 +246,7 @@ function toLocalTicket(row: SnapshotTicketRow): LocalTicket {
     eventId,
     typeId,
     fullName,
-    dniTail,
+    dni,
     invitedBy,
     scanned,
     scannedAt,
@@ -237,7 +257,7 @@ function toLocalTicket(row: SnapshotTicketRow): LocalTicket {
     eventId,
     typeId,
     fullName,
-    dniTail,
+    dni,
     invitedBy,
     scanned,
     scannedAt,
@@ -295,6 +315,8 @@ export class LocalScanEngine {
 
   /** Pendientes de este usuario y estos eventos (los únicos que se deciden acá). */
   private pending = new Map<string, OutboxEntry>();
+  /** Pendientes que ya estaban en el disco al abrir (sesión anterior). */
+  private restored = new Set<string>();
   private foreign: OutboxEntry[] = [];
   private otherUserPending = 0;
   private recentLocal = new Map<string, number>();
@@ -550,7 +572,7 @@ export class LocalScanEngine {
   async commitLocalSuccess(
     evaluation: Extract<Evaluation, { kind: 'known' }>,
     code: string,
-  ): Promise<LocalTicket> {
+  ): Promise<LocalTicket & { clientScanId: string }> {
     const entry: OutboxEntry = {
       id: crypto.randomUUID(),
       code,
@@ -581,7 +603,7 @@ export class LocalScanEngine {
     this.nextAttemptAt = Math.min(this.nextAttemptAt, this.now());
     this.notify();
     void this.poll();
-    return updated;
+    return { ...updated, clientScanId: entry.id };
   }
 
   /** ¿Este celular registró esta entrada en el último minuto (modo local)? */
@@ -617,8 +639,10 @@ export class LocalScanEngine {
     }
   }
 
-  lookupName(hash: string | null) {
-    return hash ? (this.table.get(hash)?.fullName ?? null) : null;
+  /** Nombre y DNI de una entrada de la tabla, para los avisos. */
+  lookupTicket(hash: string | null) {
+    const ticket = hash ? this.table.get(hash) : undefined;
+    return ticket ? { fullName: ticket.fullName, dni: ticket.dni } : null;
   }
 
   // -------------------------------------------------------------- sync
@@ -645,6 +669,7 @@ export class LocalScanEngine {
           otherUser += 1;
         } else if (sameEvents(entry.eventIds, this.eventIds)) {
           this.pending.set(entry.id, entry);
+          this.restored.add(entry.id);
         } else {
           this.foreign.push(entry);
         }
@@ -873,12 +898,17 @@ export class LocalScanEngine {
       this.updateOffset(response.serverNow, sentAt, receivedAt);
 
       const acked: string[] = [];
+      const confirmed: string[] = [];
+      const restored: string[] = [];
       for (const result of response.results) {
         const entry = this.pending.get(result.id);
         if (!entry) continue;
         acked.push(result.id);
         this.pending.delete(result.id);
+        const wasRestored = this.restored.delete(result.id);
         if (result.outcome === 'registered') {
+          confirmed.push(result.id);
+          if (wasRestored) restored.push(result.id);
           this.recentAcked.set(result.id, {
             hash: entry.hash,
             at: entry.at,
@@ -892,17 +922,30 @@ export class LocalScanEngine {
             scanCount: 0,
           });
         } else if (result.outcome !== 'registered') {
+          // Una entrada borrada vuelve sin hash: se busca por el del escaneo.
+          const ticket = this.lookupTicket(result.hash ?? entry.hash);
           this.onEvent({
             type: 'conflict',
             outcome: result.outcome,
-            fullName: this.lookupName(result.hash),
+            clientScanId: result.id,
+            fullName: ticket?.fullName ?? null,
+            dni: ticket?.dni ?? null,
+            localAt: entry.at,
             scannedAt: result.scannedAt,
             scannedByMe: result.scannedByMe,
+            scannedByName: result.scannedByName ?? null,
           });
         }
       }
       // Si borrar falla, se vuelven a subir y el servidor responde lo mismo.
       await this.store.remove(acked).catch(() => {});
+      if (confirmed.length > 0) {
+        this.onEvent({
+          type: 'confirmed',
+          clientScanIds: confirmed,
+          restoredIds: restored,
+        });
+      }
 
       if (response.delta && this.phase === 'ready') {
         for (const [hash, scanned, scannedAt, scanCount] of response.delta

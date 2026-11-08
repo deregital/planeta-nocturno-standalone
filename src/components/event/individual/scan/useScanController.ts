@@ -9,7 +9,6 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { toast } from 'sonner';
 
 import {
   DEFAULT_DEVICE_PREFS,
@@ -44,7 +43,6 @@ import {
 } from '@/lib/scan/decision';
 import { OFF_CONFIG } from '@/lib/scan/protocol';
 import { ScanRequestError, sendWithGrace } from '@/lib/scan/scan-errors';
-import { formatScanTime } from '@/lib/scan/scan-texts';
 import { trpc } from '@/server/trpc/client';
 
 const OFF_STATUS: EngineStatus = {
@@ -122,6 +120,7 @@ function shadowComparison(evaluation: Evaluation, server: ServerScanResult) {
 export function useScanController({
   eventIds,
   onlineScan,
+  onEngineEvent,
 }: {
   eventIds: string[];
   /** Escaneo online; tiene que pasarle `signal` al pedido para poder cortarlo. */
@@ -129,6 +128,8 @@ export function useScanController({
     barcode: string,
     signal: AbortSignal,
   ) => Promise<ServerScanResult>;
+  /** Avisos del motor para la pantalla (doble ingreso, escaneos confirmados). */
+  onEngineEvent?: (event: EngineEvent) => void;
 }) {
   const utils = trpc.useUtils();
   const eventKey = [...new Set(eventIds)].sort().join(',');
@@ -173,14 +174,8 @@ export function useScanController({
 
   const onEventRef = useRef<(event: EngineEvent) => void>(() => {});
   onEventRef.current = (event) => {
+    onEngineEvent?.(event);
     if (event.type === 'conflict') {
-      const who = event.fullName ?? 'Una entrada';
-      toast.warning(
-        event.outcome === 'duplicate'
-          ? `Doble ingreso: ${who} ya había entrado${event.scannedAt ? ` a las ${formatScanTime(event.scannedAt)}` : ''}`
-          : `${who}: la entrada ya no existe en el sistema`,
-        { duration: 15_000, position: 'bottom-center', richColors: true },
-      );
       posthog.capture('scanner_conflict', {
         outcome: event.outcome,
         scanned_by_me: event.scannedByMe,
@@ -196,7 +191,7 @@ export function useScanController({
           error_code: event.errorCode ?? null,
         });
       }
-    } else {
+    } else if (event.type === 'snapshot') {
       posthog.capture('scanner_snapshot', {
         ok: event.ok,
         latency_ms: Math.round(event.latencyMs),

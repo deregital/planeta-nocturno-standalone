@@ -2,6 +2,17 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
 
+/** Qué pasó con un escaneo que el celular dio por bueno (modo rápido). */
+const LOCAL_SYNC_TEXT: Record<
+  NonNullable<ScanDisplayResult['sync']>,
+  string
+> = {
+  pending: 'Escaneado en este celular · pendiente de subir',
+  confirmed: 'Escaneado en este celular · registrado',
+  duplicate: 'Escaneado en este celular · ticket escaneado dos veces',
+  'not-found': 'Escaneado en este celular · ticket eliminado',
+};
+
 export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
   return (
     <div className='relative w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
@@ -56,7 +67,7 @@ export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
           )}
           {lastScan.decidedBy === 'local' && (
             <p className='text-accent-dark/60 px-2 pb-2 text-xs'>
-              Decidido en este celular · se confirma con el servidor
+              {LOCAL_SYNC_TEXT[lastScan.sync ?? 'pending']}
             </p>
           )}
         </>
@@ -64,10 +75,13 @@ export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
         <>
           <div
             className={
-              // Ámbar: no hubo decisión (sin red, servidor). Rojo: rechazada.
+              // Ámbar: no hubo decisión (sin red, servidor). Naranja: aviso
+              // de un ingreso que ya pasó (doble ingreso). Rojo: rechazada.
               lastScan.status === 'error'
                 ? 'bg-amber-400 p-2 font-bold text-amber-950'
-                : 'bg-red-500 p-2 font-bold'
+                : lastScan.status === 'conflict'
+                  ? 'bg-orange-500 p-2 font-bold text-white'
+                  : 'bg-red-500 p-2 font-bold'
             }
           >
             {lastScan.text}

@@ -114,7 +114,7 @@ class FakeServer implements ScannerTransport {
       EVENT,
       t.typeId,
       t.fullName,
-      '123',
+      '40123456',
       null,
       t.scanned,
       t.scannedAt,
@@ -220,6 +220,7 @@ class FakeServer implements ScannerTransport {
           hash: serverTicketHash(ticket.id),
           scannedAt: ticket.scannedAt,
           scannedByMe: false,
+          scannedByName: 'Eva Puerta',
         };
       } else {
         this.registrations += 1;
@@ -356,6 +357,17 @@ describe('motor local', () => {
     assert.ok(engine.recentLocalSuccessAt(ana.id));
   });
 
+  it('un ingreso de esta sesión confirmado no cuenta como pendiente de antes', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    const local = await commit(engine, ana.code);
+    await engine.poll();
+    const confirmed = events.find((e) => e.type === 'confirmed');
+    assert.ok(confirmed && confirmed.type === 'confirmed');
+    assert.deepEqual(confirmed.clientScanIds, [local.clientScanId]);
+    assert.deepEqual(confirmed.restoredIds, []);
+  });
+
   it('sube los pendientes y vacía la cola', async () => {
     const ana = server.addTicket('Ana');
     const engine = await readyEngine();
@@ -435,12 +447,12 @@ describe('motor local', () => {
     assert.equal(engine.canDecideLocally(), true);
   });
 
-  it('doble ingreso entre celulares: avisa con el nombre', async () => {
+  it('doble ingreso entre celulares: avisa con nombre, DNI, quién y cuándo', async () => {
     const ana = server.addTicket('Ana');
     const engine = await readyEngine();
     server.down = true;
     server.scanElsewhere(ana.id); // otro celular, antes de que lleguen novedades
-    await commit(engine, ana.code);
+    const local = await commit(engine, ana.code);
     server.down = false;
     clock.advance(20_000);
     await engine.poll();
@@ -448,7 +460,38 @@ describe('motor local', () => {
     assert.ok(conflict && conflict.type === 'conflict');
     assert.equal(conflict.outcome, 'duplicate');
     assert.equal(conflict.fullName, 'Ana');
+    assert.equal(conflict.dni, '40123456');
+    assert.equal(conflict.scannedByName, 'Eva Puerta');
+    assert.equal(conflict.clientScanId, local.clientScanId);
+    assert.equal(conflict.localAt, Date.parse(local.scannedAt!));
     assert.equal(server.registrations, 0);
+    assert.equal(events.filter((e) => e.type === 'confirmed').length, 0);
+  });
+
+  it('el celular tiene el DNI completo para la tarjeta', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    const evaluation = await engine.evaluate(ana.code);
+    assert.equal(
+      evaluation.kind === 'known' && evaluation.ticket.dni,
+      '40123456',
+    );
+  });
+
+  it('entrada borrada después de dejarla pasar: avisa con el nombre igual', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    server.down = true;
+    await commit(engine, ana.code);
+    server.tickets.delete(ana.id);
+    server.down = false;
+    clock.advance(20_000);
+    await engine.poll();
+    const conflict = events.find((e) => e.type === 'conflict');
+    assert.ok(conflict && conflict.type === 'conflict');
+    assert.equal(conflict.outcome, 'not-found');
+    assert.equal(conflict.fullName, 'Ana');
+    assert.equal(conflict.dni, '40123456');
   });
 
   it('las novedades traen escaneos de otros celulares y entradas nuevas', async () => {
@@ -536,11 +579,20 @@ describe('motor local', () => {
     await commit(first, beto.code);
     first.stop();
 
+    const before = await store.list();
+    events.length = 0;
     server.down = false;
     const second = makeEngine();
     await second.start(server.config, { tick: false });
     assert.equal(second.getStatus().pending, 0);
     assert.equal(server.registrations, 2);
+    // Avisa que se subieron los que habían quedado de antes.
+    const confirmed = events.find((e) => e.type === 'confirmed');
+    assert.ok(confirmed && confirmed.type === 'confirmed');
+    assert.deepEqual(
+      [...confirmed.restoredIds].sort(),
+      before.map((entry) => entry.id).sort(),
+    );
     // La tabla nueva ya sabe que entraron.
     const anaAgain = await second.evaluate(ana.code);
     assert.equal(

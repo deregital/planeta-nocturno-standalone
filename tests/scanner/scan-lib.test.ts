@@ -23,7 +23,6 @@ import {
 import {
   clampMaxStaleSeconds,
   combineConfigs,
-  dniTail,
   minMode,
 } from '@/lib/scan/protocol';
 import {
@@ -45,7 +44,21 @@ import {
   shouldEvaluateRead,
   STILL_IN_VIEW_MS,
 } from '@/lib/scan/read-gate';
-import { successScanTexts } from '@/lib/scan/scan-texts';
+import {
+  addToHistory,
+  HISTORY_LIMIT,
+  HISTORY_TTL_MS,
+  historyKey,
+  markSynced,
+  mergeHistory,
+  parseHistory,
+  type SyncState,
+} from '@/lib/scan/scan-history';
+import {
+  conflictTexts,
+  restoredUploadTexts,
+  successScanTexts,
+} from '@/lib/scan/scan-texts';
 import { STOP_TONES, tonesWav } from '@/lib/scan/tones';
 import { ticketHash } from '@/lib/scan/ticket-hash';
 import {
@@ -266,11 +279,6 @@ describe('configuración', () => {
     assert.equal(clampMaxStaleSeconds(10_000), 300);
     assert.equal(clampMaxStaleSeconds(Number.NaN), 60);
   });
-
-  it('DNI: solo los últimos dígitos', () => {
-    assert.equal(dniTail('40.123.456'), '456');
-    assert.equal(dniTail('AB12'), '12');
-  });
 });
 
 describe('errores de escaneo', () => {
@@ -341,9 +349,27 @@ describe('errores de escaneo', () => {
       assert.match(texts.extraInfo, /no se registró/i, code);
       assert.doesNotMatch(texts.extraInfo, /failed|fetch|query/i, code);
     }
+    // Sin red, la puerta tiene que entender qué puede ser y qué hacer.
+    const unknown = scanErrorTexts('OFFLINE', { fallbackReason: 'unknown' });
+    assert.equal(unknown.text, 'Sin conexión: ticket no verificado');
+    assert.match(unknown.extraInfo, /^Este celular no tiene este ticket/);
+    assert.match(unknown.extraInfo, /otro evento, recién emitido, eliminado/);
     assert.match(
-      scanErrorTexts('OFFLINE', { fallbackReason: 'unknown' }).extraInfo,
-      /no está en la lista del celular/,
+      unknown.extraInfo,
+      /El escaneo no se registró: que espere y volvé a escanearlo/,
+    );
+    assert.doesNotMatch(unknown.extraInfo, /lista del celular|entrada/);
+    const unreadable = scanErrorTexts('OFFLINE', {
+      fallbackReason: 'unreadable',
+    });
+    assert.match(unreadable.extraInfo, /^El QR no es de un ticket/);
+    assert.match(unreadable.extraInfo, /falso o de otro sistema/);
+    assert.match(unreadable.extraInfo, /El escaneo no se registró/);
+    assert.doesNotMatch(unreadable.extraInfo, /por su cuenta/);
+    // Sin el motivo (modo normal), solo lo que no se registró y qué hacer.
+    assert.equal(
+      scanErrorTexts('OFFLINE').extraInfo,
+      'El escaneo no se registró: que espere y volvé a escanearlo cuando vuelva la conexión.',
     );
     assert.match(
       scanErrorTexts('REJECTED', { serverMessage: 'Falta actualizar la base.' })
@@ -356,8 +382,8 @@ describe('errores de escaneo', () => {
     const texts = scanErrorTexts('TIMEOUT');
     assert.match(texts.text, /no respondió a tiempo/);
     assert.match(texts.extraInfo, /No se sabe si se registró/);
-    assert.match(texts.extraInfo, /volvé a escanearla/);
-    assert.doesNotMatch(texts.extraInfo, /La entrada no se registró/);
+    assert.match(texts.extraInfo, /volvé a escanearlo/);
+    assert.doesNotMatch(texts.extraInfo, /El escaneo no se registró/);
   });
 
   it('solo lo inesperado va a Error Tracking', () => {
@@ -650,5 +676,130 @@ describe('sonido por resultado', () => {
     const seconds = view.getUint32(40, true) / 2 / sampleRate;
     assert.ok(seconds > 0.45 && seconds < 0.6, `dura ${seconds} s`);
     assert.equal(STOP_TONES.filter((tone) => 'hz' in tone).length, 3);
+  });
+});
+
+describe('avisos del modo rápido', () => {
+  // 12:40 y 12:39 en Argentina (UTC-3).
+  const localAt = Date.parse('2026-11-08T15:40:10Z');
+  const base = {
+    fullName: 'Valentina Gómez',
+    localAt,
+    scannedAt: '2026-11-08T15:39:00Z',
+    scannedByMe: false,
+    scannedByName: 'Eva Puerta',
+  };
+
+  it('escaneado dos veces: quién, cuándo en cada puerta, qué puede ser y qué hacer', () => {
+    const texts = conflictTexts({ ...base, outcome: 'duplicate' });
+    assert.equal(texts.text, 'Ticket escaneado dos veces: Valentina Gómez');
+    assert.equal(
+      texts.extraInfo,
+      'Escaneado por este celular a las 12:40 y por Eva Puerta a las 12:39. ' +
+        'Puede ser una copia del ticket o la misma persona escaneada en dos puertas. ' +
+        'Quedó registrado un solo escaneo. Si hace falta revisarlo, avisale a un administrador.',
+    );
+    assert.equal(
+      conflictTexts({ ...base, fullName: null, outcome: 'duplicate' }).text,
+      'Ticket escaneado dos veces',
+    );
+  });
+
+  it('doble ingreso con el mismo usuario en otro celular, o sin saber quién', () => {
+    assert.match(
+      conflictTexts({ ...base, outcome: 'duplicate', scannedByMe: true })
+        .extraInfo,
+      /y por tu usuario en otro celular a las 12:39/,
+    );
+    assert.match(
+      conflictTexts({ ...base, outcome: 'duplicate', scannedByName: null })
+        .extraInfo,
+      /y en otra puerta a las 12:39/,
+    );
+  });
+
+  it('ticket eliminado después de escanearlo en este celular', () => {
+    const texts = conflictTexts({ ...base, outcome: 'not-found' });
+    assert.equal(texts.text, 'Ticket eliminado: Valentina Gómez');
+    assert.match(
+      texts.extraInfo,
+      /^Escaneado por este celular a las 12:40, pero el ticket ya no existe: lo eliminaron\. El escaneo no se registró\./,
+    );
+  });
+
+  it('escaneos pendientes de antes que se subieron', () => {
+    assert.equal(
+      restoredUploadTexts(1, ['Ana']).text,
+      'Se subió un escaneo pendiente',
+    );
+    assert.equal(
+      restoredUploadTexts(1, ['Ana']).extraInfo,
+      'Escaneado con éxito: Ana.',
+    );
+    const many = restoredUploadTexts(3, ['Ana', 'Beto', 'Caro']);
+    assert.equal(many.text, 'Se subieron 3 escaneos pendientes');
+    assert.equal(many.extraInfo, 'Escaneados con éxito: Ana, Beto y Caro.');
+    assert.equal(restoredUploadTexts(2, []).extraInfo, 'Quedaron registrados.');
+  });
+});
+
+describe('historial guardado en el celular', () => {
+  type Item = {
+    at: number;
+    text: string;
+    clientScanId?: string;
+    sync?: SyncState;
+  };
+  const now = Date.parse('2026-11-08T15:00:00Z');
+
+  it('se guarda por usuario y eventos (sin importar el orden)', () => {
+    assert.equal(historyKey('u1', ['b', 'a']), historyKey('u1', ['a', 'b']));
+    assert.notEqual(historyKey('u1', ['a']), historyKey('u2', ['a']));
+  });
+
+  it('al abrir, descarta lo vencido y lo que no es un escaneo', () => {
+    const raw = JSON.stringify([
+      { at: now - 1_000, text: 'reciente' },
+      { at: now - HISTORY_TTL_MS - 1, text: 'vencido' },
+      { text: 'sin hora' },
+      null,
+    ]);
+    assert.deepEqual(
+      parseHistory<Item>(raw, now).map((i) => i.text),
+      ['reciente'],
+    );
+    assert.deepEqual(parseHistory('no es json', now), []);
+    assert.deepEqual(parseHistory(null, now), []);
+  });
+
+  it('guarda los últimos y lo nuevo va arriba', () => {
+    let items: Item[] = [];
+    for (let i = 0; i < HISTORY_LIMIT + 5; i++) {
+      items = addToHistory(items, { at: now + i, text: `#${i}` });
+    }
+    assert.equal(items.length, HISTORY_LIMIT);
+    assert.equal(items[0].text, `#${HISTORY_LIMIT + 4}`);
+    assert.deepEqual(
+      mergeHistory(
+        [{ at: now, text: 'nuevo' }],
+        [{ at: now - 1, text: 'viejo' }],
+      ).map((i) => i.text),
+      ['nuevo', 'viejo'],
+    );
+  });
+
+  it('marca lo que confirmó el servidor, solo en los ingresos decididos en el celular', () => {
+    const items: Item[] = [
+      { at: now, text: 'ana', clientScanId: 's1', sync: 'pending' },
+      { at: now, text: 'aviso', clientScanId: 's1' },
+      { at: now, text: 'beto', clientScanId: 's2', sync: 'pending' },
+    ];
+    const outcomes = new Map<string, SyncState>([['s1', 'confirmed']]);
+    const next = markSynced(items, outcomes);
+    assert.equal(next[0].sync, 'confirmed');
+    assert.equal(next[1].sync, undefined);
+    assert.equal(next[2].sync, 'pending');
+    // Sin cambios devuelve lo mismo (no reescribe el almacenamiento).
+    assert.equal(markSynced(next, outcomes), next);
   });
 });
