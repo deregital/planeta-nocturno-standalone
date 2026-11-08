@@ -394,8 +394,12 @@ async function main() {
           'bloqueado se ve sin sesión',
         );
         assert(
-          (await admin.events.getPublicBySlug(e.slug)) !== null,
-          'el staff no lo ve',
+          (await admin.events.getPublicBySlug(e.slug)) === null,
+          'bloqueado se ve con sesión de staff',
+        );
+        assert(
+          (await puerta.events.getForScanBySlug(e.slug)) !== null,
+          'el scanner no encuentra el evento bloqueado',
         );
         assert(
           !(await anon.events.getActive()).some((x) => x.id === e.id),

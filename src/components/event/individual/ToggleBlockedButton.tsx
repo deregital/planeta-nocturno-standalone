@@ -51,7 +51,7 @@ export function ToggleBlockedButton({
   };
 
   return (
-    <div className='flex flex-col gap-1'>
+    <div>
       <Button
         variant={event.isBlocked ? 'success' : 'destructive'}
         loading={isPending}
@@ -69,11 +69,6 @@ export function ToggleBlockedButton({
             ? 'Desbloquear acceso'
             : 'Bloquear acceso'}
       </Button>
-      {event.isBlocked && (
-        <p className='text-center text-xs text-muted-foreground'>
-          Bloqueado: no se puede entrar ni por link ni por invitación.
-        </p>
-      )}
     </div>
   );
 }

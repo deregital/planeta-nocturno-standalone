@@ -67,7 +67,6 @@ import {
 } from '@/server/schemas/ticket-type';
 import { logger } from '@/server/observability/logger';
 import { countIssuedTicketsByEventId } from '@/server/services/issuedTicketCounts';
-import { canSeeBlockedEvents } from '@/server/services/eventBlock';
 import { sendMail } from '@/server/services/mail';
 import { releaseExpiredHolds } from '@/server/services/ticketGroupHolds';
 import {
@@ -189,6 +188,31 @@ const ticketeraEventsOrderBy = [
 ];
 
 /** Libera las reservas sin pagar vencidas para que el cupo vuelva a estar disponible. */
+function findPublicEventBySlug(db: Db, slug: string) {
+  return db.query.event.findFirst({
+    where: and(eq(eventSchema.slug, slug), eq(eventSchema.isDeleted, false)),
+    columns: { emailNotification: false },
+    with: {
+      ticketTypes: {
+        orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
+      },
+      location: {
+        columns: {
+          id: true,
+          address: true,
+          name: true,
+        },
+      },
+      eventCategory: {
+        columns: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+}
+
 function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
   const eventIds = db
     .select({ id: eventSchema.id })
@@ -740,43 +764,21 @@ export const eventsRouter = router({
     .input(z.string())
     .query(async ({ ctx, input }) => {
       const [event] = await Promise.all([
-        ctx.db.query.event.findFirst({
-          where: and(
-            eq(eventSchema.slug, input),
-            eq(eventSchema.isDeleted, false),
-          ),
-          columns: { emailNotification: false },
-          with: {
-            ticketTypes: {
-              orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
-            },
-            location: {
-              columns: {
-                id: true,
-                address: true,
-                name: true,
-              },
-            },
-            eventCategory: {
-              columns: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        }),
+        findPublicEventBySlug(ctx.db, input),
         deleteExpiredBookedTicketGroups(ctx.db, input),
       ]);
 
-      if (!event) return null;
-
-      // Bloqueado: el público no lo ve ni con el link. El staff sí (vista
-      // previa y la página del scanner, que también usa esta consulta).
-      if (event.isBlocked && !canSeeBlockedEvents(await ctx.getAccess())) {
-        return null;
-      }
+      // Bloqueado: no se entra a la página del evento, ni con el link ni con
+      // sesión de staff.
+      if (!event || event.isBlocked) return null;
 
       return event;
+    }),
+  /** El evento para el scanner: también si está bloqueado (la puerta sigue). */
+  getForScanBySlug: permissionProcedure('scanner:use')
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      return (await findPublicEventBySlug(ctx.db, input)) ?? null;
     }),
   getBySlug: anyPermissionProcedure([
     'events:read',
