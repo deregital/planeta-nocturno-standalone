@@ -6,15 +6,15 @@ import {
   type IScannerProps,
   Scanner,
 } from '@yudiel/react-qr-scanner';
-import { Check, X } from 'lucide-react';
+import { Check, Clock, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { SCAN_BEEP } from '@/components/event/individual/scan/scan-beep';
+import { type ScanEntry } from '@/components/event/individual/scan/useScanSession';
 import {
   scanRequestErrorCode,
   useScannerTelemetry,
 } from '@/components/event/individual/scan/useScannerTelemetry';
-import { type RouterOutputs } from '@/server/routers/app';
 
 // El Scanner reinicia su loop de detección cada vez que cambian `onScan`,
 // `sound` o `formats`, y el loop anterior sigue corriendo. Si cambian en cada
@@ -43,15 +43,16 @@ type ScanFeedback =
   | 'server-error'
   | 'duplicate'
   | 'already-scanned'
-  | 'too-early';
+  | 'too-early'
+  | 'expired';
+
+const WARNING_FEEDBACK = new Set<ScanFeedback>(['too-early', 'expired']);
 
 export function QRCodeScanner({
   onScanSuccessAction,
   isLoading,
 }: {
-  onScanSuccessAction: (
-    result: string,
-  ) => Promise<RouterOutputs['emittedTickets']['scan']>;
+  onScanSuccessAction: (result: string) => Promise<ScanEntry>;
   isLoading: boolean;
 }) {
   const telemetry = useScannerTelemetry();
@@ -83,15 +84,20 @@ export function QRCodeScanner({
   }
 
   async function handleScan(result: string) {
-    if (isLoading || isProcessingRef.current) return;
-
+    // Mientras el mismo QR siga a la vista no se vuelve a mandar: la ventana
+    // corre desde la última vez que se lo vio. Antes contaba desde el primer
+    // pedido y a los 5 s el verde pasaba a 'ya escaneado'.
     const current = lastScannedRef.current;
     if (
       current &&
       current.code === result &&
       Date.now() - current.timestamp < 5000
-    )
+    ) {
+      current.timestamp = Date.now();
       return;
+    }
+
+    if (isLoading || isProcessingRef.current) return;
 
     isProcessingRef.current = true;
     lastScannedRef.current = { code: result, timestamp: Date.now() };
@@ -109,7 +115,7 @@ export function QRCodeScanner({
         outcome: res.status,
         startedAt,
         eventId: res.ticket?.eventId,
-        serverMs: res.serverMs,
+        serverMs: 'serverMs' in res ? res.serverMs : undefined,
       });
     } catch (error) {
       setFeedback('server-error');
@@ -157,17 +163,24 @@ export function QRCodeScanner({
         } ${
           feedback === 'success'
             ? 'bg-green-500/60'
-            : feedback !== 'idle'
-              ? 'bg-red-500/60'
-              : ''
+            : WARNING_FEEDBACK.has(feedback)
+              ? 'bg-amber-400/70'
+              : feedback !== 'idle'
+                ? 'bg-red-500/60'
+                : ''
         }`}
       >
         {feedback === 'success' && (
           <Check className='size-32 text-white zoom-in' strokeWidth={3} />
         )}
-        {feedback !== 'success' && feedback !== 'idle' && (
-          <X className='size-32 text-white zoom-in' strokeWidth={3} />
+        {WARNING_FEEDBACK.has(feedback) && (
+          <Clock className='size-32 text-white zoom-in' strokeWidth={3} />
         )}
+        {feedback !== 'success' &&
+          feedback !== 'idle' &&
+          !WARNING_FEEDBACK.has(feedback) && (
+            <X className='size-32 text-white zoom-in' strokeWidth={3} />
+          )}
       </div>
       {/* Debug */}
       {/* <span className='absolute bottom-0 right-0 text-fuchsia-500 text-lg'>

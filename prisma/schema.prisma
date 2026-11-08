@@ -192,6 +192,8 @@ model Event {
   hasSimpleInvitation      Boolean @default(false)
   descriptionTitleVisible  Boolean @default(true)
   sortOrder                Int?
+  // Se incrementa en cada edición: una pestaña vieja no pisa cambios más nuevos.
+  version                  Int     @default(0)
 
   ticketTypes TicketType[] @relation("EVENT_X_TICKET_TYPE")
 
@@ -507,6 +509,7 @@ enum TicketGroupStatus {
 enum PaymentMethod {
   MERCADO_PAGO
   TRANSFER
+  ON_SITE
 }
 
 enum TicketTypeCategory {
@@ -519,4 +522,14 @@ enum InviteCondition {
   TRADITIONAL
   INVITATION
   SIMPLE
+}
+
+// Intentos fallidos de login por usuario, para frenar la fuerza bruta.
+model LoginAttempt {
+  username     String    @id
+  failedCount  Int       @default(0)
+  lockedUntil  DateTime? @db.Timestamptz
+  lastFailedAt DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("loginAttempt")
 }

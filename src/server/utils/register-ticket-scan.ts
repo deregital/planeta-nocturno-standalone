@@ -108,6 +108,16 @@ export async function tryRegisterTicketScan(
   });
 }
 
+/** Ventana de escaneo de un tipo de entrada, en hora de Argentina. */
+export function formatScanWindow(date: Date | null) {
+  if (!date) return '';
+  return formatInTimeZone(
+    date,
+    'America/Argentina/Buenos_Aires',
+    'dd/MM HH:mm',
+  );
+}
+
 export function formatLastScanTime(scannedAt: string | null) {
   if (!scannedAt) return '';
   return formatInTimeZone(

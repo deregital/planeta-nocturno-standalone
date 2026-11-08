@@ -37,6 +37,7 @@ export const ticketGroupStatus = pgEnum('TicketGroupStatus', [
 export const paymentMethod = pgEnum('PaymentMethod', [
   'MERCADO_PAGO',
   'TRANSFER',
+  'ON_SITE',
 ]);
 export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'FREE',
@@ -274,6 +275,15 @@ export const feature = pgTable(
   ],
 );
 
+export const loginAttempt = pgTable('loginAttempt', {
+  username: text().primaryKey().notNull(),
+  failedCount: integer().default(0).notNull(),
+  lockedUntil: timestamp({ withTimezone: true, mode: 'string' }),
+  lastFailedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
 export const paymentSettings = pgTable('paymentSettings', {
   id: integer().default(1).primaryKey().notNull(),
   transferAlias: text(),
@@ -310,6 +320,7 @@ export const event = pgTable(
     descriptionTitleVisible: boolean().default(true).notNull(),
     videoUrl: text(),
     sortOrder: integer(),
+    version: integer().default(0).notNull(),
   },
   (table) => [
     foreignKey({

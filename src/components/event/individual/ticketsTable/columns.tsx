@@ -311,7 +311,8 @@ export function generateTicketColumns({
         );
       },
       meta: {
-        exportValue: (row) => row.original.birthDate,
+        // Igual que en pantalla (antes salía 1998-05-10).
+        exportValue: (row) => formatDateOnly(row.original.birthDate),
         exportHeader: 'Fecha de nacimiento',
       },
     },

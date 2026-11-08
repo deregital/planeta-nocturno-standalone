@@ -1,7 +1,8 @@
+import { type Route } from 'next';
 import { redirect } from 'next/navigation';
 
 import ControlHeader from '@/components/control/ControlHeader';
-import { auth, clearStaleControlSession, signOut } from '@/server/auth';
+import { auth, hasStaleControlSession, signOut } from '@/server/auth';
 import { getControlAdminPermissions } from '@/server/control/can-manage-tenants';
 import { getControlLandingPath } from '@/server/control/landing-path';
 
@@ -12,7 +13,7 @@ export default async function ProtectedControlLayout({
 }) {
   const session = await auth();
   if (!session || session.user.role !== 'CONTROL_ADMIN') {
-    await clearStaleControlSession();
+    if (await hasStaleControlSession()) redirect('/session-expired' as Route);
     redirect('/login');
   }
 
@@ -24,7 +25,7 @@ export default async function ProtectedControlLayout({
   const canReadRoles = permissions.includes('roles:read');
 
   if (!canReadTenants && !canReadAdmins && !canReadRoles) {
-    await signOut({ redirectTo: '/login' });
+    redirect('/session-expired' as Route);
   }
 
   const homeHref = await getControlLandingPath(permissions);

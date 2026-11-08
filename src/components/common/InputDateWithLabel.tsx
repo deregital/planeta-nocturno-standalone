@@ -13,7 +13,8 @@ type InputDateWithLabelProps = Omit<
   id: string;
   onChange?: (date: Date | null) => void;
   error?: string;
-  selected?: Date;
+  /** null = controlado y vacío; undefined = no controlado (usa defaultValue). */
+  selected?: Date | null;
   dateType?: 'date' | 'datetime-local';
 };
 
@@ -28,7 +29,7 @@ function parseInputDate(
   return isValid(parsed) ? parsed : null;
 }
 
-function getDateParts(date: Date | undefined) {
+function getDateParts(date: Date | null | undefined) {
   if (!date || !isValid(date)) return { day: '', month: '', year: '' };
   return {
     day: String(date.getDate()).padStart(2, '0'),
@@ -44,7 +45,10 @@ function getDatePartsFromString(value: string | undefined) {
   return { year: match[1], month: match[2], day: match[3] };
 }
 
-function formatDateForInput(date: Date | undefined, dateType: string): string {
+function formatDateForInput(
+  date: Date | null | undefined,
+  dateType: string,
+): string {
   if (!date || !isValid(date)) return '';
   const y = String(date.getFullYear()).padStart(4, '0');
   const mo = String(date.getMonth() + 1).padStart(2, '0');
@@ -139,6 +143,9 @@ export default function InputDateWithLabel({
   );
   const isMobileLike = useMobileLikeInput();
   const [dateError, setDateError] = useState<string | undefined>(undefined);
+  // El error que vino del servidor se oculta en cuanto la persona corrige.
+  const [serverErrorHidden, setServerErrorHidden] = useState(false);
+  useEffect(() => setServerErrorHidden(false), [error]);
   const isUserInput = useRef(false);
   const minDate =
     typeof inputProps.min === 'string' ? inputProps.min : undefined;
@@ -150,6 +157,9 @@ export default function InputDateWithLabel({
       isUserInput.current = false;
       return;
     }
+    // Tras un envío fallido el form devuelve '' para una fecha incompleta o
+    // inválida: no borrar lo que la persona estaba escribiendo.
+    if (selected === undefined && !defaultValueAsString) return;
     const nextInputValue =
       formatDateForInput(selected, dateType) || defaultValueAsString || '';
     setInputValue(nextInputValue);
@@ -162,6 +172,7 @@ export default function InputDateWithLabel({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    setServerErrorHidden(true);
     setInputValue(value);
     if (!value) {
       isUserInput.current = true;
@@ -181,6 +192,7 @@ export default function InputDateWithLabel({
       const nextValue = e.target.value
         .replace(/\D/g, '')
         .slice(0, part === 'year' ? 4 : 2);
+      setServerErrorHidden(true);
 
       setDateParts((prev) => {
         const updated = { ...prev, [part]: nextValue };
@@ -190,7 +202,7 @@ export default function InputDateWithLabel({
         }
 
         if (!isValidDateParts(updated)) {
-          setDateError('Fecha invalida');
+          setDateError('Fecha inválida');
           return updated;
         }
 
@@ -228,46 +240,54 @@ export default function InputDateWithLabel({
       id={inputProps.id || ''}
       className={inputProps.className}
       required={inputProps.required}
-      error={error || dateError}
+      error={dateError || (serverErrorHidden ? undefined : error)}
     >
       {isMobileLike && dateType === 'date' ? (
-        <div className='flex gap-2'>
-          <div className='flex-1'>
+        // En una celda angosta (modal de emisión) los tres campos quedaban de
+        // 35 px y se veía '0' en vez de '02': menos padding y centrado.
+        <div className='flex gap-1'>
+          <div className='min-w-0 flex-1'>
             <p className='mb-1 text-xs text-muted-foreground'>Día</p>
             <Input
               type='text'
               inputMode='numeric'
               placeholder='dd'
-              aria-label='Dia'
+              aria-label='Día'
+              className='px-1 text-center'
               value={dateParts.day}
               onChange={handlePartChange('day')}
               maxLength={2}
+              required={inputProps.required}
             />
           </div>
           <div className='self-end pb-2 text-muted-foreground'>/</div>
-          <div className='flex-1'>
+          <div className='min-w-0 flex-1'>
             <p className='mb-1 text-xs text-muted-foreground'>Mes</p>
             <Input
               type='text'
               inputMode='numeric'
               placeholder='mm'
               aria-label='Mes'
+              className='px-1 text-center'
               value={dateParts.month}
               onChange={handlePartChange('month')}
               maxLength={2}
+              required={inputProps.required}
             />
           </div>
           <div className='self-end pb-2 text-muted-foreground'>/</div>
-          <div className='flex-1'>
+          <div className='min-w-0 flex-[1.5]'>
             <p className='mb-1 text-xs text-muted-foreground'>Año</p>
             <Input
               type='text'
               inputMode='numeric'
               placeholder='aaaa'
               aria-label='Año'
+              className='px-1 text-center'
               value={dateParts.year}
               onChange={handlePartChange('year')}
               maxLength={4}
+              required={inputProps.required}
             />
           </div>
           <input

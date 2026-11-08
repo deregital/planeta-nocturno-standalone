@@ -22,8 +22,12 @@ const SEARCH_FIELDS = [
   { id: 'dni', label: 'DNI' },
   { id: 'mail', label: 'Email' },
   { id: 'phoneNumber', label: 'Teléfono' },
+  { id: 'instagram', label: 'Instagram' },
   { id: 'invitedBy', label: 'Organizador' },
 ] as const;
+
+// Se busca como se ve en pantalla: '11 5566-7788' o '30.111.222'.
+const DIGIT_FIELDS = new Set<SearchFieldId>(['dni', 'phoneNumber']);
 
 type SearchFieldId = (typeof SEARCH_FIELDS)[number]['id'];
 type Ticket = RouterOutputs['emittedTickets']['getByEventId'][number];
@@ -48,6 +52,8 @@ function getFieldValues(ticket: Ticket, field: SearchFieldId): string[] {
       return ticket.mail ? [ticket.mail] : [];
     case 'phoneNumber':
       return ticket.phoneNumber ? [ticket.phoneNumber] : [];
+    case 'instagram':
+      return ticket.instagram ? [ticket.instagram.replace(/^@/, '')] : [];
     case 'invitedBy':
       return ticket.ticketGroup.invitedBy ? [ticket.ticketGroup.invitedBy] : [];
   }
@@ -135,13 +141,18 @@ export function SearchTickets({
 
     if (!searchTerm.trim()) return tickets;
 
-    const term = normalize(searchTerm);
+    const term = normalize(searchTerm).replace(/^@/, '');
+    const digits = term.replace(/\D/g, '');
     const fields = availableFieldIds.filter((id) => selectedFields.has(id));
 
     return tickets.filter((ticket) =>
       fields.some((field) =>
-        getFieldValues(ticket, field).some((value) =>
-          normalize(value).includes(term),
+        getFieldValues(ticket, field).some(
+          (value) =>
+            normalize(value).includes(term) ||
+            (DIGIT_FIELDS.has(field) &&
+              digits.length >= 3 &&
+              value.replace(/\D/g, '').includes(digits)),
         ),
       ),
     );

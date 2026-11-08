@@ -3,7 +3,7 @@ import { Loader2, LogOut } from 'lucide-react';
 import { type Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useNavRoutes } from '@/components/admin/SideBar';
 import SideBarTile from '@/components/admin/SideBarTile';
@@ -26,6 +26,10 @@ import { trpc } from '@/server/trpc/client';
 
 export default function TopBar({ auth }: { auth: Session | null }) {
   const pathname = usePathname();
+  // El TopBar vive en el layout y no se desmonta al navegar: sin cerrarlo a
+  // mano el menú seguía abierto tapando la pantalla elegida.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
   const navRoutes = useNavRoutes();
   const { roleName } = usePermissions();
   const roleLabel =
@@ -89,13 +93,18 @@ export default function TopBar({ auth }: { auth: Session | null }) {
           </div>
           <div className='flex md:hidden'>
             {auth ? (
-              <Sheet>
-                <SheetTrigger className='text-brand'>☰</SheetTrigger>
+              <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+                <SheetTrigger
+                  className='text-brand p-2 text-2xl leading-none'
+                  aria-label='Abrir menú'
+                >
+                  ☰
+                </SheetTrigger>
                 <SheetContent
                   side='top'
                   className='w-full bg-accent-dark text-on-accent border-0 gap-0'
                 >
-                  <div className='flex items-center'>
+                  <div className='flex items-center pr-12'>
                     <SheetTitle asChild>
                       <div className='p-4 font-bold text-white'>
                         <InstanceLogo size='sm' />

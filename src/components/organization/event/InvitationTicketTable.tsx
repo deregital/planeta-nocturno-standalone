@@ -2,6 +2,7 @@
 
 import { type StrictColumnDef } from '@tanstack/react-table';
 import { Loader2, ShareIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -14,6 +15,14 @@ import { INVITE_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 type InvitationCode = RouterOutputs['organizer']['getMyCodesNotUsed'][number];
 
+// Con el panel abierto, el jefe puede redistribuir y el código pasa a otra persona.
+const CODE_NOT_YOURS_MESSAGE =
+  'Este código ya no es tuyo (lo redistribuyeron o ya se usó). No lo compartas: actualizamos la lista.';
+
+function isNotFound(error: { data?: { code?: string } | null }) {
+  return error.data?.code === 'NOT_FOUND';
+}
+
 function InvitationSharedSwitch({
   code,
   eventId,
@@ -25,9 +34,15 @@ function InvitationSharedSwitch({
   shared: boolean;
   onSharedChange: (code: string, shared: boolean) => void;
 }) {
+  const router = useRouter();
   const setCodeShared = trpc.organizer.setCodeShared.useMutation({
-    onError: (_error, variables) => {
+    onError: (error, variables) => {
       onSharedChange(variables.code, !variables.shared);
+      if (isNotFound(error)) {
+        toast.error(CODE_NOT_YOURS_MESSAGE);
+        router.refresh();
+        return;
+      }
       toast.error('No se pudo actualizar el estado de compartido');
     },
   });
@@ -89,9 +104,12 @@ function buildColumns({
         function copyToClipboard() {
           // `window` sólo existe en el navegador: leerlo al renderizar rompe el SSR.
           const url = `${window.location.origin}/event/${eventSlug}?${INVITE_CODE_QUERY_PARAM}=${row.original.code}`;
-          void navigator.clipboard.writeText(url);
-          onCopy(row.original.code);
-          toast.success('Enlace copiado al portapapeles');
+          // Se copia ya (el portapapeles exige el toque), pero el "copiado"
+          // recién sale cuando el servidor confirma que el código sigue siendo suyo.
+          navigator.clipboard
+            .writeText(url)
+            .then(() => onCopy(row.original.code))
+            .catch(() => toast.error('No se pudo copiar el enlace'));
         }
 
         return (
@@ -149,14 +167,20 @@ export function InvitationTicketTable({
     setSharedByCode(new Map(codes.map((code) => [code.code, code.shared])));
   }, [codes]);
 
+  const router = useRouter();
   const [sharingCode, setSharingCode] = useState<string | null>(null);
   const setCodeShared = trpc.organizer.setCodeShared.useMutation({
-    onError: (_error, variables) => {
+    onError: (error, variables) => {
       setSharedByCode((current) => {
         const next = new Map(current);
         next.set(variables.code, !variables.shared);
         return next;
       });
+      if (isNotFound(error)) {
+        toast.error(CODE_NOT_YOURS_MESSAGE);
+        router.refresh();
+        return;
+      }
       toast.error('No se pudo actualizar el estado de compartido');
     },
     onSettled: () => setSharingCode(null),
@@ -182,12 +206,13 @@ export function InvitationTicketTable({
       });
     },
     onCopy: (code) => {
-      const alreadyShared = sharedByCodeRef.current.get(code) ?? false;
       handlersRef.current.onSharedChange(code, true);
-      if (!alreadyShared) {
-        setSharingCode(code);
-        setCodeSharedRef.current.mutate({ eventId, code, shared: true });
-      }
+      // Aunque ya estuviera compartido: así se confirma que sigue siendo suyo.
+      setSharingCode(code);
+      setCodeSharedRef.current.mutate(
+        { eventId, code, shared: true },
+        { onSuccess: () => toast.success('Enlace copiado al portapapeles') },
+      );
     },
   };
 

@@ -1,3 +1,4 @@
+import { TRPCError } from '@trpc/server';
 import {
   and,
   asc,
@@ -86,7 +87,10 @@ export const organizerRouter = router({
         });
 
       if (updated.length === 0) {
-        throw new Error('Código de invitación no encontrado');
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Este código ya no es tuyo o ya se usó',
+        });
       }
 
       return updated[0];

@@ -1,14 +1,24 @@
 'use server';
 
 import { hash } from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { type Route } from 'next';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { getControlDb } from '@/db/control/client';
-import { controlAdmins, controlRoles } from '@/db/control/schema';
+import {
+  controlAdmins,
+  controlRolePermissions,
+  controlRoles,
+} from '@/db/control/schema';
+import {
+  CONTROL_PERMISSIONS,
+  type ControlPermission,
+  parseControlPermissions,
+  SUPER_ADMIN_ROLE_NAME,
+} from '@/lib/control/permissions';
 import { requirePermission } from '@/server/control/can-manage-tenants';
 import { logger } from '@/server/observability/logger';
 import { isUniqueViolation } from '@/server/control/custom-id';
@@ -24,11 +34,11 @@ const adminBaseSchema = z.object({
     .min(3, 'Mínimo 3 caracteres')
     .max(100, 'Máximo 100 caracteres'),
   email: z.email('Email inválido').max(320),
-  roleId: z.uuid('Rol inválido'),
+  roleId: z.uuid('Elegí un rol'),
 });
 
 const createAdminSchema = adminBaseSchema.extend({
-  password: z.string().min(4, 'Mínimo 4 caracteres').max(128),
+  password: z.string().min(8, 'Mínimo 8 caracteres').max(128),
 });
 
 const updateAdminSchema = adminBaseSchema.extend({
@@ -60,7 +70,8 @@ export async function createControlAdmin(
   const values = getFormValues(formData);
   const safeValues = { ...values, password: '' };
 
-  if (!(await requirePermission('admins:create')).ok) {
+  const authz = await requirePermission('admins:create');
+  if (!authz.ok) {
     return {
       values: safeValues,
       errors: { general: 'No tenés permiso para crear usuarios' },
@@ -75,11 +86,18 @@ export async function createControlAdmin(
     };
   }
 
-  const roleExists = await roleExistsById(validation.data.roleId);
-  if (!roleExists) {
+  const roleError = await assignableRoleError(
+    validation.data.roleId,
+    authz.permissions,
+  );
+  if (roleError) {
+    return { values: safeValues, errors: { roleId: roleError } };
+  }
+
+  if (await usernameTakenIgnoringCase(validation.data.username)) {
     return {
       values: safeValues,
-      errors: { roleId: 'El rol seleccionado no existe' },
+      errors: { username: 'Ya existe un usuario con ese nombre' },
     };
   }
 
@@ -136,10 +154,10 @@ export async function updateControlAdmin(
   const { adminId, username, email, password, roleId } = validation.data;
   const nextPassword = password.trim();
 
-  if (nextPassword && nextPassword.length < 4) {
+  if (nextPassword && nextPassword.length < 8) {
     return {
       values: safeValues,
-      errors: { password: 'Mínimo 4 caracteres' },
+      errors: { password: 'Mínimo 8 caracteres' },
     };
   }
 
@@ -156,11 +174,17 @@ export async function updateControlAdmin(
     };
   }
 
-  const roleExists = await roleExistsById(roleId);
-  if (!roleExists) {
+  if (roleId !== existing.roleId) {
+    const roleError = await assignableRoleError(roleId, authz.permissions);
+    if (roleError) {
+      return { values: safeValues, errors: { roleId: roleError } };
+    }
+  }
+
+  if (await usernameTakenIgnoringCase(username, adminId)) {
     return {
       values: safeValues,
-      errors: { roleId: 'El rol seleccionado no existe' },
+      errors: { username: 'Ya existe un usuario con ese nombre' },
     };
   }
 
@@ -272,11 +296,55 @@ function fieldErrors(error: z.ZodError) {
   return errors;
 }
 
-async function roleExistsById(roleId: string) {
-  const [role] = await getControlDb()
-    .select({ id: controlRoles.id })
+/**
+ * Un usuario sólo puede asignar roles con permisos que él mismo tiene: con
+ * admins:create alcanzaba para crearse un Super admin.
+ */
+async function assignableRoleError(
+  roleId: string,
+  ownPermissions: readonly ControlPermission[],
+) {
+  const db = getControlDb();
+  const [role] = await db
+    .select({ id: controlRoles.id, name: controlRoles.name })
     .from(controlRoles)
     .where(eq(controlRoles.id, roleId))
     .limit(1);
-  return Boolean(role);
+  if (!role) return 'El rol seleccionado no existe';
+
+  const rolePermissions =
+    role.name === SUPER_ADMIN_ROLE_NAME
+      ? [...CONTROL_PERMISSIONS]
+      : parseControlPermissions(
+          (
+            await db
+              .select({ permission: controlRolePermissions.permission })
+              .from(controlRolePermissions)
+              .where(eq(controlRolePermissions.roleId, roleId))
+          ).map((row) => row.permission),
+        );
+
+  return rolePermissions.every((permission) =>
+    ownPermissions.includes(permission),
+  )
+    ? null
+    : 'No podés asignar un rol con permisos que vos no tenés';
+}
+
+/** 'Control' y 'control' eran dos cuentas distintas: se veían iguales en la lista. */
+async function usernameTakenIgnoringCase(
+  username: string,
+  exceptAdminId?: string,
+) {
+  const [taken] = await getControlDb()
+    .select({ id: controlAdmins.id })
+    .from(controlAdmins)
+    .where(
+      and(
+        sql`lower(${controlAdmins.username}) = lower(${username})`,
+        exceptAdminId ? ne(controlAdmins.id, exceptAdminId) : undefined,
+      ),
+    )
+    .limit(1);
+  return Boolean(taken);
 }
