@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { type Db } from '@/drizzle';
 
@@ -87,18 +87,34 @@ export async function tryRegisterTicketScan(
   );
 }
 
-/** Igual que `tryRegisterTicketScan`, dentro de una transacción abierta. */
+/**
+ * Igual que `tryRegisterTicketScan`, dentro de una transacción abierta.
+ *
+ * `at`: hora del ingreso cuando no es ahora (un escaneo decidido en el celular
+ * que se sube después). Con multiescaneo, la última hora de la entrada no
+ * retrocede: un escaneo viejo que llega tarde queda en el historial, pero la
+ * entrada conserva el escaneo más reciente y quién lo hizo.
+ */
 export async function tryRegisterTicketScanInTx(
   tx: DbExecutor,
   ticketId: string,
   scannedByUserId: string,
   allowMultipleScans: boolean,
+  { at }: { at?: string } = {},
 ): Promise<{ registered: true; scannedAt: string } | { registered: false }> {
-  const now = new Date().toISOString();
+  const now = at ?? new Date().toISOString();
 
   const updated = await tx
     .update(emittedTicket)
-    .set({ scanned: true, scannedAt: now, scannedByUserId })
+    .set(
+      at
+        ? {
+            scanned: true,
+            scannedAt: sql`GREATEST(COALESCE(${emittedTicket.scannedAt}, ${now}::timestamptz), ${now}::timestamptz)`,
+            scannedByUserId: sql`CASE WHEN ${emittedTicket.scannedAt} IS NULL OR ${emittedTicket.scannedAt} <= ${now}::timestamptz THEN ${scannedByUserId}::uuid ELSE ${emittedTicket.scannedByUserId} END`,
+          }
+        : { scanned: true, scannedAt: now, scannedByUserId },
+    )
     .where(
       allowMultipleScans
         ? eq(emittedTicket.id, ticketId)

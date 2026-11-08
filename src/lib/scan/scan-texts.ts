@@ -66,3 +66,14 @@ export function selfRepeatExtraInfo(secondsAgo: number) {
     ? 'Este celular lo registró recién'
     : `Este celular lo registró hace ${seconds} s`;
 }
+
+/**
+ * Para un "ya escaneado" que entró por este mismo celular hace poco: ayuda a
+ * la puerta a reconocer a la persona, sin dejar de ser un rechazo.
+ */
+export function ownEntryInfo(secondsAgo: number) {
+  const seconds = Math.max(0, Math.round(secondsAgo));
+  return seconds < 1
+    ? 'Entró recién por este celular'
+    : `Entró por este celular hace ${seconds} s`;
+}

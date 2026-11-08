@@ -20,6 +20,7 @@ import {
   type DevicePrefs,
 } from '@/components/event/individual/scan/local/device';
 import {
+  isBrowserOnline,
   LocalScanEngine,
   type EngineEvent,
   type EngineStatus,
@@ -32,10 +33,15 @@ import {
   localAlreadyScanned,
   localSuccess,
   selfRepeat,
+  withOwnEntryInfo,
   type ScanDisplayResult,
   type ServerScanResult,
 } from '@/components/event/individual/scan/scan-result';
-import { isSelfRepeat, SELF_REPEAT_WINDOW_MS } from '@/lib/scan/decision';
+import {
+  isSelfRepeat,
+  SELF_REPEAT_WINDOW_MS,
+  selfRepeatAttemptAt,
+} from '@/lib/scan/decision';
 import { OFF_CONFIG } from '@/lib/scan/protocol';
 import { ScanRequestError, sendWithGrace } from '@/lib/scan/scan-errors';
 import { formatScanTime } from '@/lib/scan/scan-texts';
@@ -48,9 +54,10 @@ const OFF_STATUS: EngineStatus = {
   staleReason: null,
   pending: 0,
   foreignPending: 0,
+  otherUserPending: 0,
   lastSyncAt: null,
   tickets: 0,
-  leader: true,
+  leader: false,
   storageOk: true,
   syncing: false,
   consecutiveFailures: 0,
@@ -60,13 +67,15 @@ const OFF_STATUS: EngineStatus = {
 const getOffStatus = () => OFF_STATUS;
 const noopSubscribe = () => () => {};
 
-type NavigatorWithConnection = Navigator & {
-  connection?: Pick<EventTarget, 'addEventListener' | 'removeEventListener'>;
-};
+/** Una sola pestaña del celular decide en local. */
+const SCANNER_LOCK = 'pn-scanner-local';
 
-function isBrowserOnline() {
-  return typeof navigator === 'undefined' || navigator.onLine !== false;
-}
+type NavigatorWithConnection = Navigator & {
+  connection?: Pick<EventTarget, 'addEventListener' | 'removeEventListener'> & {
+    /** wifi / cellular / none… (solo Chrome en Android). */
+    type?: string;
+  };
+};
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -88,9 +97,6 @@ function waitForOnline(deadline: number) {
     window.addEventListener('online', onOnline);
   });
 }
-
-/** Intentos previos que cuentan para reconocer un reescaneo propio. */
-const SELF_ELIGIBLE = new Set(['pending', 'success', 'error', 'self-repeat']);
 
 type Attempt = { at: number; outcome: string };
 
@@ -118,7 +124,11 @@ export function useScanController({
   onlineScan,
 }: {
   eventIds: string[];
-  onlineScan: (barcode: string) => Promise<ServerScanResult>;
+  /** Escaneo online; tiene que pasarle `signal` al pedido para poder cortarlo. */
+  onlineScan: (
+    barcode: string,
+    signal: AbortSignal,
+  ) => Promise<ServerScanResult>;
 }) {
   const utils = trpc.useUtils();
   const eventKey = [...new Set(eventIds)].sort().join(',');
@@ -196,17 +206,20 @@ export function useScanController({
   };
 
   const userId = config?.userId;
+  const available = config?.available ?? false;
   const [engine, setEngine] = useState<LocalScanEngine | null>(null);
   useEffect(() => {
     if (!userId || !deviceId || stableEventIds.length === 0) return;
     // Se crea aunque el modo esté apagado: así se suben escaneos que hayan
-    // quedado pendientes de una sesión anterior.
+    // quedado pendientes de una sesión anterior, y si la instalación tiene el
+    // modo local, se entera cuando lo prendan.
     const instance = new LocalScanEngine({
       transport,
       store: new IndexedDbOutboxStore(),
       userId,
       eventIds: stableEventIds,
       deviceId,
+      available,
       onEvent: (event) => onEventRef.current(event),
     });
     setEngine(instance);
@@ -215,7 +228,7 @@ export function useScanController({
       instance.stop();
       setEngine(null);
     };
-  }, [userId, deviceId, stableEventIds, transport]);
+  }, [userId, deviceId, stableEventIds, transport, available]);
 
   const { mode: serverMode, maxStaleSeconds: serverMaxStale } = serverConfig;
   useEffect(() => {
@@ -236,32 +249,44 @@ export function useScanController({
   );
 
   // Una sola pestaña por celular decide en local: dos pestañas con dos tablas
-  // dejarían pasar el mismo QR una vez en cada una.
+  // dejarían pasar el mismo QR una vez en cada una. Hasta que el navegador
+  // confirma el lock, ninguna decide; sin Web Locks, tampoco.
   useEffect(() => {
     if (!engine || status.mode !== 'local') return;
     const locks =
       typeof navigator !== 'undefined' ? navigator.locks : undefined;
-    if (!locks) return;
-    const controller = new AbortController();
+    if (!locks) {
+      engine.setLeader('unsupported');
+      return () => engine.setLeader('unknown');
+    }
+    let cancelled = false;
     let release: (() => void) | null = null;
-    let granted = false;
-    const notGranted = setTimeout(() => {
-      if (!granted) engine.setLeader(false);
-    }, 800);
+    const controller = new AbortController();
+    const hold = () => {
+      if (cancelled) return Promise.resolve();
+      engine.setLeader('leader');
+      return new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    };
     locks
-      .request('pn-scanner-local', { signal: controller.signal }, () => {
-        granted = true;
-        clearTimeout(notGranted);
-        engine.setLeader(true);
-        return new Promise<void>((resolve) => {
-          release = resolve;
-        });
+      .request(SCANNER_LOCK, { ifAvailable: true }, (lock) => {
+        if (lock) return hold();
+        if (!cancelled) {
+          engine.setLeader('follower');
+          // Cuando se cierre la otra pestaña, esta pasa a decidir.
+          locks
+            .request(SCANNER_LOCK, { signal: controller.signal }, hold)
+            .catch(() => {});
+        }
+        return undefined;
       })
       .catch(() => {});
     return () => {
-      clearTimeout(notGranted);
+      cancelled = true;
       controller.abort();
       release?.();
+      engine.setLeader('unknown');
     };
   }, [engine, status.mode]);
 
@@ -270,20 +295,29 @@ export function useScanController({
     const onVisible = () => {
       if (document.visibilityState === 'visible') engine.onVisible();
     };
-    // Volvió la red o cambió (wifi ↔ datos; `connection` solo existe en
-    // Android): subir lo pendiente ya, sin esperar el pedido colgado ni el
-    // backoff.
-    const onNetwork = () => void engine.onNetworkBack();
+    // Volvió la red: subir lo pendiente ya, sin esperar el pedido colgado ni
+    // el backoff.
+    const onOnline = () => void engine.onNetworkBack();
+    // Cambió la red (wifi ↔ datos; `connection` solo existe en Android). Chrome
+    // también avisa cuando cambia su estimación de velocidad: eso no es otra
+    // red y no tiene que cortar una bajada que avanza.
     const connection = (navigator as NavigatorWithConnection).connection;
+    let lastType = connection?.type;
+    const onConnectionChange = () => {
+      const type = connection?.type;
+      if (type === undefined || type === lastType) return;
+      lastType = type;
+      void engine.onNetworkBack();
+    };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onVisible);
-    window.addEventListener('online', onNetwork);
-    connection?.addEventListener?.('change', onNetwork);
+    window.addEventListener('online', onOnline);
+    connection?.addEventListener?.('change', onConnectionChange);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
-      window.removeEventListener('online', onNetwork);
-      connection?.removeEventListener?.('change', onNetwork);
+      window.removeEventListener('online', onOnline);
+      connection?.removeEventListener?.('change', onConnectionChange);
     };
   }, [engine]);
 
@@ -315,9 +349,10 @@ export function useScanController({
           successByTicketRef.current.delete(key);
       }
 
-      const prior = attemptsRef.current.get(code);
-      const priorAt =
-        prior && SELF_ELIGIBLE.has(prior.outcome) ? prior.at : undefined;
+      // Solo un intento anterior que no mostró decisión (en vuelo o sin
+      // respuesta) cuenta para "Ya registrado": si la puerta ya vio el verde,
+      // otra lectura del mismo QR es otra presentación y se rechaza.
+      const priorAt = selfRepeatAttemptAt(attemptsRef.current.get(code), now);
       const firstAt = priorAt ?? now;
       attemptsRef.current.set(code, { at: firstAt, outcome: 'pending' });
       const record = (result: ScanDisplayResult, ticketId?: string) => {
@@ -327,6 +362,10 @@ export function useScanController({
         }
         return result;
       };
+      /** Si la entrada entró por este celular hace poco (cualquier QR suyo). */
+      const ownEntryAt = (ticketId: string) =>
+        engine?.recentLocalSuccessAt(ticketId) ??
+        successByTicketRef.current.get(ticketId);
 
       const mode = engine?.getStatus().mode ?? 'off';
       let fallbackReason: string | undefined;
@@ -348,15 +387,17 @@ export function useScanController({
               } catch {
                 fallbackReason = 'storage';
               }
+            } else if (priorAt !== undefined) {
+              // El intento anterior con este QR quedó sin respuesta: el
+              // servidor sabe si lo registró este usuario.
+              fallbackReason = 'recheck';
             } else {
-              const local = localAlreadyScanned(evaluation);
-              const ownAt =
-                engine.recentLocalSuccessAt(evaluation.ticketId) ??
-                successByTicketRef.current.get(evaluation.ticketId);
               return record(
-                ownAt !== undefined
-                  ? selfRepeat(local, ownAt, Date.now())
-                  : local,
+                withOwnEntryInfo(
+                  localAlreadyScanned(evaluation),
+                  ownEntryAt(evaluation.ticketId),
+                  Date.now(),
+                ),
               );
             }
           } else {
@@ -378,9 +419,9 @@ export function useScanController({
       let retried = false;
       try {
         // Un microcorte no rompe nada: espera a la red o reintenta hasta
-        // OFFLINE_GRACE_MS; después, error claro.
+        // OFFLINE_GRACE_MS; un pedido colgado se corta a SCAN_TIMEOUT_MS.
         ({ result: server, retried } = await sendWithGrace(
-          () => onlineScan(code),
+          (signal) => onlineScan(code, signal),
           {
             isOnline: isBrowserOnline,
             waitForOnline,
@@ -398,25 +439,21 @@ export function useScanController({
 
       let result = fromServer(server, mode, fallbackReason);
       const ticketId = server.ticket?.id;
-      if (server.status === 'already-scanned' && server.scannedByMe) {
-        // Tras un reintento, el "ya escaneado" puede ser el primer pedido,
-        // que llegó aunque se perdió la respuesta.
-        const ownAt =
-          priorAt ??
-          (retried ? firstAt : undefined) ??
-          (ticketId
-            ? (successByTicketRef.current.get(ticketId) ??
-              engine?.recentLocalSuccessAt(ticketId))
-            : undefined);
+      if (server.status === 'already-scanned') {
+        // "Ya registrado" solo si este pedido (reintentado) o un intento
+        // anterior sin respuesta llegó al servidor y lo registró este usuario.
+        const ownAt = priorAt ?? (retried ? firstAt : undefined);
         if (
           isSelfRepeat({
-            scannedByMe: true,
+            scannedByMe: server.scannedByMe,
             serverScannedAt: server.ticket?.scannedAt ?? null,
             firstAttemptAt: ownAt,
             now: Date.now(),
           })
         ) {
           result = selfRepeat(result, ownAt!, Date.now());
+        } else if (ticketId) {
+          result = withOwnEntryInfo(result, ownEntryAt(ticketId), Date.now());
         }
       }
 

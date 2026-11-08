@@ -27,6 +27,32 @@ export function decideKnownTicket(
 export const SELF_REPEAT_WINDOW_MS = 60_000;
 
 /**
+ * Resultados de un intento anterior con el mismo QR que permiten reconocer un
+ * reescaneo propio: los que no llegaron a mostrar una decisión en la puerta
+ * (el pedido quedó en vuelo o falló sin respuesta). Ahí el "ya escaneado" es
+ * ese mismo pedido, que llegó al servidor.
+ *
+ * Si la puerta ya mostró el verde (o "Ya registrado"), una segunda lectura del
+ * mismo QR es otra presentación: puede ser una captura que pasó de mano en
+ * mano, así que se rechaza como cualquier "ya escaneado".
+ */
+export const SELF_REPEAT_ELIGIBLE_OUTCOMES: ReadonlySet<string> = new Set([
+  'pending',
+  'error',
+]);
+
+/** Hora del intento anterior que cuenta para un reescaneo propio, o undefined. */
+export function selfRepeatAttemptAt(
+  prior: { at: number; outcome: string } | undefined,
+  now: number,
+): number | undefined {
+  if (!prior || !SELF_REPEAT_ELIGIBLE_OUTCOMES.has(prior.outcome)) {
+    return undefined;
+  }
+  return now - prior.at > SELF_REPEAT_WINDOW_MS ? undefined : prior.at;
+}
+
+/**
  * ¿El "ya escaneado" que devolvió el servidor es el propio escaneo de este
  * celular? Pasa cuando la respuesta tardó, o se perdió, y la cámara volvió a
  * leer el mismo QR. No alcanza con que sea el mismo usuario (varios celulares

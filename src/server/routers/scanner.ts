@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { and, count, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, or, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { type Db } from '@/drizzle';
@@ -141,26 +141,29 @@ async function loadTicketTypes(
     .where(inArray(ticketTypeTable.eventId, eventIds));
 }
 
-async function loadScanCounts(
-  db: Db,
-  eventIds: string[],
-  scannedSince: string | null,
-) {
+/** Escaneos por entrada, solo de las entradas que cumplen `ticketWhere`. */
+async function loadScanCounts(db: Db, ticketWhere: SQL | undefined) {
   const rows = await db
     .select({ ticketId: emittedTicketScan.emittedTicketId, total: count() })
     .from(emittedTicketScan)
-    .innerJoin(
-      emittedTicket,
-      eq(emittedTicket.id, emittedTicketScan.emittedTicketId),
-    )
     .where(
-      and(
-        inArray(emittedTicket.eventId, eventIds),
-        scannedSince ? gte(emittedTicket.scannedAt, scannedSince) : undefined,
+      inArray(
+        emittedTicketScan.emittedTicketId,
+        db
+          .select({ id: emittedTicket.id })
+          .from(emittedTicket)
+          .where(ticketWhere),
       ),
     )
     .groupBy(emittedTicketScan.emittedTicketId);
   return new Map(rows.map((row) => [row.ticketId, Number(row.total)]));
+}
+
+/** Las horas viajan al celular en ISO (la base las devuelve en otro formato). */
+function toIso(value: string | null): string | null {
+  if (!value) return null;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? value : new Date(time).toISOString();
 }
 
 /** Entradas de los eventos (todas, o las creadas desde `createdSince`). */
@@ -169,29 +172,30 @@ async function loadTicketRows(
   eventIds: string[],
   createdSince: string | null,
 ): Promise<SnapshotTicketRow[]> {
-  const tickets = await db
-    .select({
-      id: emittedTicket.id,
-      eventId: emittedTicket.eventId,
-      ticketTypeId: emittedTicket.ticketTypeId,
-      fullName: emittedTicket.fullName,
-      dni: emittedTicket.dni,
-      scanned: emittedTicket.scanned,
-      scannedAt: emittedTicket.scannedAt,
-      invitedBy: user.fullName,
-    })
-    .from(emittedTicket)
-    .leftJoin(ticketGroup, eq(ticketGroup.id, emittedTicket.ticketGroupId))
-    .leftJoin(user, eq(user.id, ticketGroup.invitedById))
-    .where(
-      and(
-        inArray(emittedTicket.eventId, eventIds),
-        createdSince ? gte(emittedTicket.createdAt, createdSince) : undefined,
-      ),
-    );
-  if (tickets.length === 0) return [];
+  const where = and(
+    inArray(emittedTicket.eventId, eventIds),
+    createdSince ? gte(emittedTicket.createdAt, createdSince) : undefined,
+  );
+  const [tickets, counts] = await Promise.all([
+    db
+      .select({
+        id: emittedTicket.id,
+        eventId: emittedTicket.eventId,
+        ticketTypeId: emittedTicket.ticketTypeId,
+        fullName: emittedTicket.fullName,
+        dni: emittedTicket.dni,
+        scanned: emittedTicket.scanned,
+        scannedAt: emittedTicket.scannedAt,
+        invitedBy: user.fullName,
+      })
+      .from(emittedTicket)
+      .leftJoin(ticketGroup, eq(ticketGroup.id, emittedTicket.ticketGroupId))
+      .leftJoin(user, eq(user.id, ticketGroup.invitedById))
+      .where(where),
+    // Solo las entradas que se devuelven, no todo el evento.
+    loadScanCounts(db, where),
+  ]);
 
-  const counts = await loadScanCounts(db, eventIds, null);
   return tickets.map((ticket) => [
     serverTicketHash(ticket.id),
     ticket.eventId,
@@ -200,13 +204,36 @@ async function loadTicketRows(
     dniTail(ticket.dni),
     ticket.invitedBy ?? null,
     ticket.scanned,
-    ticket.scannedAt,
+    toIso(ticket.scannedAt),
     counts.get(ticket.id) ?? 0,
   ]);
 }
 
 async function loadDelta(db: Db, eventIds: string[], cursor: string) {
   const since = new Date(Date.parse(cursor) - DELTA_OVERLAP_MS).toISOString();
+
+  // Cambió el estado de la entrada: se escaneó desde `since`, o llegó desde
+  // `since` un escaneo decidido en un celular. Ese escaneo lleva la hora del
+  // ingreso, que puede ser anterior a `since` (subió tarde).
+  const changedWhere = and(
+    inArray(emittedTicket.eventId, eventIds),
+    or(
+      gte(emittedTicket.scannedAt, since),
+      inArray(
+        emittedTicket.id,
+        db
+          .select({ id: scanReceipt.emittedTicketId })
+          .from(scanReceipt)
+          .where(
+            and(
+              inArray(scanReceipt.eventId, eventIds),
+              gte(scanReceipt.receivedAt, since),
+              eq(scanReceipt.outcome, 'registered'),
+            ),
+          ),
+      ),
+    ),
+  );
 
   const [changed, counts, added, types, [{ total }]] = await Promise.all([
     db
@@ -216,13 +243,8 @@ async function loadDelta(db: Db, eventIds: string[], cursor: string) {
         scannedAt: emittedTicket.scannedAt,
       })
       .from(emittedTicket)
-      .where(
-        and(
-          inArray(emittedTicket.eventId, eventIds),
-          gte(emittedTicket.scannedAt, since),
-        ),
-      ),
-    loadScanCounts(db, eventIds, since),
+      .where(changedWhere),
+    loadScanCounts(db, changedWhere),
     loadTicketRows(db, eventIds, since),
     loadTicketTypes(db, eventIds),
     db
@@ -234,7 +256,7 @@ async function loadDelta(db: Db, eventIds: string[], cursor: string) {
   const scans: DeltaScanRow[] = changed.map((ticket) => [
     serverTicketHash(ticket.id),
     ticket.scanned,
-    ticket.scannedAt,
+    toIso(ticket.scannedAt),
     counts.get(ticket.id) ?? 0,
   ]);
 
@@ -244,6 +266,25 @@ async function loadDelta(db: Db, eventIds: string[], cursor: string) {
 function safeIso(epochMs: number): string | null {
   const date = new Date(epochMs);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/** Hasta cuánto atrás se acepta la hora de ingreso que manda el celular. */
+const MAX_ENTRY_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Hora del ingreso de un escaneo decidido en el celular: la del escaneo (con
+ * el reloj ya corregido contra el servidor), no la de la subida. Si no es
+ * creíble (en el futuro o de hace más de una semana), la del servidor.
+ */
+export function entryTime(clientAt: number, now: number): string {
+  if (
+    !Number.isFinite(clientAt) ||
+    clientAt > now ||
+    clientAt < now - MAX_ENTRY_AGE_MS
+  ) {
+    return new Date(now).toISOString();
+  }
+  return new Date(Math.round(clientAt)).toISOString();
 }
 
 type SyncScanInput = { id: string; code: string; at: number };
@@ -294,26 +335,7 @@ async function registerLocalScan(
       .returning({ id: scanReceipt.id });
 
     if (claimed.length === 0) {
-      const [existing] = await tx
-        .select({
-          outcome: scanReceipt.outcome,
-          emittedTicketId: scanReceipt.emittedTicketId,
-          registeredAt: scanReceipt.registeredAt,
-          userId: scanReceipt.userId,
-        })
-        .from(scanReceipt)
-        .where(eq(scanReceipt.clientScanId, scan.id))
-        .limit(1);
-      const outcome = (existing?.outcome ?? 'not-found') as SyncScanOutcome;
-      return {
-        id: scan.id,
-        outcome,
-        hash: existing?.emittedTicketId
-          ? serverTicketHash(existing.emittedTicketId)
-          : null,
-        scannedAt: existing?.registeredAt ?? null,
-        scannedByMe: existing?.userId === userId,
-      };
+      return { id: scan.id, ...(await replayReceipt(tx, scan.id, userId)) };
     }
     const receiptId = claimed[0].id;
 
@@ -331,12 +353,7 @@ async function registerLocalScan(
             eq(emittedTicket.id, ticketId),
             inArray(emittedTicket.eventId, eventIds),
           ),
-          columns: {
-            id: true,
-            eventId: true,
-            scannedAt: true,
-            scannedByUserId: true,
-          },
+          columns: { id: true, eventId: true },
           with: { ticketType: { columns: { allowMultipleScans: true } } },
         })
       : undefined;
@@ -360,6 +377,7 @@ async function registerLocalScan(
       ticket.id,
       userId,
       ticket.ticketType.allowMultipleScans,
+      { at: entryTime(scan.at, Date.now()) },
     );
     const outcome: SyncScanOutcome = registration.registered
       ? 'registered'
@@ -375,18 +393,94 @@ async function registerLocalScan(
       })
       .where(eq(scanReceipt.id, receiptId));
 
+    if (registration.registered) {
+      return {
+        id: scan.id,
+        outcome,
+        hash: serverTicketHash(ticket.id),
+        scannedAt: registration.scannedAt,
+        scannedByMe: true,
+      };
+    }
+    // Se lee después del UPDATE que no ganó: si otro celular registró la
+    // entrada mientras tanto, ya se ve quién y cuándo.
+    const previous = await currentScan(tx, ticket.id);
     return {
       id: scan.id,
       outcome,
       hash: serverTicketHash(ticket.id),
-      scannedAt: registration.registered
-        ? registration.scannedAt
-        : ticket.scannedAt,
-      scannedByMe: registration.registered
-        ? true
-        : ticket.scannedByUserId === userId,
+      scannedAt: previous.scannedAt,
+      scannedByMe: previous.scannedByUserId === userId,
     };
   });
+}
+
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/** Quién registró la entrada y cuándo (último escaneo). */
+async function currentScan(tx: Tx, ticketId: string) {
+  const [row] = await tx
+    .select({
+      scannedAt: emittedTicket.scannedAt,
+      scannedByUserId: emittedTicket.scannedByUserId,
+    })
+    .from(emittedTicket)
+    .where(eq(emittedTicket.id, ticketId))
+    .limit(1);
+  return {
+    scannedAt: toIso(row?.scannedAt ?? null),
+    scannedByUserId: row?.scannedByUserId ?? null,
+  };
+}
+
+/**
+ * El mismo escaneo ya había llegado (reintento con la respuesta perdida, o
+ * dos pedidos en vuelo): no se registra de nuevo y se responde lo mismo que
+ * la primera vez.
+ */
+async function replayReceipt(
+  tx: Tx,
+  clientScanId: string,
+  userId: string,
+): Promise<Omit<SyncScanResult, 'id'>> {
+  const [existing] = await tx
+    .select({
+      outcome: scanReceipt.outcome,
+      emittedTicketId: scanReceipt.emittedTicketId,
+      registeredAt: scanReceipt.registeredAt,
+      userId: scanReceipt.userId,
+    })
+    .from(scanReceipt)
+    .where(eq(scanReceipt.clientScanId, clientScanId))
+    .limit(1);
+
+  const ticketId = existing?.emittedTicketId;
+  if (!existing || !ticketId || existing.outcome === 'not-found') {
+    return {
+      outcome: 'not-found',
+      hash: null,
+      scannedAt: null,
+      scannedByMe: false,
+    };
+  }
+  if (existing.outcome === 'registered') {
+    return {
+      outcome: 'registered',
+      hash: serverTicketHash(ticketId),
+      scannedAt: toIso(existing.registeredAt),
+      scannedByMe: existing.userId === userId,
+    };
+  }
+  // Doble ingreso: sin multiescaneo la entrada no cambia después de su primer
+  // registro, así que quién y cuándo son los mismos que en la primera
+  // respuesta (no el que subió este recibo).
+  const previous = await currentScan(tx, ticketId);
+  return {
+    outcome: 'duplicate',
+    hash: serverTicketHash(ticketId),
+    scannedAt: previous.scannedAt,
+    scannedByMe: previous.scannedByUserId === userId,
+  };
 }
 
 export const scannerRouter = router({
@@ -555,12 +649,15 @@ export const scannerRouter = router({
       // Las novedades se leen después de registrar lo subido, así lo propio
       // ya viene incluido.
       const serverNow = new Date().toISOString();
+      const config = await effectiveConfig(ctx.db, input.eventIds);
+      // Las novedades son la tabla de la puerta (con un cursor viejo, entera):
+      // igual que `snapshot`, solo con el modo sombra o rápido encendido.
       const cursorValid =
-        input.cursor && !Number.isNaN(Date.parse(input.cursor));
-      const [config, delta] = await Promise.all([
-        effectiveConfig(ctx.db, input.eventIds),
-        cursorValid ? loadDelta(ctx.db, input.eventIds, input.cursor!) : null,
-      ]);
+        input.cursor !== null && !Number.isNaN(Date.parse(input.cursor));
+      const delta =
+        config.mode !== 'off' && cursorValid
+          ? await loadDelta(ctx.db, input.eventIds, input.cursor!)
+          : null;
 
       if (results.length > 0) {
         logger.info('Scanner sync', {

@@ -17,16 +17,20 @@ export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
       {lastScan.status === 'self-repeat' ? (
         <>
           <div className='bg-sky-500 border-b border-stroke'>
-            <p className='text-on-accent text-lg font-bold p-2 truncate'>
+            {/* pr-28: lugar para la hora de arriba a la derecha. */}
+            <p className='text-on-accent text-lg font-bold p-2 pr-28 break-words'>
               {lastScan.text}: {lastScan.ticket?.fullName}
             </p>
           </div>
+          <p className='text-accent-dark p-2 text-normal'>
+            <span className='font-bold'>DNI:</span> {lastScan.ticket?.dni}
+          </p>
           <p className='text-accent-dark p-2 text-sm'>{lastScan.extraInfo}</p>
         </>
       ) : lastScan.status === 'success' ? (
         <>
           <div className='bg-green-500 border-b border-stroke'>
-            <p className='text-on-accent text-lg font-bold p-2 truncate'>
+            <p className='text-on-accent text-lg font-bold p-2 pr-28 break-words'>
               {lastScan.ticket?.fullName}
             </p>
           </div>

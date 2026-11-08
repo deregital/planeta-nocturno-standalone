@@ -26,7 +26,11 @@ export function ScannerStatusBar({
 }) {
   const { status } = controller;
   const [now, setNow] = useState(() => Date.now());
-  const visible = status.mode !== 'off' || status.pending > 0;
+  const visible =
+    status.mode !== 'off' ||
+    status.pending > 0 ||
+    status.foreignPending > 0 ||
+    status.otherUserPending > 0;
 
   useEffect(() => {
     if (!visible) return;
@@ -43,7 +47,12 @@ export function ScannerStatusBar({
       : '';
   const foreign =
     status.foreignPending > 0
-      ? ` · ${status.foreignPending} de otra sesión`
+      ? ` · ${status.foreignPending} de otro evento`
+      : '';
+  // No se pueden subir con esta sesión: que esa persona abra el escáner acá.
+  const otherUser =
+    status.otherUserPending > 0
+      ? ` · ${status.otherUserPending} ${status.otherUserPending === 1 ? 'escaneo' : 'escaneos'} de otro usuario sin subir: que esa persona abra el escáner en este celular`
       : '';
 
   let tone: 'ok' | 'info' | 'warn' = 'info';
@@ -52,7 +61,13 @@ export function ScannerStatusBar({
 
   if (status.mode === 'off') {
     tone = 'warn';
-    text = `Subiendo escaneos pendientes${pending}`;
+    text =
+      status.pending > 0 || status.foreignPending > 0
+        ? `Subiendo escaneos pendientes${pending}`
+        : 'Modo normal';
+    if (status.pending === 0 && status.foreignPending === 0) {
+      icon = <CloudOff className='size-4' />;
+    }
   } else if (status.mode === 'shadow') {
     icon = <ShieldCheck className='size-4' />;
     text =
@@ -71,7 +86,13 @@ export function ScannerStatusBar({
   } else {
     switch (status.staleReason) {
       case 'loading':
+      case 'claiming':
         text = 'Preparando modo rápido…';
+        break;
+      case 'no-locks':
+        tone = 'warn';
+        icon = <CloudOff className='size-4' />;
+        text = 'Este navegador no permite el modo rápido: modo normal';
         break;
       case 'resync-after-wake':
         text = 'Sincronizando…';
@@ -113,6 +134,7 @@ export function ScannerStatusBar({
       <span>
         {text}
         {foreign}
+        {otherUser}
       </span>
     </div>
   );

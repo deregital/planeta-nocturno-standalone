@@ -258,7 +258,9 @@ export function ScannerSettings({
               {status.tickets} entradas en la lista · {status.pending}{' '}
               pendientes
               {status.foreignPending > 0 &&
-                ` · ${status.foreignPending} de otra sesión`}
+                ` · ${status.foreignPending} de otro evento`}
+              {status.otherUserPending > 0 &&
+                ` · ${status.otherUserPending} de otro usuario sin subir`}
             </p>
             <p>
               Última sincronización:{' '}

@@ -13,6 +13,7 @@ import {
   decideKnownTicket,
   isSelfRepeat,
   SELF_REPEAT_WINDOW_MS,
+  selfRepeatAttemptAt,
 } from '@/lib/scan/decision';
 import {
   decryptLegacyQr,
@@ -30,6 +31,7 @@ import {
   isUnexpectedScanError,
   NETWORK_RETRY_MS,
   OFFLINE_GRACE_MS,
+  SCAN_TIMEOUT_MS,
   ScanRequestError,
   scanErrorTexts,
   sendWithGrace,
@@ -170,6 +172,41 @@ describe('reescaneo propio', () => {
       }),
     );
   });
+
+  it('cuenta solo un intento anterior que no mostró decisión', () => {
+    // Pedido sin respuesta (ámbar) o todavía en vuelo: el "ya escaneado" puede
+    // ser ese mismo pedido.
+    assert.equal(
+      selfRepeatAttemptAt({ at: now - 20_000, outcome: 'error' }, now),
+      now - 20_000,
+    );
+    assert.equal(
+      selfRepeatAttemptAt({ at: now - 2_000, outcome: 'pending' }, now),
+      now - 2_000,
+    );
+    // La puerta ya vio el verde (o "Ya registrado"): otra lectura del mismo
+    // QR es otra presentación, por ejemplo una captura pasada a otra persona.
+    for (const outcome of [
+      'success',
+      'self-repeat',
+      'already-scanned',
+      'not-found',
+    ]) {
+      assert.equal(
+        selfRepeatAttemptAt({ at: now - 20_000, outcome }, now),
+        undefined,
+        outcome,
+      );
+    }
+    assert.equal(
+      selfRepeatAttemptAt(
+        { at: now - SELF_REPEAT_WINDOW_MS - 1, outcome: 'error' },
+        now,
+      ),
+      undefined,
+    );
+    assert.equal(selfRepeatAttemptAt(undefined, now), undefined);
+  });
 });
 
 describe('textos', () => {
@@ -306,11 +343,20 @@ describe('errores de escaneo', () => {
     );
   });
 
+  it('sin respuesta a tiempo: no afirma que no se registró', () => {
+    const texts = scanErrorTexts('TIMEOUT');
+    assert.match(texts.text, /no respondió a tiempo/);
+    assert.match(texts.extraInfo, /No se sabe si se registró/);
+    assert.match(texts.extraInfo, /volvé a escanearla/);
+    assert.doesNotMatch(texts.extraInfo, /La entrada no se registró/);
+  });
+
   it('solo lo inesperado va a Error Tracking', () => {
     assert.equal(isUnexpectedScanError('SERVER'), true);
     assert.equal(isUnexpectedScanError('UNKNOWN'), true);
     assert.equal(isUnexpectedScanError('OFFLINE'), false);
     assert.equal(isUnexpectedScanError('NETWORK'), false);
+    assert.equal(isUnexpectedScanError('TIMEOUT'), false);
     assert.equal(isUnexpectedScanError('SESSION_EXPIRED'), false);
   });
 });
@@ -360,8 +406,72 @@ describe('microcortes (sendWithGrace)', () => {
     let calls = 0;
     const out = await sendWithGrace(async () => ++calls, deps);
     assert.equal(out.result, 1);
-    assert.equal(out.retried, true);
+    // Esperar antes del primer envío no es un reintento: nada había salido.
+    assert.equal(out.retried, false);
     assert.deepEqual(state.waiting, [true, false]);
+  });
+
+  it('falla por red, se corta la red y vuelve: es un reintento', async () => {
+    const { deps, state } = network();
+    let calls = 0;
+    const out = await sendWithGrace(async () => {
+      calls += 1;
+      if (calls === 1) {
+        state.offlineUntil = deps.now() + 2_000;
+        throw networkError();
+      }
+      return 'ok';
+    }, deps);
+    assert.deepEqual(out, { result: 'ok', retried: true });
+  });
+
+  it('un pedido colgado se corta por tiempo: TIMEOUT, sin reintento', async () => {
+    const { deps } = network();
+    const timer = { fire: null as (() => void) | null, ms: -1 };
+    let calls = 0;
+    const pending = sendWithGrace(
+      (signal) => {
+        calls += 1;
+        // Como fetch: no responde nunca, salvo que lo corten.
+        return new Promise((_, reject) => {
+          signal.addEventListener('abort', () =>
+            reject(
+              Object.assign(new Error('aborted'), { name: 'TRPCClientError' }),
+            ),
+          );
+        });
+      },
+      {
+        ...deps,
+        schedule: (run, ms) => {
+          timer.fire = run;
+          timer.ms = ms;
+          return () => {};
+        },
+      },
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(timer.ms, SCAN_TIMEOUT_MS);
+    assert.ok(timer.fire, 'no programó el corte');
+    timer.fire();
+    await assert.rejects(
+      pending,
+      (error) => error instanceof ScanRequestError && error.code === 'TIMEOUT',
+    );
+    assert.equal(calls, 1);
+  });
+
+  it('el corte por tiempo se cancela cuando responde', async () => {
+    const { deps } = network();
+    let cancelled = 0;
+    const out = await sendWithGrace(async () => 'ok', {
+      ...deps,
+      schedule: () => () => {
+        cancelled += 1;
+      },
+    });
+    assert.equal(out.result, 'ok');
+    assert.equal(cancelled, 1);
   });
 
   it(`más de ${OFFLINE_GRACE_MS / 1000} s sin red: error OFFLINE, sin pedido`, async () => {

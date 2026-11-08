@@ -11,6 +11,7 @@ import {
 import {
   ALREADY_SCANNED_TEXT,
   alreadyScannedExtraInfo,
+  ownEntryInfo,
   SELF_REPEAT_TEXT,
   selfRepeatExtraInfo,
   successScanTexts,
@@ -126,6 +127,23 @@ export function localAlreadyScanned(
     ticket: displayTicket(evaluation, evaluation.ticket),
     decidedBy: 'local',
     mode: 'local',
+  };
+}
+
+/**
+ * "Ya escaneado" de una entrada que entró por este celular hace poco: sigue
+ * siendo un rechazo, con el dato para que la puerta reconozca a la persona.
+ */
+export function withOwnEntryInfo(
+  result: ScanDisplayResult,
+  ownEntryAt: number | undefined,
+  now: number,
+): ScanDisplayResult {
+  if (ownEntryAt === undefined) return result;
+  const own = ownEntryInfo((now - ownEntryAt) / 1000);
+  return {
+    ...result,
+    extraInfo: result.extraInfo ? `${result.extraInfo} · ${own}` : own,
   };
 }
 

@@ -8,6 +8,8 @@ export type ScanErrorCode =
   | 'OFFLINE'
   /** El pedido salió y no volvió (red caída a mitad de camino, servidor inalcanzable). */
   | 'NETWORK'
+  /** El pedido salió y no hubo respuesta a tiempo: no se sabe si se registró. */
+  | 'TIMEOUT'
   | 'SESSION_EXPIRED'
   | 'FORBIDDEN'
   /** El servidor respondió con un error propio (500). */
@@ -87,18 +89,34 @@ export function classifyRequestError(
 export const OFFLINE_GRACE_MS = 10_000;
 /** Espera entre reintentos cuando el pedido falla por red. */
 export const NETWORK_RETRY_MS = 1_000;
+/**
+ * Tope para tener una decisión desde que se leyó el QR. Un pedido colgado
+ * (2G, red que se cayó a mitad de camino) se corta acá: la puerta no queda
+ * esperando lo que tarde el navegador en darlo por perdido.
+ */
+export const SCAN_TIMEOUT_MS = 12_000;
+
+const TIMED_OUT = 'scan-timeout';
+
+function scheduleTimeout(run: () => void, ms: number) {
+  const timer = setTimeout(run, ms);
+  return () => clearTimeout(timer);
+}
 
 /**
  * Manda un escaneo al servidor tolerando microcortes. Sin red espera a que
  * vuelva; si el pedido falla por red, reintenta. Todo dentro de `graceMs`
  * desde el escaneo; pasado el margen, `ScanRequestError` con código claro.
+ * Un pedido que no responde se corta a los `timeoutMs` desde el escaneo
+ * (TIMEOUT): `send` recibe la señal y tiene que pasársela al pedido.
  *
- * Reintentar es seguro: si el primer pedido llegó y se perdió la respuesta,
- * el servidor contesta "ya escaneado" por este usuario (`scannedByMe`) y la
- * puerta lo ve como "Ya registrado" (`retried` permite reconocerlo).
+ * Reintentar es seguro: si un pedido llegó y se perdió la respuesta, el
+ * servidor contesta "ya escaneado" por este usuario (`scannedByMe`) y la
+ * puerta lo ve como "Ya registrado" (`retried` permite reconocerlo). Esperar
+ * a la red antes del primer envío no es un reintento: nada salió todavía.
  */
 export async function sendWithGrace<T>(
-  send: () => Promise<T>,
+  send: (signal: AbortSignal) => Promise<T>,
   deps: {
     isOnline: () => boolean;
     /** Resuelve true si volvió la red antes de `deadline` (ms epoch). */
@@ -106,13 +124,19 @@ export async function sendWithGrace<T>(
     sleep: (ms: number) => Promise<void>;
     now?: () => number;
     graceMs?: number;
+    timeoutMs?: number;
+    /** Programa el corte por tiempo; devuelve cómo cancelarlo (para pruebas). */
+    schedule?: (run: () => void, ms: number) => () => void;
     fallbackReason?: string;
     /** Avisa cuando el escaneo queda esperando a la red (para la pantalla). */
     onWaiting?: (waiting: boolean) => void;
   },
 ): Promise<{ result: T; retried: boolean }> {
   const now = deps.now ?? Date.now;
-  const deadline = now() + (deps.graceMs ?? OFFLINE_GRACE_MS);
+  const startedAt = now();
+  const deadline = startedAt + (deps.graceMs ?? OFFLINE_GRACE_MS);
+  const timeoutAt = startedAt + (deps.timeoutMs ?? SCAN_TIMEOUT_MS);
+  const schedule = deps.schedule ?? scheduleTimeout;
   let retried = false;
   const fail = (code: ScanErrorCode, cause?: unknown, serverMessage?: string) =>
     new ScanRequestError(code, {
@@ -126,11 +150,17 @@ export async function sendWithGrace<T>(
       if (!deps.isOnline()) {
         deps.onWaiting?.(true);
         if (!(await deps.waitForOnline(deadline))) throw fail('OFFLINE');
-        retried = true;
       }
+      const controller = new AbortController();
+      const cancelTimeout = schedule(
+        () => controller.abort(TIMED_OUT),
+        Math.max(0, timeoutAt - now()),
+      );
       try {
-        return { result: await send(), retried };
+        return { result: await send(controller.signal), retried };
       } catch (error) {
+        if (controller.signal.reason === TIMED_OUT)
+          throw fail('TIMEOUT', error);
         const classified = classifyRequestError(error, {
           online: deps.isOnline(),
         });
@@ -142,6 +172,8 @@ export async function sendWithGrace<T>(
         deps.onWaiting?.(true);
         retried = true;
         if (deps.isOnline()) await deps.sleep(NETWORK_RETRY_MS);
+      } finally {
+        cancelTimeout();
       }
     }
   } finally {
@@ -181,6 +213,11 @@ export function scanErrorTexts(
       return {
         text: 'No se pudo conectar con el servidor',
         extraInfo: `${notInList}${NOT_REGISTERED}. Revisá la conexión y volvé a escanearla.`,
+      };
+    case 'TIMEOUT':
+      return {
+        text: 'El servidor no respondió a tiempo',
+        extraInfo: `${notInList}No se sabe si se registró: volvé a escanearla. Si ya había entrado por este celular, aparece como "Ya registrado".`,
       };
     case 'SESSION_EXPIRED':
       return {

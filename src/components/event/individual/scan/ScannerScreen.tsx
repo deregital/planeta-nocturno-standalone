@@ -34,20 +34,26 @@ export function ScannerScreen({
   topLeft?: ReactNode;
 }) {
   const [lastScans, setLastScans] = useState<ScanDisplayResult[]>([]);
-  const scanMutation = trpc.emittedTickets.scan.useMutation({
-    // Nunca pausar en silencio porque el navegador cree que no hay red: que
-    // el pedido salga y, si falla, se vea el error (lo arma `onScanSuccessAction`).
-    networkMode: 'always',
-  });
+  // Cliente directo (sin la cola de react-query): el pedido sale aunque el
+  // navegador crea que no hay red, y se puede cortar si queda colgado.
+  const utils = trpc.useUtils();
+  const [scanInFlight, setScanInFlight] = useState(false);
 
-  const mutateRef = useRef(scanMutation.mutateAsync);
-  mutateRef.current = scanMutation.mutateAsync;
   const eventIdsRef = useRef(eventIds);
   eventIdsRef.current = eventIds;
   const onlineScan = useCallback(
-    (barcode: string) =>
-      mutateRef.current({ eventIds: eventIdsRef.current, barcode }),
-    [],
+    async (barcode: string, signal: AbortSignal) => {
+      setScanInFlight(true);
+      try {
+        return await utils.client.emittedTickets.scan.mutate(
+          { eventIds: eventIdsRef.current, barcode },
+          { signal },
+        );
+      } finally {
+        setScanInFlight(false);
+      }
+    },
+    [utils],
   );
   const controller = useScanController({ eventIds, onlineScan });
   const statusRef = useRef(controller.status);
@@ -114,7 +120,7 @@ export function ScannerScreen({
         <LastScansHistory lastScans={lastScans} />
       </div>
       <QRCodeScanner
-        isLoading={scanMutation.isPending || controller.waitingForNetwork}
+        isLoading={scanInFlight || controller.waitingForNetwork}
         paused={blocked}
         notice={
           blocked

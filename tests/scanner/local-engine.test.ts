@@ -12,9 +12,13 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, it } from 'node:test';
 
 import {
+  CONFIG_CHECK_MS,
   LocalScanEngine,
   type EngineEvent,
+  type LeaderState,
+  NETWORK_RESET_MIN_MS,
   PENDING_MAX_BACKOFF_MS,
+  SNAPSHOT_REFRESH_MS,
   type ScannerTransport,
   type SnapshotPayload,
   type SyncPayload,
@@ -64,8 +68,22 @@ class FakeServer implements ScannerTransport {
   hang = false;
   /** Registra pero la respuesta no llega (se corta en el camino). */
   loseNextResponse = false;
+  /** Solo la sincronización falla (la tabla baja bien). */
+  failSync = false;
+  /** Subidas de estos eventos dan FORBIDDEN (el usuario ya no está asignado). */
+  forbiddenEvents = new Set<string>();
+  /** La tabla se arma al pedirla pero llega recién con `releaseSnapshot()`. */
+  holdSnapshot = false;
+  private heldSnapshots: (() => void)[] = [];
   syncCalls: SyncRequest[] = [];
+  snapshotCalls = 0;
+  forbiddenCalls = 0;
+  aborted = 0;
   registrations = 0;
+
+  releaseSnapshot() {
+    for (const release of this.heldSnapshots.splice(0)) release();
+  }
 
   constructor(private clock: Clock) {}
 
@@ -124,13 +142,20 @@ class FakeServer implements ScannerTransport {
   }
 
   async snapshot(): Promise<SnapshotPayload> {
+    this.snapshotCalls += 1;
     if (this.down)
       throw Object.assign(new Error('fetch failed'), {
         name: 'TRPCClientError',
       });
-    if (this.config.mode === 'off') throw new Error('PRECONDITION_FAILED');
+    if (this.config.mode === 'off') {
+      throw Object.assign(new Error('El modo local está apagado'), {
+        name: 'TRPCClientError',
+        data: { code: 'PRECONDITION_FAILED', httpStatus: 412 },
+      });
+    }
+    // Se arma con el estado de este momento, aunque llegue más tarde.
     const now = new Date(this.clock.server).toISOString();
-    return {
+    const payload: SnapshotPayload = {
       serverNow: now,
       cursor: now,
       config: this.config,
@@ -139,6 +164,10 @@ class FakeServer implements ScannerTransport {
       types: this.types(),
       tickets: [...this.tickets.values()].map((t) => this.row(t)),
     };
+    if (this.holdSnapshot) {
+      await new Promise<void>((resolve) => this.heldSnapshots.push(resolve));
+    }
+    return payload;
   }
 
   async sync(
@@ -147,15 +176,23 @@ class FakeServer implements ScannerTransport {
   ): Promise<SyncPayload> {
     if (this.hang) {
       return new Promise((_, reject) => {
-        options?.signal?.addEventListener('abort', () =>
-          reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
-        );
+        options?.signal?.addEventListener('abort', () => {
+          this.aborted += 1;
+          reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+        });
       });
     }
-    if (this.down)
+    if (this.down || this.failSync)
       throw Object.assign(new Error('fetch failed'), {
         name: 'TRPCClientError',
       });
+    if (input.eventIds.some((id) => this.forbiddenEvents.has(id))) {
+      this.forbiddenCalls += 1;
+      throw Object.assign(new Error('No tenés acceso a este evento'), {
+        name: 'TRPCClientError',
+        data: { code: 'FORBIDDEN', httpStatus: 403 },
+      });
+    }
     this.syncCalls.push(input);
     const results = input.scans.map((scan) => {
       const known = this.receipts.get(scan.id);
@@ -235,8 +272,16 @@ let server: FakeServer;
 let store: MemoryOutboxStore;
 let events: EngineEvent[];
 
-function makeEngine(extra: { isOnline?: () => boolean } = {}) {
-  return new LocalScanEngine({
+function makeEngine(
+  extra: {
+    isOnline?: () => boolean;
+    available?: boolean;
+    /** Por defecto es la única pestaña (como si el lock ya estuviera). */
+    leader?: LeaderState;
+  } = {},
+) {
+  const { leader = 'leader', ...options } = extra;
+  const engine = new LocalScanEngine({
     transport: server,
     store,
     userId: USER,
@@ -244,8 +289,10 @@ function makeEngine(extra: { isOnline?: () => boolean } = {}) {
     deviceId: 'device-1',
     now: clock.device,
     onEvent: (event) => events.push(event),
-    ...extra,
+    ...options,
   });
+  engine.setLeader(leader);
+  return engine;
 }
 
 async function readyEngine() {
@@ -379,6 +426,7 @@ describe('motor local', () => {
     server.down = true;
     engine.onVisible();
     await engine.poll();
+    await settle(); // termina el intento fallido que disparó la vuelta
     assert.equal(engine.canDecideLocally(), false);
     assert.equal(engine.getStatus().staleReason, 'resync-after-wake');
     server.down = false;
@@ -474,7 +522,7 @@ describe('motor local', () => {
   it('otra pestaña tiene el escáner: esta no decide', async () => {
     server.addTicket('Ana');
     const engine = await readyEngine();
-    engine.setLeader(false);
+    engine.setLeader('follower');
     assert.equal(engine.canDecideLocally(), false);
     assert.equal(engine.getStatus().staleReason, 'not-leader');
   });
@@ -514,6 +562,10 @@ describe('motor local', () => {
     await second.start(server.config, { tick: false });
     assert.equal(server.registrations, 0);
     assert.equal(store.entries.size, 1);
+    // No se suben, pero se avisan: no son de esta sesión ni de otro evento.
+    assert.equal(second.getStatus().otherUserPending, 1);
+    assert.equal(second.getStatus().pending, 0);
+    assert.equal(second.getStatus().foreignPending, 0);
   });
 
   it('celular con la hora corrida: la hora del escaneo sale corregida', async () => {
@@ -620,5 +672,276 @@ describe('vuelta de la red', () => {
     clock.advance(PENDING_MAX_BACKOFF_MS);
     await engine.poll();
     assert.equal(engine.getStatus().pending, 0, 'esperó más de 5 s');
+  });
+});
+
+describe('subidas de otros eventos', () => {
+  it('pendientes de otro evento que fallan no frenan esta puerta', async () => {
+    const otherEvent = randomUUID();
+    const ana = server.addTicket('Ana');
+    // Un escaneo de otro evento (ayer) que nunca subió, y al usuario lo
+    // desasignaron de ese evento.
+    const old = {
+      id: randomUUID(),
+      code: encryptString(randomUUID()),
+      at: clock.server - 86_400_000,
+      userId: USER,
+      eventIds: [otherEvent],
+      hash: 'hash-viejo',
+      createdAt: clock.server - 86_400_000,
+    };
+    store.entries.set(old.id, old);
+    server.forbiddenEvents.add(otherEvent);
+
+    const engine = await readyEngine();
+    assert.equal(engine.getStatus().foreignPending, 1);
+    await commit(engine, ana.code);
+    await engine.poll();
+    assert.equal(
+      server.tickets.get(ana.id)!.scanned,
+      true,
+      'no subió lo de esta puerta',
+    );
+    assert.equal(engine.getStatus().pending, 0);
+    assert.equal(engine.getStatus().consecutiveFailures, 0);
+    assert.equal(engine.canDecideLocally(), true);
+    // Lo viejo queda guardado (es un ingreso) y se reintenta de a poco.
+    assert.equal(engine.getStatus().foreignPending, 1);
+    assert.ok(store.entries.has(old.id));
+    const tries = server.forbiddenCalls;
+    for (let i = 0; i < 3; i += 1) {
+      clock.advance(1_000);
+      await engine.poll();
+    }
+    assert.equal(server.forbiddenCalls, tries, 'reintentó sin esperar');
+
+    // Lo vuelven a asignar: sube.
+    server.forbiddenEvents.clear();
+    clock.advance(5 * 60_000);
+    await engine.poll();
+    assert.equal(engine.getStatus().foreignPending, 0);
+    assert.ok(!store.entries.has(old.id));
+  });
+});
+
+describe('tabla que llega tarde', () => {
+  it('no deshace un ingreso propio ya confirmado', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    clock.advance(SNAPSHOT_REFRESH_MS);
+    await engine.poll(); // toca recargar la tabla
+    server.holdSnapshot = true;
+    // La tabla se arma ahora (Ana sin escanear) y tarda en llegar.
+    const refreshing = engine.poll();
+    await settle();
+    // Mientras tanto Ana entra por este celular y se confirma.
+    await commit(engine, ana.code);
+    await engine.poll();
+    assert.equal(engine.getStatus().pending, 0);
+    assert.equal(server.registrations, 1);
+
+    server.holdSnapshot = false;
+    server.releaseSnapshot();
+    await refreshing;
+    const again = await engine.evaluate(ana.code);
+    assert.equal(
+      again.kind === 'known' && again.decision.status,
+      'already-scanned',
+      'la tabla vieja la dejó entrar de nuevo',
+    );
+  });
+
+  it('no deshace un ingreso de otro celular que llegó en las novedades', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    clock.advance(SNAPSHOT_REFRESH_MS);
+    await engine.poll();
+    server.holdSnapshot = true;
+    const refreshing = engine.poll();
+    await settle();
+    server.scanElsewhere(ana.id);
+    clock.advance(11_000);
+    await engine.poll(); // las novedades traen el ingreso
+    server.holdSnapshot = false;
+    server.releaseSnapshot();
+    await refreshing;
+    const again = await engine.evaluate(ana.code);
+    assert.equal(
+      again.kind === 'known' && again.decision.status,
+      'already-scanned',
+    );
+  });
+
+  it('al reabrir con pendientes, la tabla que llega después de subirlos los mantiene', async () => {
+    const ana = server.addTicket('Ana');
+    const first = await readyEngine();
+    server.down = true;
+    await commit(first, ana.code);
+    first.stop();
+
+    server.down = false;
+    server.holdSnapshot = true;
+    const second = makeEngine();
+    // Pide la tabla (Ana sin escanear en el servidor) y queda en camino.
+    const starting = second.start(server.config, { tick: false });
+    await settle();
+    await second.poll(); // mientras tanto sube el pendiente
+    assert.equal(server.registrations, 1);
+    assert.equal(second.getStatus().pending, 0);
+
+    server.holdSnapshot = false;
+    server.releaseSnapshot();
+    await starting;
+    const again = await second.evaluate(ana.code);
+    assert.equal(
+      again.kind === 'known' && again.decision.status,
+      'already-scanned',
+    );
+  });
+
+  it('multiescaneo: los escaneos sin subir siguen contando al recargar', async () => {
+    const pulsera = server.addTicket('Pulsera', MULTI_TYPE);
+    server.scanElsewhere(pulsera.id);
+    server.scanElsewhere(pulsera.id); // 2 en el servidor
+    const engine = await readyEngine();
+    server.failSync = true;
+    await commit(engine, pulsera.code);
+    await commit(engine, pulsera.code); // 2 sin subir
+    clock.advance(SNAPSHOT_REFRESH_MS);
+    await engine.poll(); // toca recargar
+    await engine.poll(); // recarga: el servidor dice 2
+    assert.ok(server.snapshotCalls >= 2, 'no recargó');
+    const evaluation = await engine.evaluate(pulsera.code);
+    assert.ok(evaluation.kind === 'known');
+    assert.equal(evaluation.ticket.scanCount, 4);
+    assert.deepEqual(evaluation.decision, { status: 'success', scanNumber: 5 });
+  });
+
+  it('multiescaneo: al reabrir con pendientes, la tabla nueva los cuenta', async () => {
+    const pulsera = server.addTicket('Pulsera', MULTI_TYPE);
+    server.scanElsewhere(pulsera.id);
+    const first = await readyEngine();
+    server.failSync = true;
+    await commit(first, pulsera.code);
+    first.stop();
+
+    const second = makeEngine();
+    await second.start(server.config, { tick: false });
+    const evaluation = await second.evaluate(pulsera.code);
+    assert.ok(evaluation.kind === 'known');
+    assert.equal(evaluation.ticket.scanCount, 2);
+  });
+});
+
+describe('modo apagado', () => {
+  it('no pide la tabla una y otra vez después del botón de apagado', async () => {
+    const ana = server.addTicket('Ana');
+    server.addTicket('Beto');
+    const engine = await readyEngine();
+    // Se borra una entrada (toca recargar la tabla) y justo apagan el modo.
+    server.tickets.delete(ana.id);
+    server.config = { mode: 'off', maxStaleSeconds: 60 };
+    clock.advance(11_000);
+    await engine.poll();
+    assert.equal(engine.getStatus().mode, 'off');
+    const calls = server.snapshotCalls;
+    for (let i = 0; i < 10; i += 1) {
+      clock.advance(60_000);
+      await engine.poll();
+    }
+    assert.equal(
+      server.snapshotCalls,
+      calls,
+      'pidió la tabla con el modo apagado',
+    );
+  });
+
+  it('si rechazan la tabla porque el modo se apagó, queda en normal sin reintentar', async () => {
+    server.addTicket('Ana');
+    server.config = { mode: 'off', maxStaleSeconds: 60 };
+    const engine = makeEngine();
+    // El celular arrancó con la configuración vieja (rápido).
+    await engine.start({ mode: 'local', maxStaleSeconds: 60 }, { tick: false });
+    assert.equal(engine.getStatus().mode, 'off');
+    assert.equal(engine.getStatus().phase, 'idle');
+    const calls = server.snapshotCalls;
+    for (let i = 0; i < 5; i += 1) {
+      clock.advance(60_000);
+      await engine.poll();
+    }
+    assert.equal(server.snapshotCalls, calls);
+  });
+
+  it('se entera cuando lo prenden, sin recargar la página', async () => {
+    const ana = server.addTicket('Ana');
+    server.config = { mode: 'off', maxStaleSeconds: 60 };
+    const engine = makeEngine();
+    await engine.start(server.config, { tick: false });
+    assert.equal(engine.getStatus().mode, 'off');
+
+    server.config = { mode: 'local', maxStaleSeconds: 60 };
+    clock.advance(CONFIG_CHECK_MS);
+    await engine.poll(); // pregunta la configuración
+    await engine.poll(); // baja la tabla
+    assert.equal(engine.getStatus().mode, 'local');
+    assert.equal(engine.getStatus().phase, 'ready');
+    assert.equal((await engine.evaluate(ana.code)).kind, 'known');
+  });
+
+  it('sin el modo local en la instalación no pregunta la configuración', async () => {
+    server.config = { mode: 'off', maxStaleSeconds: 60 };
+    const engine = makeEngine({ available: false });
+    await engine.start(server.config, { tick: false });
+    for (let i = 0; i < 5; i += 1) {
+      clock.advance(CONFIG_CHECK_MS);
+      await engine.poll();
+    }
+    assert.equal(server.syncCalls.length, 0);
+  });
+});
+
+describe('red que cambia seguido', () => {
+  it('avisos de cambio de red seguidos no cortan una y otra vez', async () => {
+    const ana = server.addTicket('Ana');
+    const engine = await readyEngine();
+    server.hang = true;
+    await commit(engine, ana.code); // el pedido queda colgado
+    void engine.onNetworkBack(); // corta y reintenta (se vuelve a colgar)
+    await settle();
+    assert.equal(server.aborted, 1);
+
+    clock.advance(1_000);
+    await engine.onNetworkBack(); // otro aviso enseguida
+    await settle();
+    assert.equal(server.aborted, 1, 'volvió a cortar enseguida');
+
+    clock.advance(NETWORK_RESET_MIN_MS);
+    void engine.onNetworkBack();
+    await settle();
+    assert.equal(server.aborted, 2);
+    engine.stop();
+  });
+});
+
+describe('una sola pestaña decide', () => {
+  it('hasta saber si es la única pestaña no decide; sin Web Locks, tampoco', async () => {
+    server.addTicket('Ana');
+    const engine = makeEngine({ leader: 'unknown' });
+    await engine.start(server.config, { tick: false });
+    assert.equal(engine.canDecideLocally(), false);
+    assert.equal(engine.getStatus().staleReason, 'claiming');
+    engine.setLeader('unsupported');
+    assert.equal(engine.canDecideLocally(), false);
+    assert.equal(engine.getStatus().staleReason, 'no-locks');
+    engine.setLeader('leader');
+    assert.equal(engine.canDecideLocally(), true);
+  });
+
+  it('en modo sombra la pestaña no importa', async () => {
+    server.addTicket('Ana');
+    server.config = { mode: 'shadow', maxStaleSeconds: 60 };
+    const engine = makeEngine({ leader: 'unknown' });
+    await engine.start(server.config, { tick: false });
+    assert.equal(engine.getStatus().staleReason, null);
   });
 });

@@ -27,7 +27,10 @@ import {
   insertUser,
 } from '@tests/load/lib/seed';
 import { decryptLegacyQr, importLegacyQrKey } from '@/lib/scan/legacy-qr';
-import { SCANNER_MIGRATION_MISSING_MESSAGE } from '@/server/routers/scanner';
+import {
+  entryTime,
+  SCANNER_MIGRATION_MISSING_MESSAGE,
+} from '@/server/routers/scanner';
 import { serverTicketHash } from '@/server/utils/scanner-crypto';
 import { encryptString } from '@/server/utils/utils';
 
@@ -498,6 +501,114 @@ describe('sincronización', () => {
     } finally {
       await setMode(eventA, 'local');
     }
+  });
+
+  it('con el modo apagado no baja la tabla, aunque pida desde el principio', async () => {
+    const fromStart = '1970-01-01T00:00:00.000Z';
+    await setMode(eventA, 'off');
+    try {
+      const off = await push(door(), [], fromStart);
+      assert.equal(off.config.mode, 'off');
+      assert.equal(off.delta, null, 'bajó la tabla con el modo apagado');
+    } finally {
+      await setMode(eventA, 'local');
+    }
+
+    process.env.SCANNER_LOCAL_MODE_ENABLED = 'false';
+    try {
+      const disabled = await push(door(), [], fromStart);
+      assert.equal(disabled.config.mode, 'off');
+      assert.equal(disabled.delta, null, 'bajó la tabla sin la instalación');
+    } finally {
+      process.env.SCANNER_LOCAL_MODE_ENABLED = 'true';
+    }
+
+    const on = await push(door(), [], fromStart);
+    assert.ok(on.delta && on.delta.added.length > 0);
+  });
+
+  it('el reintento de un doble ingreso responde lo mismo que la primera vez', async () => {
+    const ticket = ticketsA[8];
+    await push(door(), [{ id: randomUUID(), code: encryptString(ticket) }]);
+    const scan = { id: randomUUID(), code: encryptString(ticket) };
+    const first = await push(door2(), [scan]);
+    const replay = await push(door2(), [scan]);
+    assert.equal(first.results[0].outcome, 'duplicate');
+    assert.equal(first.results[0].scannedByMe, false);
+    assert.match(first.results[0].scannedAt ?? '', /^\d{4}-\d\d-\d\dT.+Z$/);
+    assert.deepEqual(replay.results[0], first.results[0]);
+    assert.equal(await scanRows(ticket), 1);
+  });
+
+  it('el reintento de un ingreso responde la misma hora', async () => {
+    const scan = { id: randomUUID(), code: encryptString(ticketsA[10]) };
+    const first = await push(door(), [scan]);
+    const replay = await push(door(), [scan]);
+    assert.deepEqual(replay.results[0], first.results[0]);
+  });
+
+  it('un escaneo que sube tarde queda con la hora del ingreso y llega a los otros celulares', async () => {
+    const ticket = ticketsA[9];
+    const other = await push(door2(), [], new Date().toISOString());
+    const enteredAt = Date.now() - 2 * 60 * 60 * 1000; // hace 2 h, sin red
+    const result = await push(door(), [
+      { id: randomUUID(), code: encryptString(ticket), at: enteredAt },
+    ]);
+    assert.equal(result.results[0].outcome, 'registered');
+    assert.equal(
+      result.results[0].scannedAt,
+      new Date(enteredAt).toISOString(),
+    );
+    const { rows } = await load.raw.query(
+      `SELECT t."scannedAt" AS ticket_at, s."scannedAt" AS scan_at
+       FROM "emittedTicket" t JOIN "emittedTicketScan" s ON s."emittedTicketId" = t.id
+       WHERE t.id = $1`,
+      [ticket],
+    );
+    assert.equal(new Date(rows[0].ticket_at).getTime(), enteredAt);
+    assert.equal(new Date(rows[0].scan_at).getTime(), enteredAt);
+
+    // La hora es anterior al cursor del otro celular: igual se entera.
+    const later = await push(door2(), [], other.cursor);
+    const row = later.delta?.scans.find(
+      (s) => s[0] === serverTicketHash(ticket),
+    );
+    assert.ok(row, 'el otro celular no se enteró del ingreso');
+    assert.equal(row[1], true);
+    assert.equal(row[2], new Date(enteredAt).toISOString());
+    assert.equal(row[3], 1);
+  });
+
+  it('una hora de ingreso que no es creíble usa la del servidor', () => {
+    const now = Date.parse('2026-11-09T03:00:00.000Z');
+    assert.equal(entryTime(now - 60_000, now), '2026-11-09T02:59:00.000Z');
+    assert.equal(entryTime(now + 60_000, now), '2026-11-09T03:00:00.000Z');
+    assert.equal(
+      entryTime(now - 30 * 24 * 60 * 60 * 1000, now),
+      '2026-11-09T03:00:00.000Z',
+    );
+    assert.equal(entryTime(Number.NaN, now), '2026-11-09T03:00:00.000Z');
+  });
+
+  it('multiescaneo: un escaneo viejo que llega tarde no atrasa el último', async () => {
+    const now = Date.now();
+    await push(door(), [
+      { id: randomUUID(), code: encryptString(multiTicket), at: now },
+    ]);
+    const late = await push(door2(), [
+      {
+        id: randomUUID(),
+        code: encryptString(multiTicket),
+        at: now - 60 * 60 * 1000,
+      },
+    ]);
+    assert.equal(late.results[0].outcome, 'registered');
+    const { rows } = await load.raw.query(
+      `SELECT "scannedAt", "scannedByUserId" FROM "emittedTicket" WHERE id = $1`,
+      [multiTicket],
+    );
+    assert.equal(new Date(rows[0].scannedAt).getTime(), now);
+    assert.equal(rows[0].scannedByUserId, doorId);
   });
 
   it('sin acceso al evento: prohibido', async () => {
