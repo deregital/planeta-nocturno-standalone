@@ -28,8 +28,11 @@ import {
 import {
   classifyRequestError,
   isUnexpectedScanError,
+  NETWORK_RETRY_MS,
+  OFFLINE_GRACE_MS,
   ScanRequestError,
   scanErrorTexts,
+  sendWithGrace,
   type ScanErrorCode,
 } from '@/lib/scan/scan-errors';
 import { successScanTexts } from '@/lib/scan/scan-texts';
@@ -309,5 +312,121 @@ describe('errores de escaneo', () => {
     assert.equal(isUnexpectedScanError('OFFLINE'), false);
     assert.equal(isUnexpectedScanError('NETWORK'), false);
     assert.equal(isUnexpectedScanError('SESSION_EXPIRED'), false);
+  });
+});
+
+describe('microcortes (sendWithGrace)', () => {
+  /** Red y reloj simulados: `offlineUntil` es cuándo vuelve la red. */
+  function network({ offlineUntil = 0 } = {}) {
+    let now = 1_000_000;
+    const state = {
+      offlineUntil: now + offlineUntil,
+      waiting: [] as boolean[],
+    };
+    return {
+      state,
+      deps: {
+        now: () => now,
+        isOnline: () => now >= state.offlineUntil,
+        sleep: async (ms: number) => {
+          now += ms;
+        },
+        waitForOnline: async (deadline: number) => {
+          if (now >= state.offlineUntil) return true;
+          if (state.offlineUntil < deadline) {
+            now = state.offlineUntil;
+            return true;
+          }
+          now = deadline;
+          return false;
+        },
+        onWaiting: (waiting: boolean) => state.waiting.push(waiting),
+      },
+    };
+  }
+  const networkError = () =>
+    Object.assign(new Error('Failed to fetch'), { name: 'TRPCClientError' });
+
+  it('con red, un solo pedido y sin esperar', async () => {
+    const { deps, state } = network();
+    let calls = 0;
+    const out = await sendWithGrace(async () => ++calls, deps);
+    assert.deepEqual(out, { result: 1, retried: false });
+    assert.deepEqual(state.waiting, [false]);
+  });
+
+  it('un microcorte de 3 s: espera y lo manda cuando vuelve', async () => {
+    const { deps, state } = network({ offlineUntil: 3_000 });
+    let calls = 0;
+    const out = await sendWithGrace(async () => ++calls, deps);
+    assert.equal(out.result, 1);
+    assert.equal(out.retried, true);
+    assert.deepEqual(state.waiting, [true, false]);
+  });
+
+  it(`más de ${OFFLINE_GRACE_MS / 1000} s sin red: error OFFLINE, sin pedido`, async () => {
+    const { deps } = network({ offlineUntil: OFFLINE_GRACE_MS + 5_000 });
+    let calls = 0;
+    await assert.rejects(
+      sendWithGrace(async () => ++calls, {
+        ...deps,
+        fallbackReason: 'unknown',
+      }),
+      (error) => {
+        assert.ok(error instanceof ScanRequestError);
+        assert.equal(error.code, 'OFFLINE');
+        assert.equal(error.fallbackReason, 'unknown');
+        return true;
+      },
+    );
+    assert.equal(calls, 0);
+  });
+
+  it('el pedido falla por red: reintenta y entra', async () => {
+    const { deps } = network();
+    let calls = 0;
+    const out = await sendWithGrace(async () => {
+      calls += 1;
+      if (calls < 3) throw networkError();
+      return 'ok';
+    }, deps);
+    assert.deepEqual(out, { result: 'ok', retried: true });
+    assert.equal(calls, 3);
+  });
+
+  it('si la red sigue fallando, corta al pasar el margen con NETWORK', async () => {
+    const { deps } = network();
+    let calls = 0;
+    await assert.rejects(
+      sendWithGrace(async () => {
+        calls += 1;
+        throw networkError();
+      }, deps),
+      (error) => error instanceof ScanRequestError && error.code === 'NETWORK',
+    );
+    assert.ok(calls <= OFFLINE_GRACE_MS / NETWORK_RETRY_MS);
+    assert.ok(calls > 1);
+  });
+
+  it('un rechazo o error del servidor no se reintenta', async () => {
+    const { deps } = network();
+    for (const [code, httpStatus, expected] of [
+      ['INTERNAL_SERVER_ERROR', 500, 'SERVER'],
+      ['FORBIDDEN', 403, 'FORBIDDEN'],
+      ['UNAUTHORIZED', 401, 'SESSION_EXPIRED'],
+    ] as const) {
+      let calls = 0;
+      await assert.rejects(
+        sendWithGrace(async () => {
+          calls += 1;
+          throw Object.assign(new Error('x'), {
+            name: 'TRPCClientError',
+            data: { code, httpStatus },
+          });
+        }, deps),
+        (error) => error instanceof ScanRequestError && error.code === expected,
+      );
+      assert.equal(calls, 1, code);
+    }
   });
 });

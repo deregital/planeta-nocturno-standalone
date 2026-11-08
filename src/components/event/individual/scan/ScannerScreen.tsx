@@ -13,7 +13,7 @@ import {
   scanErrorResult,
   type ScanDisplayResult,
 } from '@/components/event/individual/scan/scan-result';
-import { useOnline } from '@/components/event/individual/scan/useOnline';
+import { useNetwork } from '@/components/event/individual/scan/useNetwork';
 import { useScanController } from '@/components/event/individual/scan/useScanController';
 import {
   isUnexpectedScanError,
@@ -53,13 +53,14 @@ export function ScannerScreen({
   const statusRef = useRef(controller.status);
   statusRef.current = controller.status;
 
-  // Sin red, solo se puede escanear si el celular decide solo (modo rápido al
-  // día). Si no, la cámara no lee: nada queda en espera para registrarse
-  // después sin que nadie lo vea.
-  const online = useOnline();
+  // Un microcorte no bloquea: el escaneo espera a la red o reintenta (hasta
+  // OFFLINE_GRACE_MS). Con más tiempo sin red, solo se escanea si el celular
+  // decide solo (modo rápido al día); si no, la cámara no lee y nada queda en
+  // espera para registrarse después sin que nadie lo vea.
+  const { online, offlineLong } = useNetwork();
   const decidesLocally =
     controller.status.mode === 'local' && controller.status.canDecide;
-  const blocked = !online && !decidesLocally;
+  const blocked = offlineLong && !decidesLocally;
 
   const getHealthExtra = useCallback(() => {
     const status = statusRef.current;
@@ -113,8 +114,15 @@ export function ScannerScreen({
         <LastScansHistory lastScans={lastScans} />
       </div>
       <QRCodeScanner
-        isLoading={scanMutation.isPending}
+        isLoading={scanMutation.isPending || controller.waitingForNetwork}
         paused={blocked}
+        notice={
+          blocked
+            ? 'Sin conexión'
+            : controller.waitingForNetwork
+              ? 'Esperando conexión…'
+              : undefined
+        }
         mode={controller.status.mode}
         getHealthExtra={getHealthExtra}
         onScanSuccessAction={onScan}

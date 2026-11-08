@@ -53,6 +53,7 @@ export function QRCodeScanner({
   onScanSuccessAction,
   isLoading,
   paused = false,
+  notice,
   mode = 'off',
   getHealthExtra,
 }: {
@@ -60,6 +61,8 @@ export function QRCodeScanner({
   isLoading: boolean;
   /** Sin red y sin poder decidir en el celular: la cámara no lee. */
   paused?: boolean;
+  /** Cartel sobre la cámara (sin conexión, esperando la red). */
+  notice?: string;
   /** Modo del escáner, para la telemetría de los escaneos que fallan. */
   mode?: string;
   getHealthExtra?: () => Record<string, unknown>;
@@ -201,10 +204,10 @@ export function QRCodeScanner({
             <X className='size-32 text-white zoom-in' strokeWidth={3} />
           )}
       </div>
-      {paused && feedback === 'idle' && (
+      {notice && feedback === 'idle' && (
         <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none text-white'>
           <WifiOff className='size-16' strokeWidth={2.5} />
-          <p className='text-xl font-bold'>Sin conexión</p>
+          <p className='text-xl font-bold'>{notice}</p>
         </div>
       )}
       {/* Debug */}

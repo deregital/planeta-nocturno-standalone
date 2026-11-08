@@ -80,6 +80,75 @@ export function classifyRequestError(
   return { code: 'REJECTED', serverMessage: e.message };
 }
 
+/**
+ * Margen para microcortes: hasta acá un escaneo espera a que vuelva la red (o
+ * reintenta), y la pantalla no se bloquea por estar sin conexión.
+ */
+export const OFFLINE_GRACE_MS = 10_000;
+/** Espera entre reintentos cuando el pedido falla por red. */
+export const NETWORK_RETRY_MS = 1_000;
+
+/**
+ * Manda un escaneo al servidor tolerando microcortes. Sin red espera a que
+ * vuelva; si el pedido falla por red, reintenta. Todo dentro de `graceMs`
+ * desde el escaneo; pasado el margen, `ScanRequestError` con código claro.
+ *
+ * Reintentar es seguro: si el primer pedido llegó y se perdió la respuesta,
+ * el servidor contesta "ya escaneado" por este usuario (`scannedByMe`) y la
+ * puerta lo ve como "Ya registrado" (`retried` permite reconocerlo).
+ */
+export async function sendWithGrace<T>(
+  send: () => Promise<T>,
+  deps: {
+    isOnline: () => boolean;
+    /** Resuelve true si volvió la red antes de `deadline` (ms epoch). */
+    waitForOnline: (deadline: number) => Promise<boolean>;
+    sleep: (ms: number) => Promise<void>;
+    now?: () => number;
+    graceMs?: number;
+    fallbackReason?: string;
+    /** Avisa cuando el escaneo queda esperando a la red (para la pantalla). */
+    onWaiting?: (waiting: boolean) => void;
+  },
+): Promise<{ result: T; retried: boolean }> {
+  const now = deps.now ?? Date.now;
+  const deadline = now() + (deps.graceMs ?? OFFLINE_GRACE_MS);
+  let retried = false;
+  const fail = (code: ScanErrorCode, cause?: unknown, serverMessage?: string) =>
+    new ScanRequestError(code, {
+      cause,
+      fallbackReason: deps.fallbackReason,
+      serverMessage,
+    });
+
+  try {
+    for (;;) {
+      if (!deps.isOnline()) {
+        deps.onWaiting?.(true);
+        if (!(await deps.waitForOnline(deadline))) throw fail('OFFLINE');
+        retried = true;
+      }
+      try {
+        return { result: await send(), retried };
+      } catch (error) {
+        const classified = classifyRequestError(error, {
+          online: deps.isOnline(),
+        });
+        const transient =
+          classified.code === 'NETWORK' || classified.code === 'OFFLINE';
+        if (!transient || now() + NETWORK_RETRY_MS >= deadline) {
+          throw fail(classified.code, error, classified.serverMessage);
+        }
+        deps.onWaiting?.(true);
+        retried = true;
+        if (deps.isOnline()) await deps.sleep(NETWORK_RETRY_MS);
+      }
+    }
+  } finally {
+    deps.onWaiting?.(false);
+  }
+}
+
 /** Errores que no deberían pasar: van a Error Tracking de PostHog. */
 export function isUnexpectedScanError(code: ScanErrorCode) {
   return code === 'SERVER' || code === 'UNKNOWN';

@@ -37,7 +37,7 @@ import {
 } from '@/components/event/individual/scan/scan-result';
 import { isSelfRepeat, SELF_REPEAT_WINDOW_MS } from '@/lib/scan/decision';
 import { OFF_CONFIG } from '@/lib/scan/protocol';
-import { classifyRequestError, ScanRequestError } from '@/lib/scan/scan-errors';
+import { ScanRequestError, sendWithGrace } from '@/lib/scan/scan-errors';
 import { formatScanTime } from '@/lib/scan/scan-texts';
 import { trpc } from '@/server/trpc/client';
 
@@ -66,6 +66,27 @@ type NavigatorWithConnection = Navigator & {
 
 function isBrowserOnline() {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** true si vuelve la red antes de `deadline` (ms epoch). */
+function waitForOnline(deadline: number) {
+  if (isBrowserOnline()) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    const finish = (online: boolean) => {
+      clearTimeout(timer);
+      window.removeEventListener('online', onOnline);
+      resolve(online);
+    };
+    const onOnline = () => finish(true);
+    const timer = setTimeout(
+      () => finish(isBrowserOnline()),
+      Math.max(0, deadline - Date.now()),
+    );
+    window.addEventListener('online', onOnline);
+  });
 }
 
 /** Intentos previos que cuentan para reconocer un reescaneo propio. */
@@ -279,6 +300,8 @@ export function useScanController({
 
   const attemptsRef = useRef(new Map<string, Attempt>());
   const successByTicketRef = useRef(new Map<string, number>());
+  /** Un escaneo espera a que vuelva la red (microcorte). */
+  const [waitingForNetwork, setWaitingForNetwork] = useState(false);
 
   const scan = useCallback(
     async (code: string): Promise<ScanDisplayResult> => {
@@ -352,30 +375,35 @@ export function useScanController({
       const shadowMs = performance.now() - shadowStartedAt;
 
       let server: ServerScanResult;
+      let retried = false;
       try {
-        // Sin red ni se intenta: la puerta ve al instante que no se verificó.
-        if (!isBrowserOnline()) {
-          throw new ScanRequestError('OFFLINE', { fallbackReason });
-        }
-        server = await onlineScan(code);
+        // Un microcorte no rompe nada: espera a la red o reintenta hasta
+        // OFFLINE_GRACE_MS; después, error claro.
+        ({ result: server, retried } = await sendWithGrace(
+          () => onlineScan(code),
+          {
+            isOnline: isBrowserOnline,
+            waitForOnline,
+            sleep,
+            fallbackReason,
+            onWaiting: setWaitingForNetwork,
+          },
+        ));
       } catch (error) {
         attemptsRef.current.set(code, { at: firstAt, outcome: 'error' });
-        if (error instanceof ScanRequestError) throw error;
-        const classified = classifyRequestError(error, {
-          online: isBrowserOnline(),
-        });
-        throw new ScanRequestError(classified.code, {
-          cause: error,
-          fallbackReason,
-          serverMessage: classified.serverMessage,
-        });
+        throw error instanceof ScanRequestError
+          ? error
+          : new ScanRequestError('UNKNOWN', { cause: error, fallbackReason });
       }
 
       let result = fromServer(server, mode, fallbackReason);
       const ticketId = server.ticket?.id;
       if (server.status === 'already-scanned' && server.scannedByMe) {
+        // Tras un reintento, el "ya escaneado" puede ser el primer pedido,
+        // que llegó aunque se perdió la respuesta.
         const ownAt =
           priorAt ??
+          (retried ? firstAt : undefined) ??
           (ticketId
             ? (successByTicketRef.current.get(ticketId) ??
               engine?.recentLocalSuccessAt(ticketId))
@@ -422,6 +450,7 @@ export function useScanController({
   return {
     scan,
     status,
+    waitingForNetwork,
     config,
     configLoading: configQuery.isLoading,
     refetchConfig: configQuery.refetch,
