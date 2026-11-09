@@ -10,6 +10,7 @@ import {
   resetQueryCount,
 } from '@tests/load/lib/db';
 import {
+  assignUserToEvent,
   insertEvent,
   insertSoldTickets,
   insertUser,
@@ -53,6 +54,8 @@ async function doorThroughput(log: (...a: unknown[]) => void) {
         raw,
         `Puerta ${rttMs}`,
       );
+      // El rol Control solo escanea los eventos asignados.
+      for (const id of scannerIds) await assignUserToEvent(raw, id, eventId);
       const callers = scannerIds.map((id) =>
         callerFor(db, { id, role: 'CONTROL_TICKETING' }),
       );

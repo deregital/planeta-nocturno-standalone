@@ -1,12 +1,19 @@
 import { formatInTimeZone } from 'date-fns-tz';
 
-import { type RouterOutputs } from '@/server/routers/app';
+import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
 
-export function LastScanCard({
-  lastScan,
-}: {
-  lastScan: RouterOutputs['emittedTickets']['scan'];
-}) {
+/** Qué pasó con un escaneo que el celular dio por bueno (modo rápido). */
+const LOCAL_SYNC_TEXT: Record<
+  NonNullable<ScanDisplayResult['sync']>,
+  string
+> = {
+  pending: 'Escaneado en este celular · pendiente de subir',
+  confirmed: 'Escaneado en este celular · registrado',
+  duplicate: 'Escaneado en este celular · ticket escaneado dos veces',
+  'not-found': 'Escaneado en este celular · ticket eliminado',
+};
+
+export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
   return (
     <div className='relative w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
       {lastScan.ticket?.scannedAt && (
@@ -18,10 +25,23 @@ export function LastScanCard({
           )}
         </div>
       )}
-      {lastScan.status === 'success' ? (
+      {lastScan.status === 'self-repeat' ? (
+        <>
+          <div className='bg-sky-500 border-b border-stroke'>
+            {/* pr-28: lugar para la hora de arriba a la derecha. */}
+            <p className='text-on-accent text-lg font-bold p-2 pr-28 break-words'>
+              {lastScan.text}: {lastScan.ticket?.fullName}
+            </p>
+          </div>
+          <p className='text-accent-dark p-2 text-normal'>
+            <span className='font-bold'>DNI:</span> {lastScan.ticket?.dni}
+          </p>
+          <p className='text-accent-dark p-2 text-sm'>{lastScan.extraInfo}</p>
+        </>
+      ) : lastScan.status === 'success' ? (
         <>
           <div className='bg-green-500 border-b border-stroke'>
-            <p className='text-on-accent text-lg font-bold p-2 truncate'>
+            <p className='text-on-accent text-lg font-bold p-2 pr-28 break-words'>
               {lastScan.ticket?.fullName}
             </p>
           </div>
@@ -45,10 +65,27 @@ export function LastScanCard({
               <span className='font-bold'>Extra:</span> {lastScan.extraInfo}
             </p>
           )}
+          {lastScan.decidedBy === 'local' && (
+            <p className='text-accent-dark/60 px-2 pb-2 text-xs'>
+              {LOCAL_SYNC_TEXT[lastScan.sync ?? 'pending']}
+            </p>
+          )}
         </>
       ) : (
         <>
-          <div className='bg-red-500 p-2 font-bold'>{lastScan.text}</div>
+          <div
+            className={
+              // Ámbar: no hubo decisión (sin red, servidor). Naranja: aviso
+              // de un ingreso que ya pasó (doble ingreso). Rojo: rechazada.
+              lastScan.status === 'error'
+                ? 'bg-amber-400 p-2 font-bold text-amber-950'
+                : lastScan.status === 'conflict'
+                  ? 'bg-orange-500 p-2 font-bold text-white'
+                  : 'bg-red-500 p-2 font-bold'
+            }
+          >
+            {lastScan.text}
+          </div>
           <div className='text-accent-dark p-2 text-sm'>
             {lastScan.ticket && (
               <>

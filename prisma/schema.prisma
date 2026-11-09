@@ -203,9 +203,46 @@ model Event {
 
   questions EventQuestion[] @relation("EVENT_X_QUESTION")
 
+  scannerConfig EventScannerConfig? @relation("EVENT_X_SCANNER_CONFIG")
+  scanReceipts  ScanReceipt[]       @relation("EVENT_X_SCAN_RECEIPT")
+
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
   @@map("event")
+}
+
+/// Modo del escáner por evento (off / shadow / local) y N en segundos.
+/// Sin fila, el evento escanea como siempre (off).
+model EventScannerConfig {
+  eventId         String   @id @db.Uuid
+  event           Event    @relation("EVENT_X_SCANNER_CONFIG", fields: [eventId], references: [id], onDelete: Cascade)
+  mode            String   @default("off")
+  maxStaleSeconds Int      @default(60)
+  updatedAt       DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  updatedByUserId String?  @db.Uuid
+
+  @@map("eventScannerConfig")
+}
+
+/// Cada escaneo decidido en un celular (modo local) que llegó al servidor.
+/// `clientScanId` hace idempotente la subida: un reintento devuelve el mismo
+/// resultado. `outcome = duplicate` es un doble ingreso entre dispositivos.
+model ScanReceipt {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clientScanId    String    @unique(map: "scanReceipt_clientScanId_key") @db.Uuid
+  eventId         String?   @db.Uuid
+  event           Event?    @relation("EVENT_X_SCAN_RECEIPT", fields: [eventId], references: [id], onDelete: Cascade)
+  emittedTicketId String?   @db.Uuid
+  userId          String?   @db.Uuid
+  deviceId        String
+  outcome         String
+  localStatus     String
+  clientScannedAt DateTime? @db.Timestamptz
+  receivedAt      DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  registeredAt    DateTime? @db.Timestamptz
+
+  @@index([eventId, receivedAt], map: "scanReceipt_eventId_receivedAt_idx")
+  @@map("scanReceipt")
 }
 
 model EventQuestion {

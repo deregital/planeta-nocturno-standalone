@@ -1,5 +1,4 @@
 import { TRPCError } from '@trpc/server';
-import { format } from 'date-fns';
 import { and, count, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -32,11 +31,19 @@ import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { getBuyersCodeByDni } from '@/server/utils/db/utils';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { generatePdf } from '@/server/utils/ticket-template';
+import { isTicketId } from '@/lib/scan/protocol';
 import {
-  formatLastScanTime,
+  ALREADY_SCANNED_TEXT,
+  alreadyScannedExtraInfo,
+  NOT_FOUND_EXTRA_INFO,
+  NOT_FOUND_TEXT,
+  successScanTexts,
+} from '@/lib/scan/scan-texts';
+import {
   registerTicketScanInTx,
   tryRegisterTicketScan,
 } from '@/server/utils/register-ticket-scan';
+import { assertEventsAccess } from '@/server/utils/scanner-access';
 import { decryptString, generateSlug } from '@/server/utils/utils';
 
 export const emittedTicketsRouter = router({
@@ -534,54 +541,81 @@ export const emittedTicketsRouter = router({
         return { ...result, serverMs };
       };
 
-      let decryptedTicketId: string;
+      // Misma regla que la lista de eventos para escanear: sin "Ver todos los
+      // eventos" solo se escanean los asignados. Corre en paralelo con la
+      // búsqueda de la entrada para no sumar un viaje a la base.
+      const access = assertEventsAccess(ctx, input.eventIds);
+
+      let decryptedTicketId: string | null;
       try {
         decryptedTicketId = decryptString(input.barcode);
       } catch {
+        decryptedTicketId = null;
+      }
+      // Un QR con el formato pero de otra clave puede descifrar a basura.
+      if (!decryptedTicketId || !isTicketId(decryptedTicketId)) {
+        await access;
         return respond({
           ticket: null,
           status: 'not-found',
-          text: 'Ticket no encontrado',
-          extraInfo: 'El ticket no pertenece a este evento',
+          text: NOT_FOUND_TEXT,
+          extraInfo: NOT_FOUND_EXTRA_INFO,
+          scannedByMe: false,
         });
       }
 
-      const ticketReturned = await ctx.db.query.emittedTicket.findFirst({
-        where: and(
-          eq(emittedTicket.id, decryptedTicketId),
-          inArray(emittedTicket.eventId, input.eventIds),
-        ),
-        with: {
-          ticketType: true,
-          emittedTicketScans: {
-            columns: { id: true },
-          },
-          ticketGroup: {
-            with: {
-              event: true,
-              user: {
-                columns: {
-                  fullName: true,
+      const [, ticketReturned] = await Promise.all([
+        access,
+        ctx.db.query.emittedTicket.findFirst({
+          where: and(
+            eq(emittedTicket.id, decryptedTicketId),
+            inArray(emittedTicket.eventId, input.eventIds),
+          ),
+          with: {
+            ticketType: true,
+            emittedTicketScans: {
+              columns: { id: true },
+            },
+            ticketGroup: {
+              with: {
+                event: { columns: { id: true, name: true } },
+                user: {
+                  columns: {
+                    fullName: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
+        }),
+      ]);
 
       if (!ticketReturned) {
         return respond({
           ticket: null,
           status: 'not-found',
-          text: 'Ticket no encontrado',
-          extraInfo: 'El ticket no pertenece a este evento',
+          text: NOT_FOUND_TEXT,
+          extraInfo: NOT_FOUND_EXTRA_INFO,
+          scannedByMe: false,
         });
       }
-      let extraInfo: string = '';
+
+      // Solo lo que muestra la tarjeta de la puerta: mail, teléfono y fecha
+      // de nacimiento no viajan al celular.
       const ticket = {
-        ...ticketReturned,
+        id: ticketReturned.id,
+        eventId: ticketReturned.eventId,
+        fullName: ticketReturned.fullName,
+        dni: ticketReturned.dni,
+        scanned: ticketReturned.scanned,
+        scannedAt: ticketReturned.scannedAt,
+        ticketType: {
+          id: ticketReturned.ticketType.id,
+          name: ticketReturned.ticketType.name,
+          allowMultipleScans: ticketReturned.ticketType.allowMultipleScans,
+        },
         ticketGroup: {
-          ...ticketReturned.ticketGroup,
+          event: ticketReturned.ticketGroup.event,
           invitedBy: ticketReturned.ticketGroup.user?.fullName || '-',
         },
       };
@@ -590,50 +624,34 @@ export const emittedTicketsRouter = router({
         ctx.db,
         decryptedTicketId,
         ctx.session.user.id,
-        ticket.ticketType.allowMultipleScans,
+        ticketReturned.ticketType.allowMultipleScans,
       );
       if (!scanResult.registered) {
         return respond({
           ticket,
           status: 'already-scanned',
-          text: 'Ticket ya escaneado',
-          extraInfo: `Escaneado a las ${formatLastScanTime(ticket.scannedAt)}`,
+          text: ALREADY_SCANNED_TEXT,
+          extraInfo: alreadyScannedExtraInfo(ticket.scannedAt),
+          // Le permite al escáner reconocer su propio reescaneo (respuesta
+          // lenta o perdida) y no mostrarlo como rechazo.
+          scannedByMe: ticketReturned.scannedByUserId === ctx.session.user.id,
         });
       }
 
-      const scannedAt = scanResult.scannedAt;
-      const scanNumber = ticket.emittedTicketScans.length + 1;
-
       ticket.scanned = true;
-      ticket.scannedAt = scannedAt;
-      ticket.scannedByUserId = ctx.session.user.id;
-
-      if (
-        ticket.ticketType.startingDate &&
-        new Date(ticket.ticketType.startingDate) > new Date()
-      ) {
-        extraInfo = `La hora de inicio del ticket es a las ${format(
-          new Date(ticket.ticketType.startingDate),
-          'dd/MM/yyyy HH:mm',
-        )}`;
-      }
-
-      if (
-        ticket.ticketType.scanLimit &&
-        new Date(ticket.ticketType.scanLimit) < new Date()
-      ) {
-        extraInfo = `Ticket expirado, límite de horario era ${format(
-          new Date(ticket.ticketType.scanLimit),
-          'dd/MM/yyyy HH:mm',
-        )}`;
-      }
+      ticket.scannedAt = scanResult.scannedAt;
 
       return respond({
         ticket,
         status: 'success',
-        text: `Escaneado con éxito: ${ticket.fullName}`,
-        extraInfo:
-          `${extraInfo}${scanNumber > 1 ? ` - Escaneo #${scanNumber}` : ''} ${ticket.ticketGroup.user?.fullName ? `- Invitado por ${ticket.ticketGroup.user.fullName}` : ''}`.trim(),
+        ...successScanTexts({
+          fullName: ticket.fullName,
+          startingDate: ticketReturned.ticketType.startingDate,
+          scanLimit: ticketReturned.ticketType.scanLimit,
+          scanNumber: ticketReturned.emittedTicketScans.length + 1,
+          invitedBy: ticketReturned.ticketGroup.user?.fullName,
+        }),
+        scannedByMe: true,
       });
     }),
   manualScan: permissionProcedure('tickets:manual_scan')

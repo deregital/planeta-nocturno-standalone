@@ -923,3 +923,64 @@ export const account = pgTable(
     }),
   ],
 );
+
+/** Modo del escáner por evento. Sin fila, el evento escanea como siempre. */
+export const eventScannerConfig = pgTable(
+  'eventScannerConfig',
+  {
+    eventId: uuid().primaryKey().notNull(),
+    mode: text().default('off').notNull(),
+    maxStaleSeconds: integer().default(60).notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedByUserId: uuid(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'eventScannerConfig_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+/** Escaneos decididos en un celular que llegaron al servidor (idempotencia y auditoría). */
+export const scanReceipt = pgTable(
+  'scanReceipt',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    clientScanId: uuid().notNull(),
+    eventId: uuid(),
+    emittedTicketId: uuid(),
+    userId: uuid(),
+    deviceId: text().notNull(),
+    outcome: text().notNull(),
+    localStatus: text().notNull(),
+    clientScannedAt: timestamp({ withTimezone: true, mode: 'string' }),
+    receivedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    registeredAt: timestamp({ withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    uniqueIndex('scanReceipt_clientScanId_key').using(
+      'btree',
+      table.clientScanId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('scanReceipt_eventId_receivedAt_idx').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+      table.receivedAt.asc().nullsLast().op('timestamptz_ops'),
+    ),
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'scanReceipt_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
