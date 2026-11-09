@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { canAccessEvent, requirePagePermission } from '@/server/rbac/guards';
+import { canScanEvent, requirePagePermission } from '@/server/rbac/guards';
 import { trpc } from '@/server/trpc/server';
 import ScanClient from '@/app/(backoffice)/admin/event/[slug]/scan/client';
 
@@ -15,7 +15,9 @@ export default async function ScanTicketPage({
   // tiene que poder escanear igual.
   const event = await trpc.events.getForScanBySlug(slug);
 
-  if (!event || !(await canAccessEvent(access, event.id))) {
+  // Personal asignado u organizador asignado: el botón está en las dos
+  // páginas del evento (/admin/event y /organization/event).
+  if (!event || !(await canScanEvent(access, event.id))) {
     notFound();
   }
 

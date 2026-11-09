@@ -66,6 +66,7 @@ import {
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
 import { logger } from '@/server/observability/logger';
+import { getScannableEventIds } from '@/server/rbac/event-access';
 import { countIssuedTicketsByEventId } from '@/server/services/issuedTicketCounts';
 import { sendMail } from '@/server/services/mail';
 import { releaseExpiredHolds } from '@/server/services/ticketGroupHolds';
@@ -439,14 +440,8 @@ export const eventsRouter = router({
   }),
   getAllForTicketing: permissionProcedure('scanner:use').query(
     async ({ ctx }) => {
-      const authorizedEventIds = !ctx.can('events:read_all')
-        ? (
-            await ctx.db.query.eventXUser.findMany({
-              where: eq(eventXUser.b, ctx.session.user.id),
-              columns: { a: true },
-            })
-          ).map((r) => r.a)
-        : null;
+      // Asignados como personal o como organizador (todos con read_all).
+      const authorizedEventIds = await getScannableEventIds(ctx.db, ctx.access);
 
       return ctx.db.query.event.findMany({
         where: and(
