@@ -165,13 +165,15 @@ async function transferInvitationTicketsFromChiefToOrganizer(
 ) {
   if (count <= 0) return;
 
+  // Primero los que el jefe no compartió: un link ya mandado que pasa a otra
+  // persona termina en manos de dos.
   const chiefTickets = await tx.query.ticketXorganizer.findMany({
     where: and(
       eq(ticketXorganizer.eventId, eventId),
       eq(ticketXorganizer.organizerId, chiefOrganizerId),
       isNull(ticketXorganizer.ticketId),
     ),
-    orderBy: [asc(ticketXorganizer.createdAt)],
+    orderBy: [asc(ticketXorganizer.shared), asc(ticketXorganizer.createdAt)],
     limit: count,
   });
 
@@ -579,13 +581,14 @@ async function updateChiefOrganizerTicketAmount(
     return;
   }
 
+  // Al sacarle códigos a alguien, primero los que no compartió (ver arriba).
   const existingTicketXOrganizers = await tx.query.ticketXorganizer.findMany({
     where: and(
       eq(ticketXorganizer.eventId, eventId),
       eq(ticketXorganizer.organizerId, organizerInput.id),
       isNull(ticketXorganizer.ticketId),
     ),
-    orderBy: [asc(ticketXorganizer.createdAt)],
+    orderBy: [asc(ticketXorganizer.shared), asc(ticketXorganizer.createdAt)],
   });
 
   const difference = newTicketAmount - currentTicketCount;

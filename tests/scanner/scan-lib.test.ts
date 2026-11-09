@@ -56,6 +56,7 @@ import {
 } from '@/lib/scan/scan-history';
 import {
   conflictTexts,
+  outOfWindowTexts,
   restoredUploadTexts,
   successScanTexts,
 } from '@/lib/scan/scan-texts';
@@ -145,6 +146,35 @@ describe('decisión sobre una entrada conocida', () => {
       status: 'success',
       scanNumber: 3,
     });
+  });
+
+  it('fuera de horario: avisa sin registrar, salvo que la dejen pasar', () => {
+    const now = new Date('2026-11-09T03:00:00.000Z');
+    const fresh = { scanned: false, scanCount: 0 };
+    const early = {
+      startingDate: '2026-11-10T03:00:00.000Z',
+      scanLimit: null,
+    };
+    const late = { startingDate: null, scanLimit: '2026-11-08T03:00:00.000Z' };
+
+    assert.deepEqual(decideKnownTicket(fresh, false, { window: early, now }), {
+      status: 'too-early',
+    });
+    assert.deepEqual(decideKnownTicket(fresh, false, { window: late, now }), {
+      status: 'expired',
+    });
+    assert.deepEqual(
+      decideKnownTicket(fresh, false, { window: early, now, force: true }),
+      { status: 'success', scanNumber: 1 },
+    );
+    // Ya escaneada pesa más que el horario.
+    assert.deepEqual(
+      decideKnownTicket({ scanned: true, scanCount: 1 }, false, {
+        window: early,
+        now,
+      }),
+      { status: 'already-scanned' },
+    );
   });
 });
 
@@ -244,7 +274,27 @@ describe('textos', () => {
     assert.equal(texts.text, 'Escaneado con éxito: Ana Pérez');
     assert.equal(
       texts.extraInfo,
-      'La hora de inicio del ticket es a las 10/11/2026 00:00 - Escaneo #2 - Invitado por Juan',
+      'Entró antes de hora (habilitada desde 10/11 00:00) - Escaneo #2 - Invitado por Juan',
+    );
+  });
+
+  it('fuera de horario sin registrar', () => {
+    assert.deepEqual(
+      outOfWindowTexts('too-early', {
+        startingDate: '2026-11-10T03:00:00.000Z',
+        scanLimit: null,
+      }),
+      {
+        text: 'Todavía no está habilitada',
+        extraInfo: 'Habilitada desde 10/11 00:00',
+      },
+    );
+    assert.deepEqual(
+      outOfWindowTexts('expired', {
+        startingDate: null,
+        scanLimit: '2026-11-08T03:00:00.000Z',
+      }),
+      { text: 'Entrada vencida', extraInfo: 'Era válida hasta 08/11 00:00' },
     );
   });
 

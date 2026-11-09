@@ -74,11 +74,14 @@ const STATUS_CLASS: Record<string, string> = {
   Gratis: 'border-zinc-200 bg-zinc-50 text-zinc-700',
   'Pendiente de transferencia': 'border-amber-300 bg-amber-50 text-amber-900',
   'Pago en proceso': 'border-sky-200 bg-sky-50 text-sky-800',
+  'A cobrar en el lugar': 'border-amber-300 bg-amber-50 text-amber-900',
+  'Vencida sin pago': 'border-zinc-200 bg-zinc-50 text-zinc-500',
 };
 
 const METHOD_CLASS: Record<string, string> = {
   Transferencia: 'border-amber-200 bg-amber-50 text-amber-900',
   'Mercado Pago': 'border-sky-200 bg-sky-50 text-sky-800',
+  'En el lugar': 'border-zinc-200 bg-zinc-50 text-zinc-700',
 };
 
 function normalize(value: string) {
@@ -101,12 +104,16 @@ function getStatusLabel(purchase: Purchase) {
   if (purchase.status === 'FREE') return 'Gratis';
   if (purchase.paymentMethod === 'TRANSFER')
     return 'Pendiente de transferencia';
+  if (purchase.paymentMethod === 'ON_SITE') return 'A cobrar en el lugar';
+  // Soltó el cupo: si el pago se acredita igual, las entradas se entregan.
+  if (purchase.ticketTypePerGroups.length === 0) return 'Vencida sin pago';
   return 'Pago en proceso';
 }
 
 function getPaymentMethodLabel(purchase: Purchase) {
   if (purchase.paymentMethod === 'TRANSFER') return 'Transferencia';
   if (purchase.paymentMethod === 'MERCADO_PAGO') return 'Mercado Pago';
+  if (purchase.paymentMethod === 'ON_SITE') return 'En el lugar';
   return '-';
 }
 

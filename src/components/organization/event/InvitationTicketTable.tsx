@@ -1,76 +1,179 @@
 'use client';
 
 import { type StrictColumnDef } from '@tanstack/react-table';
-import { Loader2, ShareIcon } from 'lucide-react';
+import { EllipsisVertical } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { DataTable } from '@/components/common/DataTable';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 import { INVITE_CODE_QUERY_PARAM } from '@/server/utils/constants';
 
 type InvitationCode = RouterOutputs['organizer']['getMyCodesNotUsed'][number];
 
-function InvitationSharedSwitch({
-  code,
-  eventId,
-  shared,
-  onSharedChange,
-}: {
-  code: string;
-  eventId: string;
-  shared: boolean;
-  onSharedChange: (code: string, shared: boolean) => void;
-}) {
-  const setCodeShared = trpc.organizer.setCodeShared.useMutation({
-    onError: (_error, variables) => {
-      onSharedChange(variables.code, !variables.shared);
-      toast.error('No se pudo actualizar el estado de compartido');
-    },
-  });
+// Con el panel abierto, el jefe puede redistribuir y el código pasa a otra persona.
+const CODE_NOT_YOURS_MESSAGE =
+  'Este código ya no es tuyo (lo redistribuyeron o ya se usó). No lo compartas: actualizamos la lista.';
 
+const MOBILE_PAGE_SIZE = 10;
+
+function isNotFound(error: { data?: { code?: string } | null }) {
+  return error.data?.code === 'NOT_FOUND';
+}
+
+function CodeActions({
+  code,
+  onShare,
+  onToggleShared,
+}: {
+  code: InvitationCode;
+  onShare: (code: InvitationCode) => void;
+  onToggleShared: (code: InvitationCode) => void;
+}) {
   return (
-    <span className='inline-flex items-center gap-2'>
-      <Switch
-        checked={shared}
-        disabled={setCodeShared.isPending}
-        className='cursor-pointer **:data-[slot=switch-thumb]:duration-200 **:data-[slot=switch-thumb]:ease-out'
-        onCheckedChange={(checked) => {
-          onSharedChange(code, checked);
-          setCodeShared.mutate({ eventId, code, shared: checked });
-        }}
-        aria-label={
-          shared ? 'Marcar como no compartido' : 'Marcar como compartido'
-        }
-      />
-      {setCodeShared.isPending && (
-        <Loader2 className='size-3 animate-spin text-accent' />
-      )}
-    </span>
+    <div className='flex shrink-0 items-center gap-1'>
+      <Button
+        type='button'
+        size='sm'
+        variant={code.shared ? 'outline' : 'default'}
+        onClick={() => onShare(code)}
+      >
+        {code.shared ? 'Reenviar' : 'Compartir'}
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type='button' size='icon' variant='ghost' aria-label='Más'>
+            <EllipsisVertical className='size-4' />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end'>
+          <DropdownMenuItem onSelect={() => onToggleShared(code)}>
+            {code.shared
+              ? 'Marcar como no compartido'
+              : 'Marcar como compartido'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
-function buildColumns({
-  eventId,
+function ShareDrawer({
+  code,
+  eventName,
   eventSlug,
-  onSharedChange,
-  onCopy,
-  sharingCode,
+  onClose,
+  onSaveName,
+  onShared,
 }: {
-  eventId: string;
+  code: InvitationCode | null;
+  eventName: string;
   eventSlug: string;
-  onSharedChange: (code: string, shared: boolean) => void;
-  onCopy: (code: string) => void;
-  sharingCode: string | null;
-}): StrictColumnDef<InvitationCode>[] {
+  onClose: () => void;
+  onSaveName: (code: InvitationCode, name: string) => void;
+  onShared: (code: InvitationCode, copied: boolean) => void;
+}) {
+  const [name, setName] = useState('');
+  // `navigator` sólo existe en el navegador: se lee al abrir, no al renderizar en el servidor.
+  const [nativeShare, setNativeShare] = useState(false);
+
+  useEffect(() => {
+    setName(code?.sharedWith ?? '');
+    setNativeShare(typeof navigator.share === 'function');
+  }, [code]);
+
+  function close() {
+    if (code) onSaveName(code, name.trim());
+    onClose();
+  }
+
+  function send() {
+    if (!code) return;
+    onSaveName(code, name.trim());
+    const url = `${window.location.origin}/event/${eventSlug}?${INVITE_CODE_QUERY_PARAM}=${code.code}`;
+    // El portapapeles y el menú de compartir exigen el toque: se llaman ya.
+    if (nativeShare) {
+      navigator
+        .share({ text: `Tu invitación para ${eventName}`, url })
+        .then(() => {
+          onShared(code, false);
+          onClose();
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            return;
+          }
+          toast.error('No se pudo compartir el enlace');
+        });
+      return;
+    }
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        onShared(code, true);
+        onClose();
+      })
+      .catch(() => toast.error('No se pudo copiar el enlace'));
+  }
+
+  return (
+    <Drawer open={code !== null} onOpenChange={(open) => !open && close()}>
+      <DrawerContent className='px-4 pb-6'>
+        <form
+          className='mx-auto flex w-full max-w-sm flex-col gap-4'
+          onSubmit={(event) => {
+            event.preventDefault();
+            send();
+          }}
+        >
+          <DrawerHeader className='px-0'>
+            <DrawerTitle>Código #{code?.shortId}</DrawerTitle>
+            <DrawerDescription>
+              Cada enlace sirve para una sola persona.
+            </DrawerDescription>
+          </DrawerHeader>
+          <Input
+            value={name}
+            maxLength={200}
+            placeholder='¿Para quién es? (opcional)'
+            aria-label='Para quién es'
+            onChange={(event) => setName(event.target.value)}
+          />
+          <Button type='submit'>
+            {nativeShare ? 'Compartir' : 'Copiar enlace'}
+          </Button>
+        </form>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function buildColumns(
+  actions: (code: InvitationCode) => React.ReactNode,
+): StrictColumnDef<InvitationCode>[] {
   return [
     {
       id: 'id',
       accessorKey: 'shortId',
-      header: 'ID',
+      header: '#',
       cell: ({ row }) => row.original.shortId,
       meta: {
         exportValue: (row) => String(row.original.shortId),
@@ -78,140 +181,231 @@ function buildColumns({
       },
     },
     {
-      id: 'share',
-      accessorFn: (row) => row.code,
+      id: 'sharedWith',
+      accessorFn: (row) => row.sharedWith ?? '',
+      header: 'Para quién',
+      cell: ({ row }) => row.original.sharedWith || '—',
       meta: {
-        exportValue: () => '',
-        exportHeader: '',
-      },
-      header: 'Compartir',
-      cell: ({ row }) => {
-        function copyToClipboard() {
-          // `window` sólo existe en el navegador: leerlo al renderizar rompe el SSR.
-          const url = `${window.location.origin}/event/${eventSlug}?${INVITE_CODE_QUERY_PARAM}=${row.original.code}`;
-          void navigator.clipboard.writeText(url);
-          onCopy(row.original.code);
-          toast.success('Enlace copiado al portapapeles');
-        }
-
-        return (
-          <Button
-            type='button'
-            variant='ghost'
-            className='justify-start gap-2'
-            loading={sharingCode === row.original.code}
-            onClick={copyToClipboard}
-          >
-            {row.original.shared
-              ? 'Ya compartido (volver a copiar)'
-              : 'Copiar ticket'}
-            <ShareIcon className='w-4 h-4 shrink-0' />
-          </Button>
-        );
+        exportValue: (row) => row.original.sharedWith ?? '',
+        exportHeader: 'Compartido con',
       },
     },
     {
-      id: 'shared',
+      id: 'actions',
       accessorKey: 'shared',
+      header: '',
+      cell: ({ row }) => actions(row.original),
       meta: {
         exportValue: (row) => (row.original.shared ? 'Sí' : 'No'),
         exportHeader: 'Compartido',
       },
-      header: 'Compartido',
-      cell: ({ row }) => (
-        <InvitationSharedSwitch
-          code={row.original.code}
-          eventId={eventId}
-          shared={row.original.shared}
-          onSharedChange={onSharedChange}
-        />
-      ),
     },
   ];
 }
 
 export function InvitationTicketTable({
-  codes,
+  codes: initialCodes,
   eventId,
   eventSlug,
+  eventName,
 }: {
   codes: InvitationCode[];
   eventId: string;
   eventSlug: string;
+  eventName: string;
 }) {
-  const [sharedByCode, setSharedByCode] = useState(
-    () => new Map(codes.map((code) => [code.code, code.shared])),
-  );
-  const sharedByCodeRef = useRef(sharedByCode);
-  sharedByCodeRef.current = sharedByCode;
+  const router = useRouter();
+  const [codes, setCodes] = useState(initialCodes);
+  const [tab, setTab] = useState<'pending' | 'shared'>('pending');
+  const [sharing, setSharing] = useState<InvitationCode | null>(null);
+  // Hay organizadores con cientos de códigos: en el celular se pagina como en la tabla.
+  const [mobilePage, setMobilePage] = useState(0);
 
   useEffect(() => {
-    setSharedByCode(new Map(codes.map((code) => [code.code, code.shared])));
-  }, [codes]);
+    setCodes(initialCodes);
+  }, [initialCodes]);
 
-  const [sharingCode, setSharingCode] = useState<string | null>(null);
+  function patch(code: string, values: Partial<InvitationCode>) {
+    setCodes((current) =>
+      current.map((c) => (c.code === code ? { ...c, ...values } : c)),
+    );
+  }
+
   const setCodeShared = trpc.organizer.setCodeShared.useMutation({
-    onError: (_error, variables) => {
-      setSharedByCode((current) => {
-        const next = new Map(current);
-        next.set(variables.code, !variables.shared);
-        return next;
-      });
+    onError: (error, variables) => {
+      patch(variables.code, { shared: !variables.shared });
+      if (isNotFound(error)) {
+        toast.error(CODE_NOT_YOURS_MESSAGE);
+        router.refresh();
+        return;
+      }
       toast.error('No se pudo actualizar el estado de compartido');
     },
-    onSettled: () => setSharingCode(null),
   });
 
-  const setCodeSharedRef = useRef(setCodeShared);
-  setCodeSharedRef.current = setCodeShared;
-
-  const handlersRef = useRef({
-    onSharedChange: (_code: string, _shared: boolean) => {},
-    onCopy: (_code: string) => {},
+  const setCodeSharedWith = trpc.organizer.setCodeSharedWith.useMutation({
+    onError: () => toast.error('No se pudo guardar para quién es'),
   });
 
-  handlersRef.current = {
-    onSharedChange: (code, shared) => {
-      setSharedByCode((current) => {
-        if ((current.get(code) ?? false) === shared) {
-          return current;
-        }
-        const next = new Map(current);
-        next.set(code, shared);
-        return next;
-      });
-    },
-    onCopy: (code) => {
-      const alreadyShared = sharedByCodeRef.current.get(code) ?? false;
-      handlersRef.current.onSharedChange(code, true);
-      if (!alreadyShared) {
-        setSharingCode(code);
-        setCodeSharedRef.current.mutate({ eventId, code, shared: true });
-      }
-    },
-  };
+  function setShared(code: InvitationCode, shared: boolean, copied = false) {
+    patch(code.code, { shared });
+    // Aunque ya estuviera compartido: así se confirma que sigue siendo suyo.
+    setCodeShared.mutate(
+      { eventId, code: code.code, shared },
+      {
+        onSuccess: () => {
+          if (copied) toast.success('Enlace copiado');
+        },
+      },
+    );
+  }
 
-  const tableData = useMemo(
+  function saveName(code: InvitationCode, name: string) {
+    const previous = code.sharedWith ?? '';
+    if (name === previous) return;
+    patch(code.code, { sharedWith: name || null });
+    setCodeSharedWith.mutate(
+      { eventId, code: code.code, sharedWith: name },
+      { onError: () => patch(code.code, { sharedWith: previous || null }) },
+    );
+  }
+
+  const handlersRef = useRef({ setShared, setSharing });
+  handlersRef.current = { setShared, setSharing };
+
+  const columns = useMemo(
     () =>
-      codes.map((code) => ({
-        ...code,
-        shared: sharedByCode.get(code.code) ?? code.shared,
-      })),
-    [codes, sharedByCode],
+      buildColumns((code) => (
+        <CodeActions
+          code={code}
+          onShare={(c) => handlersRef.current.setSharing(c)}
+          onToggleShared={(c) => handlersRef.current.setShared(c, !c.shared)}
+        />
+      )),
+    [],
   );
 
-  const tableColumns = useMemo(
-    () =>
-      buildColumns({
-        eventId,
-        eventSlug,
-        onSharedChange: (code, shared) =>
-          handlersRef.current.onSharedChange(code, shared),
-        onCopy: (code) => handlersRef.current.onCopy(code),
-        sharingCode,
-      }),
-    [eventId, eventSlug, sharingCode],
+  const pending = codes.filter((c) => !c.shared);
+  const shared = codes.filter((c) => c.shared);
+  const visible = tab === 'pending' ? pending : shared;
+  const pageCount = Math.max(1, Math.ceil(visible.length / MOBILE_PAGE_SIZE));
+  // Al compartir, la lista se achica: la página no puede quedar fuera de rango.
+  const page = Math.min(mobilePage, pageCount - 1);
+  const pageCodes = visible.slice(
+    page * MOBILE_PAGE_SIZE,
+    (page + 1) * MOBILE_PAGE_SIZE,
   );
+  const emptyMessage =
+    tab === 'pending'
+      ? 'No te quedan códigos por compartir.'
+      : 'Todavía no compartiste ningún código.';
 
-  return <DataTable columns={tableColumns} data={tableData} />;
+  if (codes.length === 0) {
+    return (
+      <p className='px-4 text-accent/70'>
+        No tenés códigos de invitación para este evento.
+      </p>
+    );
+  }
+
+  return (
+    <div className='mx-auto flex w-full max-w-[98%] flex-col gap-3'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <p className='text-accent'>
+          {pending.length > 0
+            ? `Te quedan ${pending.length} de ${codes.length} por compartir`
+            : `Compartiste tus ${codes.length} códigos`}
+        </p>
+        {pending.length > 0 && (
+          <Button type='button' onClick={() => setSharing(pending[0])}>
+            Compartir siguiente
+          </Button>
+        )}
+      </div>
+
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          setTab(value as 'pending' | 'shared');
+          setMobilePage(0);
+        }}
+      >
+        <TabsList className='w-full sm:w-fit'>
+          <TabsTrigger value='pending'>
+            Pendientes ({pending.length})
+          </TabsTrigger>
+          <TabsTrigger value='shared'>
+            Compartidos ({shared.length})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Celular: una fila por código. Desde md, la tabla con exportación. */}
+      <ul className='divide-y divide-stroke/70 rounded-md border border-stroke/70 bg-white md:hidden'>
+        {visible.length === 0 && (
+          <li className='p-4 text-center text-accent/70'>{emptyMessage}</li>
+        )}
+        {pageCodes.map((code) => (
+          <li key={code.code} className='flex items-center gap-3 p-3'>
+            <div className='min-w-0 flex-1'>
+              <p className='font-medium text-accent'>#{code.shortId}</p>
+              {code.sharedWith && (
+                <p className='truncate text-sm text-accent/70'>
+                  {code.sharedWith}
+                </p>
+              )}
+            </div>
+            <CodeActions
+              code={code}
+              onShare={setSharing}
+              onToggleShared={(c) => setShared(c, !c.shared)}
+            />
+          </li>
+        ))}
+      </ul>
+      {pageCount > 1 && (
+        <div className='flex items-center justify-between gap-2 md:hidden'>
+          <Button
+            type='button'
+            size='sm'
+            variant='ghost'
+            disabled={page === 0}
+            onClick={() => setMobilePage(page - 1)}
+          >
+            Anterior
+          </Button>
+          <span className='text-sm text-accent/70'>
+            {page + 1} de {pageCount}
+          </span>
+          <Button
+            type='button'
+            size='sm'
+            variant='ghost'
+            disabled={page === pageCount - 1}
+            onClick={() => setMobilePage(page + 1)}
+          >
+            Siguiente
+          </Button>
+        </div>
+      )}
+
+      <div className='hidden md:block'>
+        <DataTable
+          columns={columns}
+          data={visible}
+          divClassName='max-w-full'
+          noResultsPlaceholder={emptyMessage}
+        />
+      </div>
+
+      <ShareDrawer
+        code={sharing}
+        eventName={eventName}
+        eventSlug={eventSlug}
+        onClose={() => setSharing(null)}
+        onSaveName={saveName}
+        onShared={(code, copied) => setShared(code, true, copied)}
+      />
+    </div>
+  );
 }

@@ -136,4 +136,7 @@ export async function tryRegisterTicketScanInTx(
 }
 
 /** Hora (Argentina) de un escaneo; ver `formatScanTime` en `@/lib/scan/scan-texts`. */
-export { formatScanTime as formatLastScanTime } from '@/lib/scan/scan-texts';
+export {
+  formatScanTime as formatLastScanTime,
+  formatScanWindow,
+} from '@/lib/scan/scan-texts';

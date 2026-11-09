@@ -8,6 +8,7 @@ import {
   Folder,
   Link2,
   Loader2,
+  Lock,
   MoreVertical,
   Pencil,
   Users,
@@ -131,7 +132,7 @@ export default function EventCardHorizontal({
       variant={'accent'}
       className={cn(
         'flex flex-row items-center rounded-lg py-2',
-        'h-20 sm:h-auto sm:min-h-14',
+        'min-h-20 sm:h-auto sm:min-h-14',
         !showActions && 'border-accent-light py-4',
       )}
       style={{
@@ -170,20 +171,58 @@ export default function EventCardHorizontal({
           )}
         >
           <div className='flex min-w-0 items-center gap-2'>
-            {event.isActive && (
-              <BadgeCheck className='size-4 shrink-0 text-on-accent' />
+            {event.isActive && !event.isBlocked && (
+              <BadgeCheck
+                className='size-4 shrink-0 text-on-accent'
+                aria-label='Visible en la ticketera'
+              />
             )}
-            <CardTitle className='truncate'>{event.name}</CardTitle>
+            {event.isBlocked && (
+              <Lock
+                className='size-4 shrink-0 text-on-accent'
+                aria-label='Acceso bloqueado'
+              />
+            )}
+            <CardTitle className='line-clamp-2 min-w-0 flex-1 break-words leading-snug'>
+              {event.name}
+            </CardTitle>
           </div>
           <p className='truncate text-sm'>
-            {event.startingDate
-              ? format(event.startingDate, 'dd/MM/yyyy HH:mm')
-              : null}
+            {event.startingDate ? (
+              <>
+                <span className='sm:hidden'>
+                  {format(event.startingDate, 'dd/MM HH:mm')}
+                </span>
+                <span className='hidden sm:inline'>
+                  {format(event.startingDate, 'dd/MM/yyyy HH:mm')}
+                </span>
+              </>
+            ) : null}
             <span className='hidden sm:inline'>
               {event.startingDate && event.location?.address ? ' - ' : ''}
               {event.location?.address}
             </span>
           </p>
+          {/* En el celular "Activar" va debajo del nombre: al lado de los
+              íconos dejaba el nombre en tres letras ("Eve nt…"). */}
+          {showActions &&
+            event.inviteCondition !== 'INVITATION' &&
+            canPublish &&
+            !event.isActive && (
+              <Button
+                variant='success'
+                size='sm'
+                loading={toggleActivate.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleActivate();
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className='w-fit sm:hidden'
+              >
+                {activateSure ? '¿Estás seguro?' : 'Mostrar'}
+              </Button>
+            )}
         </div>
         {typeof event.issuedTickets === 'number' && (
           <Tooltip>
@@ -210,9 +249,9 @@ export default function EventCardHorizontal({
                     size='sm'
                     loading={toggleActivate.isPending}
                     onClick={handleActivate}
-                    className='mr-1'
+                    className='mr-1 hidden sm:inline-flex'
                   >
-                    {activateSure ? '¿Estás seguro?' : 'Activar'}
+                    {activateSure ? '¿Estás seguro?' : 'Mostrar'}
                   </Button>
                 )}
                 <Tooltip>
@@ -234,7 +273,12 @@ export default function EventCardHorizontal({
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={'ghost'} size={'icon'} asChild>
+                <Button
+                  variant={'ghost'}
+                  size={'icon'}
+                  asChild
+                  className='hidden sm:inline-flex'
+                >
                   <Link href={manageHref as Route<string>}>
                     <Calendar className='w-4 h-4 text-on-accent' />
                   </Link>

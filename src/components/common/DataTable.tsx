@@ -12,11 +12,11 @@ import {
 } from '@tanstack/react-table';
 import { Download, Loader } from 'lucide-react';
 import {
-  startTransition,
   useActionState,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -42,6 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { type TenantPermission } from '@/lib/rbac/permissions';
 import { cn } from '@/lib/utils';
 import { exportTableToXlsx } from '@/lib/utils-client';
 
@@ -65,8 +66,13 @@ interface DataTableProps<
   disableExport?: TDisableExport;
   noResultsPlaceholder?: string;
   requirePasswordForExport?: boolean;
+  /** Permiso necesario para exportar: las tablas con datos sensibles usan uno propio. */
+  exportPermission?: TenantPermission;
   headerActions?: React.ReactNode;
 }
+
+// Constante: un `[]` por defecto en la firma es un arreglo nuevo en cada render.
+const NO_EXCLUDED_COLUMNS: string[] = [];
 
 export function DataTable<
   TData extends { id: string },
@@ -82,13 +88,14 @@ export function DataTable<
   initialSortingColumn,
   highlightedRowId,
   exportFileName = 'tabla',
-  exportExcludeColumnIds = [],
+  exportExcludeColumnIds = NO_EXCLUDED_COLUMNS,
   disableExport = false as TDisableExport,
   noResultsPlaceholder = 'No se encontraron resultados',
   requirePasswordForExport = false,
+  exportPermission = 'exports:tables',
   headerActions,
 }: DataTableProps<TData, TValue, TDisableExport>) {
-  const canExport = useCan('exports:tables');
+  const canExport = useCan(exportPermission);
 
   const [sorting, setSorting] = useState<SortingState>(
     initialSortingColumn
@@ -200,15 +207,20 @@ export function DataTable<
     }, 0);
   }, [handleExportXlsx]);
 
+  // Una exportación por cada contraseña validada. El efecto corría en cada
+  // render mientras state.ok seguía en true y bajaba el Excel en loop.
+  const exportedStateRef = useRef<typeof state | null>(null);
   useEffect(() => {
-    if (state.ok && requirePasswordForExport) {
+    if (
+      state.ok &&
+      requirePasswordForExport &&
+      exportedStateRef.current !== state
+    ) {
+      exportedStateRef.current = state;
       setIsDialogOpen(false);
       exportWithFeedback();
-      startTransition(() => {
-        action(new FormData());
-      });
     }
-  }, [state.ok, action, exportWithFeedback, requirePasswordForExport]);
+  }, [state, exportWithFeedback, requirePasswordForExport]);
 
   const handleExportClick = useCallback(() => {
     if (isExporting) return;
@@ -346,7 +358,12 @@ export function DataTable<
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className='h-24 text-center'>
+              {/* whitespace-normal: el mensaje largo cortaba línea fuera de la
+                  tabla angosta del celular y quedaba tapado. */}
+              <TableCell
+                colSpan={columns.length}
+                className='h-24 text-center whitespace-normal'
+              >
                 {noResultsPlaceholder}
               </TableCell>
             </TableRow>

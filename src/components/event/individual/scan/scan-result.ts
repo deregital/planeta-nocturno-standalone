@@ -13,6 +13,7 @@ import {
   ALREADY_SCANNED_TEXT,
   alreadyScannedExtraInfo,
   conflictTexts,
+  outOfWindowTexts,
   ownEntryInfo,
   SELF_REPEAT_TEXT,
   selfRepeatExtraInfo,
@@ -29,6 +30,9 @@ export type ScanDisplayResult = {
     | 'already-scanned'
     | 'not-found'
     | 'self-repeat'
+    /** Fuera del horario de su tipo de entrada: no se registró. */
+    | 'too-early'
+    | 'expired'
     /** No hubo decisión: sin red, sesión vencida, error del servidor. */
     | 'error'
     /** Aviso del servidor sobre un ingreso que el celular ya dejó pasar. */
@@ -61,6 +65,8 @@ export type ScanDisplayResult = {
   clientScanId?: string;
   /** Qué dijo el servidor de un ingreso decidido en el celular. */
   sync?: 'pending' | 'confirmed' | 'duplicate' | 'not-found';
+  /** QR leído: para "Dejar pasar igual" una entrada fuera de horario. */
+  barcode?: string;
 };
 
 /** Tarjeta de un escaneo que no llegó a una decisión. */
@@ -148,6 +154,23 @@ export function conflictResult(
     decidedBy: 'server',
     mode: 'local',
     clientScanId: event.clientScanId,
+  };
+}
+
+/** Entrada fuera de horario decidida en el celular: se avisa, no se registra. */
+export function localOutOfWindow(
+  evaluation: Extract<Evaluation, { kind: 'known' }>,
+  status: 'too-early' | 'expired',
+): ScanDisplayResult {
+  return {
+    status,
+    ...outOfWindowTexts(status, {
+      startingDate: evaluation.type?.startingDate ?? null,
+      scanLimit: evaluation.type?.scanLimit ?? null,
+    }),
+    ticket: displayTicket(evaluation, evaluation.ticket),
+    decidedBy: 'local',
+    mode: 'local',
   };
 }
 

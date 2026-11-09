@@ -53,11 +53,11 @@ export function ScannerScreen({
   const eventIdsRef = useRef(eventIds);
   eventIdsRef.current = eventIds;
   const onlineScan = useCallback(
-    async (barcode: string, signal: AbortSignal) => {
+    async (barcode: string, signal: AbortSignal, force: boolean) => {
       setScanInFlight(true);
       try {
         return await utils.client.emittedTickets.scan.mutate(
-          { eventIds: eventIdsRef.current, barcode },
+          { eventIds: eventIdsRef.current, barcode, force },
           { signal },
         );
       } finally {
@@ -160,11 +160,11 @@ export function ScannerScreen({
     };
   }, []);
 
-  const onScan = useCallback(
-    async (raw: string) => {
+  const scanAndRecord = useCallback(
+    async (raw: string, force: boolean) => {
       let result: ScanDisplayResult;
       try {
-        result = await controller.scan(raw);
+        result = { ...(await controller.scan(raw, { force })), barcode: raw };
       } catch (error) {
         const scanError =
           error instanceof ScanRequestError
@@ -187,6 +187,24 @@ export function ScannerScreen({
       return result;
     },
     [controller, addToHistory],
+  );
+  const onScan = useCallback(
+    (raw: string) => scanAndRecord(raw, false),
+    [scanAndRecord],
+  );
+  // "Dejar pasar igual" una entrada fuera de horario: se vuelve a escanear el
+  // mismo QR, esta vez registrando el ingreso.
+  const [forcing, setForcing] = useState(false);
+  const onForce = useCallback(
+    async (barcode: string) => {
+      setForcing(true);
+      try {
+        await scanAndRecord(barcode, true);
+      } finally {
+        setForcing(false);
+      }
+    },
+    [scanAndRecord],
   );
 
   return (
@@ -217,7 +235,13 @@ export function ScannerScreen({
           <ScannerStatusBar controller={controller} online={online} />
         )}
         <ScanNotices notices={notices} onDismiss={dismissNotice} />
-        {lastScan && <LastScanCard lastScan={lastScan} />}
+        {lastScan && (
+          <LastScanCard
+            lastScan={lastScan}
+            onForce={onForce}
+            isForcing={forcing}
+          />
+        )}
       </div>
     </div>
   );

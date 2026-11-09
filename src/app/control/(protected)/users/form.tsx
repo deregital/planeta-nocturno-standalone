@@ -41,7 +41,9 @@ export default function ControlAdminForm({
     username: '',
     email: '',
     password: '',
-    roleId: roles[0]?.id ?? '',
+    // Vacío en el alta: preseleccionaba Super admin y un alta apurada creaba
+    // un usuario con acceso total.
+    roleId: '',
     ...initialValues,
     ...state.values,
   };
@@ -80,7 +82,7 @@ export default function ControlAdminForm({
           error={state.errors?.password}
           placeholder={
             mode === 'create'
-              ? 'Mínimo 4 caracteres'
+              ? 'Mínimo 8 caracteres'
               : 'Dejar vacío para no cambiar'
           }
           required={mode === 'create'}

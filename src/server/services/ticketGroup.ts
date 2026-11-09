@@ -1,19 +1,120 @@
 import type { ResolvedInstance } from '@/server/instance/resolve-instance';
 
 import { TRPCError } from '@trpc/server';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import type { Db } from '@/drizzle';
 
-import { eventXorganizer, ticketGroup } from '@/drizzle/schema';
+import {
+  emittedTicket,
+  eventXorganizer,
+  ticketGroup,
+  ticketType,
+  ticketTypePerGroup,
+} from '@/drizzle/schema';
 import { type TicketGroupStatus } from '@/server/types';
 import { calculateTotalPriceFromData } from '@/lib/utils';
+import { logger } from '@/server/observability/logger';
 import {
   generateTicketEmailBody,
   sendMailService,
 } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
 import { generatePdf } from '@/server/utils/ticket-template';
+
+/**
+ * Registra el pago aprobado de un grupo de Mercado Pago. Devuelve false si ya
+ * estaba pago: el aviso se reintenta y no hay que volver a entregar.
+ *
+ * Si la reserva ya había soltado el cupo (pago tardío, ver releaseExpiredHolds),
+ * lo vuelve a tomar con las entradas emitidas, aunque el tipo se haya agotado
+ * mientras tanto: la plata ya se cobró y la entrada se honra.
+ */
+export async function markMercadoPagoGroupPaid(db: Db, ticketGroupId: string) {
+  return db.transaction(async (tx) => {
+    const [group] = await tx
+      .select({ status: ticketGroup.status, eventId: ticketGroup.eventId })
+      .from(ticketGroup)
+      .where(eq(ticketGroup.id, ticketGroupId))
+      .for('update');
+
+    if (!group) {
+      throw new Error('ticketGroup no encontrado');
+    }
+    if (group.status !== 'BOOKED') return false;
+
+    const [hold] = await tx
+      .select({ ticketTypeId: ticketTypePerGroup.ticketTypeId })
+      .from(ticketTypePerGroup)
+      .where(eq(ticketTypePerGroup.ticketGroupId, ticketGroupId))
+      .limit(1);
+
+    if (!hold) {
+      const emitted = await tx
+        .select({
+          ticketTypeId: emittedTicket.ticketTypeId,
+          amount: sql<number>`count(*)::int`,
+        })
+        .from(emittedTicket)
+        .where(eq(emittedTicket.ticketGroupId, ticketGroupId))
+        .groupBy(emittedTicket.ticketTypeId);
+
+      if (emitted.length > 0) {
+        const typeIds = emitted.map((row) => row.ticketTypeId);
+        const types = await tx
+          .select({
+            id: ticketType.id,
+            name: ticketType.name,
+            maxAvailable: ticketType.maxAvailable,
+          })
+          .from(ticketType)
+          .where(inArray(ticketType.id, typeIds))
+          .orderBy(ticketType.id)
+          .for('update');
+        const taken = await tx
+          .select({
+            ticketTypeId: ticketTypePerGroup.ticketTypeId,
+            taken: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)::int`,
+          })
+          .from(ticketTypePerGroup)
+          .where(inArray(ticketTypePerGroup.ticketTypeId, typeIds))
+          .groupBy(ticketTypePerGroup.ticketTypeId);
+        const takenByType = new Map(
+          taken.map((row) => [row.ticketTypeId, Number(row.taken)]),
+        );
+
+        for (const row of emitted) {
+          const type = types.find((t) => t.id === row.ticketTypeId);
+          const after = (takenByType.get(row.ticketTypeId) ?? 0) + row.amount;
+          if (type && after > type.maxAvailable) {
+            logger.warn('Late payment honored over ticket type quota', {
+              operation: 'payment_webhook',
+              ticketGroupId,
+              ticketTypeId: type.id,
+              ticketTypeName: type.name,
+              maxAvailable: type.maxAvailable,
+              taken: after,
+            });
+          }
+        }
+
+        await tx.insert(ticketTypePerGroup).values(
+          emitted.map((row) => ({
+            ticketGroupId,
+            ticketTypeId: row.ticketTypeId,
+            amount: Number(row.amount),
+          })),
+        );
+      }
+    }
+
+    await tx
+      .update(ticketGroup)
+      .set({ status: 'PAID' })
+      .where(eq(ticketGroup.id, ticketGroupId));
+    return true;
+  });
+}
 
 export async function updateTicketGroupStatus(
   db: Db,

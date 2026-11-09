@@ -56,3 +56,6 @@ certificates
 /playwright/.auth/
 # load tests
 /tests/load/results
+
+# stack simulado de pruebas (tests/stack)
+/tests/stack/.run/

@@ -1,6 +1,6 @@
 'use client';
 import { format } from 'date-fns';
-import { startTransition, useActionState } from 'react';
+import { startTransition, useActionState, useEffect } from 'react';
 
 import { handlePurchase as handlePurchaseAction } from '@/app/(client)/event/[slug]/actions';
 import { ExpandableImage } from '@/components/common/ExpandableImage';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { useEventTickets } from '@/hooks/useEventTickets';
 import { type RouterOutputs } from '@/server/routers/app';
+import { trpc } from '@/server/trpc/client';
 
 function TicketPurchase({
   ticketTypes,
@@ -28,10 +29,18 @@ function TicketPurchase({
   invitedBy: string | null;
   eventStartingDate: string | null;
 }) {
-  const [, handlePurchase, pending] = useActionState(
+  const [purchaseState, handlePurchase, pending] = useActionState(
     handlePurchaseAction,
     undefined,
   );
+  const utils = trpc.useUtils();
+
+  // Si la reserva falló (p. ej. se agotó mientras elegía), mostrar el cupo real.
+  useEffect(() => {
+    if (purchaseState?.error) {
+      void utils.ticketGroup.getTicketTypeAmounts.invalidate(eventId);
+    }
+  }, [purchaseState, utils, eventId]);
 
   const {
     ticketsAvailable: ticketsTypeAvailable,
@@ -162,6 +171,12 @@ function TicketPurchase({
             </div>
           ))}
         </div>
+      )}
+
+      {purchaseState?.error && !pending && (
+        <p role='alert' className='mt-2 text-sm font-medium text-red-500'>
+          {purchaseState.error}
+        </p>
       )}
 
       {/* Botón de compra */}

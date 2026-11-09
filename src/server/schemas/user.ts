@@ -7,8 +7,9 @@ export const userSchema = z.object({
   name: z.string().min(1, {
     error: 'El nombre de usuario es requerido',
   }),
-  password: z.string().min(4, {
-    error: 'La contraseña es requerida y debe tener al menos 4 caracteres',
+  // Sólo para altas y cambios de contraseña: el login no exige el largo.
+  password: z.string().min(8, {
+    error: 'La contraseña debe tener al menos 8 caracteres',
   }),
   email: z.email({
     error: 'El email no es válido',

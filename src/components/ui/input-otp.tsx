@@ -40,7 +40,8 @@ const InputOTPSlot = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        'relative flex h-12 w-12 items-center justify-center border-y border-r border-stroke text-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md',
+        // w-10 en el celular: 6 casillas de 48px + márgenes no entraban en 360px.
+        'relative flex h-12 w-10 sm:w-12 items-center justify-center border-y border-r border-stroke text-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md',
         isActive && 'z-10 ring-2 ring-stroke ring-offset-background',
         className,
       )}

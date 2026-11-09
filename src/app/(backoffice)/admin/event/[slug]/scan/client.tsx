@@ -6,7 +6,7 @@ import { type RouterOutputs } from '@/server/routers/app';
 export default function ScanClient({
   event,
 }: {
-  event: NonNullable<RouterOutputs['events']['getPublicBySlug']>;
+  event: NonNullable<RouterOutputs['events']['getForScanBySlug']>;
 }) {
   return <ScannerScreen eventIds={[event.id]} />;
 }

@@ -300,7 +300,7 @@ export function EventGeneralInformation({
                     }}
                     className='size-3.5 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed'
                   />
-                  <span className='whitespace-nowrap text-xs text-accent-dark'>
+                  <span className='text-xs text-accent-dark'>
                     Mostrar título en ticketera
                   </span>
                 </label>
@@ -566,7 +566,7 @@ export function EventGeneralInformation({
               </p>
             )}
           </div>
-          <div className='flex gap-2'>
+          <div className='flex flex-wrap gap-2'>
             {event.authorizedUsers?.map((user) => (
               <UserBox
                 key={user.id}

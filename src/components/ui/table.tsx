@@ -4,25 +4,76 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+/**
+ * Sombra en el borde mientras quede tabla por deslizar: en el celular las
+ * columnas de la derecha (Estado, Total, Acciones) quedaban afuera sin ninguna
+ * pista de que la tabla se mueve.
+ */
+function useHorizontalOverflow() {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = React.useState({ left: false, right: false });
+
+  React.useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const update = () =>
+      setEdges({
+        left: element.scrollLeft > 4,
+        right:
+          element.scrollLeft + element.clientWidth < element.scrollWidth - 4,
+      });
+    update();
+    element.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+    return () => {
+      element.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, []);
+
+  return { ref, edges };
+}
+
 function Table({
   className,
   fullWidth,
   ...props
 }: React.ComponentProps<'table'> & { fullWidth?: boolean }) {
+  const { ref, edges } = useHorizontalOverflow();
+
   return (
     <div
-      data-slot='table-container'
       className={cn(
-        'relative overflow-x-auto w-full',
+        'relative w-full',
         fullWidth &&
           'max-w-full w-[calc(100vw-20px)] md:w-[calc(100vw-20px-var(--sidebar-width))]',
       )}
     >
-      <table
-        data-slot='table'
-        className={cn('caption-bottom text-sm w-full', className)}
-        {...props}
-      />
+      <div
+        ref={ref}
+        data-slot='table-container'
+        className='overflow-x-auto w-full'
+      >
+        <table
+          data-slot='table'
+          className={cn('caption-bottom text-sm w-full', className)}
+          {...props}
+        />
+      </div>
+      {edges.left && (
+        <div
+          aria-hidden
+          className='pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-black/15 to-transparent'
+        />
+      )}
+      {edges.right && (
+        <div
+          aria-hidden
+          className='pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-black/15 to-transparent'
+        />
+      )}
     </div>
   );
 }
