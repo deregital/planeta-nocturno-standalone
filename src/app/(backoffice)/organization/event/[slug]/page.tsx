@@ -230,6 +230,7 @@ export default async function EventPage({
               <InvitationTicketTableWrapper
                 eventId={event.id}
                 eventSlug={event.slug}
+                eventName={event.name}
               />
             </Suspense>
           </>
