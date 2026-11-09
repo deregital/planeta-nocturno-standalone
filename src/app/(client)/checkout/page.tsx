@@ -39,7 +39,7 @@ export default async function CheckoutPage() {
     return (
       <ServerErrorCard
         title='Tu reserva ya no está activa'
-        description='Pasaron más de 10 minutos o, si es una invitación, el link se abrió en otro dispositivo. Volvé a abrir el link o elegí tus entradas de nuevo.'
+        description='Pasaron más de 10 minutos. Volvé a abrir el link o elegí tus entradas de nuevo.'
         route='/'
       />
     );

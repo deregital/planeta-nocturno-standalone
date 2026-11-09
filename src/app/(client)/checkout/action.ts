@@ -37,6 +37,10 @@ import { getTransferAlias } from '@/server/services/paymentSettings';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { startTransferPayment } from '@/server/services/transferPayment';
 import { trpc } from '@/server/trpc/server';
+import {
+  INVITATION_ALREADY_USED_MESSAGE,
+  INVITATION_COOKIE,
+} from '@/server/utils/constants';
 
 export type PurchaseActionState = {
   ticketsInput: CreateManyTicket[];
@@ -47,9 +51,9 @@ export type PurchaseActionState = {
   eventSlug?: string | null;
 };
 
-// Una invitación abierta en otro dispositivo también suelta esta reserva.
+// La reserva vence a los 10 minutos sin enviar los datos.
 const RESERVATION_EXPIRED_MESSAGE =
-  'Tu reserva ya no está activa: pasaron más de 10 minutos o, si es una invitación, el link se abrió en otro dispositivo. Volvé a abrir el link o elegí tus entradas de nuevo.';
+  'Tu reserva ya no está activa: pasaron más de 10 minutos. Volvé a abrir el link o elegí tus entradas de nuevo.';
 
 export const handlePurchase = async (
   prevState: PurchaseActionState,
@@ -312,6 +316,25 @@ export const handlePurchase = async (
       ticketGroupId?.toString() ?? '',
     );
 
+    // Link de invitación: el código se lo queda el primero que le da a Adquirir,
+    // aunque otra persona lo haya abierto después.
+    const [invitationGroupId, invitationCode] =
+      (await cookies()).get(INVITATION_COOKIE)?.value.split(':') ?? [];
+    if (invitationCode && invitationGroupId === ticketGroupId) {
+      const claim = await trpc.ticketGroup.claimInvitation({
+        ticketGroupId,
+        code: invitationCode,
+      });
+      if (claim.status === 'expired') return reservationExpired();
+      if (claim.status === 'already_used') {
+        return {
+          ticketsInput: prevState.ticketsInput,
+          errors: [INVITATION_ALREADY_USED_MESSAGE],
+          formData: formDataRecord,
+        };
+      }
+    }
+
     await trpc.emittedTickets.createMany(entradas);
 
     // Actualizar el organizador asociado al ticketGroup solo si hay un código válido
@@ -459,7 +482,7 @@ export const handlePurchase = async (
       url = `/tickets/${ticketGroupId}` as Route;
     }
   } catch (error) {
-    // La reserva se borró entre la carga y el envío (venció o la tomó otro navegador).
+    // La reserva se borró entre la carga y el envío (venció).
     if (error instanceof TRPCError && error.code === 'NOT_FOUND') {
       return reservationExpired();
     }

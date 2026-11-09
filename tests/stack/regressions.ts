@@ -467,7 +467,7 @@ async function main() {
 
   await check(
     'H03',
-    'otro navegador con el mismo link toma la reserva en vez de compartirla',
+    'dos navegadores con el mismo link tienen su reserva y gana el primero que envía sus datos',
     async () => {
       const e = event('egresados');
       const {
@@ -499,24 +499,47 @@ async function main() {
         'B compartió la reserva de A',
       );
       assert(
-        !(await groupExists(a.ticketGroupId)),
-        'la reserva de A sigue viva',
+        await groupExists(a.ticketGroupId),
+        'abrir el link en otro navegador le sacó la reserva a A',
       );
 
+      // A abrió primero y B después, pero A le da a Adquirir primero: gana A.
       const invitation = type('egresados', 'Invitación');
-      await rejects(
-        anon.emittedTickets.createMany([
-          buyer(invitation.id, a.ticketGroupId, e.id),
-        ]),
-        'NOT_FOUND',
-      );
-      const holder = buyer(invitation.id, b.ticketGroupId, e.id);
+      const claimA = await anon.ticketGroup.claimInvitation({
+        ticketGroupId: a.ticketGroupId,
+        code,
+      });
+      assert(claimA.status === 'ok', `reclamo de A: ${claimA.status}`);
+      const holder = buyer(invitation.id, a.ticketGroupId, e.id);
       await anon.emittedTickets.createMany([holder]);
+
+      const claimB = await anon.ticketGroup.claimInvitation({
+        ticketGroupId: b.ticketGroupId,
+        code,
+      });
+      assert(
+        claimB.status === 'already_used',
+        `reclamo de B después de A: ${claimB.status}`,
+      );
       await rejects(
         anon.emittedTickets.createMany([
           buyer(invitation.id, b.ticketGroupId, e.id),
         ]),
         'CONFLICT',
+      );
+      await rejects(
+        anon.emittedTickets.createMany([
+          buyer(invitation.id, a.ticketGroupId, e.id),
+        ]),
+        'CONFLICT',
+      );
+      const c = await anon.ticketGroup.redeemInvitation({
+        eventId: e.id,
+        code,
+      });
+      assert(
+        c.status === 'already_used',
+        `canje después de usado: ${c.status}`,
       );
       const same = await anon.emittedTickets.createMany([holder]);
       assert(

@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { trpc } from '@/server/trpc/server';
+import { INVITATION_COOKIE } from '@/server/utils/constants';
 
 /**
  * Los links llegan copiados de WhatsApp o Instagram: con espacios, un punto
@@ -85,6 +86,8 @@ export async function GET(
   }
 
   cookiesStore.set('carrito', redeemed.ticketGroupId);
+  // Al darle a Adquirir se reclama el código para esta reserva.
+  cookiesStore.set(INVITATION_COOKIE, `${redeemed.ticketGroupId}:${code}`);
 
   redirect('/checkout');
 }

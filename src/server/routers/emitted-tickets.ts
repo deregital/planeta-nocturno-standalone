@@ -39,7 +39,10 @@ import {
   publicProcedure,
   router,
 } from '@/server/trpc';
-import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
+import {
+  INVITATION_ALREADY_USED_MESSAGE,
+  ORGANIZER_TICKET_TYPE_NAME,
+} from '@/server/utils/constants';
 import { getBuyersCodeByDni } from '@/server/utils/db/utils';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { generatePdf } from '@/server/utils/ticket-template';
@@ -227,8 +230,12 @@ export const emittedTicketsRouter = router({
         const res = await ctx.db.transaction(async (tx) => {
           // Lock del grupo: serializa dos envíos simultáneos del mismo checkout.
           const [group] = await tx
-            .select({ id: ticketGroup.id })
+            .select({
+              id: ticketGroup.id,
+              inviteCondition: event.inviteCondition,
+            })
             .from(ticketGroup)
+            .innerJoin(event, eq(event.id, ticketGroup.eventId))
             .where(eq(ticketGroup.id, ticketGroupId))
             .for('update');
           if (!group) {
@@ -257,6 +264,29 @@ export const emittedTicketsRouter = router({
               });
             }
             return alreadyEmitted;
+          }
+
+          // Invitación: varias personas pueden tener el link abierto, cada una
+          // con su reserva. Sólo se emite si el código apunta a esta reserva
+          // (claimInvitation) y nadie lo usó: gana el primero que le da a Adquirir.
+          let invitationCode: string | null = null;
+          if (group.inviteCondition === 'INVITATION') {
+            const [invite] = await tx
+              .select({
+                code: ticketXorganizer.code,
+                ticketId: ticketXorganizer.ticketId,
+              })
+              .from(ticketXorganizer)
+              .where(eq(ticketXorganizer.ticketGroupId, ticketGroupId))
+              .limit(1)
+              .for('update');
+            if (!invite || invite.ticketId) {
+              throw new TRPCError({
+                code: 'CONFLICT',
+                message: INVITATION_ALREADY_USED_MESSAGE,
+              });
+            }
+            invitationCode = invite.code;
           }
 
           // Emitir exactamente lo reservado: tipo y cantidad salen del grupo,
@@ -345,41 +375,17 @@ export const emittedTicketsRouter = router({
 
           if (!inserted) throw 'Error al crear ticket/s';
 
-          // Si hay tickets creados, verificar si hay un ticketXorganizer asociado al ticketGroup
-          // y actualizar su ticketId con el primer ticket creado (modo INVITATION)
-          if (inserted.length > 0 && input.length > 0) {
-            const firstTicketGroupId = input[0].ticketGroupId;
-
-            // Buscar el ticketGroup para obtener el organizerId
-            const group = await tx.query.ticketGroup.findFirst({
-              where: eq(ticketGroup.id, firstTicketGroupId),
-              columns: {
-                invitedById: true,
-              },
-            });
-
-            // Si el ticketGroup tiene un organizerId asociado, buscar el ticketXorganizer
-            if (group?.invitedById) {
-              const ticketXOrg = await tx.query.ticketXorganizer.findFirst({
-                where: and(
-                  eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
-                  eq(ticketXorganizer.organizerId, group.invitedById),
+          // El código queda usado por esta entrada.
+          if (invitationCode) {
+            await tx
+              .update(ticketXorganizer)
+              .set({ ticketId: inserted[0].id })
+              .where(
+                and(
+                  eq(ticketXorganizer.ticketGroupId, ticketGroupId),
+                  eq(ticketXorganizer.code, invitationCode),
                 ),
-              });
-
-              // Si existe y no tiene ticketId asignado, actualizarlo con el primer ticket
-              if (ticketXOrg && !ticketXOrg.ticketId) {
-                await tx
-                  .update(ticketXorganizer)
-                  .set({ ticketId: inserted[0].id })
-                  .where(
-                    and(
-                      eq(ticketXorganizer.ticketGroupId, firstTicketGroupId),
-                      eq(ticketXorganizer.organizerId, group.invitedById),
-                    ),
-                  );
-              }
-            }
+              );
           }
 
           return inserted;

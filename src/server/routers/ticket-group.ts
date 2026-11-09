@@ -146,14 +146,10 @@ function redeemInvitationCode(
             organizerId: invite.organizerId,
           };
         }
-        // Una reserva que ya está en un pago no se le saca a quien paga.
-        if (existing.paymentMethod) {
-          return { status: 'already_used' as const };
-        }
-        // Otro navegador (la misma persona en otro dispositivo, o alguien
-        // a quien le reenviaron el link): se suelta la reserva anterior y
-        // se crea una propia. El checkout viejo ya no puede completarse.
-        await tx.delete(ticketGroup).where(eq(ticketGroup.id, existing.id));
+        // Otro navegador (la misma persona en otro dispositivo, o alguien a
+        // quien le reenviaron el link): tiene su propia reserva y la anterior
+        // sigue viva. El código se lo queda el primero que le da a Adquirir
+        // (claimInvitation + emittedTickets.createMany).
       } else if (existing) {
         const [hold] = await tx
           .select({
@@ -780,27 +776,43 @@ export const ticketGroupRouter = router({
         )
         .returning();
     }),
-  updateTicketXOrganizerTicketGroupId: publicProcedure
+  /**
+   * Al darle a Adquirir con un link de invitación: el código pasa a apuntar a
+   * esta reserva si nadie lo usó todavía. Varias personas pueden tener el link
+   * abierto; createMany sólo emite para la reserva a la que apunta el código.
+   */
+  claimInvitation: publicProcedure
     .input(
       z.object({
-        code: z.string(),
-        eventId: z.string().uuid(),
-        ticketGroupId: z.string().uuid(),
+        ticketGroupId: z.uuid(),
+        code: INVITATION_CODE_SCHEMA,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
+      const [group] = await ctx.db
+        .select({ eventId: ticketGroup.eventId })
+        .from(ticketGroup)
+        .where(
+          and(
+            eq(ticketGroup.id, input.ticketGroupId),
+            eq(ticketGroup.status, 'BOOKED'),
+          ),
+        );
+      if (!group) return { status: 'expired' as const };
+
+      const [claimed] = await ctx.db
         .update(ticketXorganizer)
         .set({ ticketGroupId: input.ticketGroupId })
         .where(
           and(
+            eq(ticketXorganizer.eventId, group.eventId),
             eq(ticketXorganizer.code, input.code.toUpperCase()),
-            eq(ticketXorganizer.eventId, input.eventId),
+            isNull(ticketXorganizer.ticketId),
           ),
         )
-        .returning();
+        .returning({ code: ticketXorganizer.code });
 
-      return result[0];
+      return { status: claimed ? ('ok' as const) : ('already_used' as const) };
     }),
   updateTicketXOrganizerTicketId: publicProcedure
     .input(
