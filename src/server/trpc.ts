@@ -84,9 +84,27 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   };
 };
 
+/** Errores de la base (drizzle): traen la consulta, nombres de tablas e ids. */
+function isDatabaseError(error: { message: string; cause?: unknown }) {
+  return (
+    error.message.startsWith('Failed query') ||
+    (error.cause instanceof Error &&
+      error.cause.message.startsWith('Failed query'))
+  );
+}
+
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
+    // El toast le mostraba al usuario la consulta SQL con sus parámetros.
+    if (isDatabaseError(error)) {
+      return {
+        ...shape,
+        message: 'Ocurrió un error inesperado. Intentá de nuevo.',
+        data: { ...shape.data, stack: undefined, zodError: null },
+      };
+    }
+
     const data: Record<string, unknown> = {
       ...shape.data,
       zodError:

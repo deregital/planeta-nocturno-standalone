@@ -539,8 +539,14 @@ export class LocalScanEngine {
 
   // ---------------------------------------------------------- decisiones
 
-  /** Sin efectos: qué decidiría el celular para este QR. */
-  async evaluate(code: string): Promise<Evaluation> {
+  /**
+   * Sin efectos: qué decidiría el celular para este QR. `force`: la puerta la
+   * deja pasar igual aunque esté fuera del horario de su tipo de entrada.
+   */
+  async evaluate(
+    code: string,
+    { force = false }: { force?: boolean } = {},
+  ): Promise<Evaluation> {
     if (!this.key || this.phase !== 'ready') return { kind: 'unavailable' };
     const ticketId = await decryptLegacyQr(code, this.key);
     if (!ticketId) return { kind: 'unreadable' };
@@ -555,7 +561,11 @@ export class LocalScanEngine {
       ticket: { ...ticket },
       type,
       eventName: this.events.get(ticket.eventId) ?? '',
-      decision: decideKnownTicket(ticket, type?.allowMultipleScans ?? false),
+      decision: decideKnownTicket(ticket, type?.allowMultipleScans ?? false, {
+        window: type,
+        now: new Date(this.correctedNow()),
+        force,
+      }),
     };
   }
 

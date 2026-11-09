@@ -19,7 +19,12 @@ export const organizerTraditionalSchema = z.object({
 export const organizerInvitationSchema = z.object({
   ...organizerBaseSchema.shape,
   type: z.literal('INVITATION'),
-  ticketAmount: z.number().min(0).nullable(),
+  // Sin .int() un 2.5 llegaba a la base (columna entera) y fallaba con un 500.
+  ticketAmount: z
+    .number()
+    .int({ error: 'La cantidad de tickets tiene que ser un número entero' })
+    .min(0)
+    .nullable(),
 });
 
 export type OrganizerTraditionalSchema = z.infer<

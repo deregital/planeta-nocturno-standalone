@@ -57,11 +57,31 @@ async function EventPage({ params, searchParams }: EventPageProps) {
       );
     }
 
+    if (error === 'too_many_attempts') {
+      return (
+        <ServerErrorCard
+          title='Demasiados intentos'
+          description='Se hicieron demasiados intentos con códigos inválidos desde tu conexión. Esperá unos minutos y volvé a abrir el enlace de tu invitación.'
+          route='/'
+        />
+      );
+    }
+
     if (error === 'code_already_used') {
       return (
         <ServerErrorCard
           title='Código ya utilizado'
-          description='Este código de invitación ya fue utilizado anteriormente. Cada código solo puede ser usado una vez.'
+          description='Este código de invitación ya se usó: cada código sirve una sola vez. Si lo usaste vos, tus entradas te llegaron al mail que cargaste (revisá también spam). Si no, pedile un código nuevo a quien te invitó.'
+          route='/'
+        />
+      );
+    }
+
+    if (error === 'sale_closed') {
+      return (
+        <ServerErrorCard
+          title='Invitaciones cerradas'
+          description='Ya no se pueden canjear invitaciones para este evento. Si creés que es un error, hablá con quien te invitó.'
           route='/'
         />
       );
@@ -89,7 +109,9 @@ async function EventPage({ params, searchParams }: EventPageProps) {
 
     // Si hay código de invitación, redirigir al Route Handler API para procesarlo
     if (invitationCode && typeof invitationCode === 'string') {
-      redirect(`/api/event/${slug}/invite?invite=${invitationCode}`);
+      redirect(
+        `/api/event/${slug}/invite?invite=${encodeURIComponent(invitationCode)}`,
+      );
     }
 
     // Si no hay código en los searchParams, mostrar error

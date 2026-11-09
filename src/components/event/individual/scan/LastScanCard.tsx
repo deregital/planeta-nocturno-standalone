@@ -1,6 +1,8 @@
 import { formatInTimeZone } from 'date-fns-tz';
 
 import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
+import { Button } from '@/components/ui/button';
+import { OUT_OF_WINDOW_STATUSES } from '@/lib/scan/decision';
 
 /** Qué pasó con un escaneo que el celular dio por bueno (modo rápido). */
 const LOCAL_SYNC_TEXT: Record<
@@ -13,7 +15,17 @@ const LOCAL_SYNC_TEXT: Record<
   'not-found': 'Escaneado en este celular · ticket eliminado',
 };
 
-export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
+export function LastScanCard({
+  lastScan,
+  onForce,
+  isForcing,
+}: {
+  lastScan: ScanDisplayResult;
+  /** "Dejar pasar igual" una entrada fuera de horario. */
+  onForce?: (barcode: string) => void;
+  isForcing?: boolean;
+}) {
+  const isOutOfWindow = OUT_OF_WINDOW_STATUSES.has(lastScan.status);
   return (
     <div className='relative w-full min-h-fit rounded-2xl border-2 border-stroke overflow-hidden'>
       {lastScan.ticket?.scannedAt && (
@@ -75,9 +87,10 @@ export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
         <>
           <div
             className={
-              // Ámbar: no hubo decisión (sin red, servidor). Naranja: aviso
-              // de un ingreso que ya pasó (doble ingreso). Rojo: rechazada.
-              lastScan.status === 'error'
+              // Ámbar: no hubo decisión (sin red, servidor) o está fuera de
+              // horario. Naranja: aviso de un ingreso que ya pasó (doble
+              // ingreso). Rojo: rechazada.
+              lastScan.status === 'error' || isOutOfWindow
                 ? 'bg-amber-400 p-2 font-bold text-amber-950'
                 : lastScan.status === 'conflict'
                   ? 'bg-orange-500 p-2 font-bold text-white'
@@ -96,10 +109,28 @@ export function LastScanCard({ lastScan }: { lastScan: ScanDisplayResult }) {
                 <p className='text-accent-dark p-2 text-sm'>
                   <span className='font-bold'>DNI:</span> {lastScan.ticket?.dni}
                 </p>
+                {isOutOfWindow && (
+                  <p className='text-accent-dark p-2 text-sm'>
+                    <span className='font-bold'>Tipo de ticket:</span>{' '}
+                    {lastScan.ticket.ticketType.name}
+                  </p>
+                )}
               </>
             )}
             {lastScan.extraInfo}
           </div>
+          {isOutOfWindow && onForce && lastScan.barcode && (
+            <div className='p-2'>
+              <Button
+                variant='accent'
+                className='w-full'
+                loading={isForcing}
+                onClick={() => onForce(lastScan.barcode!)}
+              >
+                Dejar pasar igual
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

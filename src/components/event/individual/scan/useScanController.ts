@@ -30,6 +30,7 @@ import { IndexedDbOutboxStore } from '@/components/event/individual/scan/local/o
 import {
   fromServer,
   localAlreadyScanned,
+  localOutOfWindow,
   localSuccess,
   selfRepeat,
   withOwnEntryInfo,
@@ -123,10 +124,14 @@ export function useScanController({
   onEngineEvent,
 }: {
   eventIds: string[];
-  /** Escaneo online; tiene que pasarle `signal` al pedido para poder cortarlo. */
+  /**
+   * Escaneo online; tiene que pasarle `signal` al pedido para poder cortarlo.
+   * `force`: "Dejar pasar igual" una entrada fuera de horario.
+   */
   onlineScan: (
     barcode: string,
     signal: AbortSignal,
+    force: boolean,
   ) => Promise<ServerScanResult>;
   /** Avisos del motor para la pantalla (doble ingreso, escaneos confirmados). */
   onEngineEvent?: (event: EngineEvent) => void;
@@ -333,7 +338,10 @@ export function useScanController({
   const [waitingForNetwork, setWaitingForNetwork] = useState(false);
 
   const scan = useCallback(
-    async (code: string): Promise<ScanDisplayResult> => {
+    async (
+      code: string,
+      { force = false }: { force?: boolean } = {},
+    ): Promise<ScanDisplayResult> => {
       const now = Date.now();
       for (const [key, attempt] of attemptsRef.current) {
         if (now - attempt.at > SELF_REPEAT_WINDOW_MS)
@@ -367,9 +375,14 @@ export function useScanController({
 
       if (engine && mode === 'local') {
         if (engine.canDecideLocally()) {
-          const evaluation = await engine.evaluate(code);
+          const evaluation = await engine.evaluate(code, { force });
           if (evaluation.kind === 'known') {
-            if (evaluation.decision.status === 'success') {
+            const decision = evaluation.decision.status;
+            if (decision === 'too-early' || decision === 'expired') {
+              // Fuera de horario: se avisa sin registrar, igual que el servidor.
+              return record(localOutOfWindow(evaluation, decision));
+            }
+            if (decision === 'success') {
               try {
                 const updated = await engine.commitLocalSuccess(
                   evaluation,
@@ -406,7 +419,7 @@ export function useScanController({
       const shadowStartedAt = performance.now();
       const shadowEvaluation =
         engine && mode === 'shadow' && engine.getStatus().phase === 'ready'
-          ? await engine.evaluate(code)
+          ? await engine.evaluate(code, { force })
           : null;
       const shadowMs = performance.now() - shadowStartedAt;
 
@@ -416,7 +429,7 @@ export function useScanController({
         // Un microcorte no rompe nada: espera a la red o reintenta hasta
         // OFFLINE_GRACE_MS; un pedido colgado se corta a SCAN_TIMEOUT_MS.
         ({ result: server, retried } = await sendWithGrace(
-          (signal) => onlineScan(code, signal),
+          (signal) => onlineScan(code, signal, force),
           {
             isOnline: isBrowserOnline,
             waitForOnline,

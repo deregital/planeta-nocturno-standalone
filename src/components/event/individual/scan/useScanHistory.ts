@@ -22,7 +22,12 @@ function readStored(key: string) {
 function writeStored(key: string | null, items: ScanDisplayResult[]) {
   if (!key) return;
   try {
-    localStorage.setItem(key, JSON.stringify(items));
+    // El QR no se guarda: es la entrada misma, y sólo sirve para "Dejar
+    // pasar igual" mientras la tarjeta está en pantalla.
+    localStorage.setItem(
+      key,
+      JSON.stringify(items.map(({ barcode: _barcode, ...item }) => item)),
+    );
   } catch {
     // Sin almacenamiento (modo privado, lleno): el historial queda en memoria.
   }

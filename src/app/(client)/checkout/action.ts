@@ -3,11 +3,19 @@
 import type { Route } from 'next';
 import type z from 'zod';
 
+import { TRPCError } from '@trpc/server';
 import { differenceInYears, parseISO } from 'date-fns';
+import { and, eq } from 'drizzle-orm';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
+import { z as zod } from 'zod';
 
+import {
+  event as eventTable,
+  eventQuestion,
+  ticketGroup,
+} from '@/drizzle/schema';
 import {
   buyerFromHeaders,
   capturePurchaseCompleted,
@@ -24,6 +32,7 @@ import {
   sendMailService,
 } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
+import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
 import { getTransferAlias } from '@/server/services/paymentSettings';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
 import { startTransferPayment } from '@/server/services/transferPayment';
@@ -33,7 +42,14 @@ export type PurchaseActionState = {
   ticketsInput: CreateManyTicket[];
   errors?: string[] | Record<string, string>;
   formData?: Record<string, string>;
+  /** La reserva ya no existe: hay que volver a elegir las entradas. */
+  reservationExpired?: boolean;
+  eventSlug?: string | null;
 };
+
+// Una invitación abierta en otro dispositivo también suelta esta reserva.
+const RESERVATION_EXPIRED_MESSAGE =
+  'Tu reserva ya no está activa: pasaron más de 10 minutos o, si es una invitación, el link se abrió en otro dispositivo. Volvé a abrir el link o elegí tus entradas de nuevo.';
 
 export const handlePurchase = async (
   prevState: PurchaseActionState,
@@ -69,7 +85,7 @@ export const handlePurchase = async (
     };
   }
 
-  if (!ticketGroupId) {
+  if (!zod.uuid().safeParse(ticketGroupId).success) {
     return {
       ticketsInput: prevState.ticketsInput,
       errors: ['Ha ocurrido un error, vuelva a hacer el proceso desde la home'],
@@ -80,6 +96,60 @@ export const handlePurchase = async (
   const formDataRecord: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
     formDataRecord[key] = value.toString();
+  }
+
+  const { db, instance } = await getCurrentRequestContext();
+  const event = await db.query.event.findFirst({
+    where: and(
+      eq(eventTable.id, eventId.toString()),
+      eq(eventTable.isDeleted, false),
+    ),
+    columns: { minAge: true, slug: true, isBlocked: true },
+    with: {
+      eventQuestions: {
+        where: eq(eventQuestion.isDeleted, false),
+        columns: { id: true, isRequired: true },
+      },
+    },
+  });
+  if (!event) {
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: ['El evento ya no está disponible'],
+      formData: formDataRecord,
+    };
+  }
+  // Se bloqueó mientras la persona completaba los datos.
+  if (event.isBlocked) {
+    (await cookies()).delete('carrito');
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: [EVENT_BLOCKED_MESSAGE],
+      formData: formDataRecord,
+    };
+  }
+
+  // Sin esto, con la reserva vencida el botón no hacía nada visible.
+  const reservationExpired = async () => {
+    (await cookies()).delete('carrito');
+    return {
+      ticketsInput: prevState.ticketsInput,
+      errors: [RESERVATION_EXPIRED_MESSAGE],
+      formData: formDataRecord,
+      reservationExpired: true,
+      eventSlug: event.slug,
+    };
+  };
+  const reservation = await db.query.ticketGroup.findFirst({
+    where: eq(ticketGroup.id, ticketGroupId),
+    columns: { status: true },
+  });
+  if (!reservation) {
+    return reservationExpired();
+  }
+  if (reservation.status !== 'BOOKED') {
+    // Ya se completó: doble envío, o reintento después de un error de mail.
+    redirect(`/tickets/${ticketGroupId}` as Route);
   }
 
   for (const [key, value] of formData.entries()) {
@@ -174,7 +244,6 @@ export const handlePurchase = async (
 
   const errorsArray: Record<string, string> = {};
   // Validar la edad minima del evento
-  const event = await trpc.events.getById(eventId.toString());
   if (event.minAge) {
     entradas.forEach((entrada) => {
       if (entrada.birthDate) {
@@ -238,7 +307,6 @@ export const handlePurchase = async (
     };
   }
   try {
-    const { db, instance } = await getCurrentRequestContext();
     // Total Price WITHOUT DISCOUNT OR SERVICE FEE
     const totalPrice = await trpc.ticketGroup.getTotalPriceById(
       ticketGroupId?.toString() ?? '',
@@ -391,21 +459,32 @@ export const handlePurchase = async (
       url = `/tickets/${ticketGroupId}` as Route;
     }
   } catch (error) {
+    // La reserva se borró entre la carga y el envío (venció o la tomó otro navegador).
+    if (error instanceof TRPCError && error.code === 'NOT_FOUND') {
+      return reservationExpired();
+    }
+    if (error instanceof TRPCError && error.code === 'CONFLICT') {
+      return {
+        ticketsInput: prevState.ticketsInput,
+        errors: [error.message],
+        formData: formDataRecord,
+      };
+    }
     logger.error('Checkout failed', { error });
     return {
       ticketsInput: prevState.ticketsInput,
       errors: ['Error al procesar la compra, vuelva a intentarlo'],
       formData: formDataRecord,
     };
-  } finally {
-    if (url) {
-      redirect(url);
-    }
-
-    return {
-      ticketsInput: prevState.ticketsInput,
-      errors: ['Error al finalizar la compra, vuelva a intentarlo'],
-      formData: formDataRecord,
-    };
   }
+
+  // Fuera del try: redirect() lanza y el catch lo tomaría como error.
+  if (url) {
+    redirect(url);
+  }
+  return {
+    ticketsInput: prevState.ticketsInput,
+    errors: ['Error al finalizar la compra, vuelva a intentarlo'],
+    formData: formDataRecord,
+  };
 };

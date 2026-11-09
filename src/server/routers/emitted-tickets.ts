@@ -1,5 +1,16 @@
 import { TRPCError } from '@trpc/server';
-import { and, count, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -19,6 +30,7 @@ import {
   emittedTicketSchema,
 } from '@/server/schemas/emitted-tickets';
 import { logger } from '@/server/observability/logger';
+import { assertTicketGroupEventNotBlocked } from '@/server/services/eventBlock';
 import { sendMail } from '@/server/services/mail';
 import {
   anyPermissionProcedure,
@@ -31,12 +43,15 @@ import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { getBuyersCodeByDni } from '@/server/utils/db/utils';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
 import { generatePdf } from '@/server/utils/ticket-template';
+import { scanWindowStatus } from '@/lib/scan/decision';
 import { isTicketId } from '@/lib/scan/protocol';
 import {
   ALREADY_SCANNED_TEXT,
   alreadyScannedExtraInfo,
   NOT_FOUND_EXTRA_INFO,
   NOT_FOUND_TEXT,
+  otherEventTexts,
+  outOfWindowTexts,
   successScanTexts,
 } from '@/lib/scan/scan-texts';
 import {
@@ -50,82 +65,118 @@ export const emittedTicketsRouter = router({
   create: permissionProcedure('tickets:create')
     .input(createTicketSchema)
     .mutation(async ({ ctx, input }) => {
+      const { alreadyEntered, allowOverQuota, ...ticketInput } = input;
+      // Sin try/catch con tx.rollback(): ese rollback lanza su propio error y
+      // tapaba el motivo real (p. ej. sin cupo). Drizzle revierte solo.
       const ticketCreated = await ctx.db.transaction(async (tx) => {
-        try {
-          const ticketType = await tx.query.ticketType.findFirst({
-            where: eq(ticketTypeTable.id, input.ticketTypeId),
+        // Bloqueado como en el checkout, para que dos emisiones a la vez no
+        // pasen juntas el cupo.
+        const [ticketType] = await tx
+          .select()
+          .from(ticketTypeTable)
+          .where(
+            and(
+              eq(ticketTypeTable.id, input.ticketTypeId),
+              eq(ticketTypeTable.eventId, input.eventId),
+            ),
+          )
+          .for('update');
+        if (!ticketType) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Tipo de entrada inválido para este evento',
           });
+        }
 
-          const [ticketGroupCreated] = await tx
-            .insert(ticketGroup)
-            .values({
-              eventId: input.eventId,
-              status:
-                ticketType?.category === 'FREE'
-                  ? 'FREE'
-                  : input.paidOnLocation
-                    ? 'PAID'
-                    : 'BOOKED',
-              amountTickets: 1,
-              invitedById: input.invitedBy,
+        // El cupo de los organizadores lo maneja el reparto.
+        if (
+          !allowOverQuota &&
+          ticketType.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim()
+        ) {
+          const [taken] = await tx
+            .select({
+              amount: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)::int`,
             })
-            .returning();
+            .from(ticketTypePerGroup)
+            .where(eq(ticketTypePerGroup.ticketTypeId, ticketType.id));
+          if (Number(taken?.amount ?? 0) + 1 > ticketType.maxAvailable) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: `No quedan entradas de ${ticketType.name} (cupo ${ticketType.maxAvailable}).`,
+            });
+          }
+        }
 
-          await tx.insert(ticketTypePerGroup).values({
-            ticketTypeId: input.ticketTypeId,
-            ticketGroupId: ticketGroupCreated.id,
-            amount: 1,
-          });
+        // Antes quedaba con total $0 y sin medio de pago, y la no cobrada
+        // (BOOKED) la borraba la limpieza de reservas a los 10 minutos.
+        const isFree = ticketType.category === 'FREE';
+        const [ticketGroupCreated] = await tx
+          .insert(ticketGroup)
+          .values({
+            eventId: input.eventId,
+            status: isFree ? 'FREE' : input.paidOnLocation ? 'PAID' : 'BOOKED',
+            paymentMethod: isFree ? null : 'ON_SITE',
+            totalAmount: isFree ? '0' : (ticketType.price ?? 0).toFixed(2),
+            amountTickets: 1,
+            invitedById: input.invitedBy,
+          })
+          .returning();
 
-          const lastEmitted = await tx.query.emittedTicket.findFirst({
-            where: eq(emittedTicket.ticketGroupId, ticketGroupCreated.id),
-            orderBy: desc(emittedTicket.createdAt),
-            with: {
-              ticketType: {
-                columns: {
-                  name: true,
-                },
+        await tx.insert(ticketTypePerGroup).values({
+          ticketTypeId: input.ticketTypeId,
+          ticketGroupId: ticketGroupCreated.id,
+          amount: 1,
+        });
+
+        const lastEmitted = await tx.query.emittedTicket.findFirst({
+          where: eq(emittedTicket.ticketGroupId, ticketGroupCreated.id),
+          orderBy: desc(emittedTicket.createdAt),
+          with: {
+            ticketType: {
+              columns: {
+                name: true,
               },
             },
-          });
+          },
+        });
 
-          let slug = '';
-          if (lastEmitted && lastEmitted.slug) {
-            const parts = lastEmitted.slug.split('-');
-            const count = parseInt(parts[parts.length - 1], 10);
-            slug = generateSlug(`${lastEmitted.ticketType.name} ${count}`);
-          } else {
-            slug = generateSlug(`${ticketType?.name} 0`);
-          }
+        let slug = '';
+        if (lastEmitted && lastEmitted.slug) {
+          const parts = lastEmitted.slug.split('-');
+          const count = parseInt(parts[parts.length - 1], 10);
+          slug = generateSlug(`${lastEmitted.ticketType.name} ${count}`);
+        } else {
+          slug = generateSlug(`${ticketType?.name} 0`);
+        }
 
-          const [shortId] = await allocateEmittedTicketShortIds(
-            tx,
-            input.eventId,
-            1,
-          );
+        const [shortId] = await allocateEmittedTicketShortIds(
+          tx,
+          input.eventId,
+          1,
+        );
 
-          const [ticketCreated] = await tx
-            .insert(emittedTicket)
-            .values({
-              ...input,
-              birthDate: dateToDateOnlyString(input.birthDate),
-              ticketGroupId: ticketGroupCreated.id,
-              slug,
-              shortId: shortId!,
-            })
-            .returning();
+        const [ticketCreated] = await tx
+          .insert(emittedTicket)
+          .values({
+            ...ticketInput,
+            birthDate: dateToDateOnlyString(input.birthDate),
+            ticketGroupId: ticketGroupCreated.id,
+            slug,
+            shortId: shortId!,
+          })
+          .returning();
 
+        // Sólo si quien emite lo marca (venta en la puerta): si no, el QR que
+        // se manda por mail nacía 'ya escaneado' y lo rechazaban al entrar.
+        if (alreadyEntered) {
           await registerTicketScanInTx(
             tx,
             ticketCreated.id,
             ctx.session.user.id,
           );
-
-          return ticketCreated;
-        } catch (error) {
-          tx.rollback();
-          throw error;
         }
+
+        return ticketCreated;
       });
       return ticketCreated;
     }),
@@ -144,6 +195,9 @@ export const emittedTicketsRouter = router({
           message: 'Las entradas deben pertenecer al mismo grupo',
         });
       }
+
+      // Bloqueado después de reservar: la compra en curso no se completa.
+      await assertTicketGroupEventNotBlocked(ctx.db, ticketGroupId);
 
       try {
         const uniqueTicketTypeIds = input.map((ticket) => ticket.ticketTypeId);
@@ -185,11 +239,23 @@ export const emittedTicketsRouter = router({
           }
 
           // Idempotencia: si el grupo ya emitió (reintento tras fallo de mail,
-          // doble click), devolver lo existente en vez de duplicar.
+          // doble click), devolver lo existente en vez de duplicar. Sólo a
+          // quien las emitió: otra persona con la misma reserva recibía las
+          // entradas (nombre, DNI y QR) de la primera.
           const alreadyEmitted = await tx.query.emittedTicket.findMany({
             where: eq(emittedTicket.ticketGroupId, ticketGroupId),
           });
           if (alreadyEmitted.length > 0) {
+            const sameHolder = alreadyEmitted.some(
+              (ticket) => ticket.dni.trim() === input[0].dni.trim(),
+            );
+            if (!sameHolder) {
+              throw new TRPCError({
+                code: 'CONFLICT',
+                message:
+                  'Estas entradas ya se emitieron a nombre de otra persona. Si te pasaron un link de invitación, pedí uno propio.',
+              });
+            }
             return alreadyEmitted;
           }
 
@@ -520,6 +586,8 @@ export const emittedTicketsRouter = router({
       z.object({
         barcode: z.string(),
         eventIds: z.array(z.string()),
+        /** 'Dejar pasar igual' fuera del horario de la entrada. */
+        force: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -591,11 +659,21 @@ export const emittedTicketsRouter = router({
       ]);
 
       if (!ticketReturned) {
+        // Una entrada válida de otro evento y un QR cualquiera daban el mismo
+        // cartel: la puerta no sabía si mandarla a otro lado o rechazarla.
+        const elsewhere = await ctx.db.query.emittedTicket.findFirst({
+          where: eq(emittedTicket.id, decryptedTicketId),
+          columns: { id: true },
+          with: {
+            ticketGroup: { with: { event: { columns: { name: true } } } },
+          },
+        });
         return respond({
           ticket: null,
           status: 'not-found',
-          text: NOT_FOUND_TEXT,
-          extraInfo: NOT_FOUND_EXTRA_INFO,
+          ...(elsewhere
+            ? otherEventTexts(elsewhere.ticketGroup.event.name)
+            : { text: NOT_FOUND_TEXT, extraInfo: NOT_FOUND_EXTRA_INFO }),
           scannedByMe: false,
         });
       }
@@ -619,6 +697,29 @@ export const emittedTicketsRouter = router({
           invitedBy: ticketReturned.ticketGroup.user?.fullName || '-',
         },
       };
+
+      // Fuera de horario se avisa sin registrar (misma regla que el modo
+      // local): si se registraba, a la hora correcta ese QR daba 'ya
+      // escaneado'. Quien está en la puerta puede dejarlo pasar igual.
+      // El 'ya escaneado' lo resuelve el UPDATE atómico de abajo.
+      const scanWindow = {
+        startingDate: ticketReturned.ticketType.startingDate,
+        scanLimit: ticketReturned.ticketType.scanLimit,
+      };
+      const outOfWindow = input.force
+        ? null
+        : scanWindowStatus(scanWindow, new Date());
+      // Una ya escaneada fuera de horario sigue siendo 'ya escaneado'.
+      const alreadyIn =
+        ticketReturned.scanned && !ticketReturned.ticketType.allowMultipleScans;
+      if (outOfWindow && !alreadyIn) {
+        return respond({
+          ticket,
+          status: outOfWindow,
+          ...outOfWindowTexts(outOfWindow, scanWindow),
+          scannedByMe: false,
+        });
+      }
 
       const scanResult = await tryRegisterTicketScan(
         ctx.db,
@@ -765,14 +866,19 @@ export const emittedTicketsRouter = router({
         return [];
       }
 
-      const pendingTransferGroups = ctx.db
+      // Compras sin pagar (Mercado Pago, transferencia o sin medio de pago):
+      // sus entradas ya existen pero no son ventas. Las de cobro en el lugar sí.
+      const unpaidGroups = ctx.db
         .select({ id: ticketGroup.id })
         .from(ticketGroup)
         .where(
           and(
             eq(ticketGroup.eventId, input.eventId),
             eq(ticketGroup.status, 'BOOKED'),
-            eq(ticketGroup.paymentMethod, 'TRANSFER'),
+            or(
+              isNull(ticketGroup.paymentMethod),
+              ne(ticketGroup.paymentMethod, 'ON_SITE'),
+            ),
           ),
         );
 
@@ -780,11 +886,11 @@ export const emittedTicketsRouter = router({
         where: canSeeAllTickets
           ? and(
               eq(emittedTicket.eventId, input.eventId),
-              notInArray(emittedTicket.ticketGroupId, pendingTransferGroups),
+              notInArray(emittedTicket.ticketGroupId, unpaidGroups),
             )
           : and(
               eq(emittedTicket.eventId, input.eventId),
-              notInArray(emittedTicket.ticketGroupId, pendingTransferGroups),
+              notInArray(emittedTicket.ticketGroupId, unpaidGroups),
               hasGroups && hasOrganizerTickets
                 ? or(
                     inArray(emittedTicket.ticketGroupId, ticketGroupIds),

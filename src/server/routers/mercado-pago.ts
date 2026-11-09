@@ -26,7 +26,9 @@ import {
   hasActivePaidEvents,
   setTransferAlias,
 } from '@/server/services/paymentSettings';
+import { assertTicketGroupEventNotBlocked } from '@/server/services/eventBlock';
 import { calculateAndSaveTotalAmount } from '@/server/services/ticketGroup';
+import { MERCADO_PAGO_PREFERENCE_TTL_MS } from '@/server/services/ticketGroupHolds';
 import {
   anyPermissionProcedure,
   permissionProcedure,
@@ -216,6 +218,7 @@ export const mercadoPagoRouter = router({
         columns: {
           id: true,
           invitedById: true,
+          status: true,
         },
         with: {
           ticketTypePerGroups: {
@@ -259,8 +262,19 @@ export const mercadoPagoRouter = router({
         },
       });
 
-      if (!group) {
-        throw new Error('ticketGroup no encontrado');
+      // Bloqueado después de reservar: la reserva sin pago no se completa.
+      await assertTicketGroupEventNotBlocked(ctx.db, input.ticketGroupId);
+
+      // Sin reserva vigente (venció y soltó el cupo, o ya se pagó) no se cobra.
+      if (
+        !group ||
+        group.status !== 'BOOKED' ||
+        group.ticketTypePerGroups.length === 0
+      ) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'ticketGroup no encontrado',
+        });
       }
 
       if (!ctx.instance.mercadoPagoAccessToken) {
@@ -294,10 +308,19 @@ export const mercadoPagoRouter = router({
           ],
           external_reference: group.id,
           auto_return: 'approved',
+          // Sin vencimiento la preferencia se podía pagar después de que la
+          // reserva soltó el cupo. Pasado este plazo Mercado Pago no la cobra.
+          expires: true,
+          expiration_date_from: new Date().toISOString(),
+          expiration_date_to: new Date(
+            Date.now() + MERCADO_PAGO_PREFERENCE_TTL_MS,
+          ).toISOString(),
+          // Todas vuelven a la página de la compra, que según el estado ofrece
+          // esperar el aviso o volver a pagar.
           back_urls: {
             success: `${ctx.instance.publicUrl}/tickets/${group.id}`,
             pending: `${ctx.instance.publicUrl}/tickets/${group.id}`,
-            failure: `${ctx.instance.publicUrl}/tickets/error`,
+            failure: `${ctx.instance.publicUrl}/tickets/${group.id}`,
           },
           metadata: {
             ticket_group_id: group.id,

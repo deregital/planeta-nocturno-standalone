@@ -9,6 +9,7 @@ interface InputWithLabelProps
   label?: string;
   id: string;
   error?: string;
+  warning?: string;
 }
 
 export default function InputWithLabel({
@@ -16,6 +17,7 @@ export default function InputWithLabel({
   id,
   className,
   error,
+  warning,
   ...inputProps
 }: InputWithLabelProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -26,6 +28,7 @@ export default function InputWithLabel({
       className={className}
       required={inputProps.required}
       error={error}
+      warning={warning}
     >
       {inputProps.type === 'password' && !inputProps.disabled ? (
         <div className='relative'>

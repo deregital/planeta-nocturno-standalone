@@ -311,7 +311,8 @@ export function generateTicketColumns({
         );
       },
       meta: {
-        exportValue: (row) => row.original.birthDate,
+        // Igual que en pantalla (antes salía 1998-05-10).
+        exportValue: (row) => formatDateOnly(row.original.birthDate),
         exportHeader: 'Fecha de nacimiento',
       },
     },
@@ -992,7 +993,7 @@ export function generateTicketColumns({
                 }}
               >
                 <DialogContent
-                  className='max-w-xl! md:max-w-3xl! w-full'
+                  className='max-w-xl! md:max-w-3xl!'
                   onInteractOutside={(e) => {
                     // No cerrar si el clic fue en el popover del combobox
                     const target = e.target as HTMLElement;

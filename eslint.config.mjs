@@ -8,6 +8,7 @@ import importPlugin from 'eslint-plugin-import';
 import unusedImportPlugin from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 
+import mobileLayoutRule from './eslint/rules/mobile-layout.mjs';
 import tenantDbIsolationRule from './eslint/rules/tenant-db-isolation.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,9 +49,15 @@ const eslintConfig = [
           'no-cross-database-query': tenantDbIsolationRule,
         },
       },
+      mobile: {
+        rules: {
+          'no-overflowing-classes': mobileLayoutRule,
+        },
+      },
     },
     rules: {
       'tenant-isolation/no-cross-database-query': 'error',
+      'mobile/no-overflowing-classes': 'error',
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },

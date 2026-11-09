@@ -8,7 +8,9 @@ export default async function ClientLayout({
 }>) {
   const session = await auth();
   return (
-    <div className='grid grid-rows-[auto_1fr] h-screen'>
+    // minmax(0,1fr): un elemento rígido de la página no puede ensanchar la
+    // grilla (y con ella el header) más allá de la pantalla.
+    <div className='grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] h-screen'>
       <TopBar auth={session} />
       {children}
     </div>

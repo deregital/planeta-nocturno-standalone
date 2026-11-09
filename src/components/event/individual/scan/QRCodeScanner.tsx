@@ -6,7 +6,7 @@ import {
   type IScannerProps,
   Scanner,
 } from '@yudiel/react-qr-scanner';
-import { Check, TriangleAlert, WifiOff, X } from 'lucide-react';
+import { Check, Clock, TriangleAlert, WifiOff, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { SCAN_BEEP } from '@/components/event/individual/scan/scan-beep';
@@ -52,7 +52,12 @@ type ScanFeedback =
   | 'server-error'
   | 'duplicate'
   | 'already-scanned'
-  | 'not-found';
+  | 'not-found'
+  | 'too-early'
+  | 'expired';
+
+/** Fuera de horario: no se registró, pero la puerta puede dejarla pasar. */
+const OUT_OF_WINDOW_FEEDBACK = new Set<ScanFeedback>(['too-early', 'expired']);
 
 export function QRCodeScanner({
   onScanSuccessAction,
@@ -203,7 +208,8 @@ export function QRCodeScanner({
             ? 'bg-green-500/60'
             : feedback === 'self-repeat'
               ? 'bg-sky-500/60'
-              : feedback === 'server-error'
+              : feedback === 'server-error' ||
+                  OUT_OF_WINDOW_FEEDBACK.has(feedback)
                 ? 'bg-amber-500/70'
                 : feedback !== 'idle'
                   ? 'bg-red-500/60'
@@ -212,6 +218,9 @@ export function QRCodeScanner({
       >
         {(feedback === 'success' || feedback === 'self-repeat') && (
           <Check className='size-32 text-white zoom-in' strokeWidth={3} />
+        )}
+        {OUT_OF_WINDOW_FEEDBACK.has(feedback) && (
+          <Clock className='size-32 text-white zoom-in' strokeWidth={3} />
         )}
         {feedback === 'server-error' && (
           <TriangleAlert
@@ -222,6 +231,7 @@ export function QRCodeScanner({
         {feedback !== 'success' &&
           feedback !== 'self-repeat' &&
           feedback !== 'server-error' &&
+          !OUT_OF_WINDOW_FEEDBACK.has(feedback) &&
           feedback !== 'idle' && (
             <X className='size-32 text-white zoom-in' strokeWidth={3} />
           )}

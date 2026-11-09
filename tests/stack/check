@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
+source "$(dirname "$0")/.run/env.sh"
+exec node "$(dirname "$0")/check.mjs" "$@"

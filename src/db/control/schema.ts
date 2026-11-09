@@ -155,6 +155,16 @@ export const tenantTagAssignments = pgTable(
   ],
 );
 
+/** Intentos fallidos de login por usuario del panel, para frenar la fuerza bruta. */
+export const controlLoginAttempts = pgTable('login_attempts', {
+  username: varchar({ length: 100 }).primaryKey(),
+  failedCount: integer('failed_count').notNull().default(0),
+  lockedUntil: timestamp('locked_until', { withTimezone: true }),
+  lastFailedAt: timestamp('last_failed_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const controlRolesRelations = relations(controlRoles, ({ many }) => ({
   permissions: many(controlRolePermissions),
   admins: many(controlAdmins),

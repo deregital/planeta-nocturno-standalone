@@ -1,18 +1,42 @@
 import { formatInTimeZone } from 'date-fns-tz';
 
+import {
+  type OutOfWindowStatus,
+  scanWindowStatus,
+  type ScanWindow,
+} from '@/lib/scan/decision';
+
 /**
  * Textos del resultado de un escaneo. Los usan el servidor (escaneo online) y
  * el celular (modo local), así la puerta ve lo mismo en los dos caminos.
  */
 export const SCAN_TIMEZONE = 'America/Argentina/Buenos_Aires';
 
-function formatDateTime(value: string) {
-  return formatInTimeZone(new Date(value), SCAN_TIMEZONE, 'dd/MM/yyyy HH:mm');
-}
-
 export function formatScanTime(scannedAt: string | null) {
   if (!scannedAt) return '';
   return formatInTimeZone(new Date(scannedAt), SCAN_TIMEZONE, 'HH:mm');
+}
+
+/** Horario de escaneo de un tipo de entrada, en hora de Argentina. */
+export function formatScanWindow(date: string | Date | null) {
+  if (!date) return '';
+  return formatInTimeZone(new Date(date), SCAN_TIMEZONE, 'dd/MM HH:mm');
+}
+
+/** Cartel de una entrada fuera de horario, que no se registró. */
+export function outOfWindowTexts(
+  status: OutOfWindowStatus,
+  { startingDate, scanLimit }: ScanWindow,
+) {
+  return status === 'too-early'
+    ? {
+        text: 'Todavía no está habilitada',
+        extraInfo: `Habilitada desde ${formatScanWindow(startingDate)}`,
+      }
+    : {
+        text: 'Entrada vencida',
+        extraInfo: `Era válida hasta ${formatScanWindow(scanLimit)}`,
+      };
 }
 
 export function successScanTexts({
@@ -31,15 +55,15 @@ export function successScanTexts({
   invitedBy: string | null | undefined;
   now?: Date;
 }) {
-  // El horario de inicio y el límite no rechazan: el ingreso se registra y
-  // solo se avisa en la tarjeta (mismo comportamiento que siempre).
-  let warning = '';
-  if (startingDate && new Date(startingDate) > now) {
-    warning = `La hora de inicio del ticket es a las ${formatDateTime(startingDate)}`;
-  }
-  if (scanLimit && new Date(scanLimit) < now) {
-    warning = `Ticket expirado, límite de horario era ${formatDateTime(scanLimit)}`;
-  }
+  // Fuera de horario sólo hay éxito si la puerta la dejó pasar igual: queda
+  // anotado en la tarjeta.
+  const outOfWindow = scanWindowStatus({ startingDate, scanLimit }, now);
+  const warning =
+    outOfWindow === 'too-early'
+      ? `Entró antes de hora (habilitada desde ${formatScanWindow(startingDate)})`
+      : outOfWindow === 'expired'
+        ? `Entró con la entrada vencida (válida hasta ${formatScanWindow(scanLimit)})`
+        : '';
 
   return {
     text: `Escaneado con éxito: ${fullName}`,
@@ -58,7 +82,13 @@ export const NOT_FOUND_TEXT = 'Ticket no encontrado';
 
 /** Va en todo lo que la puerta tiene que saber que no quedó registrado. */
 export const NOT_REGISTERED_TEXT = 'El escaneo no se registró';
-export const NOT_FOUND_EXTRA_INFO = 'El ticket no pertenece a este evento';
+export const NOT_FOUND_EXTRA_INFO =
+  'No es una entrada de este evento o ya no existe';
+
+/** Una entrada válida, pero de otro evento: la puerta sabe adónde mandarla. */
+export function otherEventTexts(eventName: string) {
+  return { text: 'Entrada de otro evento', extraInfo: `Es para ${eventName}` };
+}
 
 /** El mismo celular volvió a leer una entrada que acaba de registrar. */
 export const SELF_REPEAT_TEXT = 'Ya registrado';

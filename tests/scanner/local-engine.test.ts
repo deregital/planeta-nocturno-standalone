@@ -38,6 +38,9 @@ import { decryptString, encryptString } from '@/server/utils/utils';
 const EVENT = randomUUID();
 const TYPE = randomUUID();
 const MULTI_TYPE = randomUUID();
+// Habilitada desde el día siguiente al reloj de los tests.
+const LATE_TYPE = randomUUID();
+const LATE_STARTS_AT = '2026-11-10T03:00:00.000Z';
 const USER = randomUUID();
 
 type ServerTicket = {
@@ -136,6 +139,13 @@ class FakeServer implements ScannerTransport {
         name: 'Pulsera',
         allowMultipleScans: true,
         startingDate: null,
+        scanLimit: null,
+      },
+      {
+        id: LATE_TYPE,
+        name: 'Trasnoche',
+        allowMultipleScans: false,
+        startingDate: LATE_STARTS_AT,
         scanLimit: null,
       },
     ];
@@ -355,6 +365,30 @@ describe('motor local', () => {
       'already-scanned',
     );
     assert.ok(engine.recentLocalSuccessAt(ana.id));
+  });
+
+  it('fuera de horario avisa sin registrar; dejarla pasar igual la registra', async () => {
+    const ana = server.addTicket('Ana', LATE_TYPE);
+    const engine = await readyEngine();
+
+    const early = await engine.evaluate(ana.code);
+    assert.equal(early.kind === 'known' && early.decision.status, 'too-early');
+    assert.equal(store.entries.size, 0, 'no tenía que guardarse un ingreso');
+
+    const forced = await engine.evaluate(ana.code, { force: true });
+    assert.equal(forced.kind, 'known');
+    if (forced.kind !== 'known') throw new Error('unreachable');
+    assert.equal(forced.decision.status, 'success');
+    await engine.commitLocalSuccess(forced, ana.code);
+    await settle();
+
+    // A la hora correcta, la que entró igual sigue siendo 'ya escaneado'.
+    clock.advance(Date.parse(LATE_STARTS_AT) - clock.server + 60_000);
+    const later = await engine.evaluate(ana.code);
+    assert.equal(
+      later.kind === 'known' && later.decision.status,
+      'already-scanned',
+    );
   });
 
   it('un ingreso de esta sesión confirmado no cuenta como pendiente de antes', async () => {
