@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import esPhoneLocale from 'react-phone-number-input/locale/es';
 
+import { PHONE_COUNTRY_LABELS as esPhoneLocale } from '@/lib/phone-labels';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';

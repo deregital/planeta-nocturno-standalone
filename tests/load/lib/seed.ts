@@ -40,6 +40,21 @@ export async function insertUser(
   return id;
 }
 
+/**
+ * Asigna un usuario a un evento (personal del evento). Sin "Ver todos los
+ * eventos", el escáner solo acepta los eventos asignados.
+ */
+export async function assignUserToEvent(
+  raw: Pool,
+  userId: string,
+  eventId: string,
+) {
+  await raw.query(
+    `INSERT INTO "_EVENT_X_USER" ("A", "B") VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    [eventId, userId],
+  );
+}
+
 export type TicketTypeSeed = {
   name: string;
   price: number;

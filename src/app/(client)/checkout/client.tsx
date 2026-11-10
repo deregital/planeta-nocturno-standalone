@@ -3,7 +3,9 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
+import { type Route } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import posthog from 'posthog-js';
 import {
   useActionState,
@@ -12,9 +14,12 @@ import {
   useRef,
   useState,
 } from 'react';
-import esPhoneLocale from 'react-phone-number-input/locale/es';
 
-import { handlePurchase } from '@/app/(client)/checkout/action';
+import { PHONE_COUNTRY_LABELS as esPhoneLocale } from '@/lib/phone-labels';
+import {
+  handlePurchase,
+  type PurchaseActionState,
+} from '@/app/(client)/checkout/action';
 import FormInputGender from '@/components/checkout/FormInputGender';
 import FormInputInstagram from '@/components/checkout/FormInputInstagram';
 import FormInputMail from '@/components/checkout/FormInputMail';
@@ -40,9 +45,60 @@ export default function CheckoutClient({
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
   lastPurchase?: EmittedTicketInput;
 }) {
-  const [state, action, isPending] = useActionState(handlePurchase, {
-    ticketsInput: [],
-  });
+  const [state, action, isPending] = useActionState(
+    async (prevState: PurchaseActionState, formData: FormData) => {
+      try {
+        return await handlePurchase(prevState, formData);
+      } catch (error) {
+        // Sin señal el pedido ni sale: antes caía en "Algo salió mal" y al
+        // reintentar se perdía lo cargado.
+        if (error instanceof TypeError) {
+          return {
+            ticketsInput: prevState.ticketsInput,
+            errors: [
+              'No pudimos conectarnos. Revisá tu conexión y volvé a tocar el botón.',
+            ],
+            formData: Object.fromEntries(
+              [...formData.entries()].map(([key, value]) => [
+                key,
+                value.toString(),
+              ]),
+            ),
+          };
+        }
+        throw error;
+      }
+    },
+    { ticketsInput: [] },
+  );
+
+  const formRef = useRef<HTMLFormElement>(null);
+  const generalErrors = Array.isArray(state.errors) ? state.errors : [];
+
+  // El error de un campo podía quedar fuera de pantalla y parecía que el botón
+  // no hacía nada: llevar al primer campo con error, o al aviso general.
+  useEffect(() => {
+    if (!state.errors) return;
+    const form = formRef.current;
+    if (!form) return;
+    let target: HTMLElement | null = null;
+    if (Array.isArray(state.errors)) {
+      target = form.querySelector('[data-checkout-alert]');
+    } else {
+      const firstKey = Object.keys(state.errors)[0];
+      if (firstKey) {
+        target =
+          document.getElementById(firstKey) ??
+          form.querySelector<HTMLElement>(`[name="${CSS.escape(firstKey)}"]`);
+        while (target && target.offsetParent === null) {
+          target = target.parentElement;
+        }
+      }
+    }
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (target instanceof HTMLInputElement)
+      target.focus({ preventScroll: true });
+  }, [state]);
 
   // Leer el código del organizador del ticketGroup si existe
   const organizerCodeFromTicketGroup = ticketGroup.organizerCode;
@@ -205,6 +261,11 @@ export default function CheckoutClient({
     discountPercentage,
   });
 
+  const holdExpiresAt =
+    ticketGroup.holdExpiresAt && !ticketGroup.paymentMethod
+      ? format(new Date(ticketGroup.holdExpiresAt), 'HH:mm')
+      : null;
+
   const isSingleFreeTicket =
     ticketGroup.ticketTypePerGroups.length === 1 &&
     ticketGroup.ticketTypePerGroups[0].amount === 1 &&
@@ -213,6 +274,8 @@ export default function CheckoutClient({
   const handleCheckoutSubmit = () => {
     posthog.capture('checkout_submitted', {
       event_id: ticketGroup.eventId,
+      // Cruza con `purchase_completed`, que en pagos se manda sin persona.
+      ticket_group_id: ticketGroup.id,
       ticket_count: ticketGroup.ticketTypePerGroups.reduce(
         (count, ticketType) => count + ticketType.amount,
         0,
@@ -224,7 +287,7 @@ export default function CheckoutClient({
   };
 
   return (
-    <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-8 my-6'>
+    <div className='flex flex-col justify-center items-center gap-6 pb-16 mx-4 sm:mx-8 my-6'>
       <div className='hidden sm:flex justify-baseline w-full'>
         <GoBack />
       </div>
@@ -259,7 +322,18 @@ export default function CheckoutClient({
         />
       )}
 
+      {holdExpiresAt && (
+        <p
+          className='w-full sm:w-xl md:w-2xl px-4 text-sm text-accent-dark/80'
+          suppressHydrationWarning
+        >
+          Tus entradas están reservadas hasta las {holdExpiresAt} hs. Completá
+          tus datos antes de esa hora.
+        </p>
+      )}
+
       <form
+        ref={formRef}
         action={action}
         onSubmit={handleCheckoutSubmit}
         className='flex flex-col px-4 w-full sm:w-xl md:w-2xl'
@@ -636,12 +710,33 @@ export default function CheckoutClient({
         <input hidden name='invitedBy' value={organizerId || ''} readOnly />
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />
+        {generalErrors.length > 0 && !isPending && (
+          <div
+            role='alert'
+            data-checkout-alert
+            className='mt-6 rounded-md border border-red-300 bg-red-50 p-3 text-sm font-medium text-red-600'
+          >
+            {generalErrors.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+            {state.reservationExpired && (
+              <Link
+                href={
+                  (state.eventSlug ? `/event/${state.eventSlug}` : '/') as Route
+                }
+                className='mt-2 inline-block font-bold underline'
+              >
+                Volver a elegir entradas
+              </Link>
+            )}
+          </div>
+        )}
         <Button
           type='submit'
           size='lg'
           variant='accent'
           className='rounded-full sm:text-2xl text-xl font-bold py-6 mt-8'
-          disabled={isPending}
+          disabled={isPending || state.reservationExpired}
         >
           <span>
             {isPending ? (

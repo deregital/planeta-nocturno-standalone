@@ -1,8 +1,8 @@
 'use client';
 
 import { startTransition, useCallback, useState } from 'react';
-import esPhoneLocale from 'react-phone-number-input/locale/es';
 
+import { PHONE_COUNTRY_LABELS as esPhoneLocale } from '@/lib/phone-labels';
 import InputDateWithLabel from '@/components/common/InputDateWithLabel';
 import InputWithLabel from '@/components/common/InputWithLabel';
 import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { type role } from '@/drizzle/schema';
 import { roleTranslation } from '@/lib/translations';
+import { parseDateOnly } from '@/lib/utils-client';
 import { type User } from '@/server/types';
 import 'react-phone-number-input/style.css';
 
@@ -146,11 +147,9 @@ export function UserForm({
           id='birthDate'
           name='birthDate'
           error={errors?.birthDate}
-          selected={
-            internalState?.birthDate
-              ? new Date(internalState.birthDate)
-              : undefined
-          }
+          // new Date() leía la medianoche UTC en hora local: en Argentina
+          // mostraba (y guardaba) el día anterior en cada edición.
+          selected={parseDateOnly(internalState?.birthDate ?? '')}
           onChange={(date) => {
             if (!date) return;
             handleChange('birthDate', date.toISOString());

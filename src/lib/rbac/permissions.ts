@@ -82,9 +82,22 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     parent: 'events:read',
   },
   {
+    key: 'events:folders_read',
+    label: 'Ver carpetas de los eventos asignados',
+    description:
+      'Solo se ven las carpetas que contienen eventos que el usuario ve. Sin este permiso los eventos se listan sin carpetas',
+    parent: 'events:read',
+  },
+  {
+    key: 'events:folders_read_all',
+    label: 'Ver todas las carpetas',
+    description: 'Incluidas las carpetas vacías o sin eventos asignados',
+    parent: 'events:folders_read',
+  },
+  {
     key: 'events:folders',
     label: 'Gestionar carpetas de eventos',
-    parent: 'events:read',
+    parent: 'events:folders_read_all',
   },
   {
     key: 'events:export',
@@ -375,6 +388,20 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     key: 'exports:tables',
     label: 'Exportar tablas a Excel',
   },
+  {
+    key: 'exports:database',
+    label: 'Exportar base de datos',
+    description:
+      'Descargar en Excel la base de datos de compradores. Datos sensibles: por defecto solo lo tiene el superadministrador',
+    parent: 'exports:tables',
+  },
+  {
+    key: 'exports:organizers',
+    label: 'Exportar organizadores',
+    description:
+      'Descargar en Excel la lista de organizadores. Datos sensibles: por defecto solo lo tiene el superadministrador',
+    parent: 'exports:tables',
+  },
 
   // Perfil
   {
@@ -593,10 +620,20 @@ export const ALL_ACCESS_PERMISSIONS: readonly TenantPermission[] =
 /** Módulos reservados al superadministrador: el Administrador no los tiene por defecto. */
 const SUPERADMIN_ONLY_MODULES = new Set(['roles']);
 
+/**
+ * Permisos sueltos reservados al superadministrador (exportan datos sensibles).
+ * Se pueden otorgar a otros roles desde la matriz de roles.
+ */
+const SUPERADMIN_ONLY_PERMISSIONS = new Set<TenantPermission>([
+  'exports:database',
+  'exports:organizers',
+]);
+
 export const ADMIN_ACCESS_PERMISSIONS: readonly TenantPermission[] =
   ALL_ACCESS_PERMISSIONS.filter(
     (permission) =>
-      !SUPERADMIN_ONLY_MODULES.has(getPermissionModule(permission)),
+      !SUPERADMIN_ONLY_MODULES.has(getPermissionModule(permission)) &&
+      !SUPERADMIN_ONLY_PERMISSIONS.has(permission),
   );
 
 const ORGANIZER_SYSTEM_PERMISSIONS = [
@@ -623,6 +660,7 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<
   TICKETING: [
     'events:read',
     'events:statistics',
+    'events:folders_read',
     'events:staff',
     'tickets:read',
     'tickets:read_all',
@@ -684,6 +722,17 @@ export function getTicketScope(
   if (hasPermission(permissions, 'tickets:read_all')) return 'all';
   if (hasPermission(permissions, 'organizer:team')) return 'team';
   return 'own';
+}
+
+/** Qué carpetas ve el usuario en el gestor de eventos. */
+export type FolderScope = 'all' | 'assigned' | 'none';
+
+export function getFolderScope(
+  permissions: readonly TenantPermission[] | ReadonlySet<TenantPermission>,
+): FolderScope {
+  if (hasPermission(permissions, 'events:folders_read_all')) return 'all';
+  if (hasPermission(permissions, 'events:folders_read')) return 'assigned';
+  return 'none';
 }
 
 export function hasPermission(

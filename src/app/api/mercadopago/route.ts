@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { capturePurchaseCompleted } from '@/server/analytics/purchase-events';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { logger } from '@/server/observability/logger';
 import { verifySignedRequest } from '@/server/security/signed-request';
 import {
   deliverPaidTicketGroup,
+  markMercadoPagoGroupPaid,
   updateTicketGroupStatus,
 } from '@/server/services/ticketGroup';
 
@@ -59,13 +61,31 @@ export async function POST(request: Request) {
 async function fulfillTicketGroup(headers: Headers, ticketGroupId: string) {
   const { db, instance } = await resolveRequestContext(headers);
 
-  await updateTicketGroupStatus(db, ticketGroupId, 'PAID');
+  // El webhook se reintenta (y un mismo pago puede avisarse varias veces): las
+  // entradas se mandan sólo la primera vez que el grupo pasa a PAID.
+  const transitioned = await markMercadoPagoGroupPaid(db, ticketGroupId);
+  if (!transitioned) {
+    logger.warn('Payment webhook for an already paid ticket group', {
+      operation: 'payment_webhook',
+      ticketGroupId,
+    });
+    return;
+  }
 
-  const { eventId, ticketCount } = await deliverPaidTicketGroup(
-    db,
-    instance,
+  let delivery: Awaited<ReturnType<typeof deliverPaidTicketGroup>>;
+  try {
+    delivery = await deliverPaidTicketGroup(db, instance, ticketGroupId);
+  } catch (error) {
+    // Vuelve a BOOKED para que el reintento del aviso entregue de nuevo.
+    await updateTicketGroupStatus(db, ticketGroupId, 'BOOKED');
+    throw error;
+  }
+  const { eventId, ticketCount } = delivery;
+
+  await capturePurchaseCompleted(db, instance, {
     ticketGroupId,
-  );
+    paymentMethod: 'mercado_pago',
+  });
 
   logger.info('Payment webhook fulfillment completed', {
     operation: 'payment_webhook',

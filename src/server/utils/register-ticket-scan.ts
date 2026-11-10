@@ -1,5 +1,4 @@
-import { formatInTimeZone } from 'date-fns-tz';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { type Db } from '@/drizzle';
 
@@ -78,41 +77,66 @@ export async function tryRegisterTicketScan(
   scannedByUserId: string,
   allowMultipleScans: boolean,
 ): Promise<{ registered: true; scannedAt: string } | { registered: false }> {
-  const now = new Date().toISOString();
-
-  return db.transaction(async (tx) => {
-    const updated = await tx
-      .update(emittedTicket)
-      .set({ scanned: true, scannedAt: now, scannedByUserId })
-      .where(
-        allowMultipleScans
-          ? eq(emittedTicket.id, ticketId)
-          : and(
-              eq(emittedTicket.id, ticketId),
-              eq(emittedTicket.scanned, false),
-            ),
-      )
-      .returning({ id: emittedTicket.id });
-
-    if (updated.length === 0) {
-      return { registered: false };
-    }
-
-    await tx.insert(emittedTicketScan).values({
-      emittedTicketId: ticketId,
-      scannedAt: now,
+  return db.transaction((tx) =>
+    tryRegisterTicketScanInTx(
+      tx,
+      ticketId,
       scannedByUserId,
-    });
-
-    return { registered: true, scannedAt: now };
-  });
-}
-
-export function formatLastScanTime(scannedAt: string | null) {
-  if (!scannedAt) return '';
-  return formatInTimeZone(
-    new Date(scannedAt),
-    'America/Argentina/Buenos_Aires',
-    'HH:mm',
+      allowMultipleScans,
+    ),
   );
 }
+
+/**
+ * Igual que `tryRegisterTicketScan`, dentro de una transacción abierta.
+ *
+ * `at`: hora del ingreso cuando no es ahora (un escaneo decidido en el celular
+ * que se sube después). Con multiescaneo, la última hora de la entrada no
+ * retrocede: un escaneo viejo que llega tarde queda en el historial, pero la
+ * entrada conserva el escaneo más reciente y quién lo hizo.
+ */
+export async function tryRegisterTicketScanInTx(
+  tx: DbExecutor,
+  ticketId: string,
+  scannedByUserId: string,
+  allowMultipleScans: boolean,
+  { at }: { at?: string } = {},
+): Promise<{ registered: true; scannedAt: string } | { registered: false }> {
+  const now = at ?? new Date().toISOString();
+
+  const updated = await tx
+    .update(emittedTicket)
+    .set(
+      at
+        ? {
+            scanned: true,
+            scannedAt: sql`GREATEST(COALESCE(${emittedTicket.scannedAt}, ${now}::timestamptz), ${now}::timestamptz)`,
+            scannedByUserId: sql`CASE WHEN ${emittedTicket.scannedAt} IS NULL OR ${emittedTicket.scannedAt} <= ${now}::timestamptz THEN ${scannedByUserId}::uuid ELSE ${emittedTicket.scannedByUserId} END`,
+          }
+        : { scanned: true, scannedAt: now, scannedByUserId },
+    )
+    .where(
+      allowMultipleScans
+        ? eq(emittedTicket.id, ticketId)
+        : and(eq(emittedTicket.id, ticketId), eq(emittedTicket.scanned, false)),
+    )
+    .returning({ id: emittedTicket.id });
+
+  if (updated.length === 0) {
+    return { registered: false };
+  }
+
+  await tx.insert(emittedTicketScan).values({
+    emittedTicketId: ticketId,
+    scannedAt: now,
+    scannedByUserId,
+  });
+
+  return { registered: true, scannedAt: now };
+}
+
+/** Hora (Argentina) de un escaneo; ver `formatScanTime` en `@/lib/scan/scan-texts`. */
+export {
+  formatScanTime as formatLastScanTime,
+  formatScanWindow,
+} from '@/lib/scan/scan-texts';

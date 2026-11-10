@@ -249,8 +249,7 @@ export function OrganizerDistribution({
           Redistribuir tickets <Ticket />
         </Button>
       </DialogTrigger>
-      {/* TODO: Ver que hacer con el max-h y max-w */}
-      <DialogContent className='flex max-h-[min(90vh,100dvh)] w-full max-w-[calc(100vw-1rem)] flex-col overflow-x-hidden overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl'>
+      <DialogContent className='flex flex-col sm:max-w-2xl md:max-w-3xl lg:max-w-4xl'>
         <DialogHeader>
           <DialogTitle>Redistribuir tickets</DialogTitle>
         </DialogHeader>

@@ -29,7 +29,11 @@ import {
   invitationInvariants,
   redeemInvitation,
 } from '@tests/load/lib/invitation';
-import { insertInvitationEvent, insertUser } from '@tests/load/lib/seed';
+import {
+  assignUserToEvent,
+  insertInvitationEvent,
+  insertUser,
+} from '@tests/load/lib/seed';
 import {
   countBy,
   errorMessage,
@@ -254,7 +258,9 @@ async function scanGuests(
   const devices = 12;
   const scannerIds: string[] = [];
   for (let i = 0; i < devices; i++) {
-    scannerIds.push(await insertUser(raw, 'CONTROL_TICKETING'));
+    const scannerId = await insertUser(raw, 'CONTROL_TICKETING');
+    await assignUserToEvent(raw, scannerId, eventId);
+    scannerIds.push(scannerId);
   }
   const callers = scannerIds.map((id) =>
     callerFor(db, { id, role: 'CONTROL_TICKETING' }),

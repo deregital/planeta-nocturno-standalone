@@ -3,7 +3,7 @@
 import { History } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { type RouterOutputs } from '@/server/routers/app';
+import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
 import {
   Drawer,
   DrawerContent,
@@ -16,7 +16,7 @@ import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
 export function LastScansHistory({
   lastScans,
 }: {
-  lastScans: RouterOutputs['emittedTickets']['scan'][];
+  lastScans: ScanDisplayResult[];
 }) {
   return (
     <Drawer>

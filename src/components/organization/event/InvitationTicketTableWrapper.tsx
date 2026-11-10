@@ -4,15 +4,18 @@ import { InvitationTicketTable } from '@/components/organization/event/Invitatio
 export async function InvitationTicketTableWrapper({
   eventSlug,
   eventId,
+  eventName,
 }: {
   eventId: string;
   eventSlug: string;
+  eventName: string;
 }) {
   const codes = await trpc.organizer.getMyCodesNotUsed(eventId);
   return (
     <InvitationTicketTable
       eventId={eventId}
       eventSlug={eventSlug}
+      eventName={eventName}
       codes={codes}
     />
   );

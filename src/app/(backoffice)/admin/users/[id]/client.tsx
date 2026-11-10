@@ -88,7 +88,12 @@ export default function Client({ organizerId }: { organizerId: string }) {
     data: info,
     isLoading: isLoadingInfo,
     isError: isErrorInfo,
-  } = trpc.organizer.getInfoById.useQuery(organizerId);
+    error: infoError,
+  } = trpc.organizer.getInfoById.useQuery(organizerId, {
+    // Un 403 no se arregla reintentando: el spinner seguía varios segundos.
+    retry: (failureCount, error) =>
+      error.data?.code !== 'FORBIDDEN' && failureCount < 3,
+  });
 
   const canSeeStats = useCan('organizers:statistics');
   const {
@@ -106,6 +111,17 @@ export default function Client({ organizerId }: { organizerId: string }) {
 
   if (isLoadingInfo) {
     return <Loader className='spin-in' />;
+  }
+
+  if (infoError?.data?.code === 'FORBIDDEN') {
+    return (
+      <div className='flex flex-col gap-4 p-4'>
+        <GoBack route='/admin/users' className='size-fit my-2' />
+        <p className='text-accent-dark'>
+          No tenés acceso a los datos de este usuario.
+        </p>
+      </div>
+    );
   }
 
   const formatCurrency = (amount: number) => {

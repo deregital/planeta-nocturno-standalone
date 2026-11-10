@@ -104,52 +104,72 @@ export default function ChangeEventFolder({
         </Tooltip>
       )}
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Cambiar carpeta del evento</DialogTitle>
+        <DialogHeader className='text-left'>
+          <DialogTitle className='pr-8 leading-snug'>
+            Cambiar carpeta del evento
+          </DialogTitle>
         </DialogHeader>
-        <div className='flex flex-col gap-2'>
+        <div className='flex min-w-0 flex-col gap-2'>
           <Label htmlFor='folder-select'>Carpeta</Label>
           <Select value={selectedFolderId} onValueChange={setSelectedFolderId}>
-            <SelectTrigger id='folder-select' className='w-full'>
-              <SelectValue placeholder='Selecciona una carpeta'>
+            <SelectTrigger
+              id='folder-select'
+              className='w-full min-w-0 overflow-hidden'
+            >
+              <SelectValue
+                className='min-w-0'
+                placeholder='Selecciona una carpeta'
+              >
                 {hasNoFolder ? (
                   'Sin Carpeta'
                 ) : selectedFolder ? (
-                  <div className='flex items-center gap-2'>
-                    <div
-                      className='w-4 h-4 rounded-full border border-stroke'
+                  <span className='flex min-w-0 items-center gap-2'>
+                    <span
+                      className='size-4 shrink-0 rounded-full border border-stroke'
                       style={{ backgroundColor: selectedFolder.color }}
                     />
-                    <span>{selectedFolder.name}</span>
-                  </div>
+                    <span className='min-w-0 truncate'>
+                      {selectedFolder.name}
+                    </span>
+                  </span>
                 ) : (
                   'Selecciona una carpeta'
                 )}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className='w-(--radix-select-trigger-width) max-w-[calc(100vw-2rem)]'>
               <SelectItem value='none'>
                 <span>Sin Carpeta</span>
               </SelectItem>
               {folders?.map((folder) => (
-                <SelectItem key={folder.id} value={folder.id}>
-                  <div className='flex items-center gap-2'>
-                    <div
-                      className='w-4 h-4 rounded-full border border-stroke'
+                <SelectItem
+                  key={folder.id}
+                  value={folder.id}
+                  className='min-w-0'
+                >
+                  <span className='flex min-w-0 items-center gap-2'>
+                    <span
+                      className='size-4 shrink-0 rounded-full border border-stroke'
                       style={{ backgroundColor: folder.color }}
                     />
-                    <span>{folder.name}</span>
-                  </div>
+                    <span className='min-w-0 truncate'>{folder.name}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <DialogFooter>
+        <DialogFooter className='min-w-0'>
           <DialogClose asChild>
-            <Button variant='ghost'>Cancelar</Button>
+            <Button variant='ghost' className='w-full sm:w-auto'>
+              Cancelar
+            </Button>
           </DialogClose>
-          <Button onClick={handleSubmit} loading={changeEventFolder.isPending}>
+          <Button
+            onClick={handleSubmit}
+            loading={changeEventFolder.isPending}
+            className='w-full max-w-full sm:w-auto'
+          >
             {changeEventFolder.isPending ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogFooter>

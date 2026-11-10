@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 
 import { eventXUser } from '@/drizzle/schema';
-import { getLandingPath, NO_ACCESS_PATH } from '@/lib/rbac/navigation';
+import { getLandingPath } from '@/lib/rbac/navigation';
 import {
   hasAnyPermission,
   hasPermission,
@@ -15,6 +15,7 @@ import {
 import { auth } from '@/server/auth';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import { loadUserAccess, type UserAccess } from '@/server/rbac/access';
+import { canScanEvent as canScanEventInDb } from '@/server/rbac/event-access';
 
 /** Acceso del usuario actual, leído de la base una vez por request. */
 export const getCurrentAccess = cache(async (): Promise<UserAccess | null> => {
@@ -29,8 +30,9 @@ export async function requireAccess(): Promise<UserAccess> {
   const access = await getCurrentAccess();
   if (access) return access;
 
+  // Sesión válida sin fila de usuario: lo eliminaron con la sesión abierta.
   const session = await auth();
-  redirect(session ? NO_ACCESS_PATH : ('/login' as Route));
+  redirect((session ? '/session-expired' : '/login') as Route);
 }
 
 /**
@@ -66,6 +68,15 @@ export async function canAccessEvent(access: UserAccess, eventId: string) {
     columns: { a: true },
   });
   return !!assignment;
+}
+
+/**
+ * Escanear exige "Escanear entradas" y estar asignado al evento como
+ * personal o como organizador (o ver todos los eventos).
+ */
+export async function canScanEvent(access: UserAccess, eventId: string) {
+  const { db } = await getCurrentRequestContext();
+  return canScanEventInDb(db, access, eventId);
 }
 
 export async function getCurrentLandingPath(): Promise<Route> {

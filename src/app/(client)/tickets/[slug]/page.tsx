@@ -4,7 +4,9 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
 import TicketsClient from '@/app/(client)/tickets/[slug]/client';
-import TicketsPendingClient from '@/app/(client)/tickets/[slug]/pending';
+import TicketsPendingClient, {
+  type ReturnedPaymentStatus,
+} from '@/app/(client)/tickets/[slug]/pending';
 import TicketsTransferPending from '@/app/(client)/tickets/[slug]/transfer-pending';
 import { trpc } from '@/server/trpc/server';
 
@@ -12,9 +14,23 @@ interface PaymentPageProps {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
-export default async function TicketsPage({ params }: PaymentPageProps) {
+
+const RETURNED_PAYMENT_STATUSES = [
+  'approved',
+  'pending',
+  'in_process',
+  'rejected',
+  'null',
+] as const;
+
+export default async function TicketsPage({
+  params,
+  searchParams,
+}: PaymentPageProps) {
   const { slug } = await params;
+  const { collection_status: collectionStatus } = await searchParams;
 
   const data = await trpc.ticketGroup
     .getTicketsForDownloadPage(slug)
@@ -46,12 +62,21 @@ export default async function TicketsPage({ params }: PaymentPageProps) {
 
     const cookieStore = await cookies();
     const paymentUrl = cookieStore.get('pendingPaymentUrl')?.value;
+    const pending = await trpc.ticketGroup.getPendingPaymentInfo(slug);
+    const paymentStatus = RETURNED_PAYMENT_STATUSES.find(
+      (status) => status === collectionStatus,
+    ) as ReturnedPaymentStatus;
     return (
-      <TicketsPendingClient ticketGroupId={slug} paymentUrl={paymentUrl} />
+      <TicketsPendingClient
+        ticketGroupId={slug}
+        paymentUrl={paymentUrl}
+        paymentStatus={paymentStatus}
+        eventSlug={pending?.eventSlug}
+        holdExpiresAt={pending?.holdExpiresAt}
+        canRetryPayment={pending?.canRetryPayment}
+      />
     );
   }
 
-  return (
-    <TicketsClient ticketGroupId={data.ticketGroupId} tickets={data.tickets} />
-  );
+  return <TicketsClient data={data} />;
 }

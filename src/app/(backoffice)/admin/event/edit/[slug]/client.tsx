@@ -153,6 +153,31 @@ export default function Client({
       return;
     }
 
+    // El PDF del mail es una foto del momento de la compra: cambiar la fecha o
+    // un nombre no le avisaba a nadie y el mail quedaba contradiciendo a la web.
+    const emittedTickets = event.ticketGroups
+      .filter((group) => group.status !== 'BOOKED' && !group.isOrganizerGroup)
+      .reduce((count, group) => count + group.emittedTickets.length, 0);
+    const sameInstant = (a: Date | string | null, b: Date | string | null) =>
+      (a ? new Date(a).getTime() : null) === (b ? new Date(b).getTime() : null);
+    const changedWhatTheTicketShows =
+      eventState.name !== event.name ||
+      !sameInstant(eventState.startingDate, event.startingDate) ||
+      ticketTypesState.some((type) => {
+        const previous = event.ticketTypes.find((t) => t.id === type.id);
+        return previous !== undefined && previous.name !== type.name;
+      });
+    if (
+      emittedTickets > 0 &&
+      changedWhatTheTicketShows &&
+      !window.confirm(
+        `Ya hay ${emittedTickets} entradas emitidas. Los PDF que recibieron por mail van a seguir mostrando el nombre y la fecha anteriores (la web y la puerta usan los nuevos). Podés reenviarlas desde la lista de ventas. ¿Guardar igual?`,
+      )
+    ) {
+      setIsSubmitting(false);
+      return;
+    }
+
     updateEvent.mutate({
       event: {
         ...eventState,
@@ -164,6 +189,7 @@ export default function Client({
       organizersInput: event.inviteCondition === 'SIMPLE' ? [] : organizers,
       sendOrganizerTicketEmail,
       questions: questions.filter((question) => question.text.trim() !== ''),
+      expectedVersion: event.version,
     });
   }
 

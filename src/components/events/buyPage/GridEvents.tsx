@@ -5,14 +5,26 @@ import { useMemo } from 'react';
 
 import EventCardContainer from '@/components/events/buyPage/EventCardContainer';
 import { dateRanges } from '@/components/events/buyPage/EventFilter';
+import { Button } from '@/components/ui/button';
 import { type RouterOutputs } from '@/server/routers/app';
 
 type ActiveEvent = RouterOutputs['events']['getActive'][number];
 
+/** Minúsculas y sin tildes, para que 'ultimas' encuentre 'Últimas'. */
+function normalizeForSearch(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function GridEvents({ events }: { events: ActiveEvent[] }) {
-  const [dateRange] = useQueryState('date', parseAsString);
-  const [search] = useQueryState('q', parseAsString);
-  const [selectedCategory] = useQueryState('cat', parseAsString);
+  const [dateRange, setDateRange] = useQueryState('date', parseAsString);
+  const [search, setSearch] = useQueryState('q', parseAsString);
+  const [selectedCategory, setSelectedCategory] = useQueryState(
+    'cat',
+    parseAsString,
+  );
 
   const selectedDateRange = useMemo(() => {
     if (!dateRange) return null;
@@ -20,15 +32,14 @@ function GridEvents({ events }: { events: ActiveEvent[] }) {
   }, [dateRange]);
 
   const filteredEvents = useMemo(() => {
-    const searchValue = search
-      ?.toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+    // Antes sólo se normalizaba lo buscado y no el nombre: cualquier
+    // búsqueda que tocara una letra con tilde daba cero resultados.
+    const searchValue = search ? normalizeForSearch(search.trim()) : '';
 
     return events
       .filter((event) => {
         if (!searchValue) return true;
-        return event.name.toLowerCase().includes(searchValue);
+        return normalizeForSearch(event.name).includes(searchValue);
       })
       .filter((event) => {
         if (!selectedDateRange) return true;
@@ -48,6 +59,26 @@ function GridEvents({ events }: { events: ActiveEvent[] }) {
     return (
       <div className='mx-5 max-w-full px-4 py-8 md:mx-12'>
         <h1 className='text-center text-2xl font-bold'>No hay eventos</h1>
+      </div>
+    );
+  }
+
+  if (filteredEvents.length === 0) {
+    return (
+      <div className='mx-5 flex max-w-full flex-col items-center gap-4 px-4 py-8 md:mx-12'>
+        <p className='text-center text-xl font-bold'>
+          No encontramos eventos con esos filtros
+        </p>
+        <Button
+          variant='outline'
+          onClick={() => {
+            void setSearch(null);
+            void setDateRange(null);
+            void setSelectedCategory(null);
+          }}
+        >
+          Ver todos los eventos
+        </Button>
       </div>
     );
   }
