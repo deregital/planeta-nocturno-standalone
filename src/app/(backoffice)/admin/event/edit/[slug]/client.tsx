@@ -5,13 +5,17 @@ import posthog from 'posthog-js';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import GoBack from '@/components/common/GoBack';
 import { EventGeneralInformation } from '@/components/event/create/EventGeneralInformation';
 import { EventOrganizers } from '@/components/event/create/inviteCondition/EventOrganizers';
 import TicketTypeAction from '@/components/event/create/ticketType/TicketTypeAction';
 import { Button } from '@/components/ui/button';
+import {
+  pickEventFormFields,
+  pickTicketTypeFields,
+  validateGeneralInformation,
+} from '@/lib/event-form';
 import { mapEventOrganizersToSchema } from '@/lib/event-organizers';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
@@ -73,14 +77,22 @@ export default function Client({
 
   useEffect(() => {
     if (event) {
+      // Sin `...event`: traía ticketGroups con cada entrada emitida y con eso
+      // un evento grande no se podía guardar (body de más de 1 MB).
       setEvent({
-        ...event,
-        startingDate: event.startingDate ? new Date(event.startingDate) : null,
-        endingDate: event.endingDate ? new Date(event.endingDate) : null,
-        authorizedUsers: event.eventXUsers.map((e) => ({
-          id: e.user.id,
-          name: e.user.name,
-        })),
+        ...pickEventFormFields({
+          ...event,
+          startingDate: event.startingDate
+            ? new Date(event.startingDate)
+            : null,
+          endingDate: event.endingDate ? new Date(event.endingDate) : null,
+          authorizedUsers: event.eventXUsers.map((e) => ({
+            id: e.user.id,
+            name: e.user.name,
+          })),
+        }),
+        id: event.id,
+        inviteCondition: event.inviteCondition,
       });
       setOrganizers(
         event.inviteCondition === 'SIMPLE'
@@ -91,17 +103,19 @@ export default function Client({
             ),
       );
       setTicketTypes(
-        event.ticketTypes.map((t) => ({
-          ...t,
-          startingDate: t.startingDate ? new Date(t.startingDate) : null,
-          maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : null,
-          scanLimit: t.scanLimit ? new Date(t.scanLimit) : null,
-          allowMultipleScans: t.allowMultipleScans ?? false,
-          organizers:
-            'ticketTypeXOrganizers' in t && t.ticketTypeXOrganizers
-              ? t.ticketTypeXOrganizers.map((rel) => rel.b)
-              : null,
-        })),
+        event.ticketTypes.map((t) =>
+          pickTicketTypeFields({
+            ...t,
+            startingDate: t.startingDate ? new Date(t.startingDate) : null,
+            maxSellDate: t.maxSellDate ? new Date(t.maxSellDate) : null,
+            scanLimit: t.scanLimit ? new Date(t.scanLimit) : null,
+            allowMultipleScans: t.allowMultipleScans ?? false,
+            organizers:
+              'ticketTypeXOrganizers' in t && t.ticketTypeXOrganizers
+                ? t.ticketTypeXOrganizers.map((rel) => rel.b)
+                : null,
+          }),
+        ),
       );
       setQuestions(
         event.eventQuestions
@@ -115,9 +129,27 @@ export default function Client({
     }
   }, [event, setEvent, setOrganizers, setTicketTypes, setQuestions]);
 
-  async function handleSubmit() {
+  // Un error antes de la mutación (que tiene su propio onError) dejaba el
+  // botón cargando para siempre y sin ningún aviso.
+  function handleSubmit() {
     setIsSubmitting(true);
-    const validatedEvent = await validateGeneralInformation(eventState);
+    try {
+      submit();
+    } catch (error) {
+      posthog.captureException(error, {
+        source: 'admin_event_edit_submit',
+        event_id: event?.id,
+      });
+      const message =
+        'No se pudo guardar el evento. Por favor, intente nuevamente.';
+      toast.error(message);
+      setError({ general: message });
+      setIsSubmitting(false);
+    }
+  }
+
+  function submit() {
+    const validatedEvent = validateGeneralInformation(eventState);
 
     if (!validatedEvent.success) {
       const keyAndError = Object.entries(validatedEvent.error ?? {});
@@ -180,12 +212,12 @@ export default function Client({
 
     updateEvent.mutate({
       event: {
-        ...eventState,
+        ...pickEventFormFields(eventState),
         id: event.id,
         slug: event.slug,
         inviteCondition: event.inviteCondition as InviteCondition,
       },
-      ticketTypes: ticketTypesState,
+      ticketTypes: ticketTypesState.map(pickTicketTypeFields),
       organizersInput: event.inviteCondition === 'SIMPLE' ? [] : organizers,
       sendOrganizerTicketEmail,
       questions: questions.filter((question) => question.text.trim() !== ''),
