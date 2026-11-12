@@ -6,7 +6,6 @@ import { useCallback, useRef, useState } from 'react';
 import Resizer from 'react-image-file-resizer';
 import { toast } from 'sonner';
 
-import { validateGeneralInformation } from '@/app/(backoffice)/admin/event/create/actions';
 import { useCreateEventStore } from '@/app/(backoffice)/admin/event/create/provider';
 import { SelectableComboBox } from '@/components/admin/SelectableComboBox';
 import EventCategoryModal from '@/components/category/EventCategoryModal';
@@ -31,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatEventDateRange } from '@/lib/event-dates';
+import { validateGeneralInformation } from '@/lib/event-form';
 import { cn } from '@/lib/utils';
 import { generateS3Url } from '@/lib/utils-client';
 import { trpc } from '@/server/trpc/client';
@@ -140,9 +140,9 @@ export function EventGeneralInformation({
     setEvent({ [key]: value });
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const validatedEvent = await validateGeneralInformation(event);
+    const validatedEvent = validateGeneralInformation(event);
 
     if (!validatedEvent.success) {
       const keyAndError = Object.entries(validatedEvent.error ?? {});

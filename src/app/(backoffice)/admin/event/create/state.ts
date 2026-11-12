@@ -19,10 +19,15 @@ import {
 import { type InviteCondition } from '@/server/types';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 
+/** Sólo los campos del formulario: nada de relaciones (ver `pickEventFormFields`). */
+export type EventFormState = Omit<CreateEventSchema, 'inviteCondition'> & {
+  inviteCondition: InviteCondition | null;
+  /** Sólo al editar: con él los organizadores consultan lo ya entregado. */
+  id?: string;
+};
+
 export type EventState = {
-  event: Omit<CreateEventSchema, 'inviteCondition'> & {
-    inviteCondition: InviteCondition | null;
-  };
+  event: EventFormState;
   ticketTypes: (
     | (CreateTicketTypeSchema & { id: string | null })
     | TicketTypeSchema
@@ -36,7 +41,7 @@ type EventActions = {
   updateTicketType: (id: string, ticketType: CreateTicketTypeSchema) => void;
   deleteTicketType: (id: string) => void;
   setTicketTypes: (ticketTypes: TicketTypeSchema[]) => void;
-  setEvent: (event: Partial<CreateEventSchema>) => void;
+  setEvent: (event: Partial<EventFormState>) => void;
   setEventDates: (
     dates: Partial<Pick<CreateEventSchema, 'startingDate' | 'endingDate'>>,
   ) => void;
