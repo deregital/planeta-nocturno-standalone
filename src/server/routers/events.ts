@@ -2414,11 +2414,50 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  duplicate: permissionProcedure('events:duplicate')
+  getDuplicateSlugSuggestion: permissionProcedure('events:duplicate')
     .input(eventSchemaZod.shape.id)
-    .mutation(async ({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
         where: eq(eventSchema.id, input),
+        columns: { name: true },
+      });
+      if (!event) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Evento no encontrado',
+        });
+      }
+      return getUniqueEventSlug(ctx.db, event.name);
+    }),
+  duplicate: permissionProcedure('events:duplicate')
+    .input(
+      z.object({
+        id: eventSchemaZod.shape.id,
+        slug: z
+          .string()
+          .trim()
+          .min(1, 'El link no puede estar vacío')
+          .max(100, 'El link es demasiado largo')
+          .regex(
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+            'El link sólo puede tener letras minúsculas, números y guiones',
+          ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const slugTaken = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.slug, input.slug),
+        columns: { id: true },
+      });
+      if (slugTaken) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Ya hay un evento con ese link. Elegí otro.',
+        });
+      }
+
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input.id),
         columns: {
           id: false,
         },
@@ -2436,7 +2475,7 @@ export const eventsRouter = router({
 
       if (!event) throw 'Evento no encontrado';
 
-      const eventSlug = await getUniqueEventSlug(ctx.db, event.name);
+      const eventSlug = input.slug;
 
       const newEvent = await ctx.db.transaction(async (tx) => {
         try {
