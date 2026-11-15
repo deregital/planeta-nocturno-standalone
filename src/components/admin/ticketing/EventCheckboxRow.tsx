@@ -9,9 +9,11 @@ import { type RouterOutputs } from '@/server/routers/app';
 
 export default function EventCheckboxRow({
   event,
+  checked,
   onCheckedChange,
 }: {
   event: RouterOutputs['events']['getAllForTicketing'][number];
+  checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
 }) {
   return (
@@ -19,11 +21,12 @@ export default function EventCheckboxRow({
       <Checkbox
         name='ids'
         value={event.id}
+        checked={checked}
         onCheckedChange={onCheckedChange}
         className='data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-white'
       />
       <div className='flex-1 min-w-0'>
-        <p className='font-semibold text-accent'>{event.name}</p>
+        <p className='font-semibold text-accent break-words'>{event.name}</p>
         <div className='flex items-center gap-1 text-xs text-accent-dark/60 mt-0.5'>
           {event.startingDate ? (
             <>
