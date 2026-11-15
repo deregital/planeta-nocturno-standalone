@@ -49,6 +49,8 @@ export type SyncPayload = {
     scannedByMe: boolean;
     /** Quién hizo el registro previo en un doble ingreso. */
     scannedByName?: string | null;
+    /** Motivo de la eliminación, si la entrada está en la papelera. */
+    deletionReason?: string | null;
   }[];
   delta: {
     scans: DeltaScanRow[];
@@ -166,6 +168,8 @@ export type EngineEvent =
       scannedAt: string | null;
       scannedByMe: boolean;
       scannedByName: string | null;
+      /** Motivo de la eliminación, si la entrada está en la papelera. */
+      deletionReason?: string | null;
     }
   | {
       /** El servidor registró estos escaneos decididos en el celular. */
@@ -944,6 +948,7 @@ export class LocalScanEngine {
             scannedAt: result.scannedAt,
             scannedByMe: result.scannedByMe,
             scannedByName: result.scannedByName ?? null,
+            deletionReason: result.deletionReason ?? null,
           });
         }
       }

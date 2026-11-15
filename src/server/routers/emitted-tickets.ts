@@ -33,6 +33,13 @@ import { logger } from '@/server/observability/logger';
 import { assertTicketGroupEventNotBlocked } from '@/server/services/eventBlock';
 import { sendMail } from '@/server/services/mail';
 import {
+  DELETION_REASON_MAX_LENGTH,
+  findTrashedTicket,
+  listTrashedTickets,
+  moveTicketToTrash,
+  restoreTicketFromTrash,
+} from '@/server/services/ticketTrash';
+import {
   anyPermissionProcedure,
   forbidden,
   permissionProcedure,
@@ -51,6 +58,7 @@ import { isTicketId } from '@/lib/scan/protocol';
 import {
   ALREADY_SCANNED_TEXT,
   alreadyScannedExtraInfo,
+  deletedTicketTexts,
   NOT_FOUND_EXTRA_INFO,
   NOT_FOUND_TEXT,
   otherEventTexts,
@@ -665,6 +673,20 @@ export const emittedTicketsRouter = router({
       ]);
 
       if (!ticketReturned) {
+        // Eliminada (en la papelera): la puerta ve el motivo.
+        const trashed = await findTrashedTicket(
+          ctx.db,
+          decryptedTicketId,
+          input.eventIds,
+        );
+        if (trashed) {
+          return respond({
+            ticket: null,
+            status: 'not-found',
+            ...deletedTicketTexts(trashed),
+            scannedByMe: false,
+          });
+        }
         // Una entrada válida de otro evento y un QR cualquiera daban el mismo
         // cartel: la puerta no sabía si mandarla a otro lado o rechazarla.
         const elsewhere = await ctx.db.query.emittedTicket.findFirst({
@@ -1051,11 +1073,72 @@ export const emittedTicketsRouter = router({
       return { success: true, data };
     }),
 
+  /** Mueve la entrada a la papelera con el motivo (ver `ticketTrash`). */
   delete: permissionProcedure('tickets:delete')
-    .input(z.object({ ticketId: z.string() }))
+    .input(
+      z.object({
+        ticketId: z.uuid(),
+        reason: z
+          .string()
+          .trim()
+          .min(1, 'Escribí el motivo de la eliminación')
+          .max(DELETION_REASON_MAX_LENGTH),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .delete(emittedTicket)
-        .where(eq(emittedTicket.id, input.ticketId));
+      const ticket = await ctx.db.query.emittedTicket.findFirst({
+        where: eq(emittedTicket.id, input.ticketId),
+        columns: { eventId: true },
+      });
+      if (!ticket) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'La entrada no existe o ya está en la papelera',
+        });
+      }
+      await assertEventsAccess(ctx, [ticket.eventId]);
+      const deleted = await moveTicketToTrash(ctx.db, {
+        ticketId: input.ticketId,
+        reason: input.reason,
+        deletedByUserId: ctx.session.user.id,
+      });
+      logger.info('Ticket moved to trash', {
+        operation: 'ticket_trash',
+        ticketId: deleted.id,
+        eventId: deleted.eventId,
+        userId: ctx.session.user.id,
+      });
+      return deleted;
+    }),
+
+  /** Papelera del evento: entradas eliminadas con el motivo. */
+  getTrash: permissionProcedure('tickets:trash')
+    .input(z.object({ eventId: z.uuid() }))
+    .query(async ({ ctx, input }) => {
+      await assertEventsAccess(ctx, [input.eventId]);
+      return listTrashedTickets(ctx.db, input.eventId);
+    }),
+
+  restore: permissionProcedure('tickets:trash')
+    .input(z.object({ ticketId: z.uuid(), eventId: z.uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertEventsAccess(ctx, [input.eventId]);
+      const trashed = await findTrashedTicket(ctx.db, input.ticketId, [
+        input.eventId,
+      ]);
+      if (!trashed) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'La entrada ya no está en la papelera',
+        });
+      }
+      const restored = await restoreTicketFromTrash(ctx.db, input.ticketId);
+      logger.info('Ticket restored from trash', {
+        operation: 'ticket_restore',
+        ticketId: restored.id,
+        eventId: restored.eventId,
+        userId: ctx.session.user.id,
+      });
+      return restored;
     }),
 });

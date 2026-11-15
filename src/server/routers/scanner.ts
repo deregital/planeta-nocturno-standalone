@@ -33,6 +33,7 @@ import {
   type SyncScanOutcome,
 } from '@/lib/scan/protocol';
 import { logger } from '@/server/observability/logger';
+import { findTrashedTicket } from '@/server/services/ticketTrash';
 import { permissionProcedure, router } from '@/server/trpc';
 import { tryRegisterTicketScanInTx } from '@/server/utils/register-ticket-scan';
 import { assertEventsAccess } from '@/server/utils/scanner-access';
@@ -300,6 +301,8 @@ export type SyncScanResult = {
   scannedByMe: boolean;
   /** Quién hizo el registro previo (si hubo doble ingreso), para la puerta. */
   scannedByName: string | null;
+  /** Motivo de la eliminación, si la entrada está en la papelera. */
+  deletionReason?: string | null;
 };
 
 /**
@@ -365,6 +368,9 @@ async function registerLocalScan(
         .update(scanReceipt)
         .set({ outcome: 'not-found' })
         .where(eq(scanReceipt.id, receiptId));
+      const trashed = ticketId
+        ? await findTrashedTicket(tx, ticketId, eventIds)
+        : null;
       return {
         id: scan.id,
         outcome: 'not-found',
@@ -372,6 +378,7 @@ async function registerLocalScan(
         scannedAt: null,
         scannedByMe: false,
         scannedByName: null,
+        deletionReason: trashed?.deletionReason ?? null,
       };
     }
 
