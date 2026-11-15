@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { hash } from 'bcrypt';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -8,6 +8,7 @@ import type { Db } from '@/drizzle';
 
 import { tag as tagTable, user as userTable, userXTag } from '@/drizzle/schema';
 import { resetPasswordSchema, userSchema } from '@/server/schemas/user';
+import { genderSchema } from '@/server/schemas/utils';
 import {
   generateWelcomeEmail,
   sendMailWithoutAttachments,
@@ -352,16 +353,19 @@ export const userRouter = router({
       z.object({
         users: z.array(
           z.object({
-            nombre: z.string(),
-            apellido: z.string(),
+            fullName: z.string().trim().min(1),
             email: z.email(),
-            dni: z.string(),
-            fechaNacimiento: z.string(),
-            telefono: z.string(),
+            dni: z.string().trim().min(1),
+            gender: genderSchema,
+            birthDate: z.string(),
+            phoneNumber: z.string(),
             instagram: z.string().nullish(),
           }),
         ),
         batchName: z.string().min(1, 'El nombre del grupo es requerido'),
+        // Sin mail, la contraseña se pierde: se les da acceso después con
+        // "Restablecer contraseña".
+        sendWelcomeEmail: z.boolean().default(true),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -373,14 +377,18 @@ export const userRouter = router({
 
       const errors: string[] = [];
       const createdUsers: (typeof userTable.$inferSelect)[] = [];
+      const normalizedUsers = input.users.map((user) => ({
+        ...user,
+        email: user.email.trim().toLowerCase(),
+      }));
 
       // Validar que no existan usuarios duplicados en el archivo
       const emails = new Set<string>();
       const dnis = new Set<string>();
 
-      for (let i = 0; i < input.users.length; i++) {
-        const user = input.users[i];
-        const rowNumber = i + 1;
+      for (let i = 0; i < normalizedUsers.length; i++) {
+        const user = normalizedUsers[i];
+        const rowNumber = i + 2;
 
         if (emails.has(user.email)) {
           errors.push(
@@ -407,46 +415,42 @@ export const userRouter = router({
         });
       }
 
-      // Validar que los usuarios no existan en la base de datos
-      for (let i = 0; i < input.users.length; i++) {
-        const user = input.users[i];
-        const rowNumber = i + 1;
+      // Los que ya tienen usuario (mismo DNI o email) se omiten: un export de
+      // asistentes casi siempre trae gente que ya está en el sistema.
+      const existingUsers =
+        normalizedUsers.length === 0
+          ? []
+          : await ctx.db.query.user.findMany({
+              where: or(
+                inArray(userTable.dni, [...dnis]),
+                inArray(sql`lower(${userTable.email})`, [...emails]),
+              ),
+              columns: { dni: true, email: true },
+            });
+      const existingDnis = new Set(existingUsers.map((u) => u.dni));
+      const existingEmails = new Set(
+        existingUsers.map((u) => u.email.toLowerCase()),
+      );
 
-        const existingEmail = await ctx.db.query.user.findFirst({
-          where: eq(userTable.email, user.email),
-        });
-        if (existingEmail) {
-          errors.push(
-            `Fila ${rowNumber}: El email ${user.email} ya existe en el sistema`,
-          );
-        }
+      const skipped: string[] = [];
+      const usersToCreate = normalizedUsers.filter((user) => {
+        const sameDni = existingDnis.has(user.dni);
+        const sameEmail = existingEmails.has(user.email);
+        if (!sameDni && !sameEmail) return true;
+        skipped.push(
+          `${user.fullName} (${sameDni ? `DNI ${user.dni}` : user.email})`,
+        );
+        return false;
+      });
 
-        const existingUser = await ctx.db.query.user.findFirst({
-          where: or(
-            eq(userTable.dni, user.dni),
-            eq(userTable.email, user.email),
-          ),
-        });
-        if (existingUser) {
-          if (existingUser.dni === user.dni) {
-            errors.push(
-              `Fila ${rowNumber}: El DNI ${user.dni} ya existe en el sistema`,
-            );
-          }
-          if (existingUser.email === user.email) {
-            errors.push(
-              `Fila ${rowNumber}: El email ${user.email} ya existe en el sistema`,
-            );
-          }
-        }
-      }
-
-      if (errors.length > 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Se encontraron usuarios que ya existen en el sistema',
-          cause: { errors },
-        });
+      if (usersToCreate.length === 0) {
+        return {
+          success: true,
+          message:
+            'No se creó ningún usuario: todas las personas del archivo ya existen en el sistema',
+          createdCount: 0,
+          skipped,
+        };
       }
 
       // Crear o obtener el tag del batch (solo del usuario que importa)
@@ -472,7 +476,9 @@ export const userRouter = router({
       }
 
       // Generar usernames únicos
-      const baseUsernames = input.users.map((user) => user.email.split('@')[0]);
+      const baseUsernames = usersToCreate.map(
+        (user) => user.email.split('@')[0],
+      );
 
       // Obtener todos los usernames existentes que puedan colisionar con una sola query
       const existingUsernames = await ctx.db.query.user.findMany({
@@ -482,16 +488,11 @@ export const userRouter = router({
         },
       });
 
-      const existingUsernamesSet = new Set(
-        existingUsernames.map((u) => u.name),
-      );
-
       // Generar usernames únicos evitando colisiones con existentes y entre sí
       const uniqueUsernames = new Map<string, string>();
-      const usedUsernames = new Set(existingUsernamesSet);
+      const usedUsernames = new Set(existingUsernames.map((u) => u.name));
 
-      for (let i = 0; i < input.users.length; i++) {
-        const user = input.users[i];
+      for (const user of usersToCreate) {
         const baseUsername = user.email.split('@')[0];
         let finalUsername = baseUsername;
         let counter = 2;
@@ -511,8 +512,7 @@ export const userRouter = router({
         ? null
         : ctx.session.user.id;
 
-      for (const user of input.users) {
-        const fullName = `${user.nombre} ${user.apellido}`.trim();
+      for (const user of usersToCreate) {
         const username = uniqueUsernames.get(user.email)!;
         const randomPassword = generateRandomPassword();
         const hashedPassword = await hash(randomPassword, 10);
@@ -525,29 +525,31 @@ export const userRouter = router({
           .insert(userTable)
           .values({
             name: username,
-            fullName: fullName,
+            fullName: user.fullName.replace(/\s+/g, ' '),
             password: hashedPassword,
             email: user.email,
             role: assignedRole.legacyRole,
             accessRoleId: assignedRole.id,
-            gender: 'other',
-            phoneNumber: user.telefono,
+            gender: user.gender,
+            phoneNumber: user.phoneNumber,
             dni: user.dni,
-            birthDate: user.fechaNacimiento,
+            birthDate: user.birthDate,
             instagram: instagram || null,
             chiefOrganizerId: chiefOrganizerId,
           })
           .returning();
 
-        await sendMailWithoutAttachments(ctx.instance, {
-          to: newUser.email,
-          subject: `Bienvenido a la plataforma ${ctx.instance.name}!`,
-          html: generateWelcomeEmail(
-            ctx.instance,
-            newUser.name,
-            randomPassword,
-          ),
-        });
+        if (input.sendWelcomeEmail) {
+          await sendMailWithoutAttachments(ctx.instance, {
+            to: newUser.email,
+            subject: `Bienvenido a la plataforma ${ctx.instance.name}!`,
+            html: generateWelcomeEmail(
+              ctx.instance,
+              newUser.name,
+              randomPassword,
+            ),
+          });
+        }
 
         await ctx.db.insert(userXTag).values({
           a: batchTag.id,
@@ -561,8 +563,12 @@ export const userRouter = router({
 
       return {
         success: true,
-        message: `Se importaron ${createdUsers.length} usuarios exitosamente`,
+        message:
+          skipped.length > 0
+            ? `Se importaron ${createdUsers.length} usuarios. Se omitieron ${skipped.length} que ya existían`
+            : `Se importaron ${createdUsers.length} usuarios exitosamente`,
         createdCount: createdUsers.length,
+        skipped,
       };
     }),
   getOrganizers: anyPermissionProcedure([

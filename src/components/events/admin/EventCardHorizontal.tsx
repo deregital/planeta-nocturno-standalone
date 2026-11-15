@@ -5,6 +5,7 @@ import {
   Calendar,
   CopyIcon,
   FileSpreadsheet,
+  FileUp,
   Folder,
   Link2,
   Loader2,
@@ -86,12 +87,15 @@ export default function EventCardHorizontal({
   const exportXlsxByTicketType =
     trpc.events.exportXlsxByTicketType.useMutation();
 
+  const exportForImport = trpc.events.exportForImport.useMutation();
+
   const utils = trpc.useUtils();
   const toggleActivate = trpc.events.toggleActivate.useMutation();
   const exportPending =
     generatePresentismoOrdenAlfPDF.isPending ||
     generatePresentismoGroupedTicketTypePDF.isPending ||
-    exportXlsxByTicketType.isPending;
+    exportXlsxByTicketType.isPending ||
+    exportForImport.isPending;
 
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
   const manageHref = `/admin/event/${event.slug}`;
@@ -509,6 +513,39 @@ export default function EventCardHorizontal({
                           )}
                         </span>
                         Excel por tipo de ticket
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={exportPending}
+                        onSelect={(e) => e.preventDefault()}
+                        onClick={() => {
+                          exportForImport.mutate(event.id, {
+                            onError: (error) => {
+                              toast.error(error.message);
+                            },
+                            onSuccess: (out) => {
+                              const blob = new Blob([out], {
+                                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                              });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `importacion-${event.slug}.xlsx`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                              setMoreOpen(false);
+                            },
+                          });
+                        }}
+                        className='cursor-pointer'
+                      >
+                        <span className='mr-2 inline-flex'>
+                          {exportForImport.isPending ? (
+                            <Loader2 className='animate-spin' />
+                          ) : (
+                            <FileUp />
+                          )}
+                        </span>
+                        Exportar para importación
                       </DropdownMenuItem>
                     </>
                   )}

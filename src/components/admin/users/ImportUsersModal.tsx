@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogClose,
@@ -32,6 +33,7 @@ interface ImportUsersModalProps {
   onImport: (
     users: ImportUserData[],
     batchName: string,
+    sendWelcomeEmail: boolean,
   ) => Promise<ImportResult>;
 }
 
@@ -40,12 +42,14 @@ interface ImportResult {
   message: string;
   errors?: string[];
   createdCount?: number;
+  skipped?: string[];
 }
 
 export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [batchName, setBatchName] = useState<string>('');
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,11 +59,8 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      if (
-        selectedFile.type ===
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        selectedFile.type === 'application/vnd.ms-excel'
-      ) {
+      // Por extensión: el tipo MIME viene vacío o distinto en algunos sistemas.
+      if (/\.xlsx?$/i.test(selectedFile.name)) {
         setFile(selectedFile);
         // Establecer el nombre del batch por defecto basado en el nombre del archivo
         const fileName = selectedFile.name.replace(/\.[^/.]+$/, ''); // Remover extensión
@@ -102,7 +103,11 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
       }
 
       // Procesar importación con el nombre del batch
-      const importResult = await onImport(parseResult.users, batchName.trim());
+      const importResult = await onImport(
+        parseResult.users,
+        batchName.trim(),
+        sendWelcomeEmail,
+      );
       setResult(importResult);
 
       if (importResult.success) {
@@ -140,6 +145,7 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
       // Limpiar estados cuando se cierra el modal
       setFile(null);
       setBatchName('');
+      setSendWelcomeEmail(true);
       setResult(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -263,25 +269,50 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
             </p>
           </div>
 
+          <label className='flex items-start gap-3 cursor-pointer'>
+            <Checkbox
+              className='mt-0.5'
+              checked={sendWelcomeEmail}
+              onCheckedChange={(checked) =>
+                setSendWelcomeEmail(checked === true)
+              }
+            />
+            <span className='min-w-0 space-y-1'>
+              <span className='block text-sm font-medium'>
+                Enviar mail con las credenciales
+              </span>
+              <span className='block text-xs text-muted-foreground'>
+                {sendWelcomeEmail
+                  ? 'Cada usuario nuevo recibe su usuario y contraseña por mail.'
+                  : 'No se manda ningún mail. Para darles acceso, restablecé la contraseña de cada uno desde la tabla.'}
+              </span>
+            </span>
+          </label>
+
           {/* Required columns info */}
           <Alert>
             <AlertCircle className='h-4 w-4' />
-            <AlertDescription>
-              <strong>Columnas requeridas:</strong>
-              • Nombre
-              <br />
-              • Apellido
-              <br />
-              • Dirección de correo electrónico
-              <br />
-              • DNI
-              <br />
-              • Fecha nacimiento en formato YYYY-MM-DD
-              <br />
-              • Número de teléfono (se formatea automáticamente con +549)
-              <br />
-              <br />
-              <strong>Columnas opcionales:</strong>• Instagram
+            <AlertDescription className='block space-y-2'>
+              <p>
+                Podés usar el archivo de{' '}
+                <strong>Exportar para importación</strong> del menú de un evento
+                tal cual. Las personas que ya tienen usuario (mismo DNI o email)
+                se omiten.
+              </p>
+              <p>
+                <strong>Columnas requeridas</strong> (en cualquier orden):
+              </p>
+              <ul className='list-disc list-inside'>
+                <li>Nombre y apellido</li>
+                <li>Email</li>
+                <li>DNI</li>
+                <li>Género (Masculino, Femenino u Otro)</li>
+                <li>Fecha de nacimiento (YYYY-MM-DD o DD/MM/YYYY)</li>
+                <li>Teléfono (se formatea automáticamente con +549)</li>
+              </ul>
+              <p>
+                <strong>Opcional:</strong> Instagram
+              </p>
             </AlertDescription>
           </Alert>
 
@@ -351,10 +382,22 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
                       {result.message}
                     </p>
                   )}
-                  {result.createdCount && (
-                    <p className='text-green-800'>
-                      Se crearon {result.createdCount} usuarios exitosamente.
-                    </p>
+                  {result.skipped && result.skipped.length > 0 && (
+                    <div>
+                      <p className='text-green-800 font-medium'>
+                        Ya existían ({result.skipped.length}):
+                      </p>
+                      <ul className='list-disc list-inside ml-4 space-y-1'>
+                        {result.skipped.map((person) => (
+                          <li
+                            key={person}
+                            className='text-green-800 text-sm break-words'
+                          >
+                            {person}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               </AlertDescription>
