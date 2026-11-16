@@ -1,9 +1,8 @@
 import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
 import z from 'zod';
 
-import { ticketGroup, user } from '@/drizzle/schema';
+import { user } from '@/drizzle/schema';
 import { logger } from '@/server/observability/logger';
 import { transferAliasSchema } from '@/server/schemas/payment-settings';
 import {
@@ -26,9 +25,7 @@ import {
   hasActivePaidEvents,
   setTransferAlias,
 } from '@/server/services/paymentSettings';
-import { assertTicketGroupEventNotBlocked } from '@/server/services/eventBlock';
-import { calculateAndSaveTotalAmount } from '@/server/services/ticketGroup';
-import { MERCADO_PAGO_PREFERENCE_TTL_MS } from '@/server/services/ticketGroupHolds';
+import { createMercadoPagoPreference } from '@/server/payments/providers/mercado-pago';
 import {
   anyPermissionProcedure,
   permissionProcedure,
@@ -211,123 +208,7 @@ export const mercadoPagoRouter = router({
     }),
   createPreference: publicProcedure
     .input(createPreferenceSchema)
-    .query(async ({ ctx, input }) => {
-      // validar el ticketgroupId
-      const group = await ctx.db.query.ticketGroup.findFirst({
-        where: eq(ticketGroup.id, input.ticketGroupId),
-        columns: {
-          id: true,
-          invitedById: true,
-          status: true,
-        },
-        with: {
-          ticketTypePerGroups: {
-            with: {
-              ticketType: {
-                columns: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  price: true,
-                  category: true,
-                },
-              },
-            },
-          },
-          event: {
-            columns: {
-              id: true,
-              name: true,
-              description: true,
-              startingDate: true,
-              endingDate: true,
-              coverImageUrl: true,
-            },
-            with: {
-              location: {
-                columns: {
-                  id: true,
-                  name: true,
-                  address: true,
-                },
-              },
-              eventCategory: {
-                columns: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      // Bloqueado después de reservar: la reserva sin pago no se completa.
-      await assertTicketGroupEventNotBlocked(ctx.db, input.ticketGroupId);
-
-      // Sin reserva vigente (venció y soltó el cupo, o ya se pagó) no se cobra.
-      if (
-        !group ||
-        group.status !== 'BOOKED' ||
-        group.ticketTypePerGroups.length === 0
-      ) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'ticketGroup no encontrado',
-        });
-      }
-
-      if (!ctx.instance.mercadoPagoAccessToken) {
-        throw new Error('Mercado Pago no está configurado');
-      }
-
-      const mercadoPago = new MercadoPagoConfig({
-        accessToken: ctx.instance.mercadoPagoAccessToken,
-      });
-
-      const totalPrice = await calculateAndSaveTotalAmount(
-        ctx.db,
-        input.ticketGroupId,
-      );
-
-      await ctx.db
-        .update(ticketGroup)
-        .set({ paymentMethod: 'MERCADO_PAGO' })
-        .where(eq(ticketGroup.id, input.ticketGroupId));
-
-      const preference = await new Preference(mercadoPago).create({
-        body: {
-          items: [
-            {
-              id: group.id,
-              title: group.event.name,
-              description: group.event.description,
-              quantity: 1,
-              unit_price: totalPrice,
-            },
-          ],
-          external_reference: group.id,
-          auto_return: 'approved',
-          // Sin vencimiento la preferencia se podía pagar después de que la
-          // reserva soltó el cupo. Pasado este plazo Mercado Pago no la cobra.
-          expires: true,
-          expiration_date_from: new Date().toISOString(),
-          expiration_date_to: new Date(
-            Date.now() + MERCADO_PAGO_PREFERENCE_TTL_MS,
-          ).toISOString(),
-          // Todas vuelven a la página de la compra, que según el estado ofrece
-          // esperar el aviso o volver a pagar.
-          back_urls: {
-            success: `${ctx.instance.publicUrl}/tickets/${group.id}`,
-            pending: `${ctx.instance.publicUrl}/tickets/${group.id}`,
-            failure: `${ctx.instance.publicUrl}/tickets/${group.id}`,
-          },
-          metadata: {
-            ticket_group_id: group.id,
-            instance_url: ctx.instance.publicUrl,
-          },
-        },
-      });
-      return preference.init_point!;
-    }),
+    .query(({ ctx, input }) =>
+      createMercadoPagoPreference(ctx, input.ticketGroupId),
+    ),
 });

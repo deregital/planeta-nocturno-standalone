@@ -31,9 +31,8 @@ import {
   generateTicketGroupPdfs,
 } from '@/server/services/ticketGroup';
 import {
-  CHECKOUT_HOLD_TTL_MS,
   eventHoldCondition,
-  MERCADO_PAGO_HOLD_TTL_MS,
+  holdExpiresAt,
   releaseExpiredHolds,
 } from '@/server/services/ticketGroupHolds';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
@@ -227,23 +226,6 @@ function ticketGroupNotFound() {
     code: 'NOT_FOUND',
     message: 'ticketGroup no encontrado',
   });
-}
-
-/** Hasta cuándo retiene el cupo una reserva sin pagar, para avisarle al comprador. */
-function holdExpiresAt(group: {
-  status: string;
-  paymentMethod: string | null;
-  createdAt: string;
-}) {
-  if (group.status !== 'BOOKED') return null;
-  const ttl =
-    group.paymentMethod === null
-      ? CHECKOUT_HOLD_TTL_MS
-      : group.paymentMethod === 'MERCADO_PAGO'
-        ? MERCADO_PAGO_HOLD_TTL_MS
-        : null;
-  if (ttl === null) return null;
-  return new Date(new Date(group.createdAt).getTime() + ttl).toISOString();
 }
 
 export const ticketGroupSchema = z.object({

@@ -23,14 +23,14 @@ import { sendNotificationService } from '@/server/services/notification';
 import { generatePdf } from '@/server/utils/ticket-template';
 
 /**
- * Registra el pago aprobado de un grupo de Mercado Pago. Devuelve false si ya
+ * Registra el pago aprobado de un grupo (aviso de un medio de pago). Devuelve false si ya
  * estaba pago: el aviso se reintenta y no hay que volver a entregar.
  *
  * Si la reserva ya había soltado el cupo (pago tardío, ver releaseExpiredHolds),
  * lo vuelve a tomar con las entradas emitidas, aunque el tipo se haya agotado
  * mientras tanto: la plata ya se cobró y la entrada se honra.
  */
-export async function markMercadoPagoGroupPaid(db: Db, ticketGroupId: string) {
+export async function markGroupPaid(db: Db, ticketGroupId: string) {
   return db.transaction(async (tx) => {
     const [group] = await tx
       .select({ status: ticketGroup.status, eventId: ticketGroup.eventId })

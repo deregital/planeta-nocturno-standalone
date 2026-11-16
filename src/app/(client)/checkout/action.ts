@@ -33,9 +33,8 @@ import {
 } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
 import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
-import { getTransferAlias } from '@/server/services/paymentSettings';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
-import { startTransferPayment } from '@/server/services/transferPayment';
+import { startFirstReadyPayment } from '@/server/payments/registry';
 import { trpc } from '@/server/trpc/server';
 import {
   INVITATION_ALREADY_USED_MESSAGE,
@@ -436,24 +435,12 @@ export const handlePurchase = async (
 
       url = `/tickets/${ticketGroupId}` as Route;
     } else {
-      const transferAlias = await getTransferAlias(db);
-      let mercadoPagoUrl: string | null = null;
+      const payment = await startFirstReadyPayment(
+        { db, instance },
+        ticketGroupId,
+      );
 
-      if (instance.mercadoPagoAccessToken) {
-        try {
-          mercadoPagoUrl = await trpc.mercadoPago.createPreference({
-            ticketGroupId,
-          });
-        } catch (error) {
-          if (!transferAlias) throw error;
-          logger.warn('Mercado Pago preference failed, using transfer', {
-            ticketGroupId,
-            error,
-          });
-        }
-      }
-
-      if (!mercadoPagoUrl && !transferAlias) {
+      if (!payment) {
         return {
           ticketsInput: prevState.ticketsInput,
           errors: [
@@ -463,20 +450,13 @@ export const handlePurchase = async (
         };
       }
 
-      if (!mercadoPagoUrl && transferAlias) {
-        await startTransferPayment(db, instance, {
-          ticketGroupId,
-          transferAlias,
-        });
-      }
-
       (await cookies()).set('lastPurchase', JSON.stringify(firstTicket), {
         maxAge: 60 * 60 * 24 * 365, // 1 año
         path: '/',
       });
       (await cookies()).delete('carrito');
-      if (mercadoPagoUrl) {
-        (await cookies()).set('pendingPaymentUrl', mercadoPagoUrl);
+      if (payment.type === 'redirect') {
+        (await cookies()).set('pendingPaymentUrl', payment.url);
       }
 
       url = `/tickets/${ticketGroupId}` as Route;

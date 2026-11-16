@@ -30,7 +30,7 @@ import {
   registerSuccessfulLogin,
   TENANT_LOGIN_ATTEMPTS,
 } from '@/server/security/login-throttle';
-import { markMercadoPagoGroupPaid } from '@/server/services/ticketGroup';
+import { markGroupPaid } from '@/server/services/ticketGroup';
 import { createCallerFactory } from '@/server/trpc';
 import { encryptString } from '@/server/utils/utils';
 
@@ -336,7 +336,7 @@ async function main() {
       );
       assert(mailsTo(ticket.mail) === 1, `mails: ${mailsTo(ticket.mail)}`);
       assert(
-        (await markMercadoPagoGroupPaid(db, group)) === false,
+        (await markGroupPaid(db, group)) === false,
         'un cuarto aviso volvió a registrar el pago',
       );
     },
