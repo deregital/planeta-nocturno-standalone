@@ -35,6 +35,8 @@ import {
   holdExpiresAt,
   releaseExpiredHolds,
 } from '@/server/services/ticketGroupHolds';
+import { listPaymentOptionsForGroup } from '@/server/payments/methods';
+import { getPaymentProvider } from '@/server/payments/registry';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import {
@@ -1074,13 +1076,22 @@ export const ticketGroupRouter = router({
       if (!group) return null;
 
       const holdsQuota = group.ticketTypePerGroups.length > 0;
+      const payable = group.status === 'BOOKED' && holdsQuota;
+      const options = payable
+        ? await listPaymentOptionsForGroup(ctx, group.createdAt)
+        : [];
       return {
         eventSlug: group.event.slug,
         holdExpiresAt: holdsQuota ? holdExpiresAt(group) : null,
+        paymentMethod: group.paymentMethod,
         canRetryPayment:
-          group.status === 'BOOKED' &&
-          group.paymentMethod === 'MERCADO_PAGO' &&
-          holdsQuota,
+          payable &&
+          options.some((option) => option.method === group.paymentMethod) &&
+          getPaymentProvider(group.paymentMethod)?.confirmation === 'webhook',
+        /** Otros medios con los que se puede pagar esta reserva. */
+        otherPaymentMethods: options
+          .filter((option) => option.method !== group.paymentMethod)
+          .map((option) => ({ method: option.method, label: option.label })),
       };
     }),
   getTransferInstructions: publicProcedure

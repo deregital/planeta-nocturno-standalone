@@ -8,7 +8,6 @@ import { TRPCError } from '@trpc/server';
 import { sql } from 'drizzle-orm';
 
 import { paymentMethodSetting } from '@/drizzle/schema';
-import { logger } from '@/server/observability/logger';
 import { PAYMENT_PROVIDERS } from '@/server/payments/registry';
 import { hasActivePaidEvents } from '@/server/services/paymentSettings';
 
@@ -75,31 +74,46 @@ export async function listActivePaymentProviders(ctx: PaymentContext) {
 }
 
 /**
- * Inicia el pago con el primer medio activo. Si uno falla prueba el
- * siguiente; si fallan todos, propaga el error del último. Devuelve null si
- * no hay ningún medio activo.
+ * Los medios con los que se puede pagar una reserva creada en `createdAt`:
+ * los activos cuya retención del cupo todavía no venció. Una reserva de
+ * transferencia de ayer no puede pasar a Mercado Pago, que suelta el cupo a
+ * los 40 minutos de creada.
  */
-export async function startFirstActivePayment(
+export async function listPaymentOptionsForGroup(
+  ctx: PaymentContext,
+  createdAt: string,
+) {
+  const providers = await listActivePaymentProviders(ctx);
+  const age = Date.now() - new Date(createdAt).getTime();
+  return providers.filter(
+    (provider) => !provider.hold || age < provider.hold.releaseAfterMs,
+  );
+}
+
+/**
+ * Inicia el pago con el medio que eligió el comprador, o con el primero
+ * activo si no eligió (hay uno solo). Sin salto a otro medio: si falla, el
+ * error llega al comprador para que elija otro. Devuelve null si no hay
+ * ningún medio activo.
+ */
+export async function startPayment(
   ctx: PaymentContext,
   ticketGroupId: string,
+  method: ProviderMethod | null,
 ): Promise<PaymentStart | null> {
   const providers = await listActivePaymentProviders(ctx);
+  if (providers.length === 0) return null;
 
-  for (const [index, provider] of providers.entries()) {
-    try {
-      return await provider.start(ctx, ticketGroupId);
-    } catch (error) {
-      const next = providers[index + 1];
-      if (!next) throw error;
-      logger.warn('Payment start failed, trying next method', {
-        ticketGroupId,
-        method: provider.method,
-        next: next.method,
-        error,
-      });
-    }
+  const provider = method
+    ? providers.find((item) => item.method === method)
+    : providers[0];
+  if (!provider) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Ese medio de pago ya no está disponible. Elegí otro.',
+    });
   }
-  return null;
+  return provider.start(ctx, ticketGroupId);
 }
 
 /**

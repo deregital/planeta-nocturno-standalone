@@ -7,6 +7,8 @@ import { startTransferPayment } from '@/server/services/transferPayment';
 export const transferProvider: PaymentProvider = {
   method: 'TRANSFER',
   label: 'Transferencia',
+  buyerDescription:
+    'Te pasamos un alias para transferir. Las entradas te llegan cuando el organizador confirma el pago.',
   analyticsName: 'transfer',
   confirmation: 'manual',
   // La reserva queda hasta que el staff la libere o la cancele.

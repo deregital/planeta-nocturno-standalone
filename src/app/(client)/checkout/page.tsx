@@ -59,5 +59,13 @@ export default async function CheckoutPage() {
     );
   }
 
-  return <CheckoutClient ticketGroup={data} lastPurchase={lastPurchase} />;
+  const paymentOptions = await trpc.payments.checkoutOptions();
+
+  return (
+    <CheckoutClient
+      ticketGroup={data}
+      lastPurchase={lastPurchase}
+      paymentOptions={paymentOptions}
+    />
+  );
 }

@@ -4,9 +4,16 @@ import { Loader2 } from 'lucide-react';
 import { type Route } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useEffect, useState, useTransition } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useState,
+  useTransition,
+} from 'react';
 
-import { retryMercadoPagoPayment } from '@/app/(client)/tickets/[slug]/actions';
+import { startPaymentFor } from '@/app/(client)/tickets/[slug]/actions';
+import { OtherPaymentMethods } from '@/app/(client)/tickets/[slug]/other-payment-methods';
 import GoBack from '@/components/common/GoBack';
 import DotsLoader from '@/components/icons/DotsLoader';
 import { Button } from '@/components/ui/button';
@@ -44,6 +51,7 @@ export default function TicketsPendingClient({
   eventSlug,
   holdExpiresAt,
   canRetryPayment,
+  otherPaymentMethods = [],
 }: {
   ticketGroupId: string;
   paymentUrl?: string;
@@ -51,6 +59,7 @@ export default function TicketsPendingClient({
   eventSlug?: string;
   holdExpiresAt?: string | null;
   canRetryPayment?: boolean;
+  otherPaymentMethods?: ComponentProps<typeof OtherPaymentMethods>['methods'];
 }) {
   const router = useRouter();
   const [retryError, setRetryError] = useState<string | null>(null);
@@ -111,11 +120,13 @@ export default function TicketsPendingClient({
   const retry = () =>
     startRetry(async () => {
       setRetryError(null);
-      const result = await retryMercadoPagoPayment(ticketGroupId);
+      const result = await startPaymentFor(ticketGroupId, 'MERCADO_PAGO');
       if ('url' in result) {
         window.location.href = result.url;
-      } else {
+      } else if ('error' in result) {
         setRetryError(result.error);
+      } else {
+        router.refresh();
       }
     });
 
@@ -177,16 +188,21 @@ export default function TicketsPendingClient({
             {retryError}
           </p>
         )}
+        <OtherPaymentMethods
+          ticketGroupId={ticketGroupId}
+          methods={otherPaymentMethods}
+        />
       </>
     );
   }
 
   return (
-    <div className='flex justify-center items-center h-full'>
+    <div className='flex h-full flex-col items-center justify-center px-4'>
+      {/* En el celular va arriba de la tarjeta: encima, tapaba el título. */}
       <GoBack
         route='/'
         title='Volver al inicio'
-        className='absolute top-24 md:left-26 left-4'
+        className='mt-4 self-start md:absolute md:top-24 md:left-26 md:mt-0'
       />
       <Card className='w-full max-w-md mx-auto text-center shadow-lg m-4'>
         <CardHeader>

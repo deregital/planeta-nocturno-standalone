@@ -33,6 +33,8 @@ export type PaymentHold = {
 export type PaymentProvider = {
   method: Exclude<PaymentMethod, 'ON_SITE'>;
   label: string;
+  /** Lo que lee el comprador al elegir el medio. */
+  buyerDescription: string;
   analyticsName: Exclude<PurchasePaymentMethod, 'free'>;
   /** `webhook`: se confirma sola. `manual`: la confirma el staff. */
   confirmation: 'webhook' | 'manual';

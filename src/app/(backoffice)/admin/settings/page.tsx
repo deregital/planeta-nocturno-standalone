@@ -44,8 +44,8 @@ export default async function Page() {
           <div className='space-y-1'>
             <h2 className='text-2xl font-bold'>Medios de pago</h2>
             <p className='text-sm text-muted-foreground'>
-              Las entradas se cobran con el primer medio activo de la lista. Si
-              ese falla, se pasa al siguiente.
+              Los compradores eligen con qué pagar entre los medios activos. El
+              primero de la lista aparece elegido de entrada.
             </p>
           </div>
           <PaymentMethodList

@@ -47,10 +47,13 @@ export default async function TicketsPage({
     });
 
   if (!data) {
+    const pending = await trpc.ticketGroup.getPendingPaymentInfo(slug);
     const transfer = await trpc.ticketGroup.getTransferInstructions(slug);
     if (transfer?.transferAlias) {
       return (
         <TicketsTransferPending
+          ticketGroupId={slug}
+          otherPaymentMethods={pending?.otherPaymentMethods}
           eventName={transfer.eventName}
           buyerName={transfer.buyerName}
           totalAmount={transfer.totalAmount}
@@ -62,7 +65,6 @@ export default async function TicketsPage({
 
     const cookieStore = await cookies();
     const paymentUrl = cookieStore.get('pendingPaymentUrl')?.value;
-    const pending = await trpc.ticketGroup.getPendingPaymentInfo(slug);
     const paymentStatus = RETURNED_PAYMENT_STATUSES.find(
       (status) => status === collectionStatus,
     ) as ReturnedPaymentStatus;
@@ -74,6 +76,7 @@ export default async function TicketsPage({
         eventSlug={pending?.eventSlug}
         holdExpiresAt={pending?.holdExpiresAt}
         canRetryPayment={pending?.canRetryPayment}
+        otherPaymentMethods={pending?.otherPaymentMethods}
       />
     );
   }

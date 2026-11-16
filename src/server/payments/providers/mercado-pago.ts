@@ -111,6 +111,8 @@ export async function createMercadoPagoPreference(
 export const mercadoPagoProvider: PaymentProvider = {
   method: 'MERCADO_PAGO',
   label: 'Mercado Pago',
+  buyerDescription:
+    'Tarjeta de crédito, débito o dinero en cuenta. Las entradas te llegan apenas se acredita el pago.',
   analyticsName: 'mercado_pago',
   confirmation: 'webhook',
   hold: {

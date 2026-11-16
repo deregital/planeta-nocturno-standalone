@@ -2,6 +2,7 @@
 
 import type { Route } from 'next';
 import type z from 'zod';
+import type { PaymentMethod } from '@/server/types';
 
 import { TRPCError } from '@trpc/server';
 import { differenceInYears, parseISO } from 'date-fns';
@@ -34,7 +35,8 @@ import {
 import { sendNotificationService } from '@/server/services/notification';
 import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
-import { startFirstActivePayment } from '@/server/payments/methods';
+import { startPayment } from '@/server/payments/methods';
+import { getPaymentProvider } from '@/server/payments/registry';
 import { trpc } from '@/server/trpc/server';
 import {
   INVITATION_ALREADY_USED_MESSAGE,
@@ -435,10 +437,37 @@ export const handlePurchase = async (
 
       url = `/tickets/${ticketGroupId}` as Route;
     } else {
-      const payment = await startFirstActivePayment(
-        { db, instance },
-        ticketGroupId,
-      );
+      // El medio que eligió el comprador; vacío si hay uno solo activo.
+      const chosen =
+        getPaymentProvider(
+          (formData.get('paymentMethod')?.toString() ||
+            null) as PaymentMethod | null,
+        ) ?? null;
+
+      let payment: Awaited<ReturnType<typeof startPayment>>;
+      try {
+        payment = await startPayment(
+          { db, instance },
+          ticketGroupId,
+          chosen?.method ?? null,
+        );
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        // Sin salto silencioso a otro medio: la compra ya quedó cargada y el
+        // comprador puede volver a tocar el botón o elegir otro medio.
+        logger.error('Checkout payment start failed', {
+          ticketGroupId,
+          method: chosen?.method,
+          error,
+        });
+        return {
+          ticketsInput: prevState.ticketsInput,
+          errors: [
+            `No pudimos iniciar el pago${chosen ? ` con ${chosen.label}` : ''}. Probá de nuevo o elegí otro medio de pago.`,
+          ],
+          formData: formDataRecord,
+        };
+      }
 
       if (!payment) {
         return {
@@ -466,7 +495,10 @@ export const handlePurchase = async (
     if (error instanceof TRPCError && error.code === 'NOT_FOUND') {
       return reservationExpired();
     }
-    if (error instanceof TRPCError && error.code === 'CONFLICT') {
+    if (
+      error instanceof TRPCError &&
+      (error.code === 'CONFLICT' || error.code === 'PRECONDITION_FAILED')
+    ) {
       return {
         ticketsInput: prevState.ticketsInput,
         errors: [error.message],

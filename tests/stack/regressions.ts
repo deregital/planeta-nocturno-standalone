@@ -30,6 +30,10 @@ import {
   registerSuccessfulLogin,
   TENANT_LOGIN_ATTEMPTS,
 } from '@/server/security/login-throttle';
+import {
+  getTransferAlias,
+  setTransferAlias,
+} from '@/server/services/paymentSettings';
 import { markGroupPaid } from '@/server/services/ticketGroup';
 import { createCallerFactory } from '@/server/trpc';
 import { encryptString } from '@/server/utils/utils';
@@ -370,6 +374,103 @@ async function main() {
         `failure va a ${pref.back_urls.failure}`,
       );
       await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [group]);
+    },
+  );
+
+  await check(
+    'MEDIOS',
+    'el comprador elige el medio, puede cambiarlo y no queda sin medios activos',
+    async () => {
+      const previousAlias = await getTransferAlias(db);
+      await setTransferAlias(db, 'prueba.regresion.mp');
+      try {
+        const options = await anon.payments.checkoutOptions();
+        assert(
+          options.map((o) => o.method).join(',') === 'MERCADO_PAGO,TRANSFER',
+          `opciones ${options.map((o) => o.method).join(',')}`,
+        );
+
+        const e = event('fiesta-paga');
+        const group = await reserve('fiesta-paga', 'General');
+        await anon.emittedTickets.createMany([
+          buyer(type('fiesta-paga', 'General').id, group, e.id),
+        ]);
+        const methodOf = async () =>
+          (
+            await raw.query<{ m: string | null }>(
+              'SELECT "paymentMethod" AS m FROM "ticketGroup" WHERE id = $1',
+              [group],
+            )
+          ).rows[0]?.m;
+
+        const transfer = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TRANSFER',
+        });
+        assert(transfer.type === 'instructions', 'transferencia sin datos');
+        assert((await methodOf()) === 'TRANSFER', 'no quedó en transferencia');
+        const info = await anon.ticketGroup.getPendingPaymentInfo(group);
+        assert(
+          info?.otherPaymentMethods.some((o) => o.method === 'MERCADO_PAGO') ===
+            true,
+          'no ofrece pasar a Mercado Pago',
+        );
+
+        const mp = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'MERCADO_PAGO',
+        });
+        assert(mp.type === 'redirect', 'Mercado Pago sin link');
+        assert((await methodOf()) === 'MERCADO_PAGO', 'no pasó a Mercado Pago');
+
+        // Una transferencia vieja no puede pasar a Mercado Pago: soltaría el
+        // cupo apenas se crea la preferencia.
+        await raw.query(
+          `UPDATE "ticketGroup" SET "paymentMethod" = 'TRANSFER' WHERE id = $1`,
+          [group],
+        );
+        await age(group, 41);
+        const late = await anon.ticketGroup.getPendingPaymentInfo(group);
+        assert(
+          late?.otherPaymentMethods.length === 0,
+          `ofrece ${late?.otherPaymentMethods.map((o) => o.method)}`,
+        );
+        await rejects(
+          anon.payments.start({ ticketGroupId: group, method: 'MERCADO_PAGO' }),
+          'PRECONDITION_FAILED',
+        );
+
+        // Pausada, la transferencia no se ofrece ni se puede iniciar.
+        await admin.payments.setEnabled({ method: 'TRANSFER', enabled: false });
+        try {
+          assert(
+            !(await anon.payments.checkoutOptions()).some(
+              (o) => o.method === 'TRANSFER',
+            ),
+            'ofrece la transferencia pausada',
+          );
+          await rejects(
+            anon.payments.start({ ticketGroupId: group, method: 'TRANSFER' }),
+            'PRECONDITION_FAILED',
+          );
+          // Con eventos pagos, Mercado Pago queda como único activo.
+          await rejects(
+            admin.payments.setEnabled({
+              method: 'MERCADO_PAGO',
+              enabled: false,
+            }),
+            'PRECONDITION_FAILED',
+          );
+        } finally {
+          await admin.payments.setEnabled({
+            method: 'TRANSFER',
+            enabled: true,
+          });
+        }
+        await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [group]);
+      } finally {
+        await setTransferAlias(db, previousAlias);
+      }
     },
   );
 
