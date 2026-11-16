@@ -94,7 +94,7 @@ export default function TopBar({
             </div>
             <div className='flex flex-row gap-2 items-center'>
               {panelHref && (
-                <Button asChild variant={'secundary'}>
+                <Button asChild variant={'ghost'} className='text-brand'>
                   <Link href={panelHref}>Ir al panel</Link>
                 </Button>
               )}
