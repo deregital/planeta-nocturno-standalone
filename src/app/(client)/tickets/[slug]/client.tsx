@@ -146,12 +146,16 @@ function TicketCard({
       </div>
 
       {/* Datos del titular */}
-      <div className='flex flex-1 flex-col gap-3 p-4 sm:gap-4 sm:p-6'>
+      <div className='relative flex flex-1 flex-col gap-3 p-4 sm:gap-4 sm:p-6'>
+        <span className='absolute top-4 right-4 text-sm font-semibold text-muted-foreground tabular-nums sm:top-6 sm:right-6'>
+          ID: {ticket.shortId}
+        </span>
         <div className='grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3'>
+          {/* pr: que un nombre largo no pase por debajo del número */}
           <TicketField
             label='Titular'
             value={ticket.fullName}
-            className='col-span-2'
+            className='col-span-2 pr-20'
           />
           <TicketField label='DNI' value={formatDni(ticket.dni)} />
           {date && <TicketField label='Ingreso desde' value={date.time} />}
