@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -9,8 +10,7 @@ import { Label } from '@/components/ui/label';
 import { transferAliasSchema } from '@/server/schemas/payment-settings';
 import { trpc } from '@/server/trpc/client';
 
-export const TRANSFER_ALIAS_LABEL =
-  'En caso de error, poné a qué alias deben transferirte la plata';
+export const TRANSFER_ALIAS_LABEL = 'Alias para recibir transferencias';
 
 /** Devuelve el mensaje de error, o `null` si el valor es válido. */
 export function validateTransferAlias(value: string, required: boolean) {
@@ -55,9 +55,10 @@ export function TransferAliasField({
   );
 }
 
-/** Edición del alias cuando Mercado Pago ya está vinculado. */
+/** Edición del alias de la transferencia, en Medios de pago. */
 export function TransferAliasForm() {
   const utils = trpc.useUtils();
+  const router = useRouter();
   const { data: savedAlias, isLoading } =
     trpc.mercadoPago.getTransferAlias.useQuery();
   const [value, setValue] = useState('');
@@ -72,6 +73,9 @@ export function TransferAliasForm() {
       toast.success('Alias actualizado');
       utils.mercadoPago.getTransferAlias.invalidate();
       utils.mercadoPago.unlinkRequirements.invalidate();
+      // Cargar o borrar el alias cambia si la transferencia está configurada.
+      utils.payments.methods.invalidate();
+      router.refresh();
     },
     onError: (mutationError) => toast.error(mutationError.message),
   });
@@ -97,7 +101,7 @@ export function TransferAliasForm() {
           setError(null);
         }}
         error={error}
-        description='Si Mercado Pago falla al cobrar, los compradores van a ver este alias para transferir el total y mandar el comprobante a tu mail de contacto.'
+        description='Los compradores transfieren el total a este alias y mandan el comprobante a tu mail de contacto.'
       />
       <Button
         type='submit'

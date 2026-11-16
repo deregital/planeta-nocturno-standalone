@@ -117,7 +117,8 @@ export const mercadoPagoProvider: PaymentProvider = {
     releaseAfterMs: MERCADO_PAGO_HOLD_TTL_MS,
     deleteAfterMs: MERCADO_PAGO_UNPAID_RETENTION_MS,
   },
-  isReady: async ({ instance }) => Boolean(instance.mercadoPagoAccessToken),
+  isConfigured: async ({ instance }) =>
+    Boolean(instance.mercadoPagoAccessToken),
   start: async (ctx, ticketGroupId) => ({
     type: 'redirect',
     url: await createMercadoPagoPreference(ctx, ticketGroupId),

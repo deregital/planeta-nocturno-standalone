@@ -11,7 +11,7 @@ export const transferProvider: PaymentProvider = {
   confirmation: 'manual',
   // La reserva queda hasta que el staff la libere o la cancele.
   hold: null,
-  isReady: async ({ db }) => Boolean(await getTransferAlias(db)),
+  isConfigured: async ({ db }) => Boolean(await getTransferAlias(db)),
   start: async (ctx, ticketGroupId) => {
     const transferAlias = await getTransferAlias(ctx.db);
     if (!transferAlias) {

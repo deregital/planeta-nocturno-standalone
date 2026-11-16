@@ -34,7 +34,7 @@ import {
 import { sendNotificationService } from '@/server/services/notification';
 import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
 import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
-import { startFirstReadyPayment } from '@/server/payments/registry';
+import { startFirstActivePayment } from '@/server/payments/methods';
 import { trpc } from '@/server/trpc/server';
 import {
   INVITATION_ALREADY_USED_MESSAGE,
@@ -435,7 +435,7 @@ export const handlePurchase = async (
 
       url = `/tickets/${ticketGroupId}` as Route;
     } else {
-      const payment = await startFirstReadyPayment(
+      const payment = await startFirstActivePayment(
         { db, instance },
         ticketGroupId,
       );

@@ -535,6 +535,17 @@ model PaymentSettings {
   @@map("paymentSettings")
 }
 
+// Un medio de pago que se ofrece al comprador: si está activo y en qué orden
+model PaymentMethodSetting {
+  method    PaymentMethod @id
+  enabled   Boolean       @default(true)
+  sortOrder Int           @default(0)
+
+  updatedAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("paymentMethodSetting")
+}
+
 model TicketXOrganizer {
   ticketId String?        @db.Uuid
   ticket   EmittedTicket? @relation("TICKET_X_ORGANIZER", fields: [ticketId], references: [id], onDelete: Cascade)

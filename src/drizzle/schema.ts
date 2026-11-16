@@ -302,6 +302,15 @@ export const loginAttempt = pgTable('loginAttempt', {
     .notNull(),
 });
 
+export const paymentMethodSetting = pgTable('paymentMethodSetting', {
+  method: paymentMethod().primaryKey().notNull(),
+  enabled: boolean().default(true).notNull(),
+  sortOrder: integer().default(0).notNull(),
+  updatedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
 export const paymentSettings = pgTable('paymentSettings', {
   id: integer().default(1).primaryKey().notNull(),
   transferAlias: text(),

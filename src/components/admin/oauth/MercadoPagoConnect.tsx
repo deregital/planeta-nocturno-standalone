@@ -4,14 +4,8 @@ import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 import MercadoPagoUnlinkDialog from '@/components/admin/oauth/MercadoPagoUnlinkDialog';
-import {
-  TransferAliasField,
-  TransferAliasForm,
-  validateTransferAlias,
-} from '@/components/admin/oauth/TransferAliasField';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -137,38 +131,10 @@ export default function MercadoPagoConnect({
     trpc.mercadoPago.getTransferAlias.useQuery(undefined, {
       enabled: !connected,
     });
-  const [transferAlias, setTransferAlias] = useState('');
-  const [transferAliasError, setTransferAliasError] = useState<string | null>(
-    null,
-  );
-  const updateTransferAlias = trpc.mercadoPago.updateTransferAlias.useMutation({
-    onError: (error) => toast.error(error.message),
-  });
-
-  useEffect(() => {
-    setTransferAlias(savedTransferAlias ?? '');
-  }, [savedTransferAlias]);
 
   function handleConnectClick() {
-    const error = validateTransferAlias(transferAlias, false);
-    if (error) {
-      setTransferAliasError(error);
-      return;
-    }
-
-    const openAuth = () => {
-      if (!authUrl) return;
-      window.open(authUrl, '_blank', 'noopener,noreferrer');
-    };
-    const value = transferAlias.trim();
-    if (value && value !== (savedTransferAlias ?? '')) {
-      updateTransferAlias.mutate(
-        { transferAlias: value },
-        { onSuccess: openAuth },
-      );
-      return;
-    }
-    openAuth();
+    if (!authUrl) return;
+    window.open(authUrl, '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -239,7 +205,6 @@ export default function MercadoPagoConnect({
               Ya estás conectado a Mercado Pago
             </Button>
           )}
-          <TransferAliasForm />
         </>
       ) : authUrl ? (
         <Dialog>
@@ -270,21 +235,10 @@ export default function MercadoPagoConnect({
                 vincular, cerrá sesión en Mercado Pago antes de continuar.
               </AlertDescription>
             </Alert>
-            <TransferAliasField
-              id='connect-transfer-alias'
-              value={transferAlias}
-              onChange={(value) => {
-                setTransferAlias(value);
-                setTransferAliasError(null);
-              }}
-              error={transferAliasError}
-              description='Opcional. Si Mercado Pago falla al cobrar, los compradores van a ver este alias para transferir el total.'
-            />
             <DialogFooter className='sm:justify-end'>
               <Button
                 type='button'
                 className='px-8'
-                loading={updateTransferAlias.isPending}
                 onClick={handleConnectClick}
               >
                 Conectar con Mercado Pago

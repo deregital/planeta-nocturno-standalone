@@ -37,8 +37,8 @@ export type PaymentProvider = {
   /** `webhook`: se confirma sola. `manual`: la confirma el staff. */
   confirmation: 'webhook' | 'manual';
   hold: PaymentHold | null;
-  /** Configurado y listo para cobrar. */
-  isReady(ctx: PaymentContext): Promise<boolean>;
+  /** Tiene lo que necesita para cobrar (cuenta vinculada, alias cargado). */
+  isConfigured(ctx: PaymentContext): Promise<boolean>;
   /** Deja la reserva esperando este medio y devuelve cómo sigue el comprador. */
   start(ctx: PaymentContext, ticketGroupId: string): Promise<PaymentStart>;
   /**

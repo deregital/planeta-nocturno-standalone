@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -61,10 +62,14 @@ export default function MercadoPagoUnlinkDialog() {
   const requiresTransferAlias = requirements?.requiresTransferAlias ?? false;
 
   const utils = trpc.useUtils();
+  const router = useRouter();
   const requestUnlink = trpc.mercadoPago.requestUnlink.useMutation({
     onSuccess() {
       utils.mercadoPago.getTransferAlias.invalidate();
       utils.mercadoPago.unlinkRequirements.invalidate();
+      // El alias cargado acá activa la transferencia en Medios de pago.
+      utils.payments.methods.invalidate();
+      router.refresh();
     },
     onError(error) {
       toast.error(error.message);

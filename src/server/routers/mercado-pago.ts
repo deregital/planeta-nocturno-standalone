@@ -21,6 +21,11 @@ import {
   UNLINK_REQUEST_TTL_MINUTES,
 } from '@/server/services/mercadoPagoUnlink';
 import {
+  assertOtherActivePaymentMethod,
+  getPaymentMethodStates,
+  setPaymentMethodEnabled,
+} from '@/server/payments/methods';
+import {
   getTransferAlias,
   hasActivePaidEvents,
   setTransferAlias,
@@ -38,7 +43,7 @@ export const createPreferenceSchema = z.object({
 });
 export const mercadoPagoRouter = router({
   hasCredentials: anyPermissionProcedure([
-    'mercadopago:link',
+    'payments:manage',
     'events:create',
     'events:update',
   ]).query(({ ctx }) => {
@@ -47,36 +52,36 @@ export const mercadoPagoRouter = router({
       ctx.instance.mercadoPagoRefreshToken,
     );
   }),
-  getTransferAlias: permissionProcedure('mercadopago:link').query(({ ctx }) =>
+  getTransferAlias: permissionProcedure('payments:manage').query(({ ctx }) =>
     getTransferAlias(ctx.db),
   ),
-  updateTransferAlias: permissionProcedure('mercadopago:link')
+  updateTransferAlias: permissionProcedure('payments:manage')
     .input(z.object({ transferAlias: transferAliasSchema.nullable() }))
     .mutation(async ({ ctx, input }) => {
-      if (
-        !input.transferAlias &&
-        !ctx.instance.mercadoPagoAccessToken &&
-        (await hasActivePaidEvents(ctx.db))
-      ) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message:
-            'Hay eventos activos con entradas pagas: el alias es obligatorio mientras Mercado Pago no esté vinculado',
-        });
+      if (!input.transferAlias) {
+        await assertOtherActivePaymentMethod(
+          ctx,
+          'TRANSFER',
+          'Hay eventos activos con entradas pagas: el alias es obligatorio mientras no haya otro medio de pago activo',
+        );
       }
       await setTransferAlias(ctx.db, input.transferAlias);
     }),
-  unlinkRequirements: permissionProcedure('mercadopago:unlink').query(
+  unlinkRequirements: permissionProcedure('payments:unlink').query(
     async ({ ctx }) => {
-      const transferAlias = await getTransferAlias(ctx.db);
+      const states = await getPaymentMethodStates(ctx);
+      const othersActive = states.some(
+        (state) =>
+          state.status === 'active' && state.provider.method !== 'MERCADO_PAGO',
+      );
       return {
-        transferAlias,
+        transferAlias: await getTransferAlias(ctx.db),
         requiresTransferAlias:
-          !transferAlias && (await hasActivePaidEvents(ctx.db)),
+          !othersActive && (await hasActivePaidEvents(ctx.db)),
       };
     },
   ),
-  requestUnlink: permissionProcedure('mercadopago:unlink')
+  requestUnlink: permissionProcedure('payments:unlink')
     .input(
       z.object({ transferAlias: transferAliasSchema.optional() }).optional(),
     )
@@ -92,16 +97,15 @@ export const mercadoPagoRouter = router({
       }
 
       if (input?.transferAlias) {
+        // El alias que se carga al desvincular queda como medio activo.
         await setTransferAlias(ctx.db, input.transferAlias);
-      } else if (
-        !(await getTransferAlias(ctx.db)) &&
-        (await hasActivePaidEvents(ctx.db))
-      ) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message:
-            'Hay eventos activos con entradas pagas: ingresá un alias para recibir transferencias antes de desvincular',
-        });
+        await setPaymentMethodEnabled(ctx, 'TRANSFER', true);
+      } else {
+        await assertOtherActivePaymentMethod(
+          ctx,
+          'MERCADO_PAGO',
+          'Hay eventos activos con entradas pagas: ingresá un alias para recibir transferencias antes de desvincular',
+        );
       }
 
       const requester = await ctx.db.query.user.findFirst({
@@ -147,19 +151,14 @@ export const mercadoPagoRouter = router({
         expiresInMinutes: UNLINK_REQUEST_TTL_MINUTES,
       };
     }),
-  confirmUnlink: permissionProcedure('mercadopago:unlink')
+  confirmUnlink: permissionProcedure('payments:unlink')
     .input(z.object({ token: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      if (
-        !(await getTransferAlias(ctx.db)) &&
-        (await hasActivePaidEvents(ctx.db))
-      ) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message:
-            'Hay eventos activos con entradas pagas: configurá un alias para recibir transferencias antes de desvincular',
-        });
-      }
+      await assertOtherActivePaymentMethod(
+        ctx,
+        'MERCADO_PAGO',
+        'Hay eventos activos con entradas pagas: configurá un alias para recibir transferencias antes de desvincular',
+      );
 
       let result: Awaited<ReturnType<typeof confirmUnlink>>;
       try {

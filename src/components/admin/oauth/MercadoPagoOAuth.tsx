@@ -1,12 +1,4 @@
 import MercadoPagoConnect from '@/components/admin/oauth/MercadoPagoConnect';
-import { MercadoPago } from '@/components/icons/MercadoPago';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
 import { signPayload } from '@/server/security/signed-request';
 
@@ -24,6 +16,7 @@ function getMercadoPagoAuthUrl(publicUrl: string) {
   return url.toString();
 }
 
+/** Vinculación de Mercado Pago, dentro de su tarjeta en Medios de pago. */
 export default async function MercadoPagoOAuth({
   canUnlink,
 }: {
@@ -36,26 +29,18 @@ export default async function MercadoPagoOAuth({
   const authUrl = getMercadoPagoAuthUrl(instance.publicUrl);
 
   return (
-    <Card className='rounded-md border border-stroke bg-accent-ultra-light'>
-      <CardHeader className='flex flex-row items-center gap-3'>
-        <MercadoPago />
-        <div className='flex flex-col gap-1'>
-          <CardTitle>Mercado Pago</CardTitle>
-          <CardDescription>
-            {isConnected && canUnlink
-              ? 'Ya estás conectado a Mercado Pago.'
-              : 'Conectá tu cuenta de Mercado Pago para cobrar tus tickets.'}
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className='flex flex-col items-start gap-3'>
-        <MercadoPagoConnect
-          isConnected={isConnected}
-          authUrl={authUrl}
-          canUnlink={canUnlink}
-          isMultiTenant={instance.tenantId !== null}
-        />
-      </CardContent>
-    </Card>
+    <div className='flex flex-col items-start gap-3'>
+      <p className='text-sm text-muted-foreground'>
+        {isConnected
+          ? 'Los cobros se acreditan en tu cuenta de Mercado Pago y las entradas se mandan solas.'
+          : 'Conectá tu cuenta de Mercado Pago para cobrar con tarjeta, débito o saldo.'}
+      </p>
+      <MercadoPagoConnect
+        isConnected={isConnected}
+        authUrl={authUrl}
+        canUnlink={canUnlink}
+        isMultiTenant={instance.tenantId !== null}
+      />
+    </div>
   );
 }
