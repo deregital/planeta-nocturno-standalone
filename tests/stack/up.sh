@@ -136,7 +136,7 @@ nohup node "$STACK/mocks.mjs" >>"$RUN/logs/mocks.out" 2>&1 &
 echo $! >"$RUN/pids/mocks"
 
 stop_pid next "next start -p $STACK_NEXT_PORT"
-NODE_OPTIONS="--import $STACK/preload.mjs --disable-warning=ExperimentalWarning" nohup node_modules/.bin/next start -p "$STACK_NEXT_PORT" \
+NODE_OPTIONS="--import ./tests/stack/preload.mjs --disable-warning=ExperimentalWarning" nohup node_modules/.bin/next start -p "$STACK_NEXT_PORT" \
   >>"$RUN/logs/next.log" 2>&1 &
 echo $! >"$RUN/pids/next"
 
