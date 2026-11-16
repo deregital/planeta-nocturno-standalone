@@ -85,6 +85,20 @@ export const NOT_REGISTERED_TEXT = 'El escaneo no se registró';
 export const NOT_FOUND_EXTRA_INFO =
   'No es una entrada de este evento o ya no existe';
 
+/** Una entrada que se eliminó (está en la papelera): la puerta ve el motivo. */
+export function deletedTicketTexts({
+  fullName,
+  deletionReason,
+}: {
+  fullName: string;
+  deletionReason: string;
+}) {
+  return {
+    text: `Entrada eliminada: ${fullName}`,
+    extraInfo: `Motivo: ${deletionReason}`,
+  };
+}
+
 /** Una entrada válida, pero de otro evento: la puerta sabe adónde mandarla. */
 export function otherEventTexts(eventName: string) {
   return { text: 'Entrada de otro evento', extraInfo: `Es para ${eventName}` };
@@ -122,8 +136,11 @@ export function conflictTexts({
   scannedAt,
   scannedByMe,
   scannedByName,
+  deletionReason,
 }: {
   outcome: 'duplicate' | 'not-found';
+  /** Motivo con el que se eliminó la entrada (si está en la papelera). */
+  deletionReason?: string | null;
   fullName: string | null;
   /** Cuándo lo escaneó este celular (ms epoch). */
   localAt: number;
@@ -137,7 +154,7 @@ export function conflictTexts({
   if (outcome === 'not-found') {
     return {
       text: title('Ticket eliminado'),
-      extraInfo: `${here}, pero el ticket ya no existe: lo eliminaron. ${NOT_REGISTERED_TEXT}. ${check}`,
+      extraInfo: `${here}, pero el ticket ya no existe: lo eliminaron${deletionReason ? ` (motivo: ${deletionReason})` : ''}. ${NOT_REGISTERED_TEXT}. ${check}`,
     };
   }
   const by = scannedByMe

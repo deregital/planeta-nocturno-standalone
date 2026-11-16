@@ -52,6 +52,7 @@ import {
 } from '@/lib/event-dates';
 import { type FolderScope, getFolderScope } from '@/lib/rbac/permissions';
 import { genderTranslation } from '@/lib/translations';
+import { buildImportRows, IMPORT_HEADERS } from '@/lib/userImportFormat';
 import {
   createEventSchema,
   eventQuestionsSchema,
@@ -2414,11 +2415,50 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  duplicate: permissionProcedure('events:duplicate')
+  getDuplicateSlugSuggestion: permissionProcedure('events:duplicate')
     .input(eventSchemaZod.shape.id)
-    .mutation(async ({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
         where: eq(eventSchema.id, input),
+        columns: { name: true },
+      });
+      if (!event) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Evento no encontrado',
+        });
+      }
+      return getUniqueEventSlug(ctx.db, event.name);
+    }),
+  duplicate: permissionProcedure('events:duplicate')
+    .input(
+      z.object({
+        id: eventSchemaZod.shape.id,
+        slug: z
+          .string()
+          .trim()
+          .min(1, 'El link no puede estar vacío')
+          .max(100, 'El link es demasiado largo')
+          .regex(
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+            'El link sólo puede tener letras minúsculas, números y guiones',
+          ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const slugTaken = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.slug, input.slug),
+        columns: { id: true },
+      });
+      if (slugTaken) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Ya hay un evento con ese link. Elegí otro.',
+        });
+      }
+
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input.id),
         columns: {
           id: false,
         },
@@ -2436,7 +2476,7 @@ export const eventsRouter = router({
 
       if (!event) throw 'Evento no encontrado';
 
-      const eventSlug = await getUniqueEventSlug(ctx.db, event.name);
+      const eventSlug = input.slug;
 
       const newEvent = await ctx.db.transaction(async (tx) => {
         try {
@@ -2686,6 +2726,46 @@ export const eventsRouter = router({
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         XLSX.utils.book_append_sheet(wb, ws, typeName.slice(0, 31));
       }
+
+      const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      return new Uint8Array(out as ArrayBuffer);
+    }),
+  /** Asistentes del evento en el formato de la importación de organizadores. */
+  exportForImport: permissionProcedure('events:export')
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+        columns: { id: true },
+      });
+
+      if (!event) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Evento no encontrado',
+        });
+      }
+
+      const tickets = await ctx.db.query.emittedTicket.findMany({
+        where: eq(emittedTicket.eventId, input),
+        columns: {
+          fullName: true,
+          mail: true,
+          dni: true,
+          gender: true,
+          birthDate: true,
+          phoneNumber: true,
+          instagram: true,
+        },
+        orderBy: asc(emittedTicket.createdAt),
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet([
+        IMPORT_HEADERS,
+        ...buildImportRows(tickets),
+      ]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Usuarios');
 
       const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       return new Uint8Array(out as ArrayBuffer);

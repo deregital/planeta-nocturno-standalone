@@ -909,6 +909,7 @@ export const ticketGroupRouter = router({
             columns: {
               id: true,
               slug: true,
+              shortId: true,
               fullName: true,
               dni: true,
               scanned: true,
@@ -950,6 +951,7 @@ export const ticketGroupRouter = router({
         group.emittedTickets.map(async (t) => ({
           id: t.id,
           slug: t.slug,
+          shortId: t.shortId,
           fullName: t.fullName,
           dni: t.dni,
           scanned: t.scanned,
