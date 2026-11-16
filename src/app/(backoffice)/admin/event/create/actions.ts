@@ -1,77 +1,11 @@
 'use server';
 
-import { differenceInMinutes } from 'date-fns';
 import z from 'zod';
 
-import {
-  type CreateEventSchema,
-  createEventSchema,
-} from '@/server/schemas/event';
 import {
   type CreateTicketTypeSchema,
   createTicketTypeSchema,
 } from '@/server/schemas/ticket-type';
-
-const generalEventSchema = createEventSchema.pick({
-  name: true,
-  description: true,
-  coverImageUrl: true,
-  videoUrl: true,
-  startingDate: true,
-  endingDate: true,
-  categoryId: true,
-  isActive: true,
-  locationId: true,
-  minAge: true,
-  emailNotification: true,
-  serviceFee: true,
-});
-
-export async function validateGeneralInformation(
-  event: Pick<
-    CreateEventSchema,
-    | 'name'
-    | 'description'
-    | 'coverImageUrl'
-    | 'videoUrl'
-    | 'startingDate'
-    | 'endingDate'
-    | 'categoryId'
-    | 'isActive'
-    | 'locationId'
-    | 'minAge'
-    | 'emailNotification'
-    | 'serviceFee'
-  >,
-) {
-  const validatedEvent = generalEventSchema.safeParse(event);
-
-  if (!validatedEvent.success) {
-    return {
-      success: false,
-      data: event,
-      error: z.treeifyError(validatedEvent.error).properties,
-    };
-  }
-
-  if (
-    event.startingDate &&
-    event.endingDate &&
-    differenceInMinutes(event.endingDate, event.startingDate) <= 0
-  ) {
-    return {
-      success: false,
-      data: event,
-      error: {
-        endingDate: {
-          errors: ['La fecha de fin debe ser mayor a la fecha de inicio'],
-        },
-      },
-    };
-  }
-
-  return { success: true, data: validatedEvent.data, error: null };
-}
 
 export async function validateTicketType(
   ticketType: CreateTicketTypeSchema,

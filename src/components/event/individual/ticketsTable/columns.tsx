@@ -19,6 +19,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { downloadTicket } from '@/app/(backoffice)/admin/event/[slug]/actions';
+import { DeleteTicketDialog } from '@/components/event/individual/ticketsTable/DeleteTicketDialog';
 import { TicketEntryTimeCell } from '@/components/event/individual/ticketsTable/TicketEntryTimeCell';
 import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { Button } from '@/components/ui/button';
@@ -676,7 +677,7 @@ export function generateTicketColumns({
       cell: ({ row }) => {
         const ticket = row.original;
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const [sure, setSure] = useState(false);
+        const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const [isDownloading, setIsDownloading] = useState(false);
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -688,12 +689,6 @@ export function generateTicketColumns({
           string | null
         >(null);
         const utils = trpc.useUtils();
-        const deleteTicketMutation = trpc.emittedTickets.delete.useMutation({
-          onSuccess: () => {
-            utils.emittedTickets.getByEventId.invalidate();
-            toast.success('Ticket eliminado con éxito');
-          },
-        });
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const { can } = usePermissions();
         const canChangeOrganizer = can('tickets:change_organizer');
@@ -802,7 +797,6 @@ export function generateTicketColumns({
                   !next &&
                   (isDownloading ||
                     sendTicketMutation.isPending ||
-                    deleteTicketMutation.isPending ||
                     manualScanTicketMutation.isPending)
                 ) {
                   return;
@@ -842,7 +836,7 @@ export function generateTicketColumns({
                 )}
                 {can('tickets:download') && (
                   <DropdownMenuItem
-                    disabled={isDownloading || deleteTicketMutation.isPending}
+                    disabled={isDownloading}
                     className='flex cursor-pointer items-center justify-between'
                     onSelect={(e) => e.preventDefault()}
                     onClick={async () => {
@@ -951,37 +945,29 @@ export function generateTicketColumns({
                   )}
                 {can('tickets:delete') && (
                   <DropdownMenuItem
-                    onSelect={(e) => e.preventDefault()}
-                    onClick={async () => {
-                      if (deleteTicketMutation.isPending) return;
-                      if (sure) {
-                        await deleteTicketMutation.mutateAsync({
-                          ticketId: ticket.id,
-                        });
-                        setSure(false);
-                        setOpen(false);
-                        utils.emittedTickets.getByEventId.invalidate({
-                          eventId: ticket.eventId ?? '',
-                        });
-                        utils.events.getById.invalidate(ticket.eventId ?? '');
-                        return;
-                      }
-                      setSure(true);
+                    onClick={() => {
+                      setOpen(false);
+                      setOpenDeleteDialog(true);
                     }}
-                    data-sure={sure}
-                    disabled={deleteTicketMutation.isPending}
-                    className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white data-[sure="true"]:bg-red-600 data-[sure="true"]:hover:bg-red-700 flex justify-between'
+                    className='-mx-1 -mb-1 cursor-pointer bg-red-500 px-3 text-white focus:hover:bg-red-600 focus:hover:text-white flex justify-between'
                   >
-                    {sure ? 'Estás seguro?' : 'Eliminar ticket'}
-                    {deleteTicketMutation.isPending ? (
-                      <Loader2 className='animate-spin text-white' />
-                    ) : (
-                      <TrashIcon className='text-white' />
-                    )}
+                    Eliminar ticket
+                    <TrashIcon className='text-white' />
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            {can('tickets:delete') && (
+              <DeleteTicketDialog
+                ticket={{
+                  id: ticket.id,
+                  fullName: ticket.fullName,
+                  eventId: ticket.eventId,
+                }}
+                open={openDeleteDialog}
+                onOpenChange={setOpenDeleteDialog}
+              />
+            )}
             {canChangeOrganizer && (
               <Dialog
                 open={openOrganizerModal}

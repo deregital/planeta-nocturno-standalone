@@ -16,6 +16,7 @@ import { SurveyAnswersTable } from '@/components/event/individual/SurveyAnswersT
 import { TicketGroupsTable } from '@/components/event/individual/TicketGroupsTable';
 import { TicketRaffle } from '@/components/event/individual/TicketRaffle';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
+import { TicketTrashModal } from '@/components/event/individual/TicketTrashModal';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
 import { ToggleBlockedButton } from '@/components/event/individual/ToggleBlockedButton';
 import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
@@ -152,6 +153,11 @@ async function EventDetails({ slug }: { slug: string }) {
             {can('events:publish') && (
               <div className='md:order-8 order-8'>
                 <ToggleBlockedButton event={event} />
+              </div>
+            )}
+            {can('tickets:trash') && (
+              <div className='md:order-9 order-9'>
+                <TicketTrashModal eventId={event.id} />
               </div>
             )}
           </div>

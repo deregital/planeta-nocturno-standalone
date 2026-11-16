@@ -9,6 +9,7 @@ interface ImportResult {
   message: string;
   errors?: string[];
   createdCount?: number;
+  skipped?: string[];
 }
 
 export function ImportUsersWrapper() {
@@ -17,11 +18,13 @@ export function ImportUsersWrapper() {
   const handleImport = async (
     users: ImportUserData[],
     batchName: string,
+    sendWelcomeEmail: boolean,
   ): Promise<ImportResult> => {
     try {
       const result = await importUsersMutation.mutateAsync({
         users,
         batchName,
+        sendWelcomeEmail,
       });
       return result;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

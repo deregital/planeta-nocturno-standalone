@@ -158,6 +158,15 @@ export const TENANT_PERMISSION_DEFINITIONS = [
   {
     key: 'tickets:delete',
     label: 'Eliminar entradas',
+    description:
+      'La entrada pasa a la papelera con el motivo: deja de escanearse y de contar en las tablas, estadísticas y el cupo',
+    parent: 'tickets:read',
+  },
+  {
+    key: 'tickets:trash',
+    label: 'Ver y restaurar la papelera de entradas',
+    description:
+      'Lista de las entradas eliminadas de cada evento, con el motivo, desde las opciones del evento',
     parent: 'tickets:read',
   },
   {

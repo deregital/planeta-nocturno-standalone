@@ -36,7 +36,10 @@ export default async function AdminLayout({
           <TopBar auth={session} />
           <div className='flex min-w-0'>
             <SideBar />
-            <main className='min-w-0 flex-1 overflow-x-hidden border-l-3 border-stroke/40'>
+            {/* overflow-x-clip y no -hidden: -hidden vuelve a <main> un
+                contenedor de scroll y los `sticky` de adentro dejan de
+                pegarse a la pantalla (ej. "Iniciar escaneo"). */}
+            <main className='min-w-0 flex-1 overflow-x-clip border-l-3 border-stroke/40'>
               {children}
             </main>
           </div>

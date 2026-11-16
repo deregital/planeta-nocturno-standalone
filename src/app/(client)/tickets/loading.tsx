@@ -1,3 +1,3 @@
-import { PageLoader } from '@/components/common/PageLoader';
+import TicketPageSkeleton from '@/components/tickets/TicketPageSkeleton';
 
-export default PageLoader;
+export default TicketPageSkeleton;

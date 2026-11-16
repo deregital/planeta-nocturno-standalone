@@ -1,7 +1,9 @@
 'use client';
 import { Loader2, LogOut } from 'lucide-react';
+import { type Route } from 'next';
 import { type Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -24,7 +26,14 @@ import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { roleTranslation } from '@/lib/translations';
 import { trpc } from '@/server/trpc/client';
 
-export default function TopBar({ auth }: { auth: Session | null }) {
+export default function TopBar({
+  auth,
+  panelHref,
+}: {
+  auth: Session | null;
+  /** Fuera del backoffice: a dónde lleva "Ir al panel". */
+  panelHref?: Route | null;
+}) {
   const pathname = usePathname();
   // El TopBar vive en el layout y no se desmonta al navegar: sin cerrarlo a
   // mano el menú seguía abierto tapando la pantalla elegida.
@@ -83,13 +92,20 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                 {auth.user.fullName} ({roleLabel})
               </span>
             </div>
-            <Button
-              variant={'accent'}
-              loading={signingOut}
-              onClick={() => void handleSignOut()}
-            >
-              Cerrar Sesión
-            </Button>
+            <div className='flex flex-row gap-2 items-center'>
+              {panelHref && (
+                <Button asChild variant={'ghost'} className='text-brand'>
+                  <Link href={panelHref}>Ir al panel</Link>
+                </Button>
+              )}
+              <Button
+                variant={'accent'}
+                loading={signingOut}
+                onClick={() => void handleSignOut()}
+              >
+                Cerrar Sesión
+              </Button>
+            </div>
           </div>
           <div className='flex md:hidden'>
             {auth ? (
