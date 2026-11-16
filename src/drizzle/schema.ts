@@ -1032,6 +1032,8 @@ export type DeletedTicketInvitationSnapshot = {
   createdAt: string;
   shared: boolean;
   sharedWith: string | null;
+  /** Código nuevo que recibió el organizador al eliminarla. */
+  replacementCode?: string | null;
 };
 
 /**

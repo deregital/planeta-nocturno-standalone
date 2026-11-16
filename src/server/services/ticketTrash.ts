@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { TRPCError } from '@trpc/server';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { type Db } from '@/drizzle';
 
@@ -10,6 +10,7 @@ import {
   type DeletedTicketInvitationSnapshot,
   emittedTicket,
   emittedTicketScan,
+  eventXorganizer,
   ticketGroup,
   ticketType as ticketTypeTable,
   ticketTypePerGroup,
@@ -18,6 +19,10 @@ import {
 } from '@/drizzle/schema';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShortId';
+import {
+  allocateTicketXOrganizerShortIds,
+  insertInvitationCodes,
+} from '@/server/utils/ticketXOrganizerInvite';
 
 /**
  * Papelera de entradas. Una entrada eliminada sale de `emittedTicket` (así
@@ -26,6 +31,11 @@ import { allocateEmittedTicketShortIds } from '@/server/utils/emittedTicketShort
  * motivo. Además libera su lugar en el cupo (`ticketTypePerGroup.amount`) y en
  * el total de la compra (`ticketGroup.amountTickets`). Restaurarla hace lo
  * inverso, con el mismo id: el QR que tiene la persona vuelve a valer.
+ *
+ * En un evento por invitación el código usado queda anulado (su link ya no
+ * sirve) y el organizador recibe uno nuevo sin usar, así conserva su cantidad.
+ * Al restaurar se le saca un código sin usar ni compartir (primero ese) o, si
+ * no tiene, hace falta que le sobre lugar.
  */
 
 export const DELETION_REASON_MAX_LENGTH = 500;
@@ -75,18 +85,32 @@ export async function moveTicketToTrash(
         .limit(1),
     ]);
 
+    // Los escaneos y el código de invitación se borran en cascada: quedan
+    // guardados en la papelera para restaurarlos. El código usado queda
+    // anulado (su link ya no sirve) y el organizador recibe uno nuevo sin
+    // usar, así no pierde la invitación.
+    await tx.delete(emittedTicket).where(eq(emittedTicket.id, ticketId));
+
+    const replacementCode = invitation
+      ? await addReplacementInvitationCode(
+          tx,
+          ticket.eventId,
+          invitation.organizerId,
+        )
+      : null;
+
     await tx.insert(deletedEmittedTicket).values({
       ...ticket,
       scans,
-      invitation: (invitation ??
-        null) as DeletedTicketInvitationSnapshot | null,
+      invitation: invitation
+        ? ({
+            ...invitation,
+            replacementCode,
+          } as DeletedTicketInvitationSnapshot)
+        : null,
       deletionReason: reason,
       deletedByUserId,
     });
-
-    // Los escaneos y el código de invitación se borran en cascada (como
-    // antes): quedan guardados en la papelera para restaurarlos.
-    await tx.delete(emittedTicket).where(eq(emittedTicket.id, ticketId));
 
     await tx
       .update(ticketTypePerGroup)
@@ -122,6 +146,13 @@ export async function restoreTicketFromTrash(db: Db, ticketId: string) {
       });
     }
 
+    // Invitación: el cupo es el de códigos del organizador. Se le saca un
+    // código sin usar ni compartir (el que recibió al eliminarla, si sigue
+    // así) o, si no tiene, tiene que sobrarle lugar.
+    const restoreInvitation = deleted.invitation
+      ? await freeInvitationSlot(tx, deleted.eventId, deleted.invitation)
+      : false;
+
     // Mismo control de cupo que al emitir, con el tipo bloqueado para que dos
     // restauraciones o emisiones a la vez no lo pasen juntas.
     const [type] = await tx
@@ -129,7 +160,11 @@ export async function restoreTicketFromTrash(db: Db, ticketId: string) {
       .from(ticketTypeTable)
       .where(eq(ticketTypeTable.id, deleted.ticketTypeId))
       .for('update');
-    if (type && type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim()) {
+    if (
+      !deleted.invitation &&
+      type &&
+      type.name.trim() !== ORGANIZER_TICKET_TYPE_NAME.trim()
+    ) {
       const [taken] = await tx
         .select({
           amount: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)::int`,
@@ -212,31 +247,36 @@ export async function restoreTicketFromTrash(db: Db, ticketId: string) {
         .onConflictDoNothing();
     }
 
-    if (deleted.invitation) {
+    if (deleted.invitation && restoreInvitation) {
       const invitation = deleted.invitation;
-      const [organizerExists] = await tx
-        .select({ id: user.id })
-        .from(user)
-        .where(eq(user.id, invitation.organizerId))
+      // El número de la invitación pudo quedar tomado por un código nuevo.
+      const [invitationShortIdTaken] = await tx
+        .select({ code: ticketXorganizer.code })
+        .from(ticketXorganizer)
+        .where(
+          and(
+            eq(ticketXorganizer.eventId, deleted.eventId),
+            eq(ticketXorganizer.shortId, invitation.shortId),
+          ),
+        )
         .limit(1);
-      // Si el número de la invitación ya se usó para otra, la entrada vuelve
-      // sin código de invitación.
-      if (organizerExists) {
-        await tx
-          .insert(ticketXorganizer)
-          .values({
-            ticketId: deleted.id,
-            organizerId: invitation.organizerId,
-            ticketGroupId: invitation.ticketGroupId,
-            eventId: deleted.eventId,
-            code: invitation.code,
-            shortId: invitation.shortId,
-            createdAt: invitation.createdAt,
-            shared: invitation.shared,
-            sharedWith: invitation.sharedWith,
-          })
-          .onConflictDoNothing();
-      }
+      const invitationShortId = invitationShortIdTaken
+        ? (await allocateTicketXOrganizerShortIds(tx, deleted.eventId, 1))[0]!
+        : invitation.shortId;
+      await tx
+        .insert(ticketXorganizer)
+        .values({
+          ticketId: deleted.id,
+          organizerId: invitation.organizerId,
+          ticketGroupId: invitation.ticketGroupId,
+          eventId: deleted.eventId,
+          code: invitation.code,
+          shortId: invitationShortId,
+          createdAt: invitation.createdAt,
+          shared: invitation.shared,
+          sharedWith: invitation.sharedWith,
+        })
+        .onConflictDoNothing();
     }
 
     await tx
@@ -264,6 +304,166 @@ export async function restoreTicketFromTrash(db: Db, ticketId: string) {
 
     return { id: deleted.id, eventId: deleted.eventId, shortId };
   });
+}
+
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/**
+ * Código nuevo sin usar para el organizador, en su grupo de invitaciones (el
+ * FREE donde están sus códigos sin usar; si no le queda ninguno, uno nuevo,
+ * igual que al subirle la cantidad desde el evento). Null si el organizador
+ * ya no está en el evento.
+ */
+async function addReplacementInvitationCode(
+  tx: Tx,
+  eventId: string,
+  organizerId: string,
+): Promise<string | null> {
+  const [assigned] = await tx
+    .select({ organizerId: eventXorganizer.organizerId })
+    .from(eventXorganizer)
+    .where(
+      and(
+        eq(eventXorganizer.eventId, eventId),
+        eq(eventXorganizer.organizerId, organizerId),
+      ),
+    )
+    .limit(1);
+  if (!assigned) return null;
+
+  const [existingGroup] = await tx
+    .select({ id: ticketGroup.id })
+    .from(ticketXorganizer)
+    .innerJoin(ticketGroup, eq(ticketGroup.id, ticketXorganizer.ticketGroupId))
+    .where(
+      and(
+        eq(ticketXorganizer.eventId, eventId),
+        eq(ticketXorganizer.organizerId, organizerId),
+        isNull(ticketXorganizer.ticketId),
+        eq(ticketGroup.status, 'FREE'),
+      ),
+    )
+    .limit(1);
+
+  let groupId: string;
+  if (existingGroup) {
+    groupId = existingGroup.id;
+    await tx
+      .update(ticketGroup)
+      .set({ amountTickets: sql`${ticketGroup.amountTickets} + 1` })
+      .where(eq(ticketGroup.id, groupId));
+  } else {
+    const [created] = await tx
+      .insert(ticketGroup)
+      .values({ eventId, status: 'FREE', amountTickets: 1 })
+      .returning({ id: ticketGroup.id });
+    groupId = created.id;
+  }
+
+  const [shortId] = await allocateTicketXOrganizerShortIds(tx, eventId, 1);
+  await insertInvitationCodes(tx, [
+    { eventId, organizerId, ticketGroupId: groupId, shortId: shortId! },
+  ]);
+  const [row] = await tx
+    .select({ code: ticketXorganizer.code })
+    .from(ticketXorganizer)
+    .where(
+      and(
+        eq(ticketXorganizer.eventId, eventId),
+        eq(ticketXorganizer.shortId, shortId!),
+      ),
+    )
+    .limit(1);
+  return row?.code ?? null;
+}
+
+/**
+ * Hace lugar para que vuelva el código de una entrada de invitación. Saca un
+ * código sin usar ni compartir del organizador (primero el que recibió al
+ * eliminarla) que no esté en medio de una compra; si no tiene, alcanza con que
+ * le sobre lugar en su cantidad. Devuelve false si el código no tiene que
+ * volver (el organizador ya no está o no existe).
+ */
+async function freeInvitationSlot(
+  tx: Tx,
+  eventId: string,
+  invitation: DeletedTicketInvitationSnapshot,
+): Promise<boolean> {
+  const [assignment] = await tx
+    .select({
+      ticketAmount: eventXorganizer.ticketAmount,
+      fullName: user.fullName,
+    })
+    .from(eventXorganizer)
+    .innerJoin(user, eq(user.id, eventXorganizer.organizerId))
+    .where(
+      and(
+        eq(eventXorganizer.eventId, eventId),
+        eq(eventXorganizer.organizerId, invitation.organizerId),
+      ),
+    )
+    .limit(1);
+  // Ya no está en el evento: la entrada vuelve sin código de invitación.
+  if (!assignment) return false;
+
+  const candidates = await tx
+    .select({
+      code: ticketXorganizer.code,
+      ticketGroupId: ticketXorganizer.ticketGroupId,
+    })
+    .from(ticketXorganizer)
+    .innerJoin(ticketGroup, eq(ticketGroup.id, ticketXorganizer.ticketGroupId))
+    .where(
+      and(
+        eq(ticketXorganizer.eventId, eventId),
+        eq(ticketXorganizer.organizerId, invitation.organizerId),
+        isNull(ticketXorganizer.ticketId),
+        eq(ticketXorganizer.shared, false),
+        // Un código en medio de una compra apunta a la reserva (BOOKED).
+        eq(ticketGroup.status, 'FREE'),
+      ),
+    )
+    .orderBy(asc(ticketXorganizer.createdAt));
+
+  const pick =
+    candidates.find((c) => c.code === invitation.replacementCode) ??
+    candidates[0];
+  if (pick) {
+    await tx
+      .delete(ticketXorganizer)
+      .where(
+        and(
+          eq(ticketXorganizer.eventId, eventId),
+          eq(ticketXorganizer.code, pick.code),
+        ),
+      );
+    if (pick.ticketGroupId) {
+      await tx
+        .update(ticketGroup)
+        .set({
+          amountTickets: sql`greatest(${ticketGroup.amountTickets} - 1, 0)`,
+        })
+        .where(eq(ticketGroup.id, pick.ticketGroupId));
+    }
+    return true;
+  }
+
+  const [{ total }] = await tx
+    .select({ total: count() })
+    .from(ticketXorganizer)
+    .where(
+      and(
+        eq(ticketXorganizer.eventId, eventId),
+        eq(ticketXorganizer.organizerId, invitation.organizerId),
+      ),
+    );
+  if (Number(total) + 1 > (assignment.ticketAmount ?? 0)) {
+    throw new TRPCError({
+      code: 'CONFLICT',
+      message: `${assignment.fullName} ya usó o compartió todas sus invitaciones. Subile la cantidad en el evento para restaurar esta entrada.`,
+    });
+  }
+  return true;
 }
 
 /** Entradas en la papelera de un evento, la última eliminada primero. */
