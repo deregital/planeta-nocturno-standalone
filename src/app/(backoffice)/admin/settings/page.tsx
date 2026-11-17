@@ -5,6 +5,7 @@ import { UsersTable } from '@/components/admin/config/UsersTable';
 import MercadoPagoOAuth from '@/components/admin/oauth/MercadoPagoOAuth';
 import { TransferAliasForm } from '@/components/admin/oauth/TransferAliasField';
 import { PaymentMethodList } from '@/components/admin/payments/PaymentMethodList';
+import { TaloConnect } from '@/components/admin/payments/TaloConnect';
 import LocationList from '@/components/location/LocationList';
 import { SETTINGS_PAGE_PERMISSIONS } from '@/lib/rbac/navigation';
 import { hasPermission, type TenantPermission } from '@/lib/rbac/permissions';
@@ -55,6 +56,7 @@ export default async function Page() {
                 <MercadoPagoOAuth canUnlink={can('payments:unlink')} />
               ),
               TRANSFER: <TransferAliasForm />,
+              TALO: <TaloConnect />,
             }}
           />
         </section>

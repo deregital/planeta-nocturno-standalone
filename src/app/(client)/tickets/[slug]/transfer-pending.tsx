@@ -11,7 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 
-function CopyableValue({ label, value }: { label: string; value: string }) {
+export function CopyableValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className='flex items-center justify-between gap-2 rounded-md border border-stroke px-3 py-2 text-left'>
       <div className='min-w-0'>

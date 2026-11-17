@@ -4,6 +4,7 @@ import z from 'zod';
 
 import { ticketGroup } from '@/drizzle/schema';
 import {
+  assertOtherActivePaymentMethod,
   getPaymentMethodStates,
   listActivePaymentProviders,
   listPaymentOptionsForGroup,
@@ -13,6 +14,14 @@ import {
   startPayment,
 } from '@/server/payments/methods';
 import { PAYMENT_PROVIDERS } from '@/server/payments/registry';
+import { taloApiUrl, taloPartner } from '@/server/payments/talo/client';
+import {
+  clearTaloConnection,
+  completeTaloConnect,
+  getTaloConnection,
+  refreshTaloStatus,
+  startTaloConnect,
+} from '@/server/payments/talo/connection';
 import { assertTicketGroupEventNotBlocked } from '@/server/services/eventBlock';
 import {
   anyPermissionProcedure,
@@ -32,7 +41,7 @@ export const paymentsRouter = router({
     const providers = await listActivePaymentProviders(ctx);
     return providers.map((provider) => ({
       method: provider.method,
-      label: provider.label,
+      label: provider.buyerLabel ?? provider.label,
       description: provider.buyerDescription,
     }));
   }),
@@ -110,6 +119,51 @@ export const paymentsRouter = router({
     .mutation(({ ctx, input }) =>
       setPaymentMethodEnabled(ctx, input.method, input.enabled),
     ),
+  /** La cuenta de Talo conectada y su estado (se vuelve a consultar). */
+  taloConnection: permissionProcedure('payments:manage').query(
+    async ({ ctx }) => {
+      const connection = await getTaloConnection(ctx.db);
+      const status = connection
+        ? await refreshTaloStatus(ctx.db, connection, { force: true })
+        : null;
+      return {
+        enabled: taloPartner() !== null,
+        sandbox: taloApiUrl().includes('sandbox'),
+        connection: connection ? { userId: connection.userId, status } : null,
+      };
+    },
+  ),
+  /** Empieza "Conectar con Talo": devuelve la pantalla de autorización. */
+  startTaloConnect: permissionProcedure('payments:manage').mutation(
+    async ({ ctx }) => ({
+      url: await startTaloConnect(ctx.db, ctx.instance, ctx.session.user.id),
+    }),
+  ),
+  /** Termina la conexión con el código que devolvió Talo. */
+  completeTaloConnect: permissionProcedure('payments:manage')
+    .input(
+      z.object({
+        code: z.string().trim().min(1),
+        referredUserId: z.string().trim().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => ({
+      status: await completeTaloConnect(ctx.db, ctx.instance, {
+        userId: ctx.session.user.id,
+        code: input.code,
+        referredUserId: input.referredUserId,
+      }),
+    })),
+  removeTaloConnection: permissionProcedure('payments:manage').mutation(
+    async ({ ctx }) => {
+      await assertOtherActivePaymentMethod(
+        ctx,
+        'TALO',
+        'Hay eventos activos con entradas pagas: dejá activo otro medio de pago antes de desconectar Talo',
+      );
+      await clearTaloConnection(ctx.db);
+    },
+  ),
   setOrder: permissionProcedure('payments:manage')
     .input(z.object({ methods: z.array(methodSchema) }))
     .mutation(({ ctx, input }) => setPaymentMethodOrder(ctx, input.methods)),

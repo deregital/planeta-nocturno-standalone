@@ -7,6 +7,7 @@ import TicketsClient from '@/app/(client)/tickets/[slug]/client';
 import TicketsPendingClient, {
   type ReturnedPaymentStatus,
 } from '@/app/(client)/tickets/[slug]/pending';
+import TicketsTaloPending from '@/app/(client)/tickets/[slug]/talo-pending';
 import TicketsTransferPending from '@/app/(client)/tickets/[slug]/transfer-pending';
 import { trpc } from '@/server/trpc/server';
 
@@ -48,6 +49,16 @@ export default async function TicketsPage({
 
   if (!data) {
     const pending = await trpc.ticketGroup.getPendingPaymentInfo(slug);
+    if (pending?.transferAccount) {
+      return (
+        <TicketsTaloPending
+          ticketGroupId={slug}
+          eventName={pending.eventName}
+          account={pending.transferAccount}
+          otherPaymentMethods={pending.otherPaymentMethods}
+        />
+      );
+    }
     const transfer = await trpc.ticketGroup.getTransferInstructions(slug);
     if (transfer?.transferAlias) {
       return (
@@ -75,7 +86,10 @@ export default async function TicketsPage({
         paymentStatus={paymentStatus}
         eventSlug={pending?.eventSlug}
         holdExpiresAt={pending?.holdExpiresAt}
-        canRetryPayment={pending?.canRetryPayment}
+        // Esta pantalla reintenta Mercado Pago; Talo tiene la suya.
+        canRetryPayment={
+          pending?.canRetryPayment && pending.paymentMethod === 'MERCADO_PAGO'
+        }
         otherPaymentMethods={pending?.otherPaymentMethods}
       />
     );

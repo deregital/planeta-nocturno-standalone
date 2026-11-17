@@ -168,6 +168,38 @@ export function generateTransferPaymentEmail(
   `;
 }
 
+/** Datos para pagar por Talo: CVU propio de la compra, se confirma solo. */
+export function generateTaloPaymentEmail(
+  instance: Pick<ResolvedInstance, 'name'>,
+  {
+    eventName,
+    totalAmount,
+    cvu,
+    alias,
+    expiresAt,
+    paymentPageUrl,
+  }: {
+    eventName: string;
+    totalAmount: string;
+    cvu: string;
+    alias: string | null;
+    expiresAt: string | null;
+    paymentPageUrl: string;
+  },
+) {
+  return `
+    <h1>Completá el pago de tus entradas para ${eventName}</h1>
+    <p>Tu reserva en <b>${instance.name}</b> quedó registrada. Transferí el monto exacto desde tu banco o billetera:</p>
+    <ul>
+      <li>CVU: <b>${cvu}</b></li>
+      ${alias ? `<li>Alias: <b>${alias}</b></li>` : ''}
+      <li>Monto: <b>${totalAmount}</b></li>
+    </ul>
+    ${expiresAt ? `<p>Estos datos sirven hasta las <b>${expiresAt}</b> hs.</p>` : ''}
+    <p>No hace falta mandar comprobante: cuando se acredita la transferencia te enviamos las entradas a este mail. Podés ver el estado en <a href="${paymentPageUrl}">tu compra</a>.</p>
+  `;
+}
+
 function unlinkConsequence(
   instance: Pick<ResolvedInstance, 'contactEmail'>,
   transferAlias: string | null,

@@ -107,8 +107,22 @@ if [[ -z "$(psql_admin -c "SELECT 1 FROM pg_database WHERE datname='control'")" 
   RESEED=1
 fi
 
+# Talo como partner (OAuth): se agrega también a un env.sh anterior.
+if ! grep -q TALO_PARTNER_ID "$RUN/env.sh"; then
+  cat >> "$RUN/env.sh" <<EOF
+export TALO_PARTNER_ID=pn-stack
+export TALO_PARTNER_SECRET=$(secret)
+export TALO_APP_URL=https://talo.mock.test
+export TALO_REDIRECT_URL=https://pn.test/api/payments/talo-oauth
+EOF
+  # shellcheck disable=SC1091
+  source "$RUN/env.sh"
+fi
+
 # ── Build ────────────────────────────────────────────────────────────────────
-if [[ "$REBUILD" == 1 || ! -f "$ROOT/.next/BUILD_ID" ]]; then
+# En .next-stack y no en .next: si no, pisa la carpeta de un `next dev` abierto.
+export NEXT_DIST_DIR=.next-stack
+if [[ "$REBUILD" == 1 || ! -f "$ROOT/$NEXT_DIST_DIR/BUILD_ID" ]]; then
   echo "next build (log en $RUN/logs/build.log)…"
   npx next build >"$RUN/logs/build.log" 2>&1
 fi

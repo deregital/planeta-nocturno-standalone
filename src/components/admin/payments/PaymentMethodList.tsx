@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 
-import { ArrowDown, ArrowUp, Landmark } from 'lucide-react';
+import { ArrowDown, ArrowUp, Landmark, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -21,6 +21,7 @@ type Status = PaymentMethodItem['status'];
 const ICONS: Record<Method, ReactNode> = {
   MERCADO_PAGO: <MercadoPago />,
   TRANSFER: <Landmark className='size-6 text-accent' aria-hidden />,
+  TALO: <Zap className='size-6 text-accent' aria-hidden />,
 };
 
 const STATUS: Record<Status, { label: string; className: string }> = {

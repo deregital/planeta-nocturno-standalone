@@ -475,6 +475,207 @@ async function main() {
   );
 
   await check(
+    'TALO',
+    'Conectar con Talo por OAuth, un CVU por compra y entrega sólo con el pago completo',
+    async () => {
+      const before = await admin.payments.taloConnection();
+      assert(before.enabled, 'Talo no está habilitado en el stack');
+      assert(before.connection === null, 'ya había una cuenta conectada');
+
+      // Sin haber tocado "Conectar con Talo", un código ajeno no conecta.
+      await rejects(
+        admin.payments.completeTaloConnect({
+          code: 'code-ajeno',
+          referredUserId: 'prueba',
+        }),
+        'PRECONDITION_FAILED',
+      );
+
+      // La persona toca Conectar, autoriza en Talo y vuelve con un código.
+      const authorize = async (status: 'ACTIVE' | 'PENDING') => {
+        const { url: authorizeUrl } = await admin.payments.startTaloConnect();
+        assert(
+          authorizeUrl.startsWith(
+            `${process.env.TALO_APP_URL}/authorize/${process.env.TALO_PARTNER_ID}`,
+          ),
+          `autoriza en ${authorizeUrl}`,
+        );
+        assert(
+          new URL(authorizeUrl).searchParams.get('referred_user_id') ===
+            'prueba',
+          'no manda la plataforma en referred_user_id',
+        );
+        const authorized = await fetch(authorizeUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ status }).toString(),
+          redirect: 'manual',
+        });
+        const back = new URL(authorized.headers.get('location')!);
+        assert(
+          back.origin + back.pathname === process.env.TALO_REDIRECT_URL,
+          `Talo vuelve a ${back}`,
+        );
+        return back;
+      };
+
+      const back = await authorize('ACTIVE');
+      const code = back.searchParams.get('code')!;
+
+      // El callback del dominio raíz rebota a la plataforma con el código.
+      const rootHost = process.env.ROOT_DOMAIN!;
+      const bounce = await fetch(`${NEXT}${back.pathname}${back.search}`, {
+        headers: {
+          host: rootHost,
+          'x-forwarded-host': rootHost,
+          'x-forwarded-proto': 'https',
+        },
+        redirect: 'manual',
+      });
+      const bounced = new URL(bounce.headers.get('location') ?? 'about:blank');
+      assert(
+        bounce.status === 303 &&
+          bounced.host === new URL(instance.publicUrl).host &&
+          bounced.pathname === '/admin/settings/talo' &&
+          bounced.searchParams.get('code') === code,
+        `el callback va a ${bounce.status} ${bounced}`,
+      );
+
+      // Otra persona del staff no puede completar la conexión que empezó admin.
+      await rejects(
+        callerFor('admin2').payments.completeTaloConnect({
+          code,
+          referredUserId: 'prueba',
+        }),
+        'PRECONDITION_FAILED',
+      );
+      const done = await admin.payments.completeTaloConnect({
+        code,
+        referredUserId: 'prueba',
+      });
+      assert(done.status === 'ACTIVE', `estado ${done.status}`);
+      const connected = await admin.payments.taloConnection();
+      assert(connected.connection?.status === 'ACTIVE', 'no quedó conectada');
+      const taloUser = connected.connection!.userId;
+
+      try {
+        const talo = (await anon.payments.checkoutOptions()).find(
+          (o) => o.method === 'TALO',
+        );
+        assert(talo?.label === 'Transferencia inmediata', 'no ofrece Talo');
+
+        const e = event('fiesta-paga');
+        const group = await reserve('fiesta-paga', 'General');
+        const ticket = buyer(type('fiesta-paga', 'General').id, group, e.id);
+        await anon.emittedTickets.createMany([ticket]);
+
+        const start = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TALO',
+        });
+        assert(
+          start.type === 'instructions' && Boolean(start.cvu),
+          'Talo sin CVU',
+        );
+        const cvu = start.type === 'instructions' ? start.cvu! : '';
+        const amount = start.type === 'instructions' ? start.amount : 0;
+        const payment = JSON.parse(
+          readFileSync(
+            path.join(
+              RUN,
+              'talo',
+              `${encodeURIComponent(`VAR-${taloUser}-${group}`)}.json`,
+            ),
+            'utf8',
+          ),
+        );
+        assert(
+          payment.partner_id === process.env.TALO_PARTNER_ID,
+          'el cobro no lleva el partner_id',
+        );
+
+        const again = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TALO',
+        });
+        assert(
+          again.type === 'instructions' && again.cvu === cvu,
+          'generó otro CVU',
+        );
+
+        const faucet = (value: number) =>
+          fetch(`https://sandbox-api.talo.com.ar/cvu/${cvu}/faucet`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ amount: value }),
+          }).then((r) => r.json());
+        const statusOf = async () =>
+          (
+            await raw.query<{ status: string }>(
+              'SELECT status FROM "ticketGroup" WHERE id = $1',
+              [group],
+            )
+          ).rows[0]?.status;
+
+        const partial = await faucet(amount - 100);
+        assert(
+          partial.data.payment_status === 'UNDERPAID',
+          `faucet: ${JSON.stringify(partial.data)}`,
+        );
+        assert(partial.data.webhook?.status === 200, 'el aviso parcial falló');
+        assert((await statusOf()) === 'BOOKED', 'entregó con un pago parcial');
+
+        const rest = await faucet(100);
+        assert(rest.data.payment_status === 'SUCCESS', 'no completó el pago');
+        assert(rest.data.webhook?.status === 200, 'el aviso del pago falló');
+        assert((await statusOf()) === 'PAID', 'no quedó pagada');
+        assert(mailsTo(ticket.mail) >= 1, 'no mandó las entradas');
+
+        const host = new URL(instance.publicUrl).host;
+        const unknown = await fetch(`${NEXT}/api/payments/talo`, {
+          method: 'POST',
+          headers: {
+            host,
+            'x-forwarded-host': host,
+            'x-forwarded-proto': 'https',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ paymentId: 'VAR-desconocido' }),
+        });
+        assert(unknown.status === 200, `aviso desconocido: ${unknown.status}`);
+
+        await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [group]);
+      } finally {
+        await admin.payments.removeTaloConnection();
+      }
+      assert(
+        !(await anon.payments.checkoutOptions()).some(
+          (o) => o.method === 'TALO',
+        ),
+        'Talo sigue ofrecido sin conexión',
+      );
+
+      // Una cuenta que Talo todavía verifica queda conectada pero no se ofrece.
+      const pendingBack = await authorize('PENDING');
+      const pending = await admin.payments.completeTaloConnect({
+        code: pendingBack.searchParams.get('code')!,
+        referredUserId: 'prueba',
+      });
+      try {
+        assert(pending.status === 'PENDING', `estado ${pending.status}`);
+        assert(
+          !(await anon.payments.checkoutOptions()).some(
+            (o) => o.method === 'TALO',
+          ),
+          'ofrece Talo con la cuenta en verificación',
+        );
+      } finally {
+        await admin.payments.removeTaloConnection();
+      }
+    },
+  );
+
+  await check(
     'BLOQUEO',
     'oculto se entra por link; bloqueado no entra nadie del público',
     async () => {

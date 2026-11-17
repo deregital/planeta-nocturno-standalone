@@ -36,6 +36,7 @@ import {
   releaseExpiredHolds,
 } from '@/server/services/ticketGroupHolds';
 import { listPaymentOptionsForGroup } from '@/server/payments/methods';
+import { readTaloDetails } from '@/server/payments/providers/talo';
 import { getPaymentProvider } from '@/server/payments/registry';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
@@ -1067,9 +1068,14 @@ export const ticketGroupRouter = router({
     .query(async ({ ctx, input }) => {
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input),
-        columns: { status: true, paymentMethod: true, createdAt: true },
+        columns: {
+          status: true,
+          paymentMethod: true,
+          createdAt: true,
+          paymentDetails: true,
+        },
         with: {
-          event: { columns: { slug: true } },
+          event: { columns: { slug: true, name: true } },
           ticketTypePerGroups: { columns: { amount: true }, limit: 1 },
         },
       });
@@ -1082,8 +1088,14 @@ export const ticketGroupRouter = router({
         : [];
       return {
         eventSlug: group.event.slug,
+        eventName: group.event.name,
         holdExpiresAt: holdsQuota ? holdExpiresAt(group) : null,
         paymentMethod: group.paymentMethod,
+        /** CVU de Talo para pagar esta compra. */
+        transferAccount:
+          payable && group.paymentMethod === 'TALO'
+            ? readTaloDetails(group.paymentDetails)
+            : null,
         canRetryPayment:
           payable &&
           options.some((option) => option.method === group.paymentMethod) &&
@@ -1091,7 +1103,10 @@ export const ticketGroupRouter = router({
         /** Otros medios con los que se puede pagar esta reserva. */
         otherPaymentMethods: options
           .filter((option) => option.method !== group.paymentMethod)
-          .map((option) => ({ method: option.method, label: option.label })),
+          .map((option) => ({
+            method: option.method,
+            label: option.buyerLabel ?? option.label,
+          })),
       };
     }),
   getTransferInstructions: publicProcedure

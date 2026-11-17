@@ -15,7 +15,11 @@ import {
 } from '@/server/observability/logger';
 import { getPostHogServer } from '@/server/observability/posthog-server';
 
-export type PurchasePaymentMethod = 'free' | 'mercado_pago' | 'transfer';
+export type PurchasePaymentMethod =
+  | 'free'
+  | 'mercado_pago'
+  | 'transfer'
+  | 'talo';
 
 type Buyer = { distinctId?: string; sessionId?: string };
 

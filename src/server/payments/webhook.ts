@@ -1,4 +1,4 @@
-import type { PaymentProvider } from '@/server/payments/types';
+import type { PaymentContext, PaymentProvider } from '@/server/payments/types';
 
 import { NextResponse } from 'next/server';
 
@@ -20,7 +20,22 @@ export async function handlePaymentNotification(
     return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
   }
 
-  const notification = await provider.parseNotification(request);
+  const ctx = await resolveRequestContext(request.headers);
+  let notification: Awaited<ReturnType<typeof provider.parseNotification>>;
+  try {
+    notification = await provider.parseNotification(request, ctx);
+  } catch (error) {
+    // No se pudo verificar el pago con el proveedor: 500 para que reintente.
+    logger.error('Payment webhook verification failed', {
+      operation: 'payment_webhook',
+      method: provider.method,
+      error,
+    });
+    return NextResponse.json(
+      { success: false, error: 'INTERNAL_SERVER_ERROR' },
+      { status: 500 },
+    );
+  }
   if (notification instanceof Response) return notification;
 
   const { ticketGroupId } = notification;
@@ -34,7 +49,7 @@ export async function handlePaymentNotification(
   logger.info('Payment webhook accepted', { ...log, ticketGroupId });
 
   try {
-    await fulfillTicketGroup(request.headers, provider, ticketGroupId);
+    await fulfillTicketGroup(ctx, provider, ticketGroupId);
   } catch (error) {
     logger.error('Payment webhook fulfillment failed', {
       ...log,
@@ -51,11 +66,10 @@ export async function handlePaymentNotification(
 }
 
 async function fulfillTicketGroup(
-  headers: Headers,
+  { db, instance }: PaymentContext,
   provider: PaymentProvider,
   ticketGroupId: string,
 ) {
-  const { db, instance } = await resolveRequestContext(headers);
   const log = { operation: 'payment_webhook', method: provider.method };
 
   // El aviso se reintenta (y un mismo pago puede avisarse varias veces): las
