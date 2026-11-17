@@ -4,9 +4,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { PAYMENT_BRANDS } from '@/components/payments/payment-brand';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { transferAliasSchema } from '@/server/schemas/payment-settings';
 import { trpc } from '@/server/trpc/client';
 
@@ -105,8 +107,7 @@ export function TransferAliasForm() {
       />
       <Button
         type='submit'
-        variant='outline'
-        className='w-fit'
+        className={cn('w-fit', PAYMENT_BRANDS.TRANSFER.button)}
         disabled={value.trim() === (savedAlias ?? '')}
         loading={update.isPending}
       >

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import MercadoPagoUnlinkDialog from '@/components/admin/oauth/MercadoPagoUnlinkDialog';
+import { PAYMENT_BRANDS } from '@/components/payments/payment-brand';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -209,7 +210,9 @@ export default function MercadoPagoConnect({
       ) : authUrl ? (
         <Dialog>
           <DialogTrigger asChild>
-            <Button>Conectar con Mercado Pago</Button>
+            <Button className={PAYMENT_BRANDS.MERCADO_PAGO.button}>
+              Conectar con Mercado Pago
+            </Button>
           </DialogTrigger>
           <DialogContent className='flex max-w-lg flex-col gap-4'>
             <DialogHeader>
@@ -238,7 +241,7 @@ export default function MercadoPagoConnect({
             <DialogFooter className='sm:justify-end'>
               <Button
                 type='button'
-                className='px-8'
+                className={cn('px-8', PAYMENT_BRANDS.MERCADO_PAGO.button)}
                 onClick={handleConnectClick}
               >
                 Conectar con Mercado Pago

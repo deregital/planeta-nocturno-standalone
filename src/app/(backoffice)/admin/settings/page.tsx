@@ -3,6 +3,7 @@ import { CreateUserForm } from '@/components/admin/config/CreateUserForm';
 import UpdateFeatures from '@/components/admin/config/UpdateFeatures';
 import { UsersTable } from '@/components/admin/config/UsersTable';
 import MercadoPagoOAuth from '@/components/admin/oauth/MercadoPagoOAuth';
+import MercadoPagoUnlinkDialog from '@/components/admin/oauth/MercadoPagoUnlinkDialog';
 import { TransferAliasForm } from '@/components/admin/oauth/TransferAliasField';
 import { PaymentMethodList } from '@/components/admin/payments/PaymentMethodList';
 import { TaloConnect } from '@/components/admin/payments/TaloConnect';
@@ -57,6 +58,15 @@ export default async function Page() {
               ),
               TRANSFER: <TransferAliasForm />,
               TALO: <TaloConnect />,
+            }}
+            disconnect={{
+              // Mercado Pago confirma la desvinculación por mail.
+              MERCADO_PAGO: can('payments:unlink') ? (
+                <MercadoPagoUnlinkDialog
+                  triggerLabel='Desconectar'
+                  triggerClassName='mt-auto w-full'
+                />
+              ) : null,
             }}
           />
         </section>

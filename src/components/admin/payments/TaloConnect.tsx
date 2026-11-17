@@ -4,8 +4,10 @@ import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { PAYMENT_BRANDS } from '@/components/payments/payment-brand';
 import { Button } from '@/components/ui/button';
 import { type TaloConnectResult } from '@/lib/payments/talo-paths';
+import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
 const RESULT_MESSAGES: Record<
@@ -168,7 +170,7 @@ export function TaloConnect() {
             ) : (
               <Button
                 type='button'
-                variant='destructiveGhost'
+                variant='destructive'
                 className='w-fit'
                 onClick={() => setConfirmingRemove(true)}
               >
@@ -185,7 +187,7 @@ export function TaloConnect() {
           </p>
           <Button
             type='button'
-            className='w-fit'
+            className={cn('w-fit', PAYMENT_BRANDS.TALO.button)}
             loading={start.isPending}
             onClick={() => start.mutate()}
           >
