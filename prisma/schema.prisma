@@ -220,7 +220,8 @@ model Event {
 }
 
 /// Modo del escáner por evento (off / shadow / local) y N en segundos.
-/// Sin fila, el evento escanea como siempre (off).
+/// Sin fila, el evento usa DEFAULT_EVENT_MODE (rápido). El default de la
+/// columna no se usa: setConfig siempre guarda el modo elegido.
 model EventScannerConfig {
   eventId         String   @id @db.Uuid
   event           Event    @relation("EVENT_X_SCANNER_CONFIG", fields: [eventId], references: [id], onDelete: Cascade)
