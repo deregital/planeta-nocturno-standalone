@@ -8,6 +8,7 @@ import { TRPCError } from '@trpc/server';
 import { sql } from 'drizzle-orm';
 
 import { paymentMethodSetting } from '@/drizzle/schema';
+import { logger } from '@/server/observability/logger';
 import { PAYMENT_PROVIDERS } from '@/server/payments/registry';
 import { hasActivePaidEvents } from '@/server/services/paymentSettings';
 
@@ -27,13 +28,33 @@ export type PaymentMethodState = {
   status: PaymentMethodStatus;
 };
 
+/**
+ * Si un medio no puede revisar su configuración (su tabla todavía no se migró,
+ * su API no responde), cuenta como sin configurar: sin esto, un medio roto
+ * tiraba abajo el checkout y Configuración para todos los demás.
+ */
+async function isConfiguredSafely(
+  ctx: PaymentContext,
+  provider: PaymentProvider,
+) {
+  try {
+    return await provider.isConfigured(ctx);
+  } catch (error) {
+    logger.error('Payment method configuration check failed', {
+      method: provider.method,
+      error,
+    });
+    return false;
+  }
+}
+
 /** Todos los medios con su estado, en el orden en que se ofrecen. */
 export async function getPaymentMethodStates(
   ctx: PaymentContext,
 ): Promise<PaymentMethodState[]> {
   const [rows, configured] = await Promise.all([
     ctx.db.select().from(paymentMethodSetting),
-    Promise.all(PAYMENT_PROVIDERS.map((p) => p.isConfigured(ctx))),
+    Promise.all(PAYMENT_PROVIDERS.map((p) => isConfiguredSafely(ctx, p))),
   ]);
   const byMethod = new Map(rows.map((row) => [row.method, row]));
 
