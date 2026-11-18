@@ -38,6 +38,12 @@ const STATUS: Record<Status, { label: string; className: string }> = {
   },
 };
 
+/** Conectado, pero el proveedor todavía verifica la cuenta (Talo, hasta 36 h). */
+const IN_REVIEW = {
+  label: 'En revisión',
+  className: 'bg-sky-100 text-sky-900',
+};
+
 const CONFIRMATION: Record<PaymentMethodItem['confirmation'], string> = {
   webhook: 'Se confirma solo cuando se acredita el pago.',
   manual: 'Confirmás vos cada pago desde la página del evento.',
@@ -147,7 +153,7 @@ export function PaymentMethodList({
     <>
       <ol className='grid grid-cols-1 gap-3 md:grid-cols-3'>
         {methods.map((item) => {
-          const status = STATUS[item.status];
+          const status = item.inReview ? IN_REVIEW : STATUS[item.status];
           const brand = PAYMENT_BRANDS[item.method];
           const switchId = `payment-method-${item.method}`;
           const connected = item.status !== 'not_configured';
@@ -188,7 +194,9 @@ export function PaymentMethodList({
                 <Label htmlFor={switchId} className='text-sm'>
                   {connected
                     ? 'Ofrecer a los compradores'
-                    : 'Conectalo para ofrecerlo'}
+                    : item.inReview
+                      ? 'Se ofrece cuando se apruebe'
+                      : 'Conectalo para ofrecerlo'}
                 </Label>
               </div>
 
@@ -200,7 +208,11 @@ export function PaymentMethodList({
                   className={cn('mt-auto w-full', brand.button)}
                   onClick={() => setOpen(item.method)}
                 >
-                  {item.method === 'TRANSFER' ? 'Configurar' : 'Conectar'}
+                  {item.inReview
+                    ? 'En revisión'
+                    : item.method === 'TRANSFER'
+                      ? 'Configurar'
+                      : 'Conectar'}
                 </Button>
               )}
             </li>

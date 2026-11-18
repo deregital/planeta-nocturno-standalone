@@ -98,11 +98,19 @@ export const paymentsRouter = router({
   /** Los medios de pago con su estado, en el orden en que se ofrecen. */
   methods: permissionProcedure('payments:manage').query(async ({ ctx }) => {
     const states = await getPaymentMethodStates(ctx);
+    // Talo conectado con la cuenta en verificación: todavía no cobra, pero
+    // ya no hay que conectarlo.
+    const taloInReview =
+      (await getTaloConnection(ctx.db).catch(() => null))?.status === 'PENDING';
     return states.map((state) => ({
       method: state.provider.method,
       label: state.provider.label,
       confirmation: state.provider.confirmation,
       status: state.status,
+      inReview:
+        state.provider.method === 'TALO' &&
+        state.status === 'not_configured' &&
+        taloInReview,
     }));
   }),
   /** Si hay algún medio activo: sin uno no se pueden vender entradas pagas. */
