@@ -108,9 +108,28 @@ if [[ -z "$(psql_admin -c "SELECT 1 FROM pg_database WHERE datname='control'")" 
 fi
 
 # ── Build ────────────────────────────────────────────────────────────────────
+# Se recompila solo si el código cambió desde la última compilación (commit y
+# archivos modificados de la app) o si un `next dev` en esta carpeta pisó .next.
+build_stamp() {
+  local changed
+  changed=$(git ls-files -m -o -d --exclude-standard -- src prisma public next.config.ts \
+    package-lock.json tsconfig.json | sort -u) || true
+  {
+    git rev-parse HEAD
+    echo "$changed"
+    [[ -n "$changed" ]] && echo "$changed" | tr '\n' '\0' | xargs -0 cksum 2>/dev/null
+    cksum "$ROOT/.next/routes-manifest.json" 2>/dev/null
+  } | cksum
+}
+STAMP_FILE="$RUN/build-stamp"
+if [[ "$REBUILD" == 0 && -f "$ROOT/.next/BUILD_ID" && "$(cat "$STAMP_FILE" 2>/dev/null)" != "$(build_stamp)" ]]; then
+  echo "el código cambió desde la última compilación (o un next dev pisó .next): recompilo"
+  REBUILD=1
+fi
 if [[ "$REBUILD" == 1 || ! -f "$ROOT/.next/BUILD_ID" ]]; then
   echo "next build (log en $RUN/logs/build.log)…"
   npx next build >"$RUN/logs/build.log" 2>&1
+  build_stamp >"$STAMP_FILE"
 fi
 
 # ── Procesos ─────────────────────────────────────────────────────────────────

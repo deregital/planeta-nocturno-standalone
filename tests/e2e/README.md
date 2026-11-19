@@ -1,11 +1,11 @@
 # Tests e2e (golden path)
 
-Recorren el producto como lo usa la gente, en un navegador real, contra el
+Parte de `npm run test:pr` (ver [tests/README.md](../README.md)). Recorren el producto como lo usa la gente, en un navegador real, contra el
 [stack simulado](../stack/README.md): la app real con Mercado Pago, mails, S3 y Neon
 simulados. Están pensados para correr en cada PR (~35 s con el stack levantado).
 
 ```bash
-tests/stack/up.sh            # una vez (o --rebuild después de cambiar la app)
+tests/stack/up.sh            # una vez (recompila solo si cambió el código)
 npm run test:e2e             # golden path + chequeo final
 npm run test:e2e -- --ui     # para mirarlos paso a paso
 npx playwright show-report test-results/e2e-report
@@ -16,14 +16,14 @@ npx playwright show-report test-results/e2e-report
 Elegidos por uso real en PostHog (60 días al 8/11/2026, sin productoras de prueba), por
 área del producto y no sólo por volumen:
 
-| Test | Qué hace | Uso en PostHog |
-| --- | --- | --- |
-| `evento` | La productora crea un evento con entrada paga y gratis, lo publica, sube el precio; el público lo ve y saca entrada | 38 productoras entran a su lista de eventos, 20 editan, 15 crearon alguno |
-| `compra-paga` | Evento → 2 entradas → checkout con cargo por servicio → Mercado Pago aprobado → entradas y un mail por entrada | ~490 checkouts pagos (Vita, Misa, Egresas) |
-| `entrada-gratis` | 2 entradas gratis con datos de cada persona; cada una recibe la suya; se descarga el PDF | ~13.800 checkouts gratis en 12 productoras |
-| `organizador` (×2) | El organizador copia su invitación desde el celular, el invitado la canjea, el link no sirve dos veces · una compra por `?organizer=` queda a su nombre | 853 organizadores en 10 productoras, 94% desde el celular |
-| `puerta` (×2) | Válida, repetida, de otro evento, de otra productora, basura · 30 escaneos seguidos sin que se trabe | ~2.400 escaneos en 10 productoras |
-| `gestion` (×2) | Emisión manual → mail, lista del evento, Excel y base de clientes · alta de un usuario de control, se lo suma al evento, escanea y no ve el resto | base de clientes 22 productoras, panel del evento 20, usuarios 16 |
+| Test               | Qué hace                                                                                                                                                                                                                                                | Uso en PostHog                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `evento`           | La productora crea un evento con entrada paga y gratis, lo publica, sube el precio; el público lo ve y saca entrada                                                                                                                                     | 38 productoras entran a su lista de eventos, 20 editan, 15 crearon alguno |
+| `compra-paga`      | Evento → 2 entradas → checkout con cargo por servicio → Mercado Pago aprobado → entradas y un mail por entrada                                                                                                                                          | ~490 checkouts pagos (Vita, Misa, Egresas)                                |
+| `entrada-gratis`   | 2 entradas gratis con datos de cada persona; cada una recibe la suya; se descarga el PDF                                                                                                                                                                | ~13.800 checkouts gratis en 12 productoras                                |
+| `organizador` (×2) | El organizador comparte su invitación desde el menú de compartir del celular, con el nombre de la persona; el invitado la canjea; el mismo link después sólo muestra la entrada con el DNI del titular · una compra por `?organizer=` queda a su nombre | 853 organizadores en 10 productoras, 94% desde el celular                 |
+| `puerta` (×2)      | Válida, repetida, de otro evento, de otra productora, basura · 30 escaneos seguidos sin que se trabe                                                                                                                                                    | ~2.400 escaneos en 10 productoras                                         |
+| `gestion` (×2)     | Emisión manual → mail, lista del evento, Excel y base de clientes · alta de un usuario de control, se lo suma al evento, escanea y no ve el resto                                                                                                       | base de clientes 22 productoras, panel del evento 20, usuarios 16         |
 
 Al final, `chequeo.teardown.ts` corre `tests/stack/check.mjs` sobre toda la corrida:
 grupos pagos sin entradas, sobreventa, escaneos dobles, pagos de Mercado Pago que no
@@ -61,8 +61,8 @@ En CI conviene `tests/stack/up.sh --reseed && npm run test:e2e`.
 import { entrar, expect, test } from '@tests/e2e/support/fixtures';
 
 test('algo', async ({ abrir }) => {
-  const admin = await abrir('escritorio');   // cada persona, su navegador
-  const comprador = await abrir('celular');  // Android 393×727 ('instagram' también)
+  const admin = await abrir('escritorio'); // cada persona, su navegador
+  const comprador = await abrir('celular'); // Android 393×727 ('instagram' también)
   await entrar(admin, 'admin');
   // ...
 });

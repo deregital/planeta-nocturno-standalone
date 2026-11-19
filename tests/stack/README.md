@@ -19,7 +19,7 @@ reproducir un bug de PostHog, probar el scanner desde el celular.
 ```bash
 tests/stack/up.sh             # build si hace falta, servicios y seed (idempotente)
 tests/stack/up.sh --reseed    # vuelve a sembrar desde cero
-tests/stack/up.sh --rebuild   # después de cambiar código de la app
+tests/stack/up.sh --rebuild   # fuerza la compilación (sola, ya recompila si cambió el código)
 tests/stack/down.sh           # frena procesos (--purge borra Postgres y .run/)
 ```
 

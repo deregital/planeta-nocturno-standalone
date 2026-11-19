@@ -13,6 +13,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --fix",
+    "test": "tests/run.sh rapido",
+    "test:pr": "tests/run.sh pr",
+    "test:release": "tests/run.sh release",
     "test:eslint-rule": "node tests/eslint/tenant-db-isolation.test.mjs && node tests/eslint/mobile-layout.test.mjs",
     "test:mobile": "node tests/mobile/overflow.mjs",
     "test:instance-resolution": "node --test tests/instance-resolution.test.mjs",
@@ -23,6 +26,7 @@
     "test:scanner": "node --import tsx --import ./tests/load/register-phone-metadata.mjs --test --test-concurrency=1 tests/scanner/*.test.ts",
     "test:isolation": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/isolation/tenant-data-isolation.test.ts",
     "test:e2e": "playwright test -c tests/e2e",
+    "test:regressions": ". tests/stack/.run/env.sh && node --import tsx --import ./tests/load/register-phone-metadata.mjs --import ./tests/stack/preload.mjs tests/stack/regressions.ts",
     "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-ticket-slug.ts",
     "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",
     "prepare": "husky"

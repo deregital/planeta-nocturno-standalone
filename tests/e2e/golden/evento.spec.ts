@@ -13,7 +13,11 @@ import {
   sinDesbordes,
   test,
 } from '@tests/e2e/support/fixtures';
-import { completarCheckout, esperarMails } from '@tests/e2e/support/flows';
+import {
+  completarCheckout,
+  esperarMails,
+  verEntradas,
+} from '@tests/e2e/support/flows';
 import { newPerson, query, tenantUrl } from '@tests/e2e/support/stack';
 
 const FLYER = path.join(process.cwd(), 'public', 'Foto.png');
@@ -136,9 +140,7 @@ test('la productora crea, publica y edita un evento, y el público saca entrada'
   await publico.getByRole('button', { name: 'CONTINUAR' }).click();
   await completarCheckout(publico, persona);
   await publico.getByRole('button', { name: 'ADQUIRIR' }).click();
-  await expect(
-    publico.getByText('¡Ya podés descargar tus tickets!'),
-  ).toBeVisible({ timeout: 30_000 });
+  await verEntradas(publico);
   const [mail] = await esperarMails(persona.email);
   expect(mail.subject).toContain(name);
   expect(mail.attachments.filter((file) => file.endsWith('.pdf'))).toHaveLength(

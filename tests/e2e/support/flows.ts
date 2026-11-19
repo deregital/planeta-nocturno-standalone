@@ -50,6 +50,20 @@ export async function completarCheckout(
   }
 }
 
+// La página de entradas después de pagar o canjear: "Tu ticket" o "Tus N
+// tickets", con un PDF para bajar por entrada. Devuelve el id del grupo.
+export async function verEntradas(page: Page, cantidad = 1): Promise<string> {
+  await expect(page).toHaveURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 30_000 });
+  const titulo = cantidad > 1 ? `Tus ${cantidad} tickets` : 'Tu ticket';
+  await expect(
+    page.getByRole('heading', { level: 1, name: titulo }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Descargar PDF' })).toHaveCount(
+    cantidad,
+  );
+  return page.url().match(/\/tickets\/([0-9a-f-]{36})/)![1];
+}
+
 // Espera a que lleguen `count` mails a la dirección y los devuelve.
 export async function esperarMails(
   address: string,

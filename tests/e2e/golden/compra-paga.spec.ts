@@ -7,7 +7,11 @@ import {
   sinDesbordes,
   test,
 } from '@tests/e2e/support/fixtures';
-import { completarCheckout, esperarMails } from '@tests/e2e/support/flows';
+import {
+  completarCheckout,
+  esperarMails,
+  verEntradas,
+} from '@tests/e2e/support/flows';
 import {
   mailsTo,
   newPerson,
@@ -41,12 +45,8 @@ test('compra paga con Mercado Pago', async ({ celular: page }) => {
   await expect(page.getByText('Total: $ 11000')).toBeVisible();
   await page.getByRole('button', { name: 'Pagar (aprobado)' }).click();
 
-  await expect(page).toHaveURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 30_000 });
-  await expect(page.getByText('¡Ya podés descargar tus tickets!')).toBeVisible({
-    timeout: 30_000,
-  });
+  const groupId = await verEntradas(page, 2);
   await sinDesbordes(page, 'la página de entradas');
-  const groupId = page.url().match(/\/tickets\/([0-9a-f-]{36})/)![1];
 
   const [group] = await query<{ status: string; tickets: string }>(
     `SELECT g.status, (SELECT count(*) FROM "emittedTicket" t WHERE t."ticketGroupId" = g.id) AS tickets

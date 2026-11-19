@@ -7,7 +7,11 @@ import {
   sinDesbordes,
   test,
 } from '@tests/e2e/support/fixtures';
-import { completarCheckout, esperarMails } from '@tests/e2e/support/flows';
+import {
+  completarCheckout,
+  esperarMails,
+  verEntradas,
+} from '@tests/e2e/support/flows';
 import {
   newPerson,
   query,
@@ -30,10 +34,8 @@ test('entradas gratis con los datos de cada persona', async ({
   await sinDesbordes(page, 'el checkout con dos entradas');
   await page.getByRole('button', { name: 'ADQUIRIR' }).click();
 
-  await expect(page.getByText('¡Ya podés descargar tus tickets!')).toBeVisible({
-    timeout: 30_000,
-  });
-  const groupId = page.url().match(/\/tickets\/([0-9a-f-]{36})/)![1];
+  const groupId = await verEntradas(page, 2);
+  await sinDesbordes(page, 'la página con dos entradas');
   const tickets = await query<{ dni: string; mail: string }>(
     'SELECT dni, mail FROM "emittedTicket" WHERE "ticketGroupId" = $1 ORDER BY dni',
     [groupId],
@@ -49,8 +51,10 @@ test('entradas gratis con los datos de cada persona', async ({
     ).toHaveLength(1);
   }
 
-  // Y la puede bajar desde la pantalla.
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Descargar Tickets' }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+  // Y las puede bajar desde la pantalla: un PDF por entrada.
+  const bajadas: string[] = [];
+  page.on('download', (download) => bajadas.push(download.suggestedFilename()));
+  await page.getByRole('button', { name: 'Descargar todos' }).click();
+  await expect.poll(() => bajadas.length, { timeout: 30_000 }).toBe(2);
+  expect(bajadas.every((file) => file.endsWith('.pdf'))).toBe(true);
 });

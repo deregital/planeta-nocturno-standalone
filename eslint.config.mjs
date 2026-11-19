@@ -29,6 +29,10 @@ const eslintConfig = [
       'src/generated',
       'next-env.d.ts',
       'src/drizzle/',
+      // Salidas de las pruebas (reportes de Playwright, capturas, estado del stack).
+      'test-results',
+      'tests/stack/.run',
+      'tests/load/results',
     ],
   },
   {

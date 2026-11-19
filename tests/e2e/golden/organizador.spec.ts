@@ -9,7 +9,11 @@ import {
   sinDesbordes,
   test,
 } from '@tests/e2e/support/fixtures';
-import { completarCheckout, esperarMails } from '@tests/e2e/support/flows';
+import {
+  completarCheckout,
+  esperarMails,
+  verEntradas,
+} from '@tests/e2e/support/flows';
 import {
   newPerson,
   query,
@@ -30,24 +34,30 @@ test('el organizador comparte una invitación y el invitado la canjea', async ({
   abrir,
 }) => {
   const event = seedEvent('egresados');
-  // El organizador con más códigos sin usar (cada corrida gasta uno).
+  // El organizador con más códigos sin compartir (cada corrida comparte uno).
   const [conCodigos] = await query<{ name: string; id: string }>(
     `SELECT u.name, u.id FROM "ticketXOrganizer" x JOIN "user" u ON u.id = x."organizerId"
-      WHERE x."eventId" = $1 AND x."ticketId" IS NULL AND u.role = 'ORGANIZER'
+      WHERE x."eventId" = $1 AND x."ticketId" IS NULL AND NOT x.shared AND u.role = 'ORGANIZER'
       GROUP BY u.name, u.id ORDER BY count(*) DESC LIMIT 1`,
     [event.id],
   );
   // Falla en vez de saltearse: un golden path salteado pasa desapercibido.
   expect(
     conCodigos,
-    'No quedan códigos de invitación sin usar: tests/stack/up.sh --reseed',
+    'No quedan códigos de invitación sin compartir: tests/stack/up.sh --reseed',
   ).toBeTruthy();
+  const invitada = newPerson('Invitada');
   const orga = await abrir('celular');
-  await orga
-    .context()
-    .grantPermissions(['clipboard-read', 'clipboard-write'], {
-      origin: tenantUrl(),
+  // El menú de compartir del celular: se queda con lo que se compartió.
+  await orga.addInitScript(() => {
+    const w = window as unknown as { __compartido?: string };
+    Object.defineProperty(Navigator.prototype, 'share', {
+      configurable: true,
+      value: async (data: ShareData) => {
+        w.__compartido = data.url;
+      },
     });
+  });
 
   await entrar(orga, conCodigos.name);
   await orga.goto(`${tenantUrl()}/organization/event/${event.slug}`);
@@ -55,26 +65,42 @@ test('el organizador comparte una invitación y el invitado la canjea', async ({
     orga.getByRole('heading', { name: 'Códigos de invitación' }),
   ).toBeVisible();
   await sinDesbordes(orga, 'el panel del organizador');
-  await orga
-    .getByRole('button', { name: /^Copiar ticket/ })
-    .first()
-    .click();
-  await expect(orga.getByText('Enlace copiado al portapapeles')).toBeVisible();
-  const link = await orga.evaluate(() => navigator.clipboard.readText());
+  await orga.getByRole('button', { name: 'Compartir siguiente' }).click();
+  const cajon = orga.getByRole('dialog');
+  await expect(
+    cajon.getByText('Cada enlace sirve para una sola persona.'),
+  ).toBeVisible();
+  await sinDesbordes(orga, 'el cajón para compartir');
+  await cajon
+    .getByRole('textbox', { name: 'Para quién es' })
+    .fill(invitada.fullName);
+  await cajon.getByRole('button', { name: 'Compartir' }).click();
+  await expect(cajon).toBeHidden();
+  const link = await orga.evaluate(
+    () => (window as unknown as { __compartido?: string }).__compartido,
+  );
   expect(link).toMatch(
     new RegExp(`/event/${event.slug}\\?invite=[A-Z0-9]{6}$`),
   );
-  const code = link.split('invite=')[1];
+  const code = link!.split('invite=')[1];
+  // Queda marcado como compartido y con el nombre, en la base y en su lista.
+  await expect
+    .poll(async () =>
+      query<{ shared: boolean; sharedWith: string | null }>(
+        'SELECT shared, "sharedWith" FROM "ticketXOrganizer" WHERE "eventId" = $1 AND code = $2',
+        [event.id, code],
+      ),
+    )
+    .toEqual([{ shared: true, sharedWith: invitada.fullName }]);
+  await orga.getByRole('tab', { name: /^Compartidos/ }).click();
+  await expect(orga.getByText(invitada.fullName).first()).toBeVisible();
 
-  const invitada = newPerson('Invitada');
   const celular = await abrir('celular');
-  await celular.goto(link);
+  await celular.goto(link!);
   await expect(celular).toHaveURL(/\/checkout/, { timeout: 30_000 });
   await completarCheckout(celular, invitada);
   await celular.getByRole('button', { name: 'ADQUIRIR' }).click();
-  await expect(
-    celular.getByText('¡Ya podés descargar tus tickets!'),
-  ).toBeVisible({ timeout: 30_000 });
+  await verEntradas(celular);
   await esperarMails(invitada.email);
 
   const [canje] = await query<{ used: boolean; invitedById: string | null }>(
@@ -87,7 +113,7 @@ test('el organizador comparte una invitación y el invitado la canjea', async ({
   );
   expect(canje).toEqual({ used: true, invitedById: conCodigos.id });
 
-  // El organizador la ve en su lista de ventas y el código ya no está para compartir.
+  // El organizador la ve en su lista de ventas.
   await orga.reload();
   await buscar(
     orga,
@@ -95,16 +121,27 @@ test('el organizador comparte una invitación y el invitado la canjea', async ({
     invitada.dni,
     invitada.fullName,
   );
-  await expect(orga.getByRole('cell', { name: code, exact: true })).toHaveCount(
-    0,
-  );
 
-  // El mismo link otra vez no da otra entrada.
+  // El mismo link otra vez no da otra entrada: pide el DNI del titular, y sólo
+  // con ese DNI muestra la entrada que ya tiene.
   const otra = await abrir('celular');
-  await otra.goto(link);
-  await expect(otra.getByText('Código ya utilizado')).toBeVisible({
-    timeout: 30_000,
-  });
+  await otra.goto(link!);
+  await expect(otra).toHaveURL(/\/ticket\?invite=/, { timeout: 30_000 });
+  await sinDesbordes(otra, 'la invitación ya usada');
+  const dni = otra.getByLabel('DNI del titular');
+  await dni.fill('40111222');
+  await otra.getByRole('button', { name: 'Ver mi ticket' }).click();
+  await expect(
+    otra.getByText('El DNI no coincide con el del titular de esta invitación.'),
+  ).toBeVisible();
+  await dni.fill(invitada.dni);
+  await otra.getByRole('button', { name: 'Ver mi ticket' }).click();
+  await verEntradas(otra);
+  const [entradas] = await query<{ n: string }>(
+    'SELECT count(*) AS n FROM "emittedTicket" WHERE "eventId" = $1 AND dni = $2',
+    [event.id, invitada.dni],
+  );
+  expect(entradas.n, 'una sola entrada por invitación').toBe('1');
 });
 
 test('una compra por el link de un organizador le queda atribuida', async ({
@@ -127,10 +164,7 @@ test('una compra por el link de un organizador le queda atribuida', async ({
     timeout: 30_000,
   });
   await page.getByRole('button', { name: 'Pagar (aprobado)' }).click();
-  await expect(page.getByText('¡Ya podés descargar tus tickets!')).toBeVisible({
-    timeout: 30_000,
-  });
-  const groupId = page.url().match(/\/tickets\/([0-9a-f-]{36})/)![1];
+  const groupId = await verEntradas(page);
 
   const [group] = await query<{
     status: string;
