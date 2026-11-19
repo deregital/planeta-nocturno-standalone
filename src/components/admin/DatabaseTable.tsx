@@ -33,7 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatDateOnly, tryDateOnlyToLocalDate } from '@/lib/date-only';
+import {
+  BIRTH_MONTH_OPTIONS,
+  formatDateOnly,
+  tryDateOnlyToLocalDate,
+} from '@/lib/date-only';
 import { genderTranslation } from '@/lib/translations';
 import { daysUntilBirthday } from '@/lib/utils';
 import { type EmittedBuyerTable } from '@/server/schemas/emitted-tickets';
@@ -431,22 +435,6 @@ export const emittedBuyerColumns: StrictColumnDef<EmittedBuyerTableWithId>[] = [
   },
 ];
 
-const months = [
-  'No seleccionado',
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
-
 interface TicketsTableProps {
   columns: StrictColumnDef<EmittedBuyerTableWithId, unknown>[];
   data: (EmittedBuyerTable & { buyerCode: string })[];
@@ -543,7 +531,7 @@ export function DatabaseTable({
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Mes de nacimiento</SelectLabel>
-                  {months.map((m, i) => (
+                  {BIRTH_MONTH_OPTIONS.map((m, i) => (
                     <SelectItem key={i} value={String(i)}>
                       {m}
                     </SelectItem>
@@ -581,6 +569,7 @@ export function DatabaseTable({
         }}
         exportFileName={'Base de Datos'}
         requirePasswordForExport={true}
+        exportPermission='exports:database'
       />
     </div>
   );

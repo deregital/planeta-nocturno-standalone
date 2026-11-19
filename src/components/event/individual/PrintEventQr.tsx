@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Printer, QrCode } from 'lucide-react';
+import { Check, Copy, Loader2, Printer, QrCode } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -34,6 +34,7 @@ export function PrintEventQr({
   const [printing, setPrinting] = useState(false);
   const [loadingQr, setLoadingQr] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!open || !url) {
@@ -65,6 +66,28 @@ export function PrintEventQr({
       cancelled = true;
     };
   }, [open, url]);
+
+  async function handleCopy() {
+    if (!qrDataUrl) return;
+    if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+      toast.error('Tu navegador no permite copiar imágenes');
+      return;
+    }
+    try {
+      // A ClipboardItem se le pasa la promesa (no el blob ya resuelto) para
+      // que Safari no pierda el gesto del usuario mientras se arma la imagen.
+      const blob = fetch(qrDataUrl).then((r) => r.blob());
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+      setCopied(true);
+      toast.success('QR copiado');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error(e);
+      toast.error('No se pudo copiar el QR');
+    }
+  }
 
   async function handlePrint() {
     if (!url) {
@@ -106,7 +129,10 @@ export function PrintEventQr({
           <QrCode className='size-5' />
         </Button>
       </DialogTrigger>
-      <DialogContent className='sm:max-w-md'>
+      <DialogContent
+        className='sm:max-w-md'
+        overlayClassName='bg-black/55 backdrop-blur-3xl'
+      >
         <DialogHeader>
           <DialogTitle>{eventName}</DialogTitle>
         </DialogHeader>
@@ -128,12 +154,10 @@ export function PrintEventQr({
             {url}
           </p>
         </div>
-        <DialogFooter className='gap-2'>
-          <Button type='button' variant='ghost' onClick={() => setOpen(false)}>
-            Cerrar
-          </Button>
+        <DialogFooter className='flex-wrap gap-2'>
           <Button
             type='button'
+            variant='ghost'
             disabled={printing || !url}
             onClick={() => void handlePrint()}
           >
@@ -143,6 +167,18 @@ export function PrintEventQr({
               <Printer className='size-4' />
             )}
             Imprimir
+          </Button>
+          <Button
+            type='button'
+            disabled={!qrDataUrl}
+            onClick={() => void handleCopy()}
+          >
+            {copied ? (
+              <Check className='size-4' />
+            ) : (
+              <Copy className='size-4' />
+            )}
+            Copiar
           </Button>
         </DialogFooter>
       </DialogContent>

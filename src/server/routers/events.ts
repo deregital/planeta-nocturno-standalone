@@ -50,7 +50,9 @@ import {
   isEventUpcoming,
   toNullableIsoString,
 } from '@/lib/event-dates';
+import { type FolderScope, getFolderScope } from '@/lib/rbac/permissions';
 import { genderTranslation } from '@/lib/translations';
+import { buildImportRows, IMPORT_HEADERS } from '@/lib/userImportFormat';
 import {
   createEventSchema,
   eventQuestionsSchema,
@@ -65,6 +67,7 @@ import {
   ticketTypeSchema,
 } from '@/server/schemas/ticket-type';
 import { logger } from '@/server/observability/logger';
+import { getScannableEventIds } from '@/server/rbac/event-access';
 import { countIssuedTicketsByEventId } from '@/server/services/issuedTicketCounts';
 import { sendMail } from '@/server/services/mail';
 import { releaseExpiredHolds } from '@/server/services/ticketGroupHolds';
@@ -136,9 +139,43 @@ async function withIssuedTicketCounts<
   };
 }
 
+function endingTime(event: { endingDate: string | null }) {
+  if (event.endingDate == null) return Number.POSITIVE_INFINITY;
+  const time = new Date(event.endingDate).getTime();
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+}
+
+/**
+ * Aplica qué carpetas ve el usuario a un grupo del listado (próximos o
+ * pasados). Sin permiso de carpetas, sus eventos se listan sueltos.
+ */
+function applyFolderScope<
+  TEvent extends { endingDate: string | null },
+  TFolder extends { events: TEvent[] },
+>(
+  group: { folders: TFolder[]; withoutFolders: TEvent[] },
+  scope: FolderScope,
+): { folders: TFolder[]; withoutFolders: TEvent[] } {
+  if (scope === 'all') return group;
+  if (scope === 'assigned') {
+    return {
+      folders: group.folders.filter((folder) => folder.events.length > 0),
+      withoutFolders: group.withoutFolders,
+    };
+  }
+  return {
+    folders: [],
+    withoutFolders: [
+      ...group.withoutFolders,
+      ...group.folders.flatMap((folder) => folder.events),
+    ].sort((a, b) => endingTime(b) - endingTime(a)),
+  };
+}
+
 function ticketeraVisibleEventsWhere() {
   return and(
     eq(eventSchema.isActive, true),
+    eq(eventSchema.isBlocked, false),
     eq(eventSchema.isDeleted, false),
     or(
       isNull(eventSchema.endingDate),
@@ -153,6 +190,31 @@ const ticketeraEventsOrderBy = [
 ];
 
 /** Libera las reservas sin pagar vencidas para que el cupo vuelva a estar disponible. */
+function findPublicEventBySlug(db: Db, slug: string) {
+  return db.query.event.findFirst({
+    where: and(eq(eventSchema.slug, slug), eq(eventSchema.isDeleted, false)),
+    columns: { emailNotification: false },
+    with: {
+      ticketTypes: {
+        orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
+      },
+      location: {
+        columns: {
+          id: true,
+          address: true,
+          name: true,
+        },
+      },
+      eventCategory: {
+        columns: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+}
+
 function deleteExpiredBookedTicketGroups(db: Db, eventSlug: string) {
   const eventIds = db
     .select({ id: eventSchema.id })
@@ -215,19 +277,25 @@ async function assertReorderMyList(
   db: Db,
   userId: string,
   canReadAll: boolean,
+  folderScope: FolderScope,
   input: ReorderMyListInput,
 ) {
   const isRoot = input.containerKey === EVENT_LIST_ROOT_KEY;
   if (!isRoot && !z.uuid().safeParse(input.containerKey).success) {
     throw invalidListOrder();
   }
+  // Sin permiso de carpetas no hay carpetas en el listado: todo va en la raíz.
+  const seesFolders = folderScope !== 'none';
+  if (!isRoot && !seesFolders) throw forbidden();
 
   const seen = new Set<string>();
   for (const item of input.items) {
     const key = `${item.kind}:${item.id}`;
     if (seen.has(key)) throw invalidListOrder();
     seen.add(key);
-    if (item.kind === 'folder' && !isRoot) throw invalidListOrder();
+    if (item.kind === 'folder' && (!isRoot || !seesFolders)) {
+      throw invalidListOrder();
+    }
   }
 
   const eventIds = input.items
@@ -273,7 +341,7 @@ async function assertReorderMyList(
         : isEventUpcoming(found.endingDate);
     if (found.isDeleted || !inScope) throw invalidListOrder();
     const inContainer = isRoot
-      ? found.folderId === null
+      ? found.folderId === null || !seesFolders
       : found.folderId === input.containerKey;
     if (!inContainer) throw invalidListOrder();
   }
@@ -288,8 +356,6 @@ async function assertReorderMyList(
 }
 
 export const eventsRouter = router({
-  // Incluye borradores y cifras de venta: era público y cualquiera listaba
-  // todos los eventos de la plataforma.
   getAll: permissionProcedure('events:read_all').query(async ({ ctx }) => {
     const eventsWithFolders = await ctx.db.query.eventFolder.findMany({
       with: {
@@ -367,21 +433,16 @@ export const eventsRouter = router({
       ),
     };
 
-    return withUserListOrder(ctx.db, ctx.session?.user?.id, {
-      pastEvents,
-      upcomingEvents,
+    const folderScope = getFolderScope(ctx.access.permissions);
+    return withUserListOrder(ctx.db, ctx.session.user.id, {
+      pastEvents: applyFolderScope(pastEvents, folderScope),
+      upcomingEvents: applyFolderScope(upcomingEvents, folderScope),
     });
   }),
   getAllForTicketing: permissionProcedure('scanner:use').query(
     async ({ ctx }) => {
-      const authorizedEventIds = !ctx.can('events:read_all')
-        ? (
-            await ctx.db.query.eventXUser.findMany({
-              where: eq(eventXUser.b, ctx.session.user.id),
-              columns: { a: true },
-            })
-          ).map((r) => r.a)
-        : null;
+      // Asignados como personal o como organizador (todos con read_all).
+      const authorizedEventIds = await getScannableEventIds(ctx.db, ctx.access);
 
       return ctx.db.query.event.findMany({
         where: and(
@@ -528,9 +589,10 @@ export const eventsRouter = router({
         ),
       };
 
+      const folderScope = getFolderScope(ctx.access.permissions);
       return withUserListOrder(ctx.db, ctx.session.user.id, {
-        pastEvents,
-        upcomingEvents,
+        pastEvents: applyFolderScope(pastEvents, folderScope),
+        upcomingEvents: applyFolderScope(upcomingEvents, folderScope),
       });
     }),
   getActive: publicProcedure.query(async ({ ctx }) => {
@@ -602,6 +664,7 @@ export const eventsRouter = router({
         ctx.db,
         ctx.session.user.id,
         ctx.can('events:read_all'),
+        getFolderScope(ctx.access.permissions),
         input,
       );
 
@@ -697,47 +760,21 @@ export const eventsRouter = router({
     .input(z.string())
     .query(async ({ ctx, input }) => {
       const [event] = await Promise.all([
-        ctx.db.query.event.findFirst({
-          where: and(
-            eq(eventSchema.slug, input),
-            eq(eventSchema.isDeleted, false),
-          ),
-          columns: { emailNotification: false },
-          with: {
-            ticketTypes: {
-              orderBy: [asc(ticketType.sortOrder), asc(ticketType.name)],
-            },
-            location: {
-              columns: {
-                id: true,
-                address: true,
-                name: true,
-              },
-            },
-            eventCategory: {
-              columns: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        }),
+        findPublicEventBySlug(ctx.db, input),
         deleteExpiredBookedTicketGroups(ctx.db, input),
       ]);
 
-      if (!event) return null;
-
-      // Un evento desactivado no se ve ni se vende con el link directo (los de
-      // invitación nunca se activan y se canjean por link). El staff lo sigue
-      // viendo: vista previa, y la puerta escanea aunque se haya desactivado la venta.
-      if (!event.isActive && event.inviteCondition !== 'INVITATION') {
-        const access = await ctx.getAccess();
-        if (!access || access.permissions.length === 0) {
-          return null;
-        }
-      }
+      // Bloqueado: no se entra a la página del evento, ni con el link ni con
+      // sesión de staff.
+      if (!event || event.isBlocked) return null;
 
       return event;
+    }),
+  /** El evento para el scanner: también si está bloqueado (la puerta sigue). */
+  getForScanBySlug: permissionProcedure('scanner:use')
+    .input(z.string())
+    .query(async ({ ctx, input }) => {
+      return (await findPublicEventBySlug(ctx.db, input)) ?? null;
     }),
   getBySlug: anyPermissionProcedure([
     'events:read',
@@ -880,19 +917,21 @@ export const eventsRouter = router({
         };
       }
 
-      // Si no está asociado al evento, verificar si está asociado a alguno de los ticketTypes
+      // Si no está asociado al evento, verificar si está asociado a alguno de los ticketTypes.
+      // La columna B vive en _TICKET_TYPE_X_ORGANIZERS, no en ticketType.
       if (input.ticketTypeIds && input.ticketTypeIds.length > 0) {
-        const ticketTypeWithOrganizer = await ctx.db.query.ticketType.findFirst(
-          {
-            where: and(
+        const [ticketTypeWithOrganizer] = await ctx.db
+          .select({ id: ticketType.id })
+          .from(ticketTypeXOrganizers)
+          .innerJoin(ticketType, eq(ticketType.id, ticketTypeXOrganizers.a))
+          .where(
+            and(
+              eq(ticketType.eventId, input.eventId),
               inArray(ticketType.id, input.ticketTypeIds),
-              inArray(ticketTypeXOrganizers.b, [userByCode.id]),
+              eq(ticketTypeXOrganizers.b, userByCode.id),
             ),
-            columns: {
-              id: true,
-            },
-          },
-        );
+          )
+          .limit(1);
 
         if (ticketTypeWithOrganizer) {
           // Si está asociado a un ticketType, retornar válido pero sin descuento (ya que no está en el evento)
@@ -2376,11 +2415,50 @@ export const eventsRouter = router({
 
       return { eventUpdated, ticketTypesUpdated };
     }),
-  duplicate: permissionProcedure('events:duplicate')
+  getDuplicateSlugSuggestion: permissionProcedure('events:duplicate')
     .input(eventSchemaZod.shape.id)
-    .mutation(async ({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       const event = await ctx.db.query.event.findFirst({
         where: eq(eventSchema.id, input),
+        columns: { name: true },
+      });
+      if (!event) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Evento no encontrado',
+        });
+      }
+      return getUniqueEventSlug(ctx.db, event.name);
+    }),
+  duplicate: permissionProcedure('events:duplicate')
+    .input(
+      z.object({
+        id: eventSchemaZod.shape.id,
+        slug: z
+          .string()
+          .trim()
+          .min(1, 'El link no puede estar vacío')
+          .max(100, 'El link es demasiado largo')
+          .regex(
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+            'El link sólo puede tener letras minúsculas, números y guiones',
+          ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const slugTaken = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.slug, input.slug),
+        columns: { id: true },
+      });
+      if (slugTaken) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Ya hay un evento con ese link. Elegí otro.',
+        });
+      }
+
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input.id),
         columns: {
           id: false,
         },
@@ -2398,7 +2476,7 @@ export const eventsRouter = router({
 
       if (!event) throw 'Evento no encontrado';
 
-      const eventSlug = await getUniqueEventSlug(ctx.db, event.name);
+      const eventSlug = input.slug;
 
       const newEvent = await ctx.db.transaction(async (tx) => {
         try {
@@ -2652,6 +2730,46 @@ export const eventsRouter = router({
       const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       return new Uint8Array(out as ArrayBuffer);
     }),
+  /** Asistentes del evento en el formato de la importación de organizadores. */
+  exportForImport: permissionProcedure('events:export')
+    .input(z.string())
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.query.event.findFirst({
+        where: eq(eventSchema.id, input),
+        columns: { id: true },
+      });
+
+      if (!event) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Evento no encontrado',
+        });
+      }
+
+      const tickets = await ctx.db.query.emittedTicket.findMany({
+        where: eq(emittedTicket.eventId, input),
+        columns: {
+          fullName: true,
+          mail: true,
+          dni: true,
+          gender: true,
+          birthDate: true,
+          phoneNumber: true,
+          instagram: true,
+        },
+        orderBy: asc(emittedTicket.createdAt),
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet([
+        IMPORT_HEADERS,
+        ...buildImportRows(tickets),
+      ]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Usuarios');
+
+      const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      return new Uint8Array(out as ArrayBuffer);
+    }),
   generatePresentismoGroupedTicketTypePDF: permissionProcedure('events:export')
     .input(z.object({ eventId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -2801,6 +2919,22 @@ export const eventsRouter = router({
         .update(eventSchema)
         .set({ isActive })
         .where(eq(eventSchema.id, id));
+    }),
+  /**
+   * Bloquear: nadie del público entra al evento, ni por link ni por
+   * invitación. Es independiente de isActive (visible en la ticketera).
+   */
+  toggleBlocked: permissionProcedure('events:publish')
+    .input(z.object({ id: z.string(), isBlocked: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(eventSchema)
+        .set({ isBlocked: input.isBlocked })
+        .where(eq(eventSchema.id, input.id));
+      logger.info('Evento bloqueado/desbloqueado', {
+        eventId: input.id,
+        isBlocked: input.isBlocked,
+      });
     }),
   delete: permissionProcedure('events:delete')
     .input(eventSchemaZod.shape.id)

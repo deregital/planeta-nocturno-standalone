@@ -1,8 +1,9 @@
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import z from 'zod';
 
-import { event, eventFolder } from '@/drizzle/schema';
+import { event, eventFolder, eventXUser } from '@/drizzle/schema';
+import { getFolderScope } from '@/lib/rbac/permissions';
 import { eventSchema } from '@/server/schemas/event';
 import {
   createEventFolderSchema,
@@ -23,7 +24,40 @@ export const eventFolderRouter = router({
     'events:create',
     'events:update',
   ]).query(async ({ ctx }) => {
-    return ctx.db.query.eventFolder.findMany();
+    const scope = getFolderScope(ctx.access.permissions);
+    if (scope === 'all') return ctx.db.query.eventFolder.findMany();
+    if (scope === 'none') return [];
+
+    // Solo las carpetas que contienen eventos que el usuario ve
+    const visibleEvents = await ctx.db
+      .select({ folderId: event.folderId })
+      .from(event)
+      .where(
+        and(
+          eq(event.isDeleted, false),
+          isNotNull(event.folderId),
+          ctx.can('events:read_all')
+            ? undefined
+            : inArray(
+                event.id,
+                ctx.db
+                  .select({ id: eventXUser.a })
+                  .from(eventXUser)
+                  .where(eq(eventXUser.b, ctx.session.user.id)),
+              ),
+        ),
+      );
+    const folderIds = [
+      ...new Set(
+        visibleEvents
+          .map((row) => row.folderId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    if (folderIds.length === 0) return [];
+    return ctx.db.query.eventFolder.findMany({
+      where: inArray(eventFolder.id, folderIds),
+    });
   }),
   create: foldersProcedure
     .input(createEventFolderSchema)

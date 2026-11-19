@@ -1,10 +1,11 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import '@/app/globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { DM_Sans } from 'next/font/google';
 import { headers } from 'next/headers';
 
+import MobileOverflowWatcher from '@/components/dev/MobileOverflowWatcher';
 import { InstanceProvider } from '@/components/instance/InstanceProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -23,6 +24,14 @@ const dmSans = DM_Sans({
   variable: '--font-dm-sans',
   subsets: ['latin'],
 });
+
+// resizes-content: en Android el teclado achica la pantalla (y 100dvh), así un
+// modal con scroll interno se puede recorrer en vez de quedar tapado.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  interactiveWidget: 'resizes-content',
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = new Headers(await headers());
@@ -95,6 +104,7 @@ export default async function RootLayout({
       {...analyticsAttributes}
     >
       <body className={`${dmSans.className} antialiased`}>
+        {process.env.NODE_ENV === 'development' && <MobileOverflowWatcher />}
         {instance ? (
           <InstanceProvider
             instance={{

@@ -16,7 +16,9 @@ import { SurveyAnswersTable } from '@/components/event/individual/SurveyAnswersT
 import { TicketGroupsTable } from '@/components/event/individual/TicketGroupsTable';
 import { TicketRaffle } from '@/components/event/individual/TicketRaffle';
 import { TicketTableWithTabs } from '@/components/event/individual/TicketTableWithTabs';
+import { TicketTrashModal } from '@/components/event/individual/TicketTrashModal';
 import { ToggleActivateButton } from '@/components/event/individual/ToggleActivateButton';
+import { ToggleBlockedButton } from '@/components/event/individual/ToggleBlockedButton';
 import { sumInvitationTicketAmounts } from '@/lib/chief-organizer-event';
 import {
   getTotalTicketsWithoutOrganizer,
@@ -24,7 +26,11 @@ import {
 } from '@/lib/event-organizers';
 import { hasPermission, type TenantPermission } from '@/lib/rbac/permissions';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
-import { canAccessEvent, requirePagePermission } from '@/server/rbac/guards';
+import {
+  canAccessEvent,
+  canScanEvent,
+  requirePagePermission,
+} from '@/server/rbac/guards';
 import { trpc } from '@/server/trpc/server';
 
 async function EventDetails({ slug }: { slug: string }) {
@@ -73,6 +79,8 @@ async function EventDetails({ slug }: { slug: string }) {
 
   const { instance } = await getCurrentRequestContext();
   const origin = instance.publicUrl;
+  // Mismo criterio que la página de escaneo: personal u organizador asignado.
+  const showScan = await canScanEvent(access, event.id);
 
   return (
     <div className='flex flex-col items-center mt-4 relative'>
@@ -97,7 +105,7 @@ async function EventDetails({ slug }: { slug: string }) {
                 <DeleteEventModal event={event} />
               </div>
             )}
-            {can('scanner:use') && (
+            {showScan && (
               <div className='md:order-2 order-1'>
                 <ScanTicket eventId={event.id} eventSlug={event.slug} />
               </div>
@@ -140,6 +148,16 @@ async function EventDetails({ slug }: { slug: string }) {
             {can('events:update') && event.inviteCondition === 'INVITATION' && (
               <div className='md:order-7 order-6'>
                 <OrganizerDistribution event={event} />
+              </div>
+            )}
+            {can('events:publish') && (
+              <div className='md:order-8 order-8'>
+                <ToggleBlockedButton event={event} />
+              </div>
+            )}
+            {can('tickets:trash') && (
+              <div className='md:order-9 order-9'>
+                <TicketTrashModal eventId={event.id} />
               </div>
             )}
           </div>

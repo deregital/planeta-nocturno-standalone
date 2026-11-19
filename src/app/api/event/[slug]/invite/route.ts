@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { trpc } from '@/server/trpc/server';
+import { INVITATION_COOKIE } from '@/server/utils/constants';
 
 /**
  * Los links llegan copiados de WhatsApp o Instagram: con espacios, un punto
@@ -61,11 +62,21 @@ export async function GET(
       throw error;
     });
 
+  if (redeemed.status === 'event_blocked') {
+    // Mismo resultado que abrir el evento sin código: no se muestra.
+    redirect(`/event/${slug}`);
+  }
   if (redeemed.status === 'invalid_code') {
     redirect(`/event/${slug}?error=invalid_code`);
   }
+  if (redeemed.status === 'rate_limited') {
+    redirect(`/event/${slug}?error=too_many_attempts`);
+  }
   if (redeemed.status === 'already_used') {
-    redirect(`/event/${slug}?error=code_already_used`);
+    // El ticket ya fue emitido: se muestra recién después de confirmar el DNI.
+    redirect(
+      `/event/${slug}/ticket?invite=${encodeURIComponent(invitationCode)}`,
+    );
   }
   if (redeemed.status === 'invalid_configuration') {
     redirect(`/event/${slug}?error=invalid_configuration`);
@@ -75,6 +86,8 @@ export async function GET(
   }
 
   cookiesStore.set('carrito', redeemed.ticketGroupId);
+  // Al darle a Adquirir se reclama el código para esta reserva.
+  cookiesStore.set(INVITATION_COOKIE, `${redeemed.ticketGroupId}:${code}`);
 
   redirect('/checkout');
 }

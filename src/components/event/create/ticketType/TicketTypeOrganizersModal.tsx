@@ -294,7 +294,7 @@ export default function TicketTypeOrganizersModal({
           <UserPen />
         </Button>
       </DialogTrigger>
-      <DialogContent className='max-w-xl! md:max-w-3xl! w-full'>
+      <DialogContent className='max-w-xl! md:max-w-3xl!'>
         <DialogHeader>
           <DialogTitle>Organizadores del ticket</DialogTitle>
           <DialogDescription>

@@ -14,6 +14,7 @@ import {
   serial,
   primaryKey,
   pgEnum,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -275,6 +276,23 @@ export const feature = pgTable(
   ],
 );
 
+export const rateLimitBucket = pgTable(
+  'rateLimitBucket',
+  {
+    key: text().primaryKey().notNull(),
+    count: integer().default(0).notNull(),
+    windowStart: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index('rateLimitBucket_windowStart_idx').using(
+      'btree',
+      table.windowStart.asc().nullsLast().op('timestamptz_ops'),
+    ),
+  ],
+);
+
 export const loginAttempt = pgTable('loginAttempt', {
   username: text().primaryKey().notNull(),
   failedCount: integer().default(0).notNull(),
@@ -305,6 +323,7 @@ export const event = pgTable(
     minAge: integer(),
     isDeleted: boolean().default(false).notNull(),
     isActive: boolean().default(false).notNull(),
+    isBlocked: boolean().default(false).notNull(),
     locationId: uuid(),
     categoryId: uuid(),
     createdAt: timestamp({ withTimezone: true, mode: 'string' })
@@ -813,6 +832,7 @@ export const ticketXorganizer = pgTable(
       .notNull(),
     shortId: integer().notNull(),
     shared: boolean().default(false).notNull(),
+    sharedWith: text(),
   },
   (table) => [
     index('ticketXOrganizer_ticketGroupId_idx').using(
@@ -932,5 +952,168 @@ export const account = pgTable(
       columns: [table.provider, table.providerAccountId],
       name: 'account_pkey',
     }),
+  ],
+);
+
+/** Modo del escáner por evento. Sin fila, el evento escanea como siempre. */
+export const eventScannerConfig = pgTable(
+  'eventScannerConfig',
+  {
+    eventId: uuid().primaryKey().notNull(),
+    mode: text().default('off').notNull(),
+    maxStaleSeconds: integer().default(60).notNull(),
+    updatedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedByUserId: uuid(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'eventScannerConfig_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+/** Escaneos decididos en un celular que llegaron al servidor (idempotencia y auditoría). */
+export const scanReceipt = pgTable(
+  'scanReceipt',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    clientScanId: uuid().notNull(),
+    eventId: uuid(),
+    emittedTicketId: uuid(),
+    userId: uuid(),
+    deviceId: text().notNull(),
+    outcome: text().notNull(),
+    localStatus: text().notNull(),
+    clientScannedAt: timestamp({ withTimezone: true, mode: 'string' }),
+    receivedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    registeredAt: timestamp({ withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    uniqueIndex('scanReceipt_clientScanId_key').using(
+      'btree',
+      table.clientScanId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('scanReceipt_eventId_receivedAt_idx').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+      table.receivedAt.asc().nullsLast().op('timestamptz_ops'),
+    ),
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'scanReceipt_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+/** Escaneo de una entrada eliminada, guardado para restaurarla. */
+export type DeletedTicketScanSnapshot = {
+  id: string;
+  scannedAt: string;
+  scannedByUserId: string | null;
+};
+
+/** Código de invitación de una entrada eliminada, guardado para restaurarla. */
+export type DeletedTicketInvitationSnapshot = {
+  organizerId: string;
+  ticketGroupId: string | null;
+  code: string;
+  shortId: number;
+  createdAt: string;
+  shared: boolean;
+  sharedWith: string | null;
+  /** Código nuevo que recibió el organizador al eliminarla. */
+  replacementCode?: string | null;
+};
+
+/**
+ * Papelera de entradas: una entrada eliminada se mueve acá con el motivo. Ya
+ * no se escanea ni cuenta en tablas, estadísticas ni cupo; el escáner la busca
+ * acá para mostrar el motivo. Restaurarla la devuelve con el mismo id (QR).
+ */
+export const deletedEmittedTicket = pgTable(
+  'deletedEmittedTicket',
+  {
+    id: uuid().primaryKey().notNull(),
+    fullName: text().notNull(),
+    dni: text().notNull(),
+    mail: text().notNull(),
+    gender: text().notNull(),
+    phoneNumber: text().notNull(),
+    instagram: text(),
+    birthDate: text().notNull(),
+    slug: text().notNull(),
+    paidOnLocation: boolean().default(false).notNull(),
+    scanned: boolean().default(false).notNull(),
+    scannedAt: timestamp({ withTimezone: true, mode: 'string' }),
+    scannedByUserId: uuid(),
+    ticketTypeId: uuid().notNull(),
+    ticketGroupId: uuid().notNull(),
+    eventId: uuid().notNull(),
+    shortId: integer().notNull(),
+    createdAt: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+    scans: jsonb()
+      .$type<DeletedTicketScanSnapshot[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    invitation: jsonb().$type<DeletedTicketInvitationSnapshot | null>(),
+    deletionReason: text().notNull(),
+    deletedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    deletedByUserId: uuid(),
+  },
+  (table) => [
+    index('deletedEmittedTicket_eventId_deletedAt_idx').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+      table.deletedAt.desc().nullsFirst().op('timestamptz_ops'),
+    ),
+    index('deletedEmittedTicket_ticketGroupId_idx').using(
+      'btree',
+      table.ticketGroupId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('deletedEmittedTicket_ticketTypeId_idx').using(
+      'btree',
+      table.ticketTypeId.asc().nullsLast().op('uuid_ops'),
+    ),
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'deletedEmittedTicket_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.ticketGroupId],
+      foreignColumns: [ticketGroup.id],
+      name: 'deletedEmittedTicket_ticketGroupId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.ticketTypeId],
+      foreignColumns: [ticketType.id],
+      name: 'deletedEmittedTicket_ticketTypeId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.deletedByUserId],
+      foreignColumns: [user.id],
+      name: 'deletedEmittedTicket_deletedByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
   ],
 );

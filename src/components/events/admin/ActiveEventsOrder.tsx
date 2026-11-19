@@ -84,7 +84,7 @@ export default function ActiveEventsOrder() {
           >
             <Card
               variant='accent'
-              className='flex flex-row items-center rounded-lg py-2 h-20 sm:h-auto sm:min-h-14'
+              className='flex flex-row items-center rounded-lg py-2 min-h-20 sm:h-auto sm:min-h-14'
             >
               <CardContent className='flex w-full min-w-0 items-center gap-3 px-4 text-on-accent'>
                 <GripVertical className='size-4 shrink-0' />
@@ -94,7 +94,9 @@ export default function ActiveEventsOrder() {
                 <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4'>
                   <div className='flex min-w-0 items-center gap-2'>
                     <BadgeCheck className='size-4 shrink-0 text-on-accent' />
-                    <CardTitle className='truncate'>{event.name}</CardTitle>
+                    <CardTitle className='line-clamp-2 min-w-0 flex-1 leading-snug'>
+                      {event.name}
+                    </CardTitle>
                   </div>
                   <p className='truncate text-sm'>
                     {event.startingDate

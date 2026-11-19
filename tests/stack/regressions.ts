@@ -374,19 +374,81 @@ async function main() {
   );
 
   await check(
-    'H10',
-    'un evento desactivado no se ve ni se vende con el link',
+    'BLOQUEO',
+    'oculto se entra por link; bloqueado no entra nadie del público',
     async () => {
-      const draft = event('borrador');
+      // Oculto (isActive = false) sólo sale del listado.
       assert(
-        (await anon.events.getPublicBySlug(draft.slug)) === null,
-        'se ve sin sesión',
+        (await anon.events.getPublicBySlug(event('borrador').slug)) !== null,
+        'un evento oculto no se ve por link',
       );
-      assert(
-        (await admin.events.getPublicBySlug(draft.slug)) !== null,
-        'el staff no lo ve',
-      );
-      await rejects(reserve('borrador', 'General'), 'BAD_REQUEST');
+
+      const e = event('fiesta-paga');
+      const pending = await reserve('fiesta-paga', 'General');
+      await raw.query('UPDATE event SET "isBlocked" = true WHERE id = $1', [
+        e.id,
+      ]);
+      try {
+        assert(
+          (await anon.events.getPublicBySlug(e.slug)) === null,
+          'bloqueado se ve sin sesión',
+        );
+        assert(
+          (await admin.events.getPublicBySlug(e.slug)) === null,
+          'bloqueado se ve con sesión de staff',
+        );
+        assert(
+          (await puerta.events.getForScanBySlug(e.slug)) !== null,
+          'el scanner no encuentra el evento bloqueado',
+        );
+        assert(
+          !(await anon.events.getActive()).some((x) => x.id === e.id),
+          'bloqueado sigue en el listado',
+        );
+        await rejects(reserve('fiesta-paga', 'General'), 'BAD_REQUEST');
+        // La reserva hecha antes de bloquear no se completa.
+        await rejects(
+          anon.emittedTickets.createMany([
+            buyer(type('fiesta-paga', 'General').id, pending, e.id),
+          ]),
+          'BAD_REQUEST',
+        );
+        await rejects(
+          anon.mercadoPago.createPreference({ ticketGroupId: pending }),
+          'BAD_REQUEST',
+        );
+
+        const inv = event('egresados');
+        const {
+          rows: [{ code }],
+        } = await raw.query<{ code: string }>(
+          `SELECT code FROM "ticketXOrganizer" WHERE "eventId" = $1 AND "ticketId" IS NULL ORDER BY "shortId" LIMIT 1`,
+          [inv.id],
+        );
+        await raw.query('UPDATE event SET "isBlocked" = true WHERE id = $1', [
+          inv.id,
+        ]);
+        try {
+          const redeemed = await anon.ticketGroup.redeemInvitation({
+            eventId: inv.id,
+            code,
+          });
+          assert(
+            redeemed.status === 'event_blocked',
+            `la invitación de un evento bloqueado dio ${redeemed.status}`,
+          );
+        } finally {
+          await raw.query(
+            'UPDATE event SET "isBlocked" = false WHERE id = $1',
+            [inv.id],
+          );
+        }
+      } finally {
+        await raw.query('UPDATE event SET "isBlocked" = false WHERE id = $1', [
+          e.id,
+        ]);
+        await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [pending]);
+      }
     },
   );
 
@@ -405,7 +467,7 @@ async function main() {
 
   await check(
     'H03',
-    'otro navegador con el mismo link toma la reserva en vez de compartirla',
+    'dos navegadores con el mismo link tienen su reserva y gana el primero que envía sus datos',
     async () => {
       const e = event('egresados');
       const {
@@ -437,24 +499,47 @@ async function main() {
         'B compartió la reserva de A',
       );
       assert(
-        !(await groupExists(a.ticketGroupId)),
-        'la reserva de A sigue viva',
+        await groupExists(a.ticketGroupId),
+        'abrir el link en otro navegador le sacó la reserva a A',
       );
 
+      // A abrió primero y B después, pero A le da a Adquirir primero: gana A.
       const invitation = type('egresados', 'Invitación');
-      await rejects(
-        anon.emittedTickets.createMany([
-          buyer(invitation.id, a.ticketGroupId, e.id),
-        ]),
-        'NOT_FOUND',
-      );
-      const holder = buyer(invitation.id, b.ticketGroupId, e.id);
+      const claimA = await anon.ticketGroup.claimInvitation({
+        ticketGroupId: a.ticketGroupId,
+        code,
+      });
+      assert(claimA.status === 'ok', `reclamo de A: ${claimA.status}`);
+      const holder = buyer(invitation.id, a.ticketGroupId, e.id);
       await anon.emittedTickets.createMany([holder]);
+
+      const claimB = await anon.ticketGroup.claimInvitation({
+        ticketGroupId: b.ticketGroupId,
+        code,
+      });
+      assert(
+        claimB.status === 'already_used',
+        `reclamo de B después de A: ${claimB.status}`,
+      );
       await rejects(
         anon.emittedTickets.createMany([
           buyer(invitation.id, b.ticketGroupId, e.id),
         ]),
         'CONFLICT',
+      );
+      await rejects(
+        anon.emittedTickets.createMany([
+          buyer(invitation.id, a.ticketGroupId, e.id),
+        ]),
+        'CONFLICT',
+      );
+      const c = await anon.ticketGroup.redeemInvitation({
+        eventId: e.id,
+        code,
+      });
+      assert(
+        c.status === 'already_used',
+        `canje después de usado: ${c.status}`,
       );
       const same = await anon.emittedTickets.createMany([holder]);
       assert(

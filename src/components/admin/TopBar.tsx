@@ -1,7 +1,9 @@
 'use client';
 import { Loader2, LogOut } from 'lucide-react';
+import { type Route } from 'next';
 import { type Session } from 'next-auth';
 import { signOut } from 'next-auth/react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -24,7 +26,14 @@ import { usePermissions } from '@/components/rbac/PermissionsProvider';
 import { roleTranslation } from '@/lib/translations';
 import { trpc } from '@/server/trpc/client';
 
-export default function TopBar({ auth }: { auth: Session | null }) {
+export default function TopBar({
+  auth,
+  panelHref,
+}: {
+  auth: Session | null;
+  /** Fuera del backoffice: a dónde lleva "Ir al panel". */
+  panelHref?: Route | null;
+}) {
   const pathname = usePathname();
   // El TopBar vive en el layout y no se desmonta al navegar: sin cerrarlo a
   // mano el menú seguía abierto tapando la pantalla elegida.
@@ -62,7 +71,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
   };
 
   return (
-    <div className='w-full h-16 flex items-center justify-between px-8 bg-accent-dark'>
+    <div className='w-full h-16 flex items-center justify-between gap-4 px-8 bg-accent-dark'>
       <InstanceLogo size='sm' />
       {auth && (
         <>
@@ -83,13 +92,20 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                 {auth.user.fullName} ({roleLabel})
               </span>
             </div>
-            <Button
-              variant={'accent'}
-              loading={signingOut}
-              onClick={() => void handleSignOut()}
-            >
-              Cerrar Sesión
-            </Button>
+            <div className='flex flex-row gap-2 items-center'>
+              {panelHref && (
+                <Button asChild variant={'ghost'} className='text-brand'>
+                  <Link href={panelHref}>Ir al panel</Link>
+                </Button>
+              )}
+              <Button
+                variant={'accent'}
+                loading={signingOut}
+                onClick={() => void handleSignOut()}
+              >
+                Cerrar Sesión
+              </Button>
+            </div>
           </div>
           <div className='flex md:hidden'>
             {auth ? (
@@ -104,9 +120,11 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                   side='top'
                   className='w-full bg-accent-dark text-on-accent border-0 gap-0'
                 >
-                  <div className='flex items-center pr-12'>
+                  {/* El nombre va en su propia línea: al lado del logo quedaba
+                      apretado, cortado contra el borde y debajo de la X. */}
+                  <div className='flex flex-wrap items-center pr-12'>
                     <SheetTitle asChild>
-                      <div className='p-4 font-bold text-white'>
+                      <div className='min-w-0 p-4 font-bold text-white'>
                         <InstanceLogo size='sm' />
                       </div>
                     </SheetTitle>
@@ -121,7 +139,7 @@ export default function TopBar({ auth }: { auth: Session | null }) {
                         <GoogleDrive />
                       </a>
                     )}
-                    <span className='text-brand'>
+                    <span className='w-full px-4 pb-2 break-words text-brand'>
                       {auth.user.fullName} ({roleLabel})
                     </span>
                   </div>

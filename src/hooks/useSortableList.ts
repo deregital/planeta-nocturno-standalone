@@ -25,6 +25,9 @@ export type SortableHandleProps = {
   onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
   onDragEnd: (event: DragEvent<HTMLButtonElement>) => void;
   onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
+  onPointerCancel: (event: PointerEvent<HTMLButtonElement>) => void;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
@@ -72,6 +75,13 @@ export function useSortableList<T extends SortableItem>({
   const reorderFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const touchSessionRef = useRef<{
+    itemId: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
 
   function cancelFlipAnimations() {
     for (const anim of flipAnimByIdRef.current.values()) {
@@ -189,6 +199,55 @@ export function useSortableList<T extends SortableItem>({
     previousTops.current = currentTops;
   }, [items]);
 
+  function reorderOverElement(overElement: Element, clientY: number) {
+    const active = draggedIdRef.current;
+    if (!active) return;
+
+    let overId: string | null = null;
+    let overEl: HTMLElement | null = null;
+    for (const [id, element] of itemRefs.current.entries()) {
+      if (id === active) continue;
+      if (element !== overElement && !element.contains(overElement)) continue;
+      if (!overEl || overEl.contains(element)) {
+        overId = id;
+        overEl = element;
+      }
+    }
+    if (!overId || !overEl) return;
+
+    setHoveredId(overId);
+
+    const fromIndex = items.findIndex((entry) => entry.id === active);
+    const toIndex = items.findIndex((entry) => entry.id === overId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    const rect = overEl.getBoundingClientRect();
+    const middleY = rect.top + rect.height / 2;
+    const isMovingDown = fromIndex < toIndex;
+    if (isMovingDown && clientY < middleY) return;
+    if (!isMovingDown && clientY > middleY) return;
+
+    const moveKey = `${fromIndex}->${toIndex}`;
+    if (lastMoveRef.current === moveKey) return;
+
+    lastMoveRef.current = moveKey;
+    scheduleOrInvokeReorder(active, overId);
+  }
+
+  function hitTestTouch(clientX: number, clientY: number) {
+    const edge = 72;
+    if (clientY < edge) window.scrollBy(0, -16);
+    else if (clientY > window.innerHeight - edge) window.scrollBy(0, 16);
+
+    const active = draggedIdRef.current;
+    const activeEl = active ? itemRefs.current.get(active) : undefined;
+    if (activeEl) activeEl.style.pointerEvents = 'none';
+    const hit = document.elementFromPoint(clientX, clientY);
+    if (activeEl) activeEl.style.pointerEvents = '';
+    if (!(hit instanceof Element)) return;
+    reorderOverElement(hit, clientY);
+  }
+
   function beginDrag(item: T, event?: DragEvent<HTMLElement>) {
     if (!isEnabled(item)) return;
 
@@ -234,6 +293,7 @@ export function useSortableList<T extends SortableItem>({
   }
 
   function finishDrag() {
+    touchSessionRef.current = null;
     if (reorderFlushTimerRef.current) {
       clearTimeout(reorderFlushTimerRef.current);
       reorderFlushTimerRef.current = null;
@@ -274,25 +334,7 @@ export function useSortableList<T extends SortableItem>({
         e.preventDefault();
         const active = draggedIdRef.current;
         if (!active || active === item.id) return;
-
-        setHoveredId(item.id);
-
-        const fromIndex = items.findIndex((t) => t.id === active);
-        const toIndex = items.findIndex((t) => t.id === item.id);
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
-
-        const rect = e.currentTarget.getBoundingClientRect();
-        const middleY = rect.top + rect.height / 2;
-        const isMovingDown = fromIndex < toIndex;
-
-        if (isMovingDown && e.clientY < middleY) return;
-        if (!isMovingDown && e.clientY > middleY) return;
-
-        const moveKey = `${fromIndex}->${toIndex}`;
-        if (lastMoveRef.current === moveKey) return;
-
-        lastMoveRef.current = moveKey;
-        scheduleOrInvokeReorder(active, item.id);
+        reorderOverElement(e.currentTarget, e.clientY);
       },
       onDragEnter: (e: DragEvent<HTMLLIElement>) => {
         if (isEventFromNestedList(e)) return;
@@ -337,6 +379,54 @@ export function useSortableList<T extends SortableItem>({
       },
       onPointerDown: (event) => {
         event.stopPropagation();
+        if (!enabled || event.pointerType !== 'touch') return;
+        event.preventDefault();
+        event.currentTarget.draggable = false;
+        touchSessionRef.current = {
+          itemId: item.id,
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          active: false,
+        };
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Some mobile browsers reject capture if the pointer is already gone.
+        }
+      },
+      onPointerMove: (event) => {
+        const session = touchSessionRef.current;
+        if (
+          !session ||
+          session.pointerId !== event.pointerId ||
+          session.itemId !== item.id
+        ) {
+          return;
+        }
+        if (!session.active) {
+          const dx = event.clientX - session.startX;
+          const dy = event.clientY - session.startY;
+          if (dx * dx + dy * dy < 16) return;
+          session.active = true;
+          beginDrag(item);
+        }
+        event.preventDefault();
+        hitTestTouch(event.clientX, event.clientY);
+      },
+      onPointerUp: (event) => {
+        const session = touchSessionRef.current;
+        if (!session || session.pointerId !== event.pointerId) return;
+        event.currentTarget.draggable = enabled;
+        if (session.active) finishDrag();
+        else touchSessionRef.current = null;
+      },
+      onPointerCancel: (event) => {
+        const session = touchSessionRef.current;
+        if (!session || session.pointerId !== event.pointerId) return;
+        event.currentTarget.draggable = enabled;
+        if (session.active) finishDrag();
+        else touchSessionRef.current = null;
       },
       onClick: (event) => {
         event.preventDefault();

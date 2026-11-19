@@ -44,6 +44,16 @@ const config: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
       },
+      // Páginas con datos del ticket (nombre, DNI, QR): el id de la URL funciona
+      // como llave, así que no se indexa ni se filtra a terceros vía Referer
+      // (links a Maps, imágenes externas). Al ir después, pisa el Referrer-Policy global.
+      ...['/tickets/:path*', '/event/:slug/ticket'].map((source) => ({
+        source,
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+        ],
+      })),
     ];
   },
 };

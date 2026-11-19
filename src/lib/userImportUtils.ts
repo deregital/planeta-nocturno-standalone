@@ -1,41 +1,37 @@
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 
+import {
+  IMPORT_HEADERS,
+  matchImportHeaders,
+  parseImportGender,
+  toIsoDateOnly,
+  type ImportUserData,
+} from '@/lib/userImportFormat';
 import { userSchema } from '@/server/schemas/user';
 
-// Schema para validar usuarios del Excel (sin género, username, password, role)
+export type { ImportUserData } from '@/lib/userImportFormat';
+
+// Schema para validar usuarios del Excel (sin username, password, role)
 const excelUserSchema = userSchema
   .pick({
     fullName: true,
     email: true,
     dni: true,
+    gender: true,
     phoneNumber: true,
     instagram: true,
   })
   .extend({
     birthDate: z.iso
       .date({
-        error: (issue) => {
-          if (issue.code === 'invalid_type') {
-            return 'La fecha de nacimiento no es válida. Use formato YYYY-MM-DD (ejemplo: 1990-12-31)';
-          }
-          return 'La fecha de nacimiento debe ser una fecha válida en formato YYYY-MM-DD';
-        },
+        error:
+          'La fecha de nacimiento no es válida. Use formato YYYY-MM-DD (ejemplo: 1990-12-31) o DD/MM/YYYY',
       })
       .min(new Date('1900-01-01').getTime(), {
         error: 'La fecha de nacimiento debe ser posterior al 01/01/1900',
       }),
   });
-
-export interface ImportUserData {
-  nombre: string;
-  apellido: string;
-  email: string;
-  dni: string;
-  fechaNacimiento: string;
-  telefono: string;
-  instagram?: string;
-}
 
 export interface ValidationError {
   rowNumber: number;
@@ -47,16 +43,21 @@ export interface ParseResult {
   errors: ValidationError[];
 }
 
+interface ParsedRow {
+  rowNumber: number;
+  user: ImportUserData;
+  errors: string[];
+}
+
+const cellText = (value: unknown): string =>
+  value === undefined || value === null ? '' : String(value).trim();
+
 /**
  * Normaliza el handle de Instagram removiendo @ si existe
  */
 const normalizeInstagram = (instagramValue: unknown): string | undefined => {
-  if (!instagramValue) return undefined;
-
-  const instagram = String(instagramValue).trim();
+  const instagram = cellText(instagramValue);
   if (!instagram) return undefined;
-
-  // Remover @ si existe al inicio
   return instagram.startsWith('@') ? instagram.slice(1) : instagram;
 };
 
@@ -64,144 +65,53 @@ const normalizeInstagram = (instagramValue: unknown): string | undefined => {
  * Normaliza el número de teléfono agregando código de país si es necesario
  */
 const normalizePhoneNumber = (phoneValue: unknown): string => {
-  if (!phoneValue) return '';
+  const phone = cellText(phoneValue).replace(/\s/g, '');
+  if (!phone) return '';
 
-  const phone = String(phoneValue).trim().replace(/\s/g, '');
+  if (phone.startsWith('+')) return phone;
 
-  // Si ya tiene código de país, devolverlo tal como está
-  if (phone.startsWith('+549')) {
-    return phone;
-  }
-
-  // Si empieza con 11 o 15, agregar +549
-  if (phone.startsWith('11') || phone.startsWith('15')) {
+  // Si empieza con 11, 15 o 9 (sin el 54), agregar +549
+  if (
+    phone.startsWith('11') ||
+    phone.startsWith('15') ||
+    phone.startsWith('9')
+  ) {
     return `+549${phone}`;
   }
 
-  // Si empieza con 9 (sin el 54), agregar +549
-  if (phone.startsWith('9')) {
-    return `+549${phone}`;
-  }
-
-  // Para otros casos, devolver tal como está
   return phone;
 };
 
 /**
- * Convierte diferentes formatos de fecha a YYYY-MM-DD
+ * Convierte la fecha a YYYY-MM-DD. Acepta el serial de Excel, YYYY-MM-DD y
+ * DD/MM/YYYY; si no la reconoce la devuelve tal cual y la validación avisa.
  */
 const normalizeDate = (dateValue: unknown): string => {
-  if (!dateValue) return '';
-
-  let date: Date;
-
-  // Si es un número (serial de Excel)
   if (typeof dateValue === 'number') {
-    // Excel serial date: días desde 1900-01-01
-    const excelEpoch = new Date(1900, 0, 1);
-    date = new Date(
-      excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000,
-    );
+    const parsed = XLSX.SSF.parse_date_code(dateValue);
+    if (!parsed) return String(dateValue);
+    const month = String(parsed.m).padStart(2, '0');
+    const day = String(parsed.d).padStart(2, '0');
+    return `${parsed.y}-${month}-${day}`;
   }
-  // Si es un objeto Date
-  else if (dateValue instanceof Date) {
-    date = dateValue;
-  }
-  // Si es una string
-  else {
-    const dateStr = String(dateValue).trim();
-
-    // Intentar diferentes formatos
-    const formats = [
-      /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
-      /^\d{2}\/\d{2}\/\d{4}$/, // MM/DD/YYYY
-      /^\d{1}\/\d{1}\/\d{4}$/, // M/D/YYYY
-      /^\d{2}\/\d{1}\/\d{4}$/, // MM/D/YYYY
-      /^\d{1}\/\d{2}\/\d{4}$/, // M/DD/YYYY
-      /^\d{4}\/\d{2}\/\d{2}$/, // YYYY/MM/DD
-    ];
-
-    let matchedFormat = false;
-    for (const format of formats) {
-      if (format.test(dateStr)) {
-        matchedFormat = true;
-        break;
-      }
-    }
-
-    if (!matchedFormat) {
-      throw new Error(`Formato de fecha no reconocido: ${dateStr}`);
-    }
-
-    date = new Date(dateStr);
-  }
-
-  if (isNaN(date.getTime())) {
-    throw new Error(`Fecha inválida: ${dateValue}`);
-  }
-
-  // Convertir a formato YYYY-MM-DD
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+  return toIsoDateOnly(cellText(dateValue));
 };
 
-export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
-  return new Promise((resolve, reject) => {
+const readRows = (file: File): Promise<unknown[][]> =>
+  new Promise((resolve, reject) => {
     const reader = new FileReader();
 
     reader.onload = (e) => {
       try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        // Validar que tenga las columnas correctas
-        const headers = jsonData[0] as unknown as string[];
-        if (!headers || headers.length < 6) {
-          reject(new Error('El archivo debe tener al menos 6 columnas'));
-          return;
-        }
-
-        const users: ImportUserData[] = [];
-        for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i] as unknown as string[];
-          if (row && row.length >= 6) {
-            try {
-              const normalizedDate = normalizeDate(row[4]);
-              const normalizedPhone = normalizePhoneNumber(row[5]);
-              const normalizedInstagram = normalizeInstagram(row[6]);
-              users.push({
-                nombre: String(row[0] || '').trim(),
-                apellido: String(row[1] || '').trim(),
-                email: String(row[2] || '').trim(),
-                dni: String(row[3] || '').trim(),
-                fechaNacimiento: normalizedDate,
-                telefono: normalizedPhone,
-                instagram: normalizedInstagram,
-              });
-            } catch {
-              // Si hay error en la fecha, usar el valor original como string
-              const normalizedPhone = normalizePhoneNumber(row[5]);
-              const normalizedInstagram = normalizeInstagram(row[6]);
-              users.push({
-                nombre: String(row[0] || '').trim(),
-                apellido: String(row[1] || '').trim(),
-                email: String(row[2] || '').trim(),
-                dni: String(row[3] || '').trim(),
-                fechaNacimiento: String(row[4] || '').trim(),
-                telefono: normalizedPhone,
-                instagram: normalizedInstagram,
-              });
-            }
-          }
-        }
-
-        resolve(users);
+        const workbook = XLSX.read(e.target?.result, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        resolve(
+          XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+            header: 1,
+            blankrows: false,
+            defval: '',
+          }),
+        );
       } catch {
         reject(new Error('Error al procesar el archivo Excel'));
       }
@@ -213,62 +123,77 @@ export const parseExcelFile = (file: File): Promise<ImportUserData[]> => {
 
     reader.readAsArrayBuffer(file);
   });
-};
 
-const transformExcelDataToSchema = (user: ImportUserData) => {
-  return {
-    fullName: `${user.nombre} ${user.apellido}`.trim(),
-    email: user.email,
-    dni: user.dni,
-    phoneNumber: user.telefono,
-    birthDate: user.fechaNacimiento,
-    instagram: user.instagram || null,
+export const parseRows = (rows: unknown[][]): ParsedRow[] => {
+  const [headers = [], ...dataRows] = rows;
+  const match = matchImportHeaders(headers);
+  if (!match.ok) {
+    throw new Error(
+      `Faltan columnas en el archivo: ${match.missing.join(', ')}. Descargá la plantilla o usá "Exportar para importación" desde un evento.`,
+    );
+  }
+
+  const cell = (row: unknown[], key: keyof ImportUserData) => {
+    const index = match.indexes[key];
+    return index === undefined ? '' : row[index];
   };
-};
 
-export const validateUsers = (users: ImportUserData[]): ValidationError[] => {
-  const errors: ValidationError[] = [];
+  const parsed: ParsedRow[] = [];
+  dataRows.forEach((row, index) => {
+    // +2: la fila 1 es el encabezado y las filas de Excel arrancan en 1
+    const rowNumber = index + 2;
+    if (row.every((value) => cellText(value) === '')) return;
 
-  users.forEach((user, index) => {
-    const rowNumber = index + 2; // +2 porque empezamos desde la fila 2 (después del header)
-
-    try {
-      const transformedData = transformExcelDataToSchema(user);
-
-      excelUserSchema.parse(transformedData);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        error.issues.forEach((zodError: z.core.$ZodIssue) => {
-          errors.push({
-            rowNumber,
-            message: zodError.message,
-          });
-        });
-      } else {
-        errors.push({
-          rowNumber,
-          message: 'Error de validación inesperado',
-        });
-      }
+    const errors: string[] = [];
+    const rawGender = cellText(cell(row, 'gender'));
+    const gender = parseImportGender(rawGender);
+    if (!gender) {
+      errors.push(
+        rawGender
+          ? `El género "${rawGender}" no es válido. Use Masculino, Femenino u Otro`
+          : 'El género es requerido (Masculino, Femenino u Otro)',
+      );
     }
+
+    parsed.push({
+      rowNumber,
+      errors,
+      user: {
+        fullName: cellText(cell(row, 'fullName')).replace(/\s+/g, ' '),
+        email: cellText(cell(row, 'email')).toLowerCase(),
+        dni: cellText(cell(row, 'dni')),
+        gender: gender ?? 'other',
+        birthDate: normalizeDate(cell(row, 'birthDate')),
+        phoneNumber: normalizePhoneNumber(cell(row, 'phoneNumber')),
+        instagram: normalizeInstagram(cell(row, 'instagram')),
+      },
+    });
   });
 
-  return errors;
+  return parsed;
+};
+
+export const validateRow = ({ user }: ParsedRow): string[] => {
+  const result = excelUserSchema.safeParse({
+    ...user,
+    instagram: user.instagram ?? null,
+  });
+  if (result.success) return [];
+  // El género ya se valida al leer la fila, con un mensaje más claro.
+  return result.error.issues
+    .filter((issue) => issue.path[0] !== 'gender')
+    .map((issue) => issue.message);
 };
 
 /**
  * Valida que no existan duplicados dentro del archivo
  */
-export const validateDuplicates = (
-  users: ImportUserData[],
-): ValidationError[] => {
+const validateDuplicates = (rows: ParsedRow[]): ValidationError[] => {
   const errors: ValidationError[] = [];
   const emails = new Set<string>();
   const dnis = new Set<string>();
 
-  users.forEach((user, index) => {
-    const rowNumber = index + 2;
-
+  for (const { rowNumber, user } of rows) {
     if (emails.has(user.email)) {
       errors.push({
         rowNumber,
@@ -286,7 +211,7 @@ export const validateDuplicates = (
     } else {
       dnis.add(user.dni);
     }
-  });
+  }
 
   return errors;
 };
@@ -296,29 +221,30 @@ export const validateDuplicates = (
  */
 export const processExcelFile = async (file: File): Promise<ParseResult> => {
   try {
-    const users = await parseExcelFile(file);
+    const rows = parseRows(await readRows(file));
 
-    if (users.length === 0) {
+    if (rows.length === 0) {
       return {
         users: [],
         errors: [
           {
             rowNumber: 0,
-            message: 'No se encontraron usuarios válidos en el archivo',
+            message: 'No se encontraron usuarios en el archivo',
           },
         ],
       };
     }
 
-    // Validar datos básicos
-    const validationErrors = validateUsers(users);
-
-    // Validar duplicados
-    const duplicateErrors = validateDuplicates(users);
+    const rowErrors = rows.flatMap((row) =>
+      [...row.errors, ...validateRow(row)].map((message) => ({
+        rowNumber: row.rowNumber,
+        message,
+      })),
+    );
 
     return {
-      users,
-      errors: [...validationErrors, ...duplicateErrors],
+      users: rows.map((row) => row.user),
+      errors: [...rowErrors, ...validateDuplicates(rows)],
     };
   } catch (error) {
     return {
@@ -337,19 +263,7 @@ export const processExcelFile = async (file: File): Promise<ParseResult> => {
  * Genera un template Excel para descargar
  */
 export const generateTemplate = (): void => {
-  const templateData = [
-    [
-      'Nombre',
-      'Apellido',
-      'Dirección de correo electrónico',
-      'DNI',
-      'Fecha nacimiento en formato YYYY-MM-DD',
-      'Número de teléfono',
-      'Instagram (opcional)',
-    ],
-  ];
-
-  const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+  const worksheet = XLSX.utils.aoa_to_sheet([IMPORT_HEADERS]);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Usuarios');
 

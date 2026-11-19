@@ -39,7 +39,7 @@ export default async function CheckoutPage() {
     return (
       <ServerErrorCard
         title='Tu reserva ya no está activa'
-        description='Pasaron más de 10 minutos o, si es una invitación, el link se abrió en otro dispositivo. Volvé a abrir el link o elegí tus entradas de nuevo.'
+        description='Pasaron más de 10 minutos. Volvé a abrir el link o elegí tus entradas de nuevo.'
         route='/'
       />
     );
@@ -47,6 +47,16 @@ export default async function CheckoutPage() {
 
   if (data.status !== 'BOOKED') {
     redirect(`/tickets/${data.id}` as Route);
+  }
+
+  if (data.event.isBlocked) {
+    return (
+      <ServerErrorCard
+        title='Este evento no está disponible'
+        description='El organizador cerró el acceso a este evento, así que no se puede completar la compra.'
+        route='/'
+      />
+    );
   }
 
   return <CheckoutClient ticketGroup={data} lastPurchase={lastPurchase} />;

@@ -45,7 +45,13 @@ export function ToggleActivateButton({
         onClick={handleToggle}
         className='w-full'
       >
-        {sure ? 'Estás seguro?' : event.isActive ? 'Desactivar' : 'Activar'}
+        {/* Sólo cambia si aparece en la ticketera: oculto se sigue entrando
+            por link. Para que nadie entre está 'Bloquear acceso'. */}
+        {sure
+          ? '¿Estás seguro?'
+          : event.isActive
+            ? 'Ocultar de la ticketera'
+            : 'Mostrar en la ticketera'}
       </Button>
     </div>
   );

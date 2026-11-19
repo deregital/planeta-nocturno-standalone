@@ -1,5 +1,22 @@
 import { differenceInYears } from 'date-fns';
 
+/** Opciones del filtro por mes de nacimiento; el índice 0 es "sin filtro". */
+export const BIRTH_MONTH_OPTIONS = [
+  'No seleccionado',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+] as const;
+
 function localDate(year: number, month: number, day: number): Date | null {
   if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
 

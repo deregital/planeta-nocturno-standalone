@@ -243,8 +243,8 @@ export default function InputDateWithLabel({
       error={dateError || (serverErrorHidden ? undefined : error)}
     >
       {isMobileLike && dateType === 'date' ? (
-        // En una celda angosta (modal de emisión) los tres campos quedaban de
-        // 35 px y se veía '0' en vez de '02': menos padding y centrado.
+        // En una celda angosta los tres campos quedaban de 35 px y se veía '0'
+        // en vez de '02': menos padding, centrado y el año un poco más ancho.
         <div className='flex gap-1'>
           <div className='min-w-0 flex-1'>
             <p className='mb-1 text-xs text-muted-foreground'>Día</p>

@@ -37,7 +37,9 @@ export default function TicketTypeList({
   ) : (
     <ul className='gap-y-2 flex flex-col'>
       {action === 'PREVIEW' && (
-        <li className='grid grid-cols-5 font-bold text-accent border-stroke px-5'>
+        // En el celular no entran 5 columnas: cada fila muestra sus propias
+        // etiquetas (abajo) y este encabezado sólo aparece desde sm.
+        <li className='hidden sm:grid sm:grid-cols-5 font-bold text-accent border-stroke px-5'>
           <p>Nombre</p>
           <p>Descripción</p>
           <p>Precio</p>
@@ -59,18 +61,26 @@ export default function TicketTypeList({
               : { draggable: false })}
             className={cn(
               `border border-stroke rounded-md grid gap-2 items-center px-5 min-h-10`,
-              action === 'EDIT' ? 'grid-cols-3' : 'grid-cols-5 py-2',
+              action === 'EDIT'
+                ? 'grid-cols-3'
+                : 'grid-cols-2 sm:grid-cols-5 py-2 [&>p]:min-w-0 [&>p]:break-words',
               draggedId === type.id ? 'opacity-60' : '',
               hoveredId === type.id && draggedId !== type.id
                 ? 'ring-2 ring-accent/40'
                 : '',
             )}
           >
-            <p className='flex items-center gap-2'>
-              {isReorderEnabled && (
-                <GripVertical className='size-4 text-muted-foreground' />
+            <p
+              className={cn(
+                'flex min-w-0 items-center gap-2',
+                action === 'PREVIEW' &&
+                  'col-span-2 font-medium sm:col-span-1 sm:font-normal',
               )}
-              {type.name}
+            >
+              {isReorderEnabled && (
+                <GripVertical className='size-4 shrink-0 text-muted-foreground' />
+              )}
+              <span className='min-w-0 break-words'>{type.name}</span>
             </p>
             <p className={`${action === 'EDIT' && 'justify-self-center'}`}>
               {text}
@@ -93,9 +103,24 @@ export default function TicketTypeList({
               </div>
             ) : (
               <>
-                <p>${type.price}</p>
-                <p>{type.maxAvailable} tickets</p>
-                <p>{type.maxPerPurchase} tickets</p>
+                <p>
+                  <span className='text-muted-foreground sm:hidden'>
+                    Precio:{' '}
+                  </span>
+                  ${type.price}
+                </p>
+                <p>
+                  <span className='text-muted-foreground sm:hidden'>
+                    Emisión máxima:{' '}
+                  </span>
+                  {type.maxAvailable} tickets
+                </p>
+                <p>
+                  <span className='text-muted-foreground sm:hidden'>
+                    Máx. por compra:{' '}
+                  </span>
+                  {type.maxPerPurchase} tickets
+                </p>
               </>
             )}
           </li>

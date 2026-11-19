@@ -27,7 +27,7 @@ y datos en las dos versiones: https://claude.ai/artifact/V1bWqRNkyDN1boPg1szscQ
   - **H26:** sin señal avisa y conserva lo cargado.
   - **H24 y H25:** el nombre de puros espacios ya no pasa, el error de la fecha está en castellano y la fecha no se borra.
   - **H23:** las compras sin pagar no cuentan como emitidas ni entran a la lista de ventas.
-  - **H10:** los eventos desactivados o terminados no se venden.
+  - **H10:** los eventos terminados no se venden. Los desactivados siguen accesibles por link directo a propósito (pendiente, se trata aparte).
 - **Invitaciones.**
   - **H03:** dos navegadores con el mismo link ya no comparten la reserva: el segundo la toma. Además, `createMany` no le devuelve a otra persona las entradas ya emitidas.
   - **H17:** "Enlace copiado" sólo sale si el código sigue siendo propio, y al redistribuir se mueven primero los códigos no compartidos.
@@ -90,7 +90,7 @@ y datos en las dos versiones: https://claude.ai/artifact/V1bWqRNkyDN1boPg1szscQ
   - **H07:** no hay límite de reservas por persona o IP, así que se puede acaparar cupo repitiendo.
   - **H01:** un pago en efectivo que se acredita después de los 40 minutos se honra aunque el tipo se haya agotado.
 
-**Migraciones:** `prisma/migrations/20261103180000_swarm_fixes` (medio de pago `ON_SITE`,
+**Migraciones:** `prisma/migrations/20261108120000_swarm_fixes` (medio de pago `ON_SITE`,
 `event.version`, tabla `loginAttempt`; aplicar con `npm run migrate:tenants`) y
 `drizzle/control/0007_login_attempts.sql` (`npm run control:migrate`). El login funciona
 aunque la tabla todavía no exista: el freno se apaga y lo registra en el log.

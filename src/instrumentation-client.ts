@@ -32,6 +32,12 @@ if (!token || !host) {
     ui_host: host.replace('.i.posthog.com', '.posthog.com'),
     defaults: '2026-01-30',
     capture_exceptions: true,
+    // Volumen: el plan gratis corta en 1M de eventos por mes. El autocapture
+    // queda prendido sólo para detectar `$rageclick` (ver `before_send`); sin
+    // `$pageleave` y sin web vitals. El network timing del replay sigue.
+    autocapture: { dom_event_allowlist: ['click'] },
+    capture_pageleave: false,
+    capture_performance: { web_vitals: false },
     // Los anónimos no tienen perfil de persona: PostHog los muestra por su id.
     get_device_id: (uuid) => anonymousDistinctId(uuid, instance),
     // Cada subdominio es un tenant: no compartir identidad ni sesión entre ellos.
@@ -43,6 +49,9 @@ if (!token || !host) {
     // personales necesita la clase `ph-mask` (o `ph-no-capture` para ocultarlo).
     before_send: (event) => {
       if (!event || event.event === '$snapshot') return event;
+      // Era más de la mitad del volumen y el replay ya muestra los clicks.
+      // `$rageclick` es otro evento y se sigue mandando.
+      if (event.event === '$autocapture') return null;
       event.properties = { ...event.properties, ...instanceProperties };
       return event;
     },

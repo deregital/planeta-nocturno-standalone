@@ -5,9 +5,11 @@ import {
   Calendar,
   CopyIcon,
   FileSpreadsheet,
+  FileUp,
   Folder,
   Link2,
   Loader2,
+  Lock,
   MoreVertical,
   Pencil,
   Users,
@@ -85,12 +87,15 @@ export default function EventCardHorizontal({
   const exportXlsxByTicketType =
     trpc.events.exportXlsxByTicketType.useMutation();
 
+  const exportForImport = trpc.events.exportForImport.useMutation();
+
   const utils = trpc.useUtils();
   const toggleActivate = trpc.events.toggleActivate.useMutation();
   const exportPending =
     generatePresentismoOrdenAlfPDF.isPending ||
     generatePresentismoGroupedTicketTypePDF.isPending ||
-    exportXlsxByTicketType.isPending;
+    exportXlsxByTicketType.isPending ||
+    exportForImport.isPending;
 
   const lighterColor = folderColor ? lightenColor(folderColor, 0.2) : undefined;
   const manageHref = `/admin/event/${event.slug}`;
@@ -170,12 +175,19 @@ export default function EventCardHorizontal({
           )}
         >
           <div className='flex min-w-0 items-center gap-2'>
-            {event.isActive && (
-              <BadgeCheck className='size-4 shrink-0 text-on-accent' />
+            {event.isActive && !event.isBlocked && (
+              <BadgeCheck
+                className='size-4 shrink-0 text-on-accent'
+                aria-label='Visible en la ticketera'
+              />
             )}
-            {/* En el celular, con los íconos al lado, quedaban unos 70 px: dos
-                líneas y una fecha corta para distinguir un evento de su copia. */}
-            <CardTitle className='line-clamp-2 break-words sm:truncate'>
+            {event.isBlocked && (
+              <Lock
+                className='size-4 shrink-0 text-on-accent'
+                aria-label='Acceso bloqueado'
+              />
+            )}
+            <CardTitle className='line-clamp-2 min-w-0 flex-1 break-words leading-snug'>
               {event.name}
             </CardTitle>
           </div>
@@ -195,6 +207,26 @@ export default function EventCardHorizontal({
               {event.location?.address}
             </span>
           </p>
+          {/* En el celular "Activar" va debajo del nombre: al lado de los
+              íconos dejaba el nombre en tres letras ("Eve nt…"). */}
+          {showActions &&
+            event.inviteCondition !== 'INVITATION' &&
+            canPublish &&
+            !event.isActive && (
+              <Button
+                variant='success'
+                size='sm'
+                loading={toggleActivate.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleActivate();
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className='w-fit sm:hidden'
+              >
+                {activateSure ? '¿Estás seguro?' : 'Mostrar'}
+              </Button>
+            )}
         </div>
         {typeof event.issuedTickets === 'number' && (
           <Tooltip>
@@ -221,9 +253,9 @@ export default function EventCardHorizontal({
                     size='sm'
                     loading={toggleActivate.isPending}
                     onClick={handleActivate}
-                    className='mr-1'
+                    className='mr-1 hidden sm:inline-flex'
                   >
-                    {activateSure ? '¿Estás seguro?' : 'Activar'}
+                    {activateSure ? '¿Estás seguro?' : 'Mostrar'}
                   </Button>
                 )}
                 <Tooltip>
@@ -245,7 +277,12 @@ export default function EventCardHorizontal({
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant={'ghost'} size={'icon'} asChild>
+                <Button
+                  variant={'ghost'}
+                  size={'icon'}
+                  asChild
+                  className='hidden sm:inline-flex'
+                >
                   <Link href={manageHref as Route<string>}>
                     <Calendar className='w-4 h-4 text-on-accent' />
                   </Link>
@@ -476,6 +513,39 @@ export default function EventCardHorizontal({
                           )}
                         </span>
                         Excel por tipo de ticket
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={exportPending}
+                        onSelect={(e) => e.preventDefault()}
+                        onClick={() => {
+                          exportForImport.mutate(event.id, {
+                            onError: (error) => {
+                              toast.error(error.message);
+                            },
+                            onSuccess: (out) => {
+                              const blob = new Blob([out], {
+                                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                              });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `importacion-${event.slug}.xlsx`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                              setMoreOpen(false);
+                            },
+                          });
+                        }}
+                        className='cursor-pointer'
+                      >
+                        <span className='mr-2 inline-flex'>
+                          {exportForImport.isPending ? (
+                            <Loader2 className='animate-spin' />
+                          ) : (
+                            <FileUp />
+                          )}
+                        </span>
+                        Exportar para importación
                       </DropdownMenuItem>
                     </>
                   )}

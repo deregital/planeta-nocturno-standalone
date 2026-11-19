@@ -3,7 +3,7 @@
 import { History } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { type ScanEntry } from '@/components/event/individual/scan/useScanSession';
+import { type ScanDisplayResult } from '@/components/event/individual/scan/scan-result';
 import {
   Drawer,
   DrawerContent,
@@ -13,7 +13,11 @@ import {
 } from '@/components/ui/drawer';
 import { LastScanCard } from '@/components/event/individual/scan/LastScanCard';
 
-export function LastScansHistory({ lastScans }: { lastScans: ScanEntry[] }) {
+export function LastScansHistory({
+  lastScans,
+}: {
+  lastScans: ScanDisplayResult[];
+}) {
   return (
     <Drawer>
       <DrawerTrigger asChild>

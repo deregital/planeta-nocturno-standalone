@@ -196,7 +196,7 @@ export default function EventFolderModal({
             <Folder /> Crear carpeta
           </Button>
         ) : (
-          <Button variant='ghost' className='text-white'>
+          <Button variant='ghost' size='icon' className='text-white'>
             <Pencil />
           </Button>
         )}

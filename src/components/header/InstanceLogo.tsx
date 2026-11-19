@@ -12,7 +12,7 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
     <Link
       href='/'
       className={cn(
-        'flex items-center font-bold leading-20',
+        'flex min-w-0 items-center font-bold leading-20',
         size === 'sm' ? 'gap-2' : 'gap-4',
         size === 'sm'
           ? 'text-2xl md:text-3xl'
@@ -29,7 +29,9 @@ function InstanceLogo({ size }: { size: 'sm' | 'lg' }) {
           )}
         />
       )}
-      <span>
+      {/* Un nombre de productora largo se corta con "…" en vez de empujar el
+          header fuera de la pantalla. */}
+      <span className={cn('min-w-0', size === 'sm' && 'truncate')}>
         <span className='text-brand'>{firstWord}</span>
         <span className='text-on-accent'>{rest.join(' ')}</span>
       </span>

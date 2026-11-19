@@ -78,7 +78,5 @@ export default async function TicketsPage({
     );
   }
 
-  return (
-    <TicketsClient ticketGroupId={data.ticketGroupId} tickets={data.tickets} />
-  );
+  return <TicketsClient data={data} />;
 }

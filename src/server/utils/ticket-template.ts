@@ -578,7 +578,7 @@ function formatTicketStartingDateLabel(startingDate: string): string {
  * y puede quedar desfasado si el evento se mueve (ej. evento duplicado). Nunca se
  * muestra una fecha anterior al inicio del evento.
  */
-function resolveTicketStartingDate(
+export function resolveTicketStartingDate(
   ticketStartingDate: string | null,
   eventStartingDate: string | null,
 ): string | null {

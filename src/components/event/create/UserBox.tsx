@@ -18,8 +18,10 @@ export function UserBox({
   onUserUpdated?: (updatedName: string) => void;
 }) {
   return (
-    <div className='flex justify-between items-center pl-3 border rounded-md border-accent'>
-      <p className='text-base'>{name}</p>
+    <div className='flex max-w-full min-w-0 justify-between items-center pl-3 border rounded-md border-accent'>
+      <p className='min-w-0 truncate text-base' title={name}>
+        {name}
+      </p>
       {disabled ? (
         <Button variant={'destructiveGhost'} className='text-accent' disabled>
           <Check />

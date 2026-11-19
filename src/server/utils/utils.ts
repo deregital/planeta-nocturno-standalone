@@ -63,6 +63,14 @@ function getKeyFromSecret(secret: string): Buffer {
   return createHash('sha256').update(secret).digest();
 }
 
+/**
+ * Clave AES de los QR (derivada de BARCODE_SECRET). Solo sale del servidor
+ * hacia los escáneres en modo local; ver `src/server/utils/scanner-crypto.ts`.
+ */
+export function getBarcodeKey(): Buffer {
+  return getKeyFromSecret(process.env.BARCODE_SECRET!);
+}
+
 export function encryptString(string: string): string {
   const key = getKeyFromSecret(process.env.BARCODE_SECRET!);
   const iv = randomBytes(16); // 16 bytes para AES-256-CBC
