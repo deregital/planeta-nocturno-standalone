@@ -19,6 +19,7 @@
     "test:guide-videos": "node --test tests/guide-videos.test.mjs",
     "test:load": "node --import tsx --import ./tests/load/register-phone-metadata.mjs tests/load/run.ts",
     "test:isolation": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/isolation/tenant-data-isolation.test.ts",
+    "test:e2e": "playwright test -c tests/e2e",
     "seed": "tsx src/drizzle/seed.ts && tsx src/drizzle/seed-ticket-slug.ts",
     "seed-ticket-slug": "tsx src/drizzle/seed-ticket-slug.ts",
     "prepare": "husky"
@@ -106,6 +107,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^5.0.2",
     "@types/canvas-confetti": "^1.9.0",

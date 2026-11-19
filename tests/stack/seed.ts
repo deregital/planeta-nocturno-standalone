@@ -42,6 +42,12 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 const COVER =
   'https://planeta-nocturno.s3.us-east-1.amazonaws.com/seed/cover.png';
+// Con el formato real (APP_USR-…) y un refresh token, para que el panel la vea
+// conectada a Mercado Pago y deje crear entradas pagas. El Mercado Pago simulado
+// no valida el token.
+const MP_ACCESS_TOKEN =
+  'APP_USR-7000000000000000-110800-stackfake00000000000000000000000-700000000';
+const MP_REFRESH_TOKEN = 'TG-stack-fake-refresh-token';
 
 type Role = keyof typeof SYSTEM_ACCESS_ROLE_IDS;
 type SeedUser = {
@@ -85,7 +91,7 @@ function instanceFor(
     hue: 265,
     saturation: 80,
     mercadoPagoAccessToken: mp,
-    mercadoPagoRefreshToken: null,
+    mercadoPagoRefreshToken: mp ? MP_REFRESH_TOKEN : null,
     database: { name: databaseName },
   };
 }
@@ -340,8 +346,8 @@ async function createTenant(
 ) {
   await control.query(`CREATE DATABASE "${databaseName}"`).catch(() => {});
   const { rows } = await control.query<{ id: number }>(
-    `INSERT INTO tenants (slug, name, hue, saturation, contact_email, database_name, status, mp_access_token, mp_access_token_expires_at)
-     VALUES ($1, $2, 265, 80, $3, $4, 'active', $5, $6)
+    `INSERT INTO tenants (slug, name, hue, saturation, contact_email, database_name, status, mp_access_token, mp_access_token_expires_at, mp_refresh_token)
+     VALUES ($1, $2, 265, 80, $3, $4, 'active', $5, $6, $7)
      ON CONFLICT (slug) DO UPDATE SET status = 'active'
      RETURNING id`,
     [
@@ -351,6 +357,7 @@ async function createTenant(
       databaseName,
       mp,
       mp ? new Date(Date.now() + 180 * DAY) : null,
+      mp ? MP_REFRESH_TOKEN : null,
     ],
   );
   const url = `${PG_BASE}/${databaseName}`;
@@ -372,7 +379,7 @@ async function seedPrueba(control: Client) {
     'prueba',
     'Prueba Producciones',
     'tenant_1_prueba',
-    'APP_USR-stack-fake-token',
+    MP_ACCESS_TOKEN,
   );
   const users = await insertUsers(raw, 'prueba', [
     { username: 'admin', role: 'ADMIN', fullName: 'Ana Admin' },

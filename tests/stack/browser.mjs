@@ -15,14 +15,11 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const STACK = path.dirname(fileURLToPath(import.meta.url));
-const RUN = path.join(STACK, '.run');
+import { CONTEXT_DEFAULTS, chromiumArgs, deviceOptions, FAKE_CAMERA, ignored, RUN } from './browser-env.mjs';
+
 const DIR = path.join(RUN, 'browser');
 const IDLE_MS = 45 * 60_000;
 const SNAP_LIMIT = 14_000;
-// Ruido propio del entorno local (no existe fuera de Vercel): no se reporta.
-const IGNORED = [/\/_vercel\/(insights|speed-insights)\//, /Refused to execute script from .*\/_vercel\//];
-const ignored = (text) => IGNORED.some((re) => re.test(text));
 
 const HELP = `Comandos (tests/stack/pw <sesión> <comando> ...):
   open <url>                 navega y muestra la página
@@ -116,16 +113,12 @@ function connect(socket) {
 // ── Chromium compartido ──────────────────────────────────────────────────────
 // Todas las sesiones usan un solo Chromium (cada una en su contexto aislado, con
 // sus cookies): con muchos agentes a la vez, un Chromium por sesión agota la RAM.
-const CHROMIUM_ARGS = [
-  '--host-resolver-rules=MAP *.pn.test 127.0.0.1, MAP pn.test 127.0.0.1, MAP *.mock.test 127.0.0.1, MAP planeta-nocturno.s3.us-east-1.amazonaws.com 127.0.0.1',
-  '--ignore-certificate-errors',
-];
 const WS_FILE = path.join(DIR, 'chromium.ws');
 const LOCK = path.join(DIR, 'chromium.lock');
 
 async function chromiumServer() {
   const { chromium } = await import('playwright-core');
-  const server = await chromium.launchServer({ headless: true, args: CHROMIUM_ARGS });
+  const server = await chromium.launchServer({ headless: true, args: chromiumArgs() });
   writeFileSync(WS_FILE, server.wsEndpoint());
   const stop = async () => {
     rmSync(WS_FILE, { force: true });
@@ -165,36 +158,6 @@ async function sharedBrowser(chromium) {
 }
 
 // ── Daemon ───────────────────────────────────────────────────────────────────
-const FAKE_CAMERA = `(() => {
-  if (window.__fakeCam || !navigator.mediaDevices) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = 720; canvas.height = 720;
-  const ctx = canvas.getContext('2d');
-  let image = null; let zoom = 1; let frame = 0;
-  const draw = () => {
-    frame += 1;
-    ctx.fillStyle = frame % 2 ? '#202020' : '#212121';
-    ctx.fillRect(0, 0, 720, 720);
-    if (image) {
-      const scale = Math.min(720 / image.width, 720 / image.height) * zoom;
-      const w = image.width * scale; const h = image.height * scale;
-      ctx.drawImage(image, (720 - w) / 2, (720 - h) / 2, w, h);
-    }
-  };
-  setInterval(draw, 33);
-  window.__fakeCam = {
-    show(dataUrl, z) { const i = new Image(); i.onload = () => { image = i; zoom = z || 1; }; i.src = dataUrl; },
-    blank() { image = null; },
-  };
-  const original = navigator.mediaDevices.getUserMedia?.bind(navigator.mediaDevices);
-  navigator.mediaDevices.getUserMedia = async (constraints) => {
-    if (constraints && constraints.video) return canvas.captureStream(30);
-    return original(constraints);
-  };
-  navigator.mediaDevices.enumerateDevices = async () => [
-    { deviceId: 'fake-camera', groupId: 'fake', kind: 'videoinput', label: 'Cámara de prueba', toJSON() { return this; } },
-  ];
-})();`;
 
 async function daemon(session) {
   const { chromium, devices } = await import('playwright-core');
@@ -282,21 +245,10 @@ async function daemon(session) {
   }
 
   async function newContext(storageState) {
-    // Celular: Android con el viewport típico medido en PostHog (390–402 × ~720,
-    // con la barra del navegador). "instagram" suma el navegador interno de
-    // Instagram, por donde entra ~1 de cada 4 visitas desde el celular.
-    const phone = { ...devices['Pixel 7'], viewport: { width: 393, height: 727 } };
-    const base =
-      state.device === 'desktop'
-        ? { viewport: { width: 1366, height: 860 } }
-        : state.device === 'instagram'
-          ? { ...phone, userAgent: `${phone.userAgent} Instagram 350.0.0.30.97 Android (33/13; 420dpi; 1080x2400; Google; Pixel 7; panther; tensor; es_AR; 645370941)` }
-          : phone;
+    const base = deviceOptions(devices, state.device);
     const context = await browser.newContext({
       ...base,
-      ignoreHTTPSErrors: true,
-      locale: 'es-AR',
-      timezoneId: 'America/Argentina/Buenos_Aires',
+      ...CONTEXT_DEFAULTS,
       acceptDownloads: true,
       storageState,
     });

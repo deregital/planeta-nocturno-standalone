@@ -33,7 +33,7 @@ export STACK_RUN_DIR="$RUN"
 export STACK_NEXT_PORT=3100
 export STACK_MOCKS_PORT=55801
 export STACK_MOCKS_URL=http://127.0.0.1:55801
-export STACK_HTTPS_PORT=443
+export STACK_HTTPS_PORT=\${STACK_HTTPS_PORT:-443}
 export STACK_PG_PORT=55800
 export PG_BASE=postgres://postgres:$PG_PASSWORD@127.0.0.1:55800
 export PG_PASSWORD=$PG_PASSWORD
@@ -132,6 +132,18 @@ wait_http() {
 }
 
 stop_pid mocks "$STACK/mocks.mjs"
+# Si otro entorno ya ocupa el puerto HTTPS (otra copia del stack, por ejemplo), se usa
+# el siguiente libre. Queda anotado en .run/https-port: el navegador de pruebas
+# (browser.mjs, tests/e2e) manda ahí lo que pide a *.pn.test:443.
+sleep 0.3
+for candidate in "$STACK_HTTPS_PORT" 8443 9443 10443; do
+  if ! lsof -nP -iTCP:"$candidate" -sTCP:LISTEN -t >/dev/null 2>&1; then
+    [[ "$candidate" != "$STACK_HTTPS_PORT" ]] && echo "el $STACK_HTTPS_PORT está ocupado: HTTPS en el $candidate"
+    export STACK_HTTPS_PORT="$candidate"
+    break
+  fi
+done
+echo "$STACK_HTTPS_PORT" >"$RUN/https-port"
 nohup node "$STACK/mocks.mjs" >>"$RUN/logs/mocks.out" 2>&1 &
 echo $! >"$RUN/pids/mocks"
 
