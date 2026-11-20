@@ -28,16 +28,7 @@ export default function SideBarTile<T extends string>({
       <div className='flex w-fit gap-2 items-center'>
         {icon}
 
-        {/* Un título con guion opcional (\u00AD) corta línea ahí en vez de
-            salirse del menú; los demás entran justo y no cortan. */}
-        <p
-          className={cn(
-            'text-xl flex-1',
-            title.includes('\u00AD') ? 'min-w-0' : 'whitespace-nowrap',
-          )}
-        >
-          {title}
-        </p>
+        <p className='text-xl flex-1 whitespace-nowrap'>{title}</p>
       </div>
     </Link>
   ) : null;

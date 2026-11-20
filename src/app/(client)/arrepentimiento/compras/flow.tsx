@@ -17,13 +17,15 @@ import {
   confirmWithdrawalAction,
   type ConfirmWithdrawalResult,
 } from '@/app/(client)/arrepentimiento/actions';
+import InputWithLabel from '@/components/common/InputWithLabel';
 import { Button } from '@/components/ui/button';
 import { SCAN_TIMEZONE } from '@/lib/scan/scan-texts';
 import { cn, formatCurrency } from '@/lib/utils';
 import {
+  parseRefundAccount,
+  REFUND_ACCOUNT_LABEL,
   WITHDRAWAL_INELIGIBLE_REASONS,
   WITHDRAWAL_PATH,
-  withdrawalRefundChannel,
 } from '@/lib/withdrawal';
 
 function formatDate(value: string, pattern: string) {
@@ -66,6 +68,8 @@ export function WithdrawalFlow({
     message: string;
     linkExpired?: boolean;
   } | null>(null);
+  const [refundAccount, setRefundAccount] = useState('');
+  const [accountError, setAccountError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const selected = purchases.find(
@@ -84,11 +88,11 @@ export function WithdrawalFlow({
         </div>
         <p>
           Las entradas quedaron anuladas. Te mandamos el comprobante a{' '}
-          <strong className='break-all'>{done.mail}</strong>.
+          <strong className='break-words'>{done.mail}</strong>.
         </p>
         <p>
-          Te vamos a devolver <strong>{formatCurrency(done.amount)}</strong>{' '}
-          {done.refundChannel}.
+          Te vamos a transferir <strong>{formatCurrency(done.amount)}</strong> a{' '}
+          <strong className='break-words'>{done.refundAccount}</strong>.
         </p>
         <Button asChild variant='accent' className='w-full'>
           <Link href='/'>Volver al inicio</Link>
@@ -184,9 +188,58 @@ export function WithdrawalFlow({
               : `Las ${selected.ticketCount} entradas se anulan en el momento y ya no sirven para entrar.`}
           </span>
         </p>
-        <p className='text-sm text-accent-dark/70'>
-          El dinero vuelve {withdrawalRefundChannel(selected.paymentMethod)}.
-        </p>
+        <form
+          id='withdrawal-confirm'
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (pending) return;
+            setError(null);
+            const parsed = parseRefundAccount(refundAccount);
+            if (!parsed.ok) {
+              setAccountError(parsed.error);
+              return;
+            }
+            setAccountError(null);
+            startTransition(async () => {
+              const result = await confirmWithdrawalAction(
+                selected.ticketGroupId,
+                refundAccount,
+              );
+              if (result.ok) {
+                setDone(result);
+              } else if (result.field === 'refundAccount') {
+                setAccountError(result.error);
+              } else {
+                setError({
+                  message: result.error,
+                  linkExpired: result.linkExpired,
+                });
+              }
+            });
+          }}
+          className='flex flex-col gap-1'
+        >
+          <InputWithLabel
+            id='refundAccount'
+            name='refundAccount'
+            label={REFUND_ACCOUNT_LABEL}
+            type='text'
+            autoComplete='off'
+            autoCapitalize='none'
+            spellCheck={false}
+            required
+            value={refundAccount}
+            onChange={(e) => {
+              setRefundAccount(e.target.value);
+              if (accountError) setAccountError(null);
+            }}
+            error={accountError ?? undefined}
+          />
+          <p className='text-sm text-accent-dark/70'>
+            Te transferimos el total a esa cuenta.
+          </p>
+        </form>
 
         {error && (
           <div
@@ -206,25 +259,11 @@ export function WithdrawalFlow({
         )}
 
         <Button
+          type='submit'
+          form='withdrawal-confirm'
           variant='accent'
           className='w-full'
           loading={pending}
-          onClick={() => {
-            setError(null);
-            startTransition(async () => {
-              const result = await confirmWithdrawalAction(
-                selected.ticketGroupId,
-              );
-              if (result.ok) {
-                setDone(result);
-              } else {
-                setError({
-                  message: result.error,
-                  linkExpired: result.linkExpired,
-                });
-              }
-            });
-          }}
         >
           Arrepentirme de la compra
         </Button>
@@ -238,7 +277,7 @@ export function WithdrawalFlow({
     <section className='flex flex-col gap-5'>
       <header className='flex flex-col gap-1'>
         <h1 className='text-3xl font-bold'>Elegí la compra</h1>
-        <p className='text-sm text-accent-dark/70 break-all'>
+        <p className='text-sm text-accent-dark/70 break-words'>
           Compras de {mail}
         </p>
       </header>
@@ -345,7 +384,7 @@ export function WithdrawalFlow({
                 Si tenés dudas, escribí a{' '}
                 <a
                   href={`mailto:${contactEmail}`}
-                  className='font-medium underline break-all'
+                  className='font-medium underline break-words'
                 >
                   {contactEmail}
                 </a>

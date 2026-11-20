@@ -249,14 +249,14 @@ export function generateWithdrawalReceiptEmail(
     ticketCount,
     amount,
     serviceFeeAmount,
-    refundChannel,
+    refundAccount,
   }: {
     number: string;
     eventName: string;
     ticketCount: number;
     amount: string;
     serviceFeeAmount: string | null;
-    refundChannel: string;
+    refundAccount: string;
   },
 ) {
   const fee = serviceFeeAmount
@@ -272,8 +272,9 @@ export function generateWithdrawalReceiptEmail(
       <li>Evento: <b>${escapeHtml(eventName)}</b></li>
       <li>Entradas anuladas: <b>${ticketCount}</b></li>
       <li>Monto a devolver: <b>${amount}</b>${fee}</li>
+      <li>Cuenta para la devolución: <b>${escapeHtml(refundAccount)}</b></li>
     </ul>
-    <p>Las entradas ya no sirven para entrar. ${escapeHtml(instance.name)} te va a devolver el dinero ${refundChannel}.</p>
+    <p>Las entradas ya no sirven para entrar. ${escapeHtml(instance.name)} te va a transferir el dinero a esa cuenta.</p>
     ${contact}
   `;
 }
@@ -289,7 +290,7 @@ export function generateWithdrawalNoticeEmail(
     ticketCount,
     amount,
     paymentMethod,
-    paymentReference,
+    refundAccount,
   }: {
     number: string;
     eventName: string;
@@ -299,12 +300,9 @@ export function generateWithdrawalNoticeEmail(
     ticketCount: number;
     amount: string;
     paymentMethod: string;
-    paymentReference: string | null;
+    refundAccount: string;
   },
 ) {
-  const reference = paymentReference
-    ? `<li>Referencia de pago: <b>${paymentReference}</b></li>`
-    : '';
   return `
     <h1>Nuevo arrepentimiento ${number}</h1>
     <p>Un comprador usó el botón de arrepentimiento. Las entradas ya quedaron anuladas.</p>
@@ -313,10 +311,10 @@ export function generateWithdrawalNoticeEmail(
       <li>Comprador: <b>${escapeHtml(buyerName)}</b> (${escapeHtml(buyerMail)}, DNI ${escapeHtml(buyerDni)})</li>
       <li>Entradas anuladas: <b>${ticketCount}</b></li>
       <li>Monto a devolver: <b>${amount}</b> (cargo por servicio incluido)</li>
-      <li>Medio de pago: <b>${paymentMethod}</b></li>
-      ${reference}
+      <li>Pagó con: <b>${paymentMethod}</b></li>
+      <li>Transferir a: <b>${escapeHtml(refundAccount)}</b> (CBU, CVU o alias)</li>
     </ul>
-    <p>Devolvé el dinero por el mismo medio de pago y marcalo como reintegrado en la plataforma.</p>
+    <p>Transferí el total a esa cuenta y marcalo como reintegrado en la plataforma.</p>
     <p><a href="${instance.publicUrl}/admin/arrepentimientos">Ver arrepentimientos</a></p>
   `;
 }

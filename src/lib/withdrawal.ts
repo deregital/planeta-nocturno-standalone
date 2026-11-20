@@ -45,11 +45,53 @@ export function withdrawalPaymentMethodLabel(
   return method ? WITHDRAWAL_PAYMENT_METHOD_LABELS[method] : 'Sin dato';
 }
 
-/** "Por el mismo medio de pago", dicho para el comprador. */
-export function withdrawalRefundChannel(
-  method: keyof typeof WITHDRAWAL_PAYMENT_METHOD_LABELS | null,
-) {
-  if (method === 'MERCADO_PAGO') return 'por Mercado Pago';
-  if (method === 'TRANSFER') return 'por transferencia';
-  return 'por el mismo medio de pago';
+export const REFUND_ACCOUNT_LABEL = 'CBU, CVU o alias para la devolución';
+
+export type RefundAccount = { kind: 'cbu' | 'alias'; value: string };
+
+/** Dígito verificador de un bloque de CBU/CVU (mismo cálculo para los dos). */
+function cbuBlockIsValid(block: string, weights: number[]) {
+  const sum = weights.reduce((acc, w, i) => acc + Number(block[i]) * w, 0);
+  return (10 - (sum % 10)) % 10 === Number(block[block.length - 1]);
+}
+
+/**
+ * CBU o CVU (22 números, con sus dos dígitos verificadores) o alias (de 6 a
+ * 20 letras, números, puntos o guiones). Un número mal tipeado manda la plata
+ * a otra cuenta: por eso se revisan los verificadores.
+ */
+export function parseRefundAccount(
+  raw: string,
+): { ok: true; account: RefundAccount } | { ok: false; error: string } {
+  const value = raw.trim();
+  if (!value) {
+    return { ok: false, error: 'Ingresá el CBU, CVU o alias de tu cuenta.' };
+  }
+  const digits = value.replace(/[\s-]/g, '');
+  if (/^\d+$/.test(digits)) {
+    if (digits.length !== 22) {
+      return {
+        ok: false,
+        error: `El CBU o CVU tiene 22 números (ingresaste ${digits.length}).`,
+      };
+    }
+    const valid =
+      cbuBlockIsValid(digits.slice(0, 8), [7, 1, 3, 9, 7, 1, 3]) &&
+      cbuBlockIsValid(digits.slice(8), [3, 9, 7, 1, 3, 9, 7, 1, 3, 9, 7, 1, 3]);
+    if (!valid) {
+      return {
+        ok: false,
+        error: 'Revisá el CBU o CVU: algún número no coincide.',
+      };
+    }
+    return { ok: true, account: { kind: 'cbu', value: digits } };
+  }
+  if (!/^[a-zA-Z0-9.-]{6,20}$/.test(value)) {
+    return {
+      ok: false,
+      error:
+        'El alias tiene de 6 a 20 letras, números, puntos o guiones, sin espacios.',
+    };
+  }
+  return { ok: true, account: { kind: 'alias', value: value.toUpperCase() } };
 }

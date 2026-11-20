@@ -1,6 +1,7 @@
 -- Botón de arrepentimiento (Disp. SSDCyLC 954/2025): el comprador revoca una
 -- compra paga desde /arrepentimiento. Las entradas pasan a la papelera en el
--- momento y la Productora devuelve el dinero a mano desde "Arrepentimientos".
+-- momento y la Productora le transfiere el dinero a la cuenta que cargó, y lo
+-- marca desde "Arrepentimientos".
 
 -- Cuándo se acreditó el pago: desde acá corren los 10 días. Las compras
 -- anteriores quedan en NULL y usan la fecha de la reserva.
@@ -26,6 +27,8 @@ CREATE TABLE "withdrawalRequest" (
     "serviceFeeAmount" DECIMAL(14,2) NOT NULL DEFAULT 0,
     "paymentMethod" "PaymentMethod",
     "paidAt" TIMESTAMPTZ,
+    -- CBU, CVU o alias que cargó el comprador: el reintegro es por transferencia.
+    "refundAccount" TEXT NOT NULL,
     "status" "WithdrawalStatus" NOT NULL DEFAULT 'PENDING_REFUND',
     "requestedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "refundedAt" TIMESTAMPTZ,

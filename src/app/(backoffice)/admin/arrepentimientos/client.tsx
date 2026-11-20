@@ -1,7 +1,7 @@
 'use client';
 
 import { formatInTimeZone } from 'date-fns-tz';
-import { CircleCheck } from 'lucide-react';
+import { CircleCheck, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -19,10 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SCAN_TIMEZONE } from '@/lib/scan/scan-texts';
 import { formatCurrency } from '@/lib/utils';
-import {
-  withdrawalPaymentMethodLabel,
-  withdrawalRefundChannel,
-} from '@/lib/withdrawal';
+import { withdrawalPaymentMethodLabel } from '@/lib/withdrawal';
 import { type RouterOutputs } from '@/server/routers/app';
 import { trpc } from '@/server/trpc/client';
 
@@ -32,6 +29,32 @@ type Status = 'PENDING_REFUND' | 'REFUNDED';
 function formatDateTime(value: string | null) {
   if (!value) return '-';
   return formatInTimeZone(new Date(value), SCAN_TIMEZONE, 'dd/MM/yyyy HH:mm');
+}
+
+/** CBU, CVU o alias que cargó el comprador, con un botón para copiarlo. */
+function RefundAccount({ value }: { value: string }) {
+  return (
+    <div className='flex items-center justify-between gap-2 rounded-md border border-stroke px-3 py-2'>
+      <div className='min-w-0'>
+        <p className='text-xs text-muted-foreground'>Transferir a</p>
+        <p className='font-semibold break-words tabular-nums'>{value}</p>
+      </div>
+      <Button
+        type='button'
+        variant='ghost'
+        size='icon'
+        aria-label='Copiar CBU, CVU o alias'
+        onClick={() => {
+          navigator.clipboard
+            .writeText(value)
+            .then(() => toast.success('Copiado'))
+            .catch(() => toast.error('No se pudo copiar'));
+        }}
+      >
+        <Copy className='size-4' />
+      </Button>
+    </div>
+  );
 }
 
 function WithdrawalCard({
@@ -54,8 +77,9 @@ function WithdrawalCard({
         <p className='text-sm break-words'>
           {withdrawal.fullName} · DNI {withdrawal.dni}
         </p>
-        <p className='text-sm break-all'>{withdrawal.mail}</p>
+        <p className='text-sm break-words'>{withdrawal.mail}</p>
       </div>
+      <RefundAccount value={withdrawal.refundAccount} />
       <dl className='grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3'>
         <div className='min-w-0'>
           <dt className='text-xs text-muted-foreground'>A devolver</dt>
@@ -69,24 +93,13 @@ function WithdrawalCard({
           )}
         </div>
         <div className='min-w-0'>
-          <dt className='text-xs text-muted-foreground'>Medio de pago</dt>
+          <dt className='text-xs text-muted-foreground'>Pagó con</dt>
           <dd>{withdrawalPaymentMethodLabel(withdrawal.paymentMethod)}</dd>
         </div>
         <div className='min-w-0'>
           <dt className='text-xs text-muted-foreground'>Entradas anuladas</dt>
           <dd className='tabular-nums'>{withdrawal.ticketCount}</dd>
         </div>
-        {withdrawal.paymentMethod === 'MERCADO_PAGO' &&
-          withdrawal.ticketGroupId && (
-            <div className='col-span-2 min-w-0 sm:col-span-3'>
-              <dt className='text-xs text-muted-foreground'>
-                Referencia en Mercado Pago
-              </dt>
-              <dd className='break-all font-mono text-xs'>
-                {withdrawal.ticketGroupId}
-              </dd>
-            </div>
-          )}
       </dl>
       {withdrawal.status === 'REFUNDED' ? (
         <p className='flex items-center gap-1.5 text-sm text-green-700'>
@@ -169,8 +182,8 @@ export function WithdrawalsClient() {
         <h1 className='text-4xl font-bold text-accent'>Arrepentimientos</h1>
         <p className='text-sm text-muted-foreground'>
           Compras que el comprador revocó con el botón de arrepentimiento. Las
-          entradas ya están anuladas: devolvé el total por el mismo medio de
-          pago y marcalo acá.
+          entradas ya están anuladas: transferí el total a la cuenta que cargó
+          el comprador y marcalo acá.
         </p>
       </header>
 
@@ -206,11 +219,11 @@ export function WithdrawalsClient() {
             <DialogDescription className='break-words'>
               {refunding && (
                 <>
-                  ¿Ya le devolviste{' '}
+                  ¿Ya le transferiste{' '}
                   <strong>{formatCurrency(refunding.amount)}</strong> a{' '}
-                  {refunding.fullName}{' '}
-                  {withdrawalRefundChannel(refunding.paymentMethod)}? El trámite{' '}
-                  {refunding.number} pasa a Reintegrados.
+                  {refunding.fullName} (
+                  <span className='break-words'>{refunding.refundAccount}</span>
+                  )? El trámite {refunding.number} pasa a Reintegrados.
                 </>
               )}
             </DialogDescription>

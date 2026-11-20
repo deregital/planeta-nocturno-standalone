@@ -1,5 +1,5 @@
 // Reglas del botón de arrepentimiento: plazo, 24 h antes del evento, entradas
-// usadas y el link cifrado del mail.
+// usadas, el link cifrado del mail y la cuenta para la devolución.
 //   npm run test:withdrawal
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -12,6 +12,7 @@ import {
   readWithdrawalToken,
   withdrawalDeadline,
 } from '@/server/services/withdrawal';
+import { parseRefundAccount } from '@/lib/withdrawal';
 
 // La clave del link se lee recién al cifrar.
 process.env.AUTH_SECRET ??= 'test-secret-for-withdrawal-links';
@@ -134,4 +135,27 @@ test('el link del mail no muestra el mail ni el DNI y vence en 24 h', () => {
     readWithdrawalToken(tampered.toString('base64url'), 'prueba', now),
     null,
   );
+});
+
+test('la cuenta para la devolución: CBU o CVU con verificadores, o alias', () => {
+  // CBU válido (con espacios, como suele copiarse).
+  assert.deepEqual(parseRefundAccount(' 2850590940 090418135201 '), {
+    ok: true,
+    account: { kind: 'cbu', value: '2850590940090418135201' },
+  });
+  // Un número cambiado no pasa el dígito verificador.
+  const typo = parseRefundAccount('2850590940090418135202');
+  assert.equal(typo.ok, false);
+  assert.match(!typo.ok ? typo.error : '', /no coincide/);
+  // Le falta un número.
+  const short = parseRefundAccount('285059094009041813520');
+  assert.match(!short.ok ? short.error : '', /22 números \(ingresaste 21\)/);
+  // Alias: se guarda en mayúsculas.
+  assert.deepEqual(parseRefundAccount('lucia.compra.mp'), {
+    ok: true,
+    account: { kind: 'alias', value: 'LUCIA.COMPRA.MP' },
+  });
+  assert.equal(parseRefundAccount('mi alias').ok, false);
+  assert.equal(parseRefundAccount('corto').ok, false);
+  assert.equal(parseRefundAccount('').ok, false);
 });

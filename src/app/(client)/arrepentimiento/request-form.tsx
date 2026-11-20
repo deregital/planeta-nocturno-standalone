@@ -33,7 +33,7 @@ export function WithdrawalRequestForm({
         <h1 className='text-3xl font-bold'>Revisá tu mail</h1>
         <p className='text-base'>
           Si hay compras con ese mail y DNI, te mandamos un link a{' '}
-          <strong className='break-all'>{state.mail}</strong> para elegir la
+          <strong className='break-words'>{state.mail}</strong> para elegir la
           compra. Vence en {WITHDRAWAL_LINK_TTL_HOURS} horas.
         </p>
         <p className='text-sm text-accent-dark/70'>

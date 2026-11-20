@@ -185,7 +185,7 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     key: 'withdrawals:manage',
     label: 'Ver arrepentimientos y marcarlos como reintegrados',
     description:
-      'Compras que el comprador revocó con el botón de arrepentimiento: el reintegro se hace a mano por Mercado Pago o transferencia',
+      'Compras que el comprador revocó con el botón de arrepentimiento: el reintegro se hace a mano, por transferencia a la cuenta que cargó el comprador',
   },
 
   // Escaneo

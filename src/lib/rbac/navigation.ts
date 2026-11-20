@@ -39,8 +39,7 @@ export const BACKOFFICE_ROUTES: readonly BackofficeRoute[] = [
   },
   {
     href: '/admin/arrepentimientos' as Route,
-    // Guion opcional: en el menú lateral de 12rem no entra en una línea.
-    title: 'Arrepenti\u00ADmientos',
+    title: 'Arrepentimientos',
     anyOf: ['withdrawals:manage'],
   },
   {

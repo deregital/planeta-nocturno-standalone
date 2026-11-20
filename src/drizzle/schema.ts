@@ -1128,7 +1128,7 @@ export const deletedEmittedTicket = pgTable(
 /**
  * Botón de arrepentimiento (Disp. SSDCyLC 954/2025): el comprador revoca una
  * compra paga. Las entradas pasan a la papelera en el momento y la Productora
- * devuelve el dinero a mano. Copia los datos de la compra para que el trámite
+ * le transfiere el dinero a la cuenta que cargó. Copia los datos de la compra para que el trámite
  * quede aunque se borre.
  */
 export const withdrawalRequest = pgTable(
@@ -1151,6 +1151,8 @@ export const withdrawalRequest = pgTable(
       .notNull(),
     paymentMethod: paymentMethod(),
     paidAt: timestamp({ withTimezone: true, mode: 'string' }),
+    /** CBU, CVU o alias que cargó el comprador para la transferencia. */
+    refundAccount: text().notNull(),
     status: withdrawalStatus().default('PENDING_REFUND').notNull(),
     requestedAt: timestamp({ withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)

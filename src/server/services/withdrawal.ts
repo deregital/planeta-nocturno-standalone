@@ -26,6 +26,7 @@ import {
 import { SCAN_TIMEZONE } from '@/lib/scan/scan-texts';
 import {
   formatWithdrawalNumber,
+  type RefundAccount,
   WITHDRAWAL_DAYS,
   WITHDRAWAL_INELIGIBLE_REASONS,
   type WithdrawalIneligibleReason,
@@ -39,8 +40,8 @@ import { moveTicketToTrashInTx } from '@/server/services/ticketTrash';
  * la compra; el link (cifrado, vence en 24 h) le muestra sus compras y le deja
  * revocar las que están en plazo. Al confirmar, las entradas pasan a la
  * papelera con el motivo (dejan de escanearse y liberan el cupo) y queda un
- * trámite ARR-000123 que la Productora marca como reintegrado cuando devuelve
- * el dinero.
+ * trámite ARR-000123 con el CBU, CVU o alias que cargó el comprador. La
+ * Productora le transfiere el dinero ahí y lo marca como reintegrado.
  *
  * El comprador es el titular de la primera entrada de la compra (la de menor
  * número): un invitado que figura en otra entrada del grupo no puede anular la
@@ -431,6 +432,7 @@ export async function confirmWithdrawal(
   db: Db,
   access: WithdrawalAccess,
   ticketGroupId: string,
+  refundAccount: RefundAccount,
   now = new Date(),
 ) {
   return db.transaction(async (tx) => {
@@ -500,6 +502,7 @@ export async function confirmWithdrawal(
         serviceFeeAmount: purchase.serviceFeeAmount.toFixed(2),
         paymentMethod: purchase.paymentMethod,
         paidAt: purchase.purchasedAt,
+        refundAccount: refundAccount.value,
       })
       .returning({
         id: withdrawalRequest.id,
@@ -545,6 +548,7 @@ export async function listWithdrawalRequests(
       serviceFeeAmount: withdrawalRequest.serviceFeeAmount,
       paymentMethod: withdrawalRequest.paymentMethod,
       paidAt: withdrawalRequest.paidAt,
+      refundAccount: withdrawalRequest.refundAccount,
       status: withdrawalRequest.status,
       requestedAt: withdrawalRequest.requestedAt,
       refundedAt: withdrawalRequest.refundedAt,

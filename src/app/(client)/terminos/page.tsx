@@ -221,12 +221,14 @@ export default async function TermsPage() {
           registrarse, con el correo electrónico y el DNI informados en la
           compra. La Plataforma envía a ese correo un enlace para elegir la
           compra y, al confirmarla, informa al Usuario en el momento un número
-          de trámite, que también remite por correo electrónico. Las Entradas
-          revocadas quedan anuladas desde la confirmación. La Productora
-          reintegrará la totalidad de lo abonado, incluido el Cargo por
-          Servicio, por el mismo medio de pago utilizado. Ante cualquier
-          inconveniente con el Botón de arrepentimiento, la solicitud podrá
-          remitirse a {contact}, indicando nombre, apellido, DNI y Evento.
+          de trámite, que también remite por correo electrónico. Al confirmar,
+          el Usuario indica el CBU, CVU o alias de la cuenta en la que desea
+          recibir el reintegro. Las Entradas revocadas quedan anuladas desde la
+          confirmación. La Productora reintegrará la totalidad de lo abonado,
+          incluido el Cargo por Servicio, mediante transferencia a esa cuenta.
+          Ante cualquier inconveniente con el Botón de arrepentimiento, la
+          solicitud podrá remitirse a {contact}, indicando nombre, apellido, DNI
+          y Evento.
         </p>
         <p>
           El derecho de revocación no aplica a las Invitaciones ni a las

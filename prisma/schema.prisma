@@ -497,8 +497,9 @@ model DeletedEmittedTicket {
 
 /// Botón de arrepentimiento (Disp. SSDCyLC 954/2025, Ley 24.240 art. 34): el
 /// comprador revoca una compra paga. Las entradas pasan a la papelera en el
-/// momento y la Productora devuelve el dinero a mano. Guarda una copia de los
-/// datos de la compra para que el trámite sobreviva aunque se borre.
+/// momento y la Productora le transfiere el dinero a la cuenta que cargó.
+/// Guarda una copia de los datos de la compra para que el trámite sobreviva
+/// aunque se borre.
 model WithdrawalRequest {
   id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Número de trámite correlativo: se muestra como ARR-000123.
@@ -519,6 +520,8 @@ model WithdrawalRequest {
   serviceFeeAmount Decimal          @default(0) @db.Decimal(14, 2)
   paymentMethod    PaymentMethod?
   paidAt           DateTime?        @db.Timestamptz
+  /// CBU, CVU o alias que cargó el comprador: el reintegro es por transferencia.
+  refundAccount    String
   status           WithdrawalStatus @default(PENDING_REFUND)
 
   requestedAt      DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz

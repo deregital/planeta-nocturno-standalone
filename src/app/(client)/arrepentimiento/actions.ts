@@ -9,8 +9,8 @@ import { z } from 'zod';
 import {
   WITHDRAWAL_LINK_TTL_HOURS,
   WITHDRAWAL_PATH,
+  parseRefundAccount,
   withdrawalPaymentMethodLabel,
-  withdrawalRefundChannel,
 } from '@/lib/withdrawal';
 import { formatCurrency } from '@/lib/utils';
 import { getCurrentRequestContext } from '@/server/instance/resolve-request-context';
@@ -153,16 +153,28 @@ export type ConfirmWithdrawalResult =
       number: string;
       mail: string;
       amount: number;
-      refundChannel: string;
+      refundAccount: string;
     }
-  | { ok: false; error: string; linkExpired?: boolean };
+  | {
+      ok: false;
+      error: string;
+      linkExpired?: boolean;
+      /** El error es del CBU, CVU o alias: se muestra debajo del campo. */
+      field?: 'refundAccount';
+    };
 
 export async function confirmWithdrawalAction(
   ticketGroupId: string,
+  refundAccountInput: string,
 ): Promise<ConfirmWithdrawalResult> {
   if (!z.uuid().safeParse(ticketGroupId).success) {
     return { ok: false, error: 'Elegí una compra.' };
   }
+  const parsedAccount = parseRefundAccount(String(refundAccountInput ?? ''));
+  if (!parsedAccount.ok) {
+    return { ok: false, error: parsedAccount.error, field: 'refundAccount' };
+  }
+  const refundAccount = parsedAccount.account;
 
   const { db, instance } = await getCurrentRequestContext();
   const token = (await cookies()).get(WITHDRAWAL_COOKIE)?.value;
@@ -177,7 +189,7 @@ export async function confirmWithdrawalAction(
 
   let result: Awaited<ReturnType<typeof confirmWithdrawal>>;
   try {
-    result = await confirmWithdrawal(db, access, ticketGroupId);
+    result = await confirmWithdrawal(db, access, ticketGroupId, refundAccount);
   } catch (error) {
     if (error instanceof WithdrawalNotAllowedError) {
       return { ok: false, error: error.message };
@@ -202,7 +214,6 @@ export async function confirmWithdrawalAction(
     ticketCount: purchase.ticketCount,
   });
 
-  const refundChannel = withdrawalRefundChannel(purchase.paymentMethod);
   after(async () => {
     const contactEmail = resolveContactEmail(instance);
     const mails = [
@@ -221,7 +232,7 @@ export async function confirmWithdrawalAction(
               purchase.serviceFeeAmount > 0
                 ? formatCurrency(purchase.serviceFeeAmount)
                 : null,
-            refundChannel,
+            refundAccount: refundAccount.value,
           },
         ),
       },
@@ -242,11 +253,7 @@ export async function confirmWithdrawalAction(
                 paymentMethod: withdrawalPaymentMethodLabel(
                   purchase.paymentMethod,
                 ),
-                // Mercado Pago guarda el id de la compra como referencia externa.
-                paymentReference:
-                  purchase.paymentMethod === 'MERCADO_PAGO'
-                    ? purchase.ticketGroupId
-                    : null,
+                refundAccount: refundAccount.value,
               }),
             },
           ]
@@ -276,6 +283,6 @@ export async function confirmWithdrawalAction(
     number,
     mail: access.mail,
     amount: purchase.amount,
-    refundChannel,
+    refundAccount: refundAccount.value,
   };
 }
