@@ -16,6 +16,7 @@ import {
   eventQuestion,
   ticketGroup,
 } from '@/drizzle/schema';
+import { ACCEPT_TERMS_ERROR, ACCEPT_TERMS_FIELD } from '@/lib/legal';
 import {
   buyerFromHeaders,
   capturePurchaseCompleted,
@@ -277,6 +278,10 @@ export const handlePurchase = async (
 
   if (!validationInvitedBy.success) {
     errorsArray['invitedBy'] = validationInvitedBy.error.issues[0].message;
+  }
+  // Sin la casilla no hay aceptación de Términos ni Política: no se emite.
+  if (formData.get(ACCEPT_TERMS_FIELD) !== 'on') {
+    errorsArray[ACCEPT_TERMS_FIELD] = ACCEPT_TERMS_ERROR;
   }
   if (!validation.success) {
     // Procesar errores de validación y mapearlos a las keys correctas del formulario

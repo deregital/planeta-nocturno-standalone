@@ -40,96 +40,102 @@ import {
 
 export const DELETION_REASON_MAX_LENGTH = 500;
 
-export async function moveTicketToTrash(
-  db: Db,
-  {
-    ticketId,
-    reason,
-    deletedByUserId,
-  }: { ticketId: string; reason: string; deletedByUserId: string },
+type TrashTicketInput = {
+  ticketId: string;
+  reason: string;
+  /** Null si no la eliminó un usuario (p. ej. el arrepentimiento del comprador). */
+  deletedByUserId: string | null;
+};
+
+export async function moveTicketToTrash(db: Db, input: TrashTicketInput) {
+  return db.transaction((tx) => moveTicketToTrashInTx(tx, input));
+}
+
+/** Igual que `moveTicketToTrash`, dentro de una transacción ya abierta. */
+export async function moveTicketToTrashInTx(
+  tx: Tx,
+  { ticketId, reason, deletedByUserId }: TrashTicketInput,
 ) {
-  return db.transaction(async (tx) => {
-    const [ticket] = await tx
-      .select()
-      .from(emittedTicket)
-      .where(eq(emittedTicket.id, ticketId))
-      .for('update');
-    if (!ticket) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'La entrada no existe o ya está en la papelera',
-      });
-    }
-
-    const [scans, [invitation]] = await Promise.all([
-      tx
-        .select({
-          id: emittedTicketScan.id,
-          scannedAt: emittedTicketScan.scannedAt,
-          scannedByUserId: emittedTicketScan.scannedByUserId,
-        })
-        .from(emittedTicketScan)
-        .where(eq(emittedTicketScan.emittedTicketId, ticketId)),
-      tx
-        .select({
-          organizerId: ticketXorganizer.organizerId,
-          ticketGroupId: ticketXorganizer.ticketGroupId,
-          code: ticketXorganizer.code,
-          shortId: ticketXorganizer.shortId,
-          createdAt: ticketXorganizer.createdAt,
-          shared: ticketXorganizer.shared,
-          sharedWith: ticketXorganizer.sharedWith,
-        })
-        .from(ticketXorganizer)
-        .where(eq(ticketXorganizer.ticketId, ticketId))
-        .limit(1),
-    ]);
-
-    // Los escaneos y el código de invitación se borran en cascada: quedan
-    // guardados en la papelera para restaurarlos. El código usado queda
-    // anulado (su link ya no sirve) y el organizador recibe uno nuevo sin
-    // usar, así no pierde la invitación.
-    await tx.delete(emittedTicket).where(eq(emittedTicket.id, ticketId));
-
-    const replacementCode = invitation
-      ? await addReplacementInvitationCode(
-          tx,
-          ticket.eventId,
-          invitation.organizerId,
-        )
-      : null;
-
-    await tx.insert(deletedEmittedTicket).values({
-      ...ticket,
-      scans,
-      invitation: invitation
-        ? ({
-            ...invitation,
-            replacementCode,
-          } as DeletedTicketInvitationSnapshot)
-        : null,
-      deletionReason: reason,
-      deletedByUserId,
+  const [ticket] = await tx
+    .select()
+    .from(emittedTicket)
+    .where(eq(emittedTicket.id, ticketId))
+    .for('update');
+  if (!ticket) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'La entrada no existe o ya está en la papelera',
     });
+  }
 
-    await tx
-      .update(ticketTypePerGroup)
-      .set({ amount: sql`greatest(${ticketTypePerGroup.amount} - 1, 0)` })
-      .where(
-        and(
-          eq(ticketTypePerGroup.ticketGroupId, ticket.ticketGroupId),
-          eq(ticketTypePerGroup.ticketTypeId, ticket.ticketTypeId),
-        ),
-      );
-    await tx
-      .update(ticketGroup)
-      .set({
-        amountTickets: sql`greatest(${ticketGroup.amountTickets} - 1, 0)`,
+  const [scans, [invitation]] = await Promise.all([
+    tx
+      .select({
+        id: emittedTicketScan.id,
+        scannedAt: emittedTicketScan.scannedAt,
+        scannedByUserId: emittedTicketScan.scannedByUserId,
       })
-      .where(eq(ticketGroup.id, ticket.ticketGroupId));
+      .from(emittedTicketScan)
+      .where(eq(emittedTicketScan.emittedTicketId, ticketId)),
+    tx
+      .select({
+        organizerId: ticketXorganizer.organizerId,
+        ticketGroupId: ticketXorganizer.ticketGroupId,
+        code: ticketXorganizer.code,
+        shortId: ticketXorganizer.shortId,
+        createdAt: ticketXorganizer.createdAt,
+        shared: ticketXorganizer.shared,
+        sharedWith: ticketXorganizer.sharedWith,
+      })
+      .from(ticketXorganizer)
+      .where(eq(ticketXorganizer.ticketId, ticketId))
+      .limit(1),
+  ]);
 
-    return { id: ticket.id, eventId: ticket.eventId };
+  // Los escaneos y el código de invitación se borran en cascada: quedan
+  // guardados en la papelera para restaurarlos. El código usado queda
+  // anulado (su link ya no sirve) y el organizador recibe uno nuevo sin
+  // usar, así no pierde la invitación.
+  await tx.delete(emittedTicket).where(eq(emittedTicket.id, ticketId));
+
+  const replacementCode = invitation
+    ? await addReplacementInvitationCode(
+        tx,
+        ticket.eventId,
+        invitation.organizerId,
+      )
+    : null;
+
+  await tx.insert(deletedEmittedTicket).values({
+    ...ticket,
+    scans,
+    invitation: invitation
+      ? ({
+          ...invitation,
+          replacementCode,
+        } as DeletedTicketInvitationSnapshot)
+      : null,
+    deletionReason: reason,
+    deletedByUserId,
   });
+
+  await tx
+    .update(ticketTypePerGroup)
+    .set({ amount: sql`greatest(${ticketTypePerGroup.amount} - 1, 0)` })
+    .where(
+      and(
+        eq(ticketTypePerGroup.ticketGroupId, ticket.ticketGroupId),
+        eq(ticketTypePerGroup.ticketTypeId, ticket.ticketTypeId),
+      ),
+    );
+  await tx
+    .update(ticketGroup)
+    .set({
+      amountTickets: sql`greatest(${ticketGroup.amountTickets} - 1, 0)`,
+    })
+    .where(eq(ticketGroup.id, ticket.ticketGroupId));
+
+  return { id: ticket.id, eventId: ticket.eventId };
 }
 
 export async function restoreTicketFromTrash(db: Db, ticketId: string) {
@@ -306,7 +312,7 @@ export async function restoreTicketFromTrash(db: Db, ticketId: string) {
   });
 }
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 /**
  * Código nuevo sin usar para el organizador, en su grupo de invitaciones (el

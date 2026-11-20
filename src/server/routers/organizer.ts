@@ -22,6 +22,7 @@ import {
 import { eventSchema } from '@/server/schemas/event';
 import { organizerBaseSchema } from '@/server/schemas/organizer';
 import { assertCanAccessOrganizer } from '@/server/rbac/scope';
+import { notWithdrawn } from '@/server/services/withdrawal';
 import { permissionProcedure, router } from '@/server/trpc';
 import { endOfDayUTC } from '@/server/utils/utils';
 
@@ -266,6 +267,8 @@ export const organizerRouter = router({
         where: and(
           inArray(ticketGroup.invitedById, organizerIds),
           not(eq(ticketGroup.status, 'BOOKED')),
+          // Una compra arrepentida no cuenta como vendida.
+          notWithdrawn,
           between(
             ticketGroup.createdAt,
             from.toISOString(),

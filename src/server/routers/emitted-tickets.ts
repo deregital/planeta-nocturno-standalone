@@ -126,6 +126,7 @@ export const emittedTicketsRouter = router({
           .values({
             eventId: input.eventId,
             status: isFree ? 'FREE' : input.paidOnLocation ? 'PAID' : 'BOOKED',
+            paidAt: !isFree && input.paidOnLocation ? sql`now()` : null,
             paymentMethod: isFree ? null : 'ON_SITE',
             totalAmount: isFree ? '0' : (ticketType.price ?? 0).toFixed(2),
             amountTickets: 1,

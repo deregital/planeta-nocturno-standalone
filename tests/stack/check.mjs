@@ -37,7 +37,9 @@ const INVARIANTS = [
             AND NOT EXISTS (SELECT 1 FROM "emittedTicket" t WHERE t."ticketGroupId" = g.id)
             -- El grupo FREE compartido donde viven los códigos sin canjear de cada
             -- organizador no tiene entradas por diseño.
-            AND NOT EXISTS (SELECT 1 FROM "ticketXOrganizer" x WHERE x."ticketGroupId" = g.id)`,
+            AND NOT EXISTS (SELECT 1 FROM "ticketXOrganizer" x WHERE x."ticketGroupId" = g.id)
+            -- Arrepentida: sus entradas pasaron a la papelera.
+            AND NOT EXISTS (SELECT 1 FROM "withdrawalRequest" w WHERE w."ticketGroupId" = g.id)`,
   },
   {
     check: 'entradas-distintas-a-lo-reservado',
@@ -198,7 +200,8 @@ async function checkTenant(slug, databaseName, mails, preferences) {
       const approved = pref.payments.filter((p) => p.action.startsWith('approve'));
       if (!approved.length) continue;
       const { rows } = await pool.query(
-        `SELECT g.status, g."totalAmount", (SELECT count(*) FROM "emittedTicket" t WHERE t."ticketGroupId" = g.id)::int AS entradas
+        `SELECT g.status, g."totalAmount", (SELECT count(*) FROM "emittedTicket" t WHERE t."ticketGroupId" = g.id)::int AS entradas,
+                EXISTS (SELECT 1 FROM "withdrawalRequest" w WHERE w."ticketGroupId" = g.id) AS arrepentida
          FROM "ticketGroup" g WHERE g.id = $1`,
         [pref.external_reference],
       );
@@ -210,7 +213,7 @@ async function checkTenant(slug, databaseName, mails, preferences) {
         add(lost ? 'media' : 'alta', 'pago-aprobado-grupo-borrado', slug,
           lost ? 'Pago aprobado cuyo aviso nunca llegó: el grupo se borró y el comprador pagó sin entradas (no hay conciliación)' : 'Pago aprobado en Mercado Pago cuyo grupo ya no existe en la base',
           [{ preferencia: pref.id, ticketGroupId: pref.external_reference, pagos: pref.payments.map((p) => p.action).join(','), total }]);
-      } else if (!lost && ageMs > 40_000 && (group.status !== 'PAID' || group.entradas === 0)) {
+      } else if (!lost && ageMs > 40_000 && (group.status !== 'PAID' || (group.entradas === 0 && !group.arrepentida))) {
         add('alta', 'pago-aprobado-sin-entradas', slug, 'Pago aprobado (con aviso enviado) pero el grupo no quedó PAID con entradas',
           [{ preferencia: pref.id, ticketGroupId: pref.external_reference, ...group, pagos: pref.payments.map((p) => p.action).join(',') }]);
       } else if (Number(group.totalAmount) !== total) {
