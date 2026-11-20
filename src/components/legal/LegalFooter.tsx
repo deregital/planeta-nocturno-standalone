@@ -1,8 +1,14 @@
+import type { Route } from 'next';
+
 import Link from 'next/link';
 
 import { CONSUMER_COMPLAINTS_URL } from '@/lib/legal';
+import { WITHDRAWAL_PATH } from '@/lib/withdrawal';
 
-/** Pie de las páginas públicas con los textos legales y el link de reclamos. */
+/**
+ * Pie de las páginas públicas: el botón de arrepentimiento, los textos legales
+ * y el link de reclamos.
+ */
 export function LegalFooter() {
   return (
     <footer className='border-t border-accent-dark/10 px-4 py-4'>
@@ -10,6 +16,13 @@ export function LegalFooter() {
         aria-label='Información legal'
         className='mx-auto flex max-w-screen-2xl flex-wrap justify-center gap-x-5 gap-y-2 text-center text-xs text-accent-dark/70'
       >
+        {/* Disp. SSDCyLC 954/2025: visible desde el primer acceso, sin login. */}
+        <Link
+          href={WITHDRAWAL_PATH as Route}
+          className='font-semibold text-accent-dark underline underline-offset-2'
+        >
+          Botón de arrepentimiento
+        </Link>
         <Link href='/terminos' className='underline-offset-2 hover:underline'>
           Términos y condiciones
         </Link>

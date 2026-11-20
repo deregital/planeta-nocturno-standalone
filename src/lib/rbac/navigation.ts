@@ -38,6 +38,12 @@ export const BACKOFFICE_ROUTES: readonly BackofficeRoute[] = [
     anyOf: ['database:read'],
   },
   {
+    href: '/admin/arrepentimientos' as Route,
+    // Guion opcional: en el menú lateral de 12rem no entra en una línea.
+    title: 'Arrepenti\u00ADmientos',
+    anyOf: ['withdrawals:manage'],
+  },
+  {
     href: '/admin/users',
     title: 'Organizadores',
     anyOf: ['organizers:read'],

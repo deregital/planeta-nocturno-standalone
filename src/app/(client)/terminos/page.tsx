@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Route } from 'next';
 
 import Link from 'next/link';
 
@@ -9,6 +9,7 @@ import {
   LegalSection,
 } from '@/components/legal/LegalDocument';
 import { CONSUMER_COMPLAINTS_URL, PLATFORM_NAME } from '@/lib/legal';
+import { WITHDRAWAL_PATH } from '@/lib/withdrawal';
 import { getLegalContext } from '@/server/legal';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -206,11 +207,30 @@ export default async function TermsPage() {
           causa, siempre que lo solicite con una antelación mínima de
           veinticuatro (24) horas al inicio del Evento y que la Entrada no haya
           sido utilizada, conforme el artículo 34 de la Ley N° 24.240 y los
-          artículos 1110 a 1116 del Código Civil y Comercial de la Nación. La
-          solicitud deberá remitirse a {contact}, indicando nombre, apellido,
-          DNI y Evento. Dentro de las veinticuatro (24) horas se informará al
-          Usuario un número de trámite, y el reintegro se efectuará por el mismo
-          medio de pago utilizado.
+          artículos 1110 a 1116 del Código Civil y Comercial de la Nación.
+        </p>
+        <p>
+          La solicitud se realiza desde el{' '}
+          <Link
+            href={WITHDRAWAL_PATH as Route}
+            className='font-medium underline'
+          >
+            Botón de arrepentimiento
+          </Link>{' '}
+          disponible en el pie de todas las páginas del Sitio, sin necesidad de
+          registrarse, con el correo electrónico y el DNI informados en la
+          compra. La Plataforma envía a ese correo un enlace para elegir la
+          compra y, al confirmarla, informa al Usuario en el momento un número
+          de trámite, que también remite por correo electrónico. Las Entradas
+          revocadas quedan anuladas desde la confirmación. La Productora
+          reintegrará la totalidad de lo abonado, incluido el Cargo por
+          Servicio, por el mismo medio de pago utilizado. Ante cualquier
+          inconveniente con el Botón de arrepentimiento, la solicitud podrá
+          remitirse a {contact}, indicando nombre, apellido, DNI y Evento.
+        </p>
+        <p>
+          El derecho de revocación no aplica a las Invitaciones ni a las
+          Entradas sin cargo.
         </p>
       </LegalSection>
 

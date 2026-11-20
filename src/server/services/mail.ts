@@ -218,3 +218,105 @@ export function generateMercadoPagoUnlinkedEmail(
     <p>Para conectar una cuenta nuevamente, ingresá a <a href="${instance.publicUrl}/admin/settings">${instance.publicUrl}/admin/settings</a>.</p>
   `;
 }
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export function generateWithdrawalLinkEmail(
+  instance: MailInstance,
+  link: string,
+  expiresInHours: number,
+) {
+  return `
+    <h1>Elegí la compra de la que te querés arrepentir</h1>
+    <p>Recibimos un pedido de arrepentimiento en <b>${escapeHtml(instance.name)}</b> con este mail.</p>
+    <p><a href="${link}">Ver mis compras</a></p>
+    <p>El link vence en ${expiresInHours} horas. Las entradas no se anulan hasta que confirmes.</p>
+    <p>Si no lo pediste, ignorá este mail: tus entradas siguen valiendo.</p>
+  `;
+}
+
+export function generateWithdrawalReceiptEmail(
+  instance: MailInstance & Pick<ResolvedInstance, 'contactEmail'>,
+  {
+    number,
+    eventName,
+    ticketCount,
+    amount,
+    serviceFeeAmount,
+    refundChannel,
+  }: {
+    number: string;
+    eventName: string;
+    ticketCount: number;
+    amount: string;
+    serviceFeeAmount: string | null;
+    refundChannel: string;
+  },
+) {
+  const fee = serviceFeeAmount
+    ? ` (incluye ${serviceFeeAmount} de cargo por servicio)`
+    : '';
+  const contact = instance.contactEmail
+    ? `<p>Ante cualquier duda, escribí a <a href="mailto:${instance.contactEmail}">${instance.contactEmail}</a> con tu número de trámite.</p>`
+    : '';
+  return `
+    <h1>Recibimos tu arrepentimiento</h1>
+    <p>Tu número de trámite es <b>${number}</b>.</p>
+    <ul>
+      <li>Evento: <b>${escapeHtml(eventName)}</b></li>
+      <li>Entradas anuladas: <b>${ticketCount}</b></li>
+      <li>Monto a devolver: <b>${amount}</b>${fee}</li>
+    </ul>
+    <p>Las entradas ya no sirven para entrar. ${escapeHtml(instance.name)} te va a devolver el dinero ${refundChannel}.</p>
+    ${contact}
+  `;
+}
+
+export function generateWithdrawalNoticeEmail(
+  instance: MailInstance,
+  {
+    number,
+    eventName,
+    buyerName,
+    buyerMail,
+    buyerDni,
+    ticketCount,
+    amount,
+    paymentMethod,
+    paymentReference,
+  }: {
+    number: string;
+    eventName: string;
+    buyerName: string;
+    buyerMail: string;
+    buyerDni: string;
+    ticketCount: number;
+    amount: string;
+    paymentMethod: string;
+    paymentReference: string | null;
+  },
+) {
+  const reference = paymentReference
+    ? `<li>Referencia de pago: <b>${paymentReference}</b></li>`
+    : '';
+  return `
+    <h1>Nuevo arrepentimiento ${number}</h1>
+    <p>Un comprador usó el botón de arrepentimiento. Las entradas ya quedaron anuladas.</p>
+    <ul>
+      <li>Evento: <b>${escapeHtml(eventName)}</b></li>
+      <li>Comprador: <b>${escapeHtml(buyerName)}</b> (${escapeHtml(buyerMail)}, DNI ${escapeHtml(buyerDni)})</li>
+      <li>Entradas anuladas: <b>${ticketCount}</b></li>
+      <li>Monto a devolver: <b>${amount}</b> (cargo por servicio incluido)</li>
+      <li>Medio de pago: <b>${paymentMethod}</b></li>
+      ${reference}
+    </ul>
+    <p>Devolvé el dinero por el mismo medio de pago y marcalo como reintegrado en la plataforma.</p>
+    <p><a href="${instance.publicUrl}/admin/arrepentimientos">Ver arrepentimientos</a></p>
+  `;
+}
