@@ -883,6 +883,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  // Directo a stderr: tests/load/bootstrap apaga console.error para no llenar
+  // la salida con logs de la app, y si no el seed fallaría sin decir por qué.
+  process.stderr.write(`${error instanceof Error ? error.stack : error}\n`);
   process.exit(1);
 });

@@ -48,8 +48,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Chromium para Playwright
-        run: npx playwright install --with-deps chromium
+      - name: Chromium para Playwright y pdftoppm (QR de las entradas del seed)
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Pruebas con el stack
         run: tests/run.sh stack
       - name: Reporte y logs si falla
