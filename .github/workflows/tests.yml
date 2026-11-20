@@ -22,7 +22,7 @@ permissions:
 jobs:
   rapido:
     name: Rápido (lint, tipos, unitarias)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,8 @@ jobs:
 
   stack:
     name: Stack simulado (scanner, aislamiento, regresiones, golden path)
-    runs-on: ubuntu-latest
+    # Fijo en 24.04: Playwright 1.60 no instala Chromium en ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       # En Linux el 443 pide root; el navegador de los tests sigue el puerto solo.
