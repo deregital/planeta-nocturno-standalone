@@ -12,14 +12,14 @@ reproducir un bug de PostHog, probar el scanner desde el celular.
 | Mercado Pago | api.mercadopago.com + Pluto | `mocks.mjs`: preferencias y un checkout falso con pago aprobado, aviso demorado, triplicado, perdido, pendiente y rechazado; el aviso llega firmado a `/api/mercadopago` como lo haría Pluto |
 | Mails | Resend | `RESEND_BASE_URL` → `mocks.mjs`; bandeja en https://mail.mock.test |
 | Imágenes | S3 | `mocks.mjs` guarda las subidas firmadas y las sirve |
-| Dominios | `*.nuestrostickets.com` | `*.pn.test` (`ROOT_DOMAIN=pn.test`), HTTPS con certificado propio en el 443 |
+| Dominios | `*.nuestrostickets.com` | `*.pn.test` (`ROOT_DOMAIN=pn.test`), HTTPS con certificado propio en el 443 (o el siguiente libre: queda en `.run/https-port`) |
 
 ## Uso
 
 ```bash
 tests/stack/up.sh             # build si hace falta, servicios y seed (idempotente)
 tests/stack/up.sh --reseed    # vuelve a sembrar desde cero
-tests/stack/up.sh --rebuild   # después de cambiar código de la app
+tests/stack/up.sh --rebuild   # fuerza la compilación (sola, ya recompila si cambió el código)
 tests/stack/down.sh           # frena procesos (--purge borra Postgres y .run/)
 ```
 
@@ -34,7 +34,8 @@ mail y subida), `mails/`, `mp/`, `s3/`, `qr/`.
 ## Qué siembra (`seed.ts`)
 
 - Panel de control en https://admin.pn.test con un superadmin.
-- **prueba.pn.test** (con Mercado Pago simulado): admin, admin2, boleteria, puerta,
+- **prueba.pn.test** (conectada a Mercado Pago simulado, con token de formato real para
+  que el panel deje crear entradas pagas): admin, admin2, boleteria, puerta,
   puerta2, jefe (jefe de organizadores) con orga1 y orga2, y orga3 independiente. Eventos:
   pago con cargo por servicio, preguntas y links de organizador; últimas 3 entradas; gratis
   con datos extra; por invitación con reparto a organizadores; uno que empezó hace una hora
@@ -43,6 +44,11 @@ mail y subida), `mails/`, `mp/`, `s3/`, `qr/`.
 - **otra.pn.test** (sólo transferencia): admin, puerta y un evento en curso con 3 entradas
   (QR en `qr/otra/`). Sirve para probar el cruce entre plataformas.
 - `qr/basura.png`: un QR que no es una entrada.
+
+## Tests e2e
+
+`npm run test:e2e` corre el golden path en Playwright contra este stack: ver
+[tests/e2e](../e2e/README.md).
 
 ## Navegador para agentes (`pw`)
 
@@ -54,7 +60,9 @@ tests/stack/pw yo network slow
 tests/stack/pw yo help
 ```
 
-Cada sesión mantiene cookies y pestañas entre comandos. Todas comparten un Chromium
+Cada sesión mantiene cookies y pestañas entre comandos. Cómo llega Chromium al stack,
+los celulares simulados y la cámara falsa están en `browser-env.mjs`, compartido con los
+tests e2e. Todas comparten un Chromium
 headless (un contexto aislado por sesión). La cámara falsa reemplaza `getUserMedia` por un
 canvas que muestra la imagen pedida, así que el scanner lee QR reales del PDF.
 

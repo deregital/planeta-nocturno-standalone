@@ -29,6 +29,10 @@ const eslintConfig = [
       'src/generated',
       'next-env.d.ts',
       'src/drizzle/',
+      // Salidas de las pruebas (reportes de Playwright, capturas, estado del stack).
+      'test-results',
+      'tests/stack/.run',
+      'tests/load/results',
     ],
   },
   {
@@ -119,9 +123,17 @@ const eslintConfig = [
     },
   },
   {
-    files: ['eslint.config.mjs', 'eslint/**/*.mjs', 'tests/eslint/**/*.mjs'],
+    // Scripts que corren con node pelado: los alias @/ y @tests/ no resuelven.
+    files: ['eslint.config.mjs', 'eslint/**/*.mjs', 'tests/eslint/**/*.mjs', 'tests/stack/**/*.mjs'],
     rules: {
       'no-restricted-imports': 'off',
+    },
+  },
+  {
+    // El `use` de las fixtures de Playwright no es el hook de React.
+    files: ['tests/e2e/**/*.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
     },
   },
 ];

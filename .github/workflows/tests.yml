@@ -1,0 +1,65 @@
+# Pruebas en cada PR y en cada push a dev o master (detalle en tests/README.md).
+# - rapido: lint, tipos y unitarias, sin nada levantado.
+# - stack: la app real compilada, con Postgres en Docker y Mercado Pago, mails,
+#   S3 y Neon simulados (tests/stack). Corre el scanner, el aislamiento entre
+#   productoras, las regresiones y el golden path en un navegador.
+# No usa secretos: el stack genera los suyos y nada sale a servicios reales.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [dev, master]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rapido:
+    name: Rápido (lint, tipos, unitarias)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: tests/run.sh rapido
+
+  stack:
+    name: Stack simulado (scanner, aislamiento, regresiones, golden path)
+    # Fijo en 24.04: Playwright 1.60 no instala Chromium en ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # En Linux el 443 pide root; el navegador de los tests sigue el puerto solo.
+      STACK_HTTPS_PORT: 8443
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Chromium para Playwright y pdftoppm (QR de las entradas del seed)
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y --no-install-recommends poppler-utils
+      - name: Pruebas con el stack
+        run: tests/run.sh stack
+      - name: Reporte y logs si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stack-${{ github.run_attempt }}
+          path: |
+            test-results/
+            tests/stack/.run/logs/
+          retention-days: 7
