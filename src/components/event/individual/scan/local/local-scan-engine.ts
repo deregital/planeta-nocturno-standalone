@@ -186,7 +186,15 @@ export type EngineEvent =
       pendingAfter: number;
       errorCode?: string;
     }
-  | { type: 'snapshot'; ok: boolean; latencyMs: number; tickets: number };
+  | {
+      type: 'snapshot';
+      ok: boolean;
+      latencyMs: number;
+      tickets: number;
+      /** La puerta todavía no tenía lista (si no, era una actualización de fondo). */
+      initial: boolean;
+      errorCode?: string;
+    };
 
 export const SYNC_TIMEOUT_MS = 12_000;
 export const SNAPSHOT_TIMEOUT_MS = 45_000;
@@ -296,8 +304,6 @@ export class LocalScanEngine {
   private readonly eventIds: string[];
   private readonly deviceId: string;
   private readonly onEvent: (event: EngineEvent) => void;
-  /** La instalación tiene el modo local: si no, no se pregunta la configuración. */
-  private readonly available: boolean;
 
   private serverConfig: ScannerConfig = OFF_CONFIG;
   private deviceMode: ScannerMode = 'local';
@@ -364,8 +370,6 @@ export class LocalScanEngine {
     now?: () => number;
     /** Si el navegador sabe que no hay red, no se intenta (ni suma backoff). */
     isOnline?: () => boolean;
-    /** La instalación tiene el modo local (`scanner.config` → `available`). */
-    available?: boolean;
     onEvent?: (event: EngineEvent) => void;
   }) {
     this.transport = options.transport;
@@ -375,7 +379,6 @@ export class LocalScanEngine {
     this.deviceId = options.deviceId;
     this.now = options.now ?? Date.now;
     this.isOnline = options.isOnline ?? isBrowserOnline;
-    this.available = options.available ?? true;
     this.onEvent = options.onEvent ?? (() => {});
     this.status = this.computeStatus();
   }
@@ -535,7 +538,6 @@ export class LocalScanEngine {
 
   private isConfigCheckDue(now: number) {
     return (
-      this.available &&
       this.serverConfig.mode === 'off' &&
       now - this.lastConfigCheckAt >= CONFIG_CHECK_MS
     );
@@ -767,7 +769,8 @@ export class LocalScanEngine {
   private async refreshSnapshot() {
     this.snapshotLoading = true;
     this.snapshotWanted = false;
-    if (this.phase !== 'ready') this.phase = 'loading';
+    const initial = this.phase !== 'ready';
+    if (initial) this.phase = 'loading';
     this.notify();
 
     const controller = new AbortController();
@@ -825,6 +828,7 @@ export class LocalScanEngine {
         ok: true,
         latencyMs: receivedAt - sentAt,
         tickets: snapshot.tickets.length,
+        initial,
       });
     } catch (error) {
       if (this.stopped) return;
@@ -852,6 +856,8 @@ export class LocalScanEngine {
         ok: false,
         latencyMs: this.now() - sentAt,
         tickets: 0,
+        initial,
+        errorCode: this.lastError,
       });
     } finally {
       clearTimeout(timeout);

@@ -19,7 +19,7 @@ import {
   type DeviceModePreference,
 } from '@/components/event/individual/scan/local/device';
 import { type ScanController } from '@/components/event/individual/scan/useScanController';
-import { type ScannerMode } from '@/lib/scan/protocol';
+import { type SelectableScannerMode } from '@/lib/scan/protocol';
 import {
   classifyRequestError,
   isUnexpectedScanError,
@@ -28,16 +28,15 @@ import {
 import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
-const EVENT_MODES: { value: ScannerMode; label: string; hint: string }[] = [
+const EVENT_MODES: {
+  value: SelectableScannerMode;
+  label: string;
+  hint: string;
+}[] = [
   {
     value: 'off',
     label: 'Normal',
-    hint: 'Cada escaneo espera al servidor (como siempre).',
-  },
-  {
-    value: 'shadow',
-    label: 'Sombra',
-    hint: 'Igual que normal, pero el celular calcula su decisión y se registra si coincide.',
+    hint: 'Cada escaneo espera al servidor.',
   },
   {
     value: 'local',
@@ -48,7 +47,6 @@ const EVENT_MODES: { value: ScannerMode; label: string; hint: string }[] = [
 
 const DEVICE_MODES: { value: DeviceModePreference; label: string }[] = [
   { value: 'auto', label: 'Lo del evento' },
-  { value: 'shadow', label: 'Sombra' },
   { value: 'off', label: 'Normal' },
 ];
 
@@ -128,7 +126,7 @@ export function ScannerSettings({
     return () => clearInterval(timer);
   }, [open]);
 
-  if (!config?.available) return null;
+  if (!config) return null;
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -143,11 +141,11 @@ export function ScannerSettings({
       </DrawerTrigger>
       <DrawerContent className='px-4 pb-6'>
         <DrawerHeader className='px-0'>
-          <DrawerTitle>Escaneo rápido (beta)</DrawerTitle>
+          <DrawerTitle>Escaneo rápido</DrawerTitle>
           <DrawerDescription>
-            En modo rápido el celular decide al instante y confirma con el
-            servidor por detrás. Si pasa más de N segundos sin sincronizar,
-            vuelve solo al modo normal.
+            Los eventos escanean en modo rápido salvo que acá elijas otro. El
+            celular decide al instante y confirma con el servidor por detrás. Si
+            pasa más de N segundos sin sincronizar, vuelve solo al modo normal.
           </DrawerDescription>
         </DrawerHeader>
 

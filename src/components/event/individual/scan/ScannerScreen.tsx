@@ -35,8 +35,8 @@ import { trpc } from '@/server/trpc/client';
 
 /**
  * Pantalla de escaneo con cámara (un evento o varios a la vez). Con el modo
- * del evento apagado se comporta como siempre: cada escaneo espera al
- * servidor. Ver `useScanController` para los modos sombra y rápido.
+ * del evento en normal, cada escaneo espera al servidor. Ver
+ * `useScanController` para los modos sombra y rápido.
  */
 export function ScannerScreen({
   eventIds,
