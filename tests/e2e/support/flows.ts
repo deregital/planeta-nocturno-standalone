@@ -48,6 +48,8 @@ export async function completarCheckout(
   for (const [pregunta, respuesta] of Object.entries(respuestas)) {
     await page.getByRole('textbox', { name: pregunta }).first().fill(respuesta);
   }
+  // Sin aceptar Términos y Política el checkout no emite.
+  await page.getByRole('checkbox', { name: /Acepto los Términos/ }).check();
 }
 
 // La página de entradas después de pagar o canjear: "Tu ticket" o "Tus N

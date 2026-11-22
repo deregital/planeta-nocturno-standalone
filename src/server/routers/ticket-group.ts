@@ -1152,6 +1152,10 @@ export const ticketGroupRouter = router({
           emittedTickets: {
             columns: { id: true, fullName: true, dni: true, mail: true },
           },
+          // Arrepentida: sus entradas ya están en la papelera.
+          withdrawal: {
+            columns: { number: true, fullName: true, mail: true },
+          },
         },
       });
     }),
@@ -1160,7 +1164,7 @@ export const ticketGroupRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [released] = await ctx.db
         .update(ticketGroup)
-        .set({ status: 'PAID' })
+        .set({ status: 'PAID', paidAt: sql`now()` })
         .where(
           and(
             eq(ticketGroup.id, input),

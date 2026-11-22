@@ -180,6 +180,14 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     parent: 'tickets:read',
   },
 
+  // Arrepentimientos
+  {
+    key: 'withdrawals:manage',
+    label: 'Ver arrepentimientos y marcarlos como reintegrados',
+    description:
+      'Compras que el comprador revocó con el botón de arrepentimiento: el reintegro se hace a mano, por transferencia a la cuenta que cargó el comprador',
+  },
+
   // Escaneo
   {
     key: 'scanner:use',
@@ -552,6 +560,7 @@ export function togglePermission(
 export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   events: 'Eventos',
   tickets: 'Entradas',
+  withdrawals: 'Arrepentimientos',
   scanner: 'Escaneo',
   database: 'Base de datos',
   organizers: 'Organizadores',

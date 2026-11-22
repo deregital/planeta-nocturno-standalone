@@ -71,6 +71,7 @@ type SearchFieldId = (typeof SEARCH_FIELDS)[number]['id'];
 
 const STATUS_CLASS: Record<string, string> = {
   Pagado: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  Arrepentida: 'border-rose-200 bg-rose-50 text-rose-800',
   Gratis: 'border-zinc-200 bg-zinc-50 text-zinc-700',
   'Pendiente de transferencia': 'border-amber-300 bg-amber-50 text-amber-900',
   'Pago en proceso': 'border-sky-200 bg-sky-50 text-sky-800',
@@ -100,6 +101,7 @@ const textSortingFn: SortingFn<PurchaseRow> = (rowA, rowB, columnId) =>
   );
 
 function getStatusLabel(purchase: Purchase) {
+  if (purchase.withdrawal) return 'Arrepentida';
   if (purchase.status === 'PAID') return 'Pagado';
   if (purchase.status === 'FREE') return 'Gratis';
   if (purchase.paymentMethod === 'TRANSFER')
@@ -138,8 +140,8 @@ function toRow(purchase: Purchase, extraTicketData: boolean): PurchaseRow {
   return {
     id: purchase.id,
     createdAt: purchase.createdAt,
-    buyerName: buyer?.fullName ?? '-',
-    buyerMail: buyer?.mail ?? '',
+    buyerName: buyer?.fullName ?? purchase.withdrawal?.fullName ?? '-',
+    buyerMail: buyer?.mail ?? purchase.withdrawal?.mail ?? '',
     ticketTypes: purchase.ticketTypePerGroups.map((item) => ({
       amount: item.amount,
       name: item.ticketType.name,

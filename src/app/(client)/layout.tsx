@@ -1,4 +1,5 @@
 import TopBar from '@/components/admin/TopBar';
+import { LegalFooter } from '@/components/legal/LegalFooter';
 import { getLandingPath, NO_ACCESS_PATH } from '@/lib/rbac/navigation';
 import { auth } from '@/server/auth';
 import { getCurrentAccess } from '@/server/rbac/guards';
@@ -17,9 +18,10 @@ export default async function ClientLayout({
   return (
     // minmax(0,1fr): un elemento rígido de la página no puede ensanchar la
     // grilla (y con ella el header) más allá de la pantalla.
-    <div className='grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] h-screen'>
+    <div className='grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr_auto] h-screen'>
       <TopBar auth={session} panelHref={panelHref} />
       {children}
+      <LegalFooter />
     </div>
   );
 }

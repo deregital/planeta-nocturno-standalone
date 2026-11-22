@@ -110,7 +110,7 @@ export async function markMercadoPagoGroupPaid(db: Db, ticketGroupId: string) {
 
     await tx
       .update(ticketGroup)
-      .set({ status: 'PAID' })
+      .set({ status: 'PAID', paidAt: sql`now()` })
       .where(eq(ticketGroup.id, ticketGroupId));
     return true;
   });

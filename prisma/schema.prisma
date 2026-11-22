@@ -43,6 +43,7 @@ model User {
   scannedTickets       EmittedTicket[]        @relation("USER_X_EMITTED_TICKET")
   emittedTicketScans   EmittedTicketScan[]    @relation("USER_X_EMITTED_TICKET_SCAN")
   deletedTickets       DeletedEmittedTicket[] @relation("USER_X_DELETED_EMITTED_TICKET")
+  refundedWithdrawals  WithdrawalRequest[]    @relation("USER_X_REFUNDED_WITHDRAWAL")
   authorizedEvents     Event[]                @relation("EVENT_X_USER")
   eventListOrders      UserEventListOrder[]   @relation("USER_X_EVENT_LIST_ORDER")
   eventsOrganized      EventXOrganizer[]      @relation("ORGANIZER_X_EVENT")
@@ -206,6 +207,7 @@ model Event {
 
   emittedTickets EmittedTicket[]        @relation("EVENT_X_EMITTED_TICKET")
   deletedTickets DeletedEmittedTicket[] @relation("EVENT_X_DELETED_EMITTED_TICKET")
+  withdrawals    WithdrawalRequest[]    @relation("EVENT_X_WITHDRAWAL")
 
   ticketXOrganizers TicketXOrganizer[] @relation("EVENT_X_TICKET_X_ORGANIZER")
 
@@ -361,12 +363,16 @@ model TicketGroup {
   invitedBySimple  String?
   isOrganizerGroup Boolean           @default(false)
   paymentMethod    PaymentMethod?
+  // Cuándo se acreditó el pago (Mercado Pago, transferencia liberada o pago en
+  // el lugar). Desde acá corren los 10 días del arrepentimiento.
+  paidAt           DateTime?         @db.Timestamptz
 
   tickets            EmittedTicket[]        @relation("TICKET_X_TICKET_GROUP")
   deletedTickets     DeletedEmittedTicket[] @relation("DELETED_TICKET_X_TICKET_GROUP")
   ticketTypePerGroup TicketTypePerGroup[]   @relation("TICKET_TYPE_PER_GROUP_X_TICKET_GROUP")
   ticketXOrganizers  TicketXOrganizer[]     @relation("TICKET_GROUP_X_ORGANIZER")
   answers            TicketGroupAnswer[]    @relation("TICKET_GROUP_X_ANSWER")
+  withdrawal         WithdrawalRequest?     @relation("TICKET_GROUP_X_WITHDRAWAL")
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
@@ -490,6 +496,46 @@ model DeletedEmittedTicket {
   @@map("deletedEmittedTicket")
 }
 
+/// Botón de arrepentimiento (Disp. SSDCyLC 954/2025, Ley 24.240 art. 34): el
+/// comprador revoca una compra paga. Las entradas pasan a la papelera en el
+/// momento y la Productora le transfiere el dinero a la cuenta que cargó.
+/// Guarda una copia de los datos de la compra para que el trámite sobreviva
+/// aunque se borre.
+model WithdrawalRequest {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Número de trámite correlativo: se muestra como ARR-000123.
+  number Int    @unique @default(autoincrement())
+
+  ticketGroupId String?      @unique @db.Uuid
+  ticketGroup   TicketGroup? @relation("TICKET_GROUP_X_WITHDRAWAL", fields: [ticketGroupId], references: [id], onDelete: SetNull)
+  eventId       String?      @db.Uuid
+  event         Event?       @relation("EVENT_X_WITHDRAWAL", fields: [eventId], references: [id], onDelete: SetNull)
+
+  eventName        String
+  ticketCount      Int
+  fullName         String
+  mail             String
+  dni              String
+  /// Total a devolver, cargo por servicio incluido.
+  amount           Decimal          @db.Decimal(14, 2)
+  serviceFeeAmount Decimal          @default(0) @db.Decimal(14, 2)
+  paymentMethod    PaymentMethod?
+  paidAt           DateTime?        @db.Timestamptz
+  /// CBU, CVU o alias que cargó el comprador: el reintegro es por transferencia.
+  refundAccount    String
+  status           WithdrawalStatus @default(PENDING_REFUND)
+
+  requestedAt      DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+  refundedAt       DateTime? @db.Timestamptz
+  refundedByUserId String?   @db.Uuid
+  refundedBy       User?     @relation("USER_X_REFUNDED_WITHDRAWAL", fields: [refundedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, requestedAt(sort: Desc)])
+  @@index([eventId])
+  @@index([refundedByUserId])
+  @@map("withdrawalRequest")
+}
+
 model EmittedTicketScan {
   id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   emittedTicketId String        @db.Uuid
@@ -603,6 +649,11 @@ enum PaymentMethod {
   MERCADO_PAGO
   TRANSFER
   ON_SITE
+}
+
+enum WithdrawalStatus {
+  PENDING_REFUND
+  REFUNDED
 }
 
 enum TicketTypeCategory {

@@ -38,6 +38,11 @@ export const BACKOFFICE_ROUTES: readonly BackofficeRoute[] = [
     anyOf: ['database:read'],
   },
   {
+    href: '/admin/arrepentimientos' as Route,
+    title: 'Arrepentimientos',
+    anyOf: ['withdrawals:manage'],
+  },
+  {
     href: '/admin/users',
     title: 'Organizadores',
     anyOf: ['organizers:read'],

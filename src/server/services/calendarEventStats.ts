@@ -7,6 +7,7 @@ import {
   ticketGroup,
   ticketTypePerGroup,
 } from '@/drizzle/schema';
+import { notWithdrawn } from '@/server/services/withdrawal';
 
 export async function getCalendarStatsByEventId(db: Db, eventId: string) {
   const ticketGroupFilter = and(
@@ -30,7 +31,8 @@ export async function getCalendarStatsByEventId(db: Db, eventId: string) {
         totalRaised: sql<number>`coalesce(sum(${ticketGroup.totalAmount}), 0)`,
       })
       .from(ticketGroup)
-      .where(ticketGroupFilter),
+      // Lo de una compra arrepentida se devuelve: no cuenta como recaudado.
+      .where(and(ticketGroupFilter, notWithdrawn)),
   ]);
 
   const [attendanceStats] = await db

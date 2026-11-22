@@ -15,6 +15,7 @@ import { statisticsRouter } from '@/server/routers/statistics';
 import { tagRouter } from '@/server/routers/tag';
 import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { userRouter } from '@/server/routers/user';
+import { withdrawalRouter } from '@/server/routers/withdrawal';
 import { router } from '@/server/trpc';
 
 export const appRouter = router({
@@ -33,6 +34,7 @@ export const appRouter = router({
   tag: tagRouter,
   accessRole: accessRoleRouter,
   scanner: scannerRouter,
+  withdrawal: withdrawalRouter,
 });
 
 export type AppRouter = typeof appRouter;

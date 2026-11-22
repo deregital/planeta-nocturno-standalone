@@ -24,6 +24,7 @@ import {
   accessRole,
   accessRolePermission,
   userEventListOrder,
+  withdrawalRequest,
 } from './schema';
 
 export const emittedTicketScanRelations = relations(
@@ -137,7 +138,18 @@ export const ticketGroupRelations = relations(ticketGroup, ({ one, many }) => ({
   ticketGroupAnswers: many(ticketGroupAnswer),
   ticketTypePerGroups: many(ticketTypePerGroup),
   ticketXorganizers: many(ticketXorganizer),
+  withdrawal: one(withdrawalRequest),
 }));
+
+export const withdrawalRequestRelations = relations(
+  withdrawalRequest,
+  ({ one }) => ({
+    ticketGroup: one(ticketGroup, {
+      fields: [withdrawalRequest.ticketGroupId],
+      references: [ticketGroup.id],
+    }),
+  }),
+);
 
 export const locationRelations = relations(location, ({ many }) => ({
   events: many(event),
