@@ -454,11 +454,35 @@ const allTalo = () =>
     .map((file) => JSON.parse(readFileSync(path.join(dirs.talo, file), 'utf8')));
 const taloEnvelope = (data) => ({ message: 'ok', error: false, code: 200, data });
 
+// Como el sandbox: una diferencia de hasta $10 cuenta como pago completo.
+const TALO_TOLERANCE = 10;
+const taloPaid = (payment) => payment.transactions.reduce((sum, t) => sum + t.amount, 0);
 function taloStatus(payment) {
-  const paid = payment.transactions.reduce((sum, t) => sum + t.amount, 0);
+  const paid = taloPaid(payment);
   if (paid === 0) return new Date(payment.expiration_timestamp) < new Date() ? 'EXPIRED' : 'PENDING';
-  if (paid === payment.price.amount) return 'SUCCESS';
+  if (Math.abs(paid - payment.price.amount) <= TALO_TOLERANCE) return 'SUCCESS';
   return paid > payment.price.amount ? 'OVERPAID' : 'UNDERPAID';
+}
+// Lo que devuelve la API al leer un pago: estado, lo pagado y las devoluciones.
+// Una devolución pendiente se completa la próxima vez que se lee el pago.
+function taloView(payment) {
+  let changed = false;
+  for (const refund of payment.refunds ?? []) {
+    if (refund.refund_status === 'PENDING' && refund.read) {
+      refund.refund_status = 'SUCCESS';
+      changed = true;
+    } else if (refund.refund_status === 'PENDING') {
+      refund.read = true;
+      changed = true;
+    }
+  }
+  if (changed) saveTalo(payment);
+  return {
+    ...payment,
+    payment_status: taloStatus(payment),
+    transaction_fields: { total_paid: { amount: taloPaid(payment), currency: 'ARS' } },
+    refunds: (payment.refunds ?? []).map(({ read: _read, ...refund }) => refund),
+  };
 }
 
 async function sendTaloWebhook(payment) {
@@ -543,7 +567,7 @@ async function handleTaloApi(req, res) {
 
   if (req.method === 'POST' && pathname === '/payments') {
     const existing = allTalo().find((p) => p.user_id === userId && p.external_id === body.external_id);
-    if (existing) return sendJson(res, 200, taloEnvelope({ ...existing, payment_status: taloStatus(existing) }));
+    if (existing) return sendJson(res, 200, taloEnvelope(taloView(existing)));
     const id = 'VAR-' + userId + '-' + body.external_id;
     const cvu = '00006305000000' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
     const amount = Number(body.price?.amount);
@@ -569,19 +593,52 @@ async function handleTaloApi(req, res) {
     return sendJson(res, 200, taloEnvelope({ ...payment, payment_status: 'PENDING' }));
   }
 
-  const paymentMatch = pathname.match(/^\/payments\/([^/]+)(\/expiration)?$/);
+  const paymentMatch = pathname.match(/^\/payments\/([^/]+)(\/expiration|\/price|\/refunds)?$/);
   if (paymentMatch) {
     const payment = loadTalo(decodeURIComponent(paymentMatch[1]));
     if (!payment || payment.user_id !== userId) {
-      return sendJson(res, 404, { message: 'Pago no encontrado', error: true, code: 404 });
+      return sendJson(res, 404, { message: 'payment.not.found', error: true, code: 404 });
     }
-    if (req.method === 'GET' && !paymentMatch[2]) {
-      return sendJson(res, 200, taloEnvelope({ ...payment, payment_status: taloStatus(payment) }));
+    const action = paymentMatch[2];
+    if (req.method === 'GET' && !action) {
+      return sendJson(res, 200, taloEnvelope(taloView(payment)));
     }
-    if (req.method === 'PUT' && paymentMatch[2]) {
+    if (req.method === 'PUT' && action === '/expiration') {
       payment.expiration_timestamp = body.expiration_timestamp;
       saveTalo(payment);
       return sendJson(res, 200, payment);
+    }
+    if (req.method === 'PUT' && action === '/price') {
+      payment.price = { amount: Number(body.amount), currency: body.currency ?? 'ARS' };
+      saveTalo(payment);
+      log('talo price changed', { id: payment.id, amount: payment.price.amount });
+      return sendJson(res, 200, payment);
+    }
+    if (req.method === 'POST' && action === '/refunds') {
+      payment.refunds ??= [];
+      if (payment.refunds.some((r) => r.refund_status === 'PENDING')) {
+        return sendJson(res, 409, { message: 'refund.already.pending', error: true, code: 409 });
+      }
+      const paid = taloPaid(payment);
+      const refunded = payment.refunds.filter((r) => r.refund_status === 'SUCCESS').reduce((sum, r) => sum + Number(r.amount), 0);
+      const available = paid - refunded;
+      if (available <= 0) {
+        return sendJson(res, 409, { message: 'payment.no.inbound.transactions', error: true, code: 409 });
+      }
+      const amount = body.refund_type === 'FULL' ? available : Number(body.amount);
+      if (!(amount > 0)) return sendJson(res, 409, { message: 'refund.amount.must.be.positive', error: true, code: 409 });
+      if (amount > available) return sendJson(res, 409, { message: 'refund.amount.exceeds.payment.amount', error: true, code: 409 });
+      payment.refunds.push({
+        refund_id: randomUUID(),
+        refund_type: body.refund_type,
+        refund_status: 'PENDING',
+        amount: String(amount),
+        currency: 'ARS',
+        creation_timestamp: new Date().toISOString(),
+      });
+      saveTalo(payment);
+      log('talo refund requested', { id: payment.id, type: body.refund_type, amount });
+      return sendJson(res, 200, taloEnvelope(taloView(payment)));
     }
   }
 

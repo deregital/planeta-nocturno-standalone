@@ -14,6 +14,10 @@ import {
   startPayment,
 } from '@/server/payments/methods';
 import { PAYMENT_PROVIDERS } from '@/server/payments/registry';
+import {
+  acceptTaloUnderpaid,
+  refundTaloPurchase,
+} from '@/server/payments/talo/actions';
 import { taloApiUrl, taloPartner } from '@/server/payments/talo/client';
 import {
   clearTaloConnection,
@@ -162,6 +166,16 @@ export const paymentsRouter = router({
         referredUserId: input.referredUserId,
       }),
     })),
+  /** Pago de menos con Talo: aceptar lo transferido y entregar. */
+  taloAcceptUnderpaid: permissionProcedure('tickets:release')
+    .input(z.object({ ticketGroupId: z.uuid() }))
+    .mutation(({ ctx, input }) =>
+      acceptTaloUnderpaid(ctx, input.ticketGroupId),
+    ),
+  /** Devolver por Talo: todo (de menos o tardío) o la diferencia (de más). */
+  taloRefund: permissionProcedure('tickets:release')
+    .input(z.object({ ticketGroupId: z.uuid() }))
+    .mutation(({ ctx, input }) => refundTaloPurchase(ctx, input.ticketGroupId)),
   removeTaloConnection: permissionProcedure('payments:manage').mutation(
     async ({ ctx }) => {
       await assertOtherActivePaymentMethod(

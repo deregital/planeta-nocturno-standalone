@@ -13,13 +13,18 @@ import { ticketGroup } from '@/drizzle/schema';
 import { formatCurrency } from '@/lib/utils';
 import { logger } from '@/server/observability/logger';
 import { CHECKOUT_HOLD_TTL_MS } from '@/server/payments/constants';
+import { notifyPaymentIssue } from '@/server/payments/notify';
 import {
   createTaloPayment,
   getTaloPayment,
+  refundTaloPayment,
   setTaloPaymentExpiration,
+  TALO_REFUND_STATUSES,
+  type TaloConnection,
   TaloError,
   type TaloPayment,
   taloPaymentAccount,
+  taloReceivedAmount,
 } from '@/server/payments/talo/client';
 import {
   getTaloConnection,
@@ -27,6 +32,7 @@ import {
 } from '@/server/payments/talo/connection';
 import {
   generateTaloPaymentEmail,
+  generateTaloUnderpaidEmail,
   sendMailWithoutAttachments,
 } from '@/server/services/mail';
 import { calculateAndSaveTotalAmount } from '@/server/services/ticketGroup';
@@ -34,12 +40,11 @@ import { calculateAndSaveTotalAmount } from '@/server/services/ticketGroup';
 /** El CVU de una compra acepta transferencias durante una hora. */
 export const TALO_PAYMENT_TTL_MS = 60 * 60 * 1000;
 /**
- * La reserva retiene el cupo hasta que vence el CVU, con margen para que
- * llegue el aviso de una transferencia hecha a último momento.
+ * La reserva suelta el cupo cuando vence el CVU. Una transferencia que llega
+ * después no se entrega: se devuelve (ver parseNotification).
  */
-export const TALO_HOLD_TTL_MS =
-  CHECKOUT_HOLD_TTL_MS + TALO_PAYMENT_TTL_MS + 10 * 60 * 1000;
-/** Como en Mercado Pago, una transferencia tardía se honra durante una semana. */
+export const TALO_HOLD_TTL_MS = CHECKOUT_HOLD_TTL_MS + TALO_PAYMENT_TTL_MS;
+/** La compra vencida se guarda una semana, para devolver un pago que llegue tarde. */
 export const TALO_UNPAID_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 const notificationSchema = z
@@ -50,6 +55,57 @@ const notificationSchema = z
   .transform((body) => body.paymentId ?? body.payment_id)
   .pipe(z.string().min(1));
 
+/**
+ * - `UNDERPAID`: transfirió menos que el precio (más allá de la tolerancia de Talo).
+ * - `OVERPAID`: transfirió de más; las entradas se entregaron.
+ * - `LATE`: transfirió cuando la reserva ya había soltado el cupo; se devuelve.
+ */
+export const TALO_ISSUES = ['UNDERPAID', 'OVERPAID', 'LATE'] as const;
+export type TaloIssue = (typeof TALO_ISSUES)[number];
+
+const refundStateSchema = z.object({
+  type: z.enum(['FULL', 'PARTIAL']),
+  amount: z.number(),
+  status: z.enum(TALO_REFUND_STATUSES),
+  requestedAt: z.string(),
+});
+export type TaloRefundState = z.infer<typeof refundStateSchema>;
+
+const detailsSchema = z.object({
+  cvu: z.string().min(1),
+  alias: z.string().nullable(),
+  amount: z.number(),
+  expiresAt: z.string().nullable(),
+  /** Lo que transfirió el comprador en total, según el último aviso. */
+  received: z.number().optional(),
+  issue: z.enum(TALO_ISSUES).nullish(),
+  /** Casos que ya se le avisaron al contacto (para no repetir el mail). */
+  notified: z.array(z.enum(TALO_ISSUES)).optional(),
+  refund: refundStateSchema.nullish(),
+  /** El organizador aceptó lo transferido aunque no alcanzaba el precio. */
+  accepted: z.boolean().optional(),
+});
+
+/** Lo guardado en la compra: los datos para pagar y cómo viene el pago. */
+export type TaloPaymentDetails = z.infer<typeof detailsSchema>;
+
+/** Los datos de Talo guardados en la compra, o null si no hay. */
+export function readTaloDetails(value: unknown): TaloPaymentDetails | null {
+  const parsed = detailsSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+export async function saveTaloDetails(
+  ctx: PaymentContext,
+  ticketGroupId: string,
+  details: TaloPaymentDetails,
+) {
+  await ctx.db
+    .update(ticketGroup)
+    .set({ paymentDetails: details })
+    .where(eq(ticketGroup.id, ticketGroupId));
+}
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('es-AR', {
     hour: '2-digit',
@@ -59,23 +115,54 @@ function formatTime(iso: string) {
   });
 }
 
-/** Los datos para pagar guardados en la compra, si siguen sirviendo. */
-export function readTaloDetails(value: unknown): TransferAccountDetails | null {
-  const parsed = z
-    .object({
-      cvu: z.string().min(1),
-      alias: z.string().nullable(),
-      amount: z.number(),
-      expiresAt: z.string().nullable(),
-    })
-    .safeParse(value);
-  return parsed.success ? parsed.data : null;
+function accountOf(details: TaloPaymentDetails): TransferAccountDetails {
+  return {
+    cvu: details.cvu,
+    alias: details.alias,
+    amount: details.amount,
+    expiresAt: details.expiresAt,
+  };
+}
+
+/**
+ * Pide a Talo que devuelva plata de un pago. Devuelve el estado de la
+ * devolución, o null si Talo no la aceptó (queda en el log).
+ */
+export async function requestTaloRefund(
+  connection: TaloConnection,
+  paymentId: string,
+  refund: { type: 'FULL' | 'PARTIAL'; amount: number },
+): Promise<TaloRefundState | null> {
+  try {
+    const created = await refundTaloPayment(
+      connection,
+      paymentId,
+      refund.type === 'FULL'
+        ? { type: 'FULL' }
+        : { type: 'PARTIAL', amount: refund.amount },
+    );
+    return {
+      type: refund.type,
+      amount: created?.amount ?? refund.amount,
+      status: created?.refund_status ?? 'PENDING',
+      requestedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    logger.error('Talo refund failed', {
+      operation: 'payment_refund',
+      paymentId,
+      refund,
+      error,
+    });
+    return null;
+  }
 }
 
 async function createPayment(
   ctx: PaymentContext,
   group: {
     id: string;
+    createdAt: string;
     eventName: string;
     buyer?: { name: string; mail: string; dni: string };
   },
@@ -109,12 +196,20 @@ async function createPayment(
     payment = await create(`${group.id}.${Date.now()}`);
   }
 
-  const expiresAt = new Date(Date.now() + TALO_PAYMENT_TTL_MS);
+  // El CVU nunca dura más que la reserva: pasar a Talo media hora después de
+  // reservar deja menos de una hora, y una transferencia a tiempo no se
+  // devuelve como tardía.
+  const expiresAt = new Date(
+    Math.min(
+      Date.now() + TALO_PAYMENT_TTL_MS,
+      new Date(group.createdAt).getTime() + TALO_HOLD_TTL_MS,
+    ),
+  );
   try {
     await setTaloPaymentExpiration(connection, payment.id, expiresAt);
   } catch (error) {
-    // Sin acortar, el CVU sigue aceptando pagos días después: la reserva ya
-    // soltó el cupo pero el pago tardío se honra igual (markGroupPaid).
+    // Sin acortar, el CVU sigue aceptando pagos días después: si llegan con
+    // la reserva vencida, se devuelven.
     logger.warn('Talo payment expiration not updated', {
       ticketGroupId: group.id,
       paymentId: payment.id,
@@ -133,8 +228,28 @@ async function createPayment(
       alias: account.alias,
       amount,
       expiresAt: expiresAt.toISOString(),
-    } satisfies TransferAccountDetails,
+    } satisfies TaloPaymentDetails,
   };
+}
+
+/** Un pago que llegó sin compra que lo espere: se devuelve entero. */
+async function refundUnknownPayment(
+  ctx: PaymentContext,
+  connection: TaloConnection,
+  payment: TaloPayment,
+) {
+  const received = taloReceivedAmount(payment);
+  if (received <= 0) return;
+  // Si ya se pidió (Talo reintenta el aviso), no se pide de nuevo.
+  if (payment.refunds?.some((r) => r.refund_status !== 'FAILED')) return;
+  const refund = await requestTaloRefund(connection, payment.id, {
+    type: 'FULL',
+    amount: received,
+  });
+  await notifyPaymentIssue(ctx, refund ? 'UNKNOWN_PURCHASE' : 'REFUND_FAILED', {
+    ticketGroupId: null,
+    received,
+  });
 }
 
 export const taloProvider: PaymentProvider = {
@@ -159,6 +274,7 @@ export const taloProvider: PaymentProvider = {
         paymentMethod: true,
         paymentReference: true,
         paymentDetails: true,
+        createdAt: true,
       },
       with: {
         event: { columns: { name: true } },
@@ -195,7 +311,7 @@ export const taloProvider: PaymentProvider = {
         .update(ticketGroup)
         .set({ paymentMethod: 'TALO' })
         .where(eq(ticketGroup.id, ticketGroupId));
-      return { type: 'instructions', ...current };
+      return { type: 'instructions', ...accountOf(current) };
     }
 
     const buyer = group.emittedTickets[0];
@@ -203,6 +319,7 @@ export const taloProvider: PaymentProvider = {
       ctx,
       {
         id: group.id,
+        createdAt: group.createdAt,
         eventName: group.event.name,
         buyer: buyer && {
           name: buyer.fullName,
@@ -277,35 +394,148 @@ export const taloProvider: PaymentProvider = {
       throw error;
     }
 
+    const status = payment.payment_status;
+    const received = taloReceivedAmount(payment);
+    const log = { operation: 'payment_webhook', paymentId: payment.id };
+
     const group = await ctx.db.query.ticketGroup.findFirst({
       where: eq(ticketGroup.paymentReference, payment.id),
-      columns: { id: true, totalAmount: true },
+      columns: { id: true, status: true, paymentDetails: true },
+      with: {
+        event: { columns: { name: true } },
+        ticketTypePerGroups: { columns: { amount: true }, limit: 1 },
+        emittedTickets: { columns: { mail: true }, limit: 1 },
+      },
     });
     if (!group) {
-      // Un pago de otra compra (o de antes de cambiar de CVU): no hay nada
-      // que entregar. 200 para que Talo no reintente.
+      // Un pago sin compra: se borró (pasó una semana) o es de un CVU viejo.
       logger.warn('Talo webhook for an unknown payment', {
-        operation: 'payment_webhook',
-        paymentId: payment.id,
+        ...log,
         externalId: payment.external_id,
+        status,
+        received,
       });
+      if (status !== 'PENDING' && status !== 'EXPIRED') {
+        await refundUnknownPayment(ctx, connection, payment);
+      }
       return new NextResponse(null, { status: 200 });
     }
 
-    if (payment.payment_status === 'UNDERPAID') {
-      logger.warn('Talo payment underpaid', {
-        operation: 'payment_webhook',
-        ticketGroupId: group.id,
-        paymentId: payment.id,
+    const ticketGroupId = group.id;
+    if (status === 'PENDING' || status === 'EXPIRED') {
+      return { ticketGroupId, status: 'IGNORE' };
+    }
+
+    const details = readTaloDetails(group.paymentDetails);
+    if (!details) {
+      logger.error('Talo payment without stored details', {
+        ...log,
+        ticketGroupId,
       });
-      return { ticketGroupId: group.id, status: 'IGNORE' };
+      return {
+        ticketGroupId,
+        status: status === 'UNDERPAID' ? 'IGNORE' : 'PAID',
+      };
     }
-    if (
-      payment.payment_status === 'SUCCESS' ||
-      payment.payment_status === 'OVERPAID'
-    ) {
-      return { ticketGroupId: group.id, status: 'PAID' };
+    const notifyOnce = async (issue: TaloIssue, next: TaloPaymentDetails) => {
+      if (details.notified?.includes(issue)) return next;
+      await notifyPaymentIssue(ctx, issue, { ticketGroupId, received });
+      return { ...next, notified: [...(next.notified ?? []), issue] };
+    };
+
+    // Ya entregada: sólo importa si después transfirió de más.
+    if (group.status !== 'BOOKED') {
+      if (status === 'OVERPAID' && details.issue !== 'OVERPAID') {
+        const next = await notifyOnce('OVERPAID', {
+          ...details,
+          received,
+          issue: 'OVERPAID',
+        });
+        await saveTaloDetails(ctx, ticketGroupId, next);
+      }
+      return { ticketGroupId, status: 'PAID' };
     }
-    return { ticketGroupId: group.id, status: 'IGNORE' };
+
+    // La reserva ya soltó el cupo (venció el CVU): no se entrega, se devuelve.
+    // Salvo que el organizador haya aceptado el pago: ahí se entrega igual.
+    if (group.ticketTypePerGroups.length === 0 && !details.accepted) {
+      if (details.refund && details.refund.status !== 'FAILED') {
+        return { ticketGroupId, status: 'IGNORE' };
+      }
+      const refund = await requestTaloRefund(connection, payment.id, {
+        type: 'FULL',
+        amount: received,
+      });
+      let next: TaloPaymentDetails = {
+        ...details,
+        received,
+        issue: 'LATE',
+        refund,
+      };
+      if (refund) {
+        next = await notifyOnce('LATE', next);
+      } else {
+        await notifyPaymentIssue(ctx, 'REFUND_FAILED', {
+          ticketGroupId,
+          received,
+        });
+      }
+      await saveTaloDetails(ctx, ticketGroupId, next);
+      logger.warn('Talo payment after the reservation expired', {
+        ...log,
+        ticketGroupId,
+        received,
+        refunded: Boolean(refund),
+      });
+      return { ticketGroupId, status: 'IGNORE' };
+    }
+
+    if (status === 'UNDERPAID') {
+      const previous = details.received ?? 0;
+      let next: TaloPaymentDetails = {
+        ...details,
+        received,
+        issue: 'UNDERPAID',
+      };
+      // El comprador se entera de cuánto falta cada vez que transfiere.
+      const buyerMail = group.emittedTickets[0]?.mail;
+      if (received > previous && buyerMail) {
+        const mail = await sendMailWithoutAttachments(ctx.instance, {
+          to: buyerMail,
+          subject: `Te falta completar el pago de ${group.event.name}`,
+          html: generateTaloUnderpaidEmail({
+            eventName: group.event.name,
+            received: formatCurrency(received),
+            missing: formatCurrency(details.amount - received),
+            cvu: details.cvu,
+            expiresAt: details.expiresAt ? formatTime(details.expiresAt) : null,
+            paymentPageUrl: `${ctx.instance.publicUrl}/tickets/${ticketGroupId}`,
+          }),
+        }).catch((error: unknown) => ({ error }));
+        if (mail.error) {
+          logger.error('Talo underpaid email failed', {
+            ticketGroupId,
+            error: mail.error,
+          });
+        }
+      }
+      next = await notifyOnce('UNDERPAID', next);
+      await saveTaloDetails(ctx, ticketGroupId, next);
+      logger.warn('Talo payment underpaid', {
+        ...log,
+        ticketGroupId,
+        received,
+      });
+      return { ticketGroupId, status: 'IGNORE' };
+    }
+
+    let next: TaloPaymentDetails = {
+      ...details,
+      received,
+      issue: status === 'OVERPAID' ? 'OVERPAID' : null,
+    };
+    if (status === 'OVERPAID') next = await notifyOnce('OVERPAID', next);
+    await saveTaloDetails(ctx, ticketGroupId, next);
+    return { ticketGroupId, status: 'PAID' };
   },
 };

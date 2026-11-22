@@ -676,6 +676,213 @@ async function main() {
   );
 
   await check(
+    'TALO-DIF',
+    'Talo: tolerancia, pago de menos (aceptar o devolver), de más y tardío',
+    async () => {
+      // Conecta Talo como lo haría la productora.
+      await admin.payments
+        .startTaloConnect()
+        .then(async ({ url: authorizeUrl }) => {
+          const authorized = await fetch(authorizeUrl, {
+            method: 'POST',
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ status: 'ACTIVE' }).toString(),
+            redirect: 'manual',
+          });
+          const back = new URL(authorized.headers.get('location')!);
+          await admin.payments.completeTaloConnect({
+            code: back.searchParams.get('code')!,
+            referredUserId: 'prueba',
+          });
+        });
+      const contact = 'contacto@prueba.pn.test';
+      const e = event('fiesta-paga');
+
+      type Talo = { cvu: string; amount: number };
+      const buy = async () => {
+        const group = await reserve('fiesta-paga', 'General');
+        const ticket = buyer(type('fiesta-paga', 'General').id, group, e.id);
+        await anon.emittedTickets.createMany([ticket]);
+        const start = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TALO',
+        });
+        assert(start.type === 'instructions' && start.cvu, 'sin CVU');
+        const talo: Talo = {
+          cvu: start.type === 'instructions' ? start.cvu! : '',
+          amount: start.type === 'instructions' ? start.amount : 0,
+        };
+        return { group, ticket, talo };
+      };
+      const faucet = (cvu: string, value: number) =>
+        fetch(`https://sandbox-api.talo.com.ar/cvu/${cvu}/faucet`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ amount: value }),
+        }).then((r) => r.json());
+      const row = async (group: string) => {
+        const { rows } = await raw.query<{
+          status: string;
+          details: {
+            received?: number;
+            issue?: string | null;
+            refund?: { status: string; amount: number; type: string } | null;
+          };
+          total: string;
+        }>(
+          'SELECT status, "paymentDetails" AS details, "totalAmount" AS total FROM "ticketGroup" WHERE id = $1',
+          [group],
+        );
+        return rows[0];
+      };
+      const purchaseOf = async (group: string) =>
+        (await admin.ticketGroup.getPurchasesByEvent(e.id)).find(
+          (purchase) => purchase.id === group,
+        );
+
+      try {
+        // Tolerancia: $5 menos cuenta como completo.
+        const tolerated = await buy();
+        await faucet(tolerated.talo.cvu, tolerated.talo.amount - 5);
+        const toleratedRow = await row(tolerated.group);
+        assert(
+          toleratedRow.status === 'PAID',
+          'no entregó dentro de la tolerancia',
+        );
+        assert(
+          !toleratedRow.details.issue,
+          'marcó diferencia dentro de la tolerancia',
+        );
+
+        // De menos → el comprador ve cuánto falta → el organizador acepta.
+        const under = await buy();
+        const contactBefore = mailsTo(contact);
+        const buyerBefore = mailsTo(under.ticket.mail);
+        const partial = await faucet(under.talo.cvu, under.talo.amount - 1000);
+        assert(
+          partial.data.webhook?.status === 200,
+          'falló el aviso de pago de menos',
+        );
+        let underRow = await row(under.group);
+        assert(underRow.status === 'BOOKED', 'entregó un pago de menos');
+        assert(
+          underRow.details.issue === 'UNDERPAID',
+          `issue ${underRow.details.issue}`,
+        );
+        assert(mailsTo(contact) === contactBefore + 1, 'no avisó al contacto');
+        assert(
+          mailsTo(under.ticket.mail) === buyerBefore + 1,
+          'no avisó al comprador',
+        );
+        const info = await anon.ticketGroup.getPendingPaymentInfo(under.group);
+        assert(
+          info?.transferAccount?.received === under.talo.amount - 1000,
+          'el comprador no ve lo recibido',
+        );
+        // Un segundo aviso igual no repite el mail al contacto.
+        await faucet(under.talo.cvu, 1);
+        assert(
+          mailsTo(contact) === contactBefore + 1,
+          'repitió el mail al contacto',
+        );
+        await admin.payments.taloAcceptUnderpaid({
+          ticketGroupId: under.group,
+        });
+        underRow = await row(under.group);
+        assert(underRow.status === 'PAID', 'aceptar no entregó');
+        assert(
+          Number(underRow.total) === under.talo.amount - 999,
+          `total ${underRow.total}`,
+        );
+
+        // De menos → el organizador cancela y devuelve todo.
+        const cancel = await buy();
+        await faucet(cancel.talo.cvu, cancel.talo.amount - 2000);
+        await admin.payments.taloRefund({ ticketGroupId: cancel.group });
+        let cancelRow = await row(cancel.group);
+        assert(
+          cancelRow.details.refund?.type === 'FULL' &&
+            cancelRow.details.refund.amount === cancel.talo.amount - 2000,
+          `devolución ${JSON.stringify(cancelRow.details.refund)}`,
+        );
+        assert(!(await holdsQuota(cancel.group)), 'no liberó las entradas');
+        await rejects(
+          admin.payments.taloRefund({ ticketGroupId: cancel.group }),
+          'PRECONDITION_FAILED',
+        );
+        // Talo no avisa cuando termina: se lee al listar las compras.
+        await purchaseOf(cancel.group);
+        const refunded = await purchaseOf(cancel.group);
+        assert(
+          refunded?.talo?.refund?.status === 'SUCCESS',
+          `estado ${refunded?.talo?.refund?.status}`,
+        );
+        cancelRow = await row(cancel.group);
+        assert(
+          cancelRow.status === 'BOOKED',
+          'la compra cancelada quedó pagada',
+        );
+
+        // De más → se entrega y se devuelve la diferencia.
+        const over = await buy();
+        await faucet(over.talo.cvu, over.talo.amount + 500);
+        let overRow = await row(over.group);
+        assert(overRow.status === 'PAID', 'no entregó un pago de más');
+        assert(
+          overRow.details.issue === 'OVERPAID',
+          `issue ${overRow.details.issue}`,
+        );
+        await admin.payments.taloRefund({ ticketGroupId: over.group });
+        overRow = await row(over.group);
+        assert(
+          overRow.details.refund?.type === 'PARTIAL' &&
+            overRow.details.refund.amount === 500,
+          `devolución ${JSON.stringify(overRow.details.refund)}`,
+        );
+
+        // Tardío: la reserva ya soltó el cupo → no se entrega, se devuelve solo.
+        const late = await buy();
+        await raw.query(
+          'DELETE FROM "ticketTypePerGroup" WHERE "ticketGroupId" = $1',
+          [late.group],
+        );
+        const lateContact = mailsTo(contact);
+        await faucet(late.talo.cvu, late.talo.amount);
+        const lateRow = await row(late.group);
+        assert(lateRow.status === 'BOOKED', 'entregó un pago tardío');
+        assert(
+          lateRow.details.issue === 'LATE',
+          `issue ${lateRow.details.issue}`,
+        );
+        assert(
+          lateRow.details.refund?.type === 'FULL',
+          'no pidió la devolución',
+        );
+        assert(
+          mailsTo(contact) === lateContact + 1,
+          'no avisó al contacto del tardío',
+        );
+        const lateInfo = await anon.ticketGroup.getPendingPaymentInfo(
+          late.group,
+        );
+        assert(
+          lateInfo?.transferAccount?.expired === true &&
+            lateInfo.transferAccount.refunding === true,
+          'el comprador no ve que venció y se devuelve',
+        );
+
+        for (const group of [tolerated, under, cancel, over, late]) {
+          await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [
+            group.group,
+          ]);
+        }
+      } finally {
+        await admin.payments.removeTaloConnection();
+      }
+    },
+  );
+
+  await check(
     'BLOQUEO',
     'oculto se entra por link; bloqueado no entra nadie del público',
     async () => {

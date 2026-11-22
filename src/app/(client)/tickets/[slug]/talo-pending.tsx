@@ -1,16 +1,16 @@
 'use client';
 
 import type { ComponentProps } from 'react';
+import type { Route } from 'next';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 
-import { startPaymentFor } from '@/app/(client)/tickets/[slug]/actions';
 import { OtherPaymentMethods } from '@/app/(client)/tickets/[slug]/other-payment-methods';
 import { CopyableValue } from '@/app/(client)/tickets/[slug]/transfer-pending';
 import GoBack from '@/components/common/GoBack';
 import DotsLoader from '@/components/icons/DotsLoader';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
@@ -30,26 +30,37 @@ function formatTime(iso: string) {
 export default function TicketsTaloPending({
   ticketGroupId,
   eventName,
+  eventSlug,
+  contactEmail,
   account,
   otherPaymentMethods = [],
 }: {
   ticketGroupId: string;
   eventName: string;
+  eventSlug?: string;
+  contactEmail: string | null;
   account: {
     cvu: string;
     alias: string | null;
     amount: number;
     expiresAt: string | null;
+    /** Lo transferido hasta ahora, si no alcanzó el precio. */
+    received: number | null;
+    expired: boolean;
+    /** Talo está devolviendo una transferencia que llegó tarde. */
+    refunding: boolean;
   };
   otherPaymentMethods?: ComponentProps<typeof OtherPaymentMethods>['methods'];
 }) {
   const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
-  const [renewError, setRenewError] = useState<string | null>(null);
-  const [isRenewing, startRenew] = useTransition();
 
   const expired =
-    account.expiresAt !== null && new Date(account.expiresAt).getTime() <= now;
+    account.expired ||
+    (account.expiresAt !== null &&
+      new Date(account.expiresAt).getTime() <= now);
+  const missing =
+    account.received !== null ? account.amount - account.received : null;
 
   const { data } = trpc.ticketGroup.findById.useQuery(ticketGroupId, {
     refetchInterval: expired ? false : POLL_INTERVAL_MS,
@@ -60,18 +71,22 @@ export default function TicketsTaloPending({
     if (data && data.status !== 'BOOKED') router.refresh();
   }, [data, router]);
 
+  // Cada 30 s: si vence el CVU, o llega lo que faltaba de un pago de menos.
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      router.refresh();
+    }, 30_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [router]);
 
-  const renew = () =>
-    startRenew(async () => {
-      setRenewError(null);
-      const result = await startPaymentFor(ticketGroupId, 'TALO');
-      if ('error' in result) setRenewError(result.error);
-      else router.refresh();
-    });
+  const contact = contactEmail ? (
+    <a href={`mailto:${contactEmail}`} className='font-semibold underline'>
+      {contactEmail}
+    </a>
+  ) : (
+    'los organizadores'
+  );
 
   return (
     <div className='flex h-full flex-col items-center justify-center px-4'>
@@ -85,44 +100,56 @@ export default function TicketsTaloPending({
         <CardHeader>
           <CardTitle className='text-2xl font-bold'>
             {expired
-              ? 'Los datos para pagar vencieron'
-              : 'Transferí para recibir tus entradas'}
+              ? 'Se venció el tiempo para pagar'
+              : missing !== null
+                ? 'Te falta completar el pago'
+                : 'Transferí para recibir tus entradas'}
           </CardTitle>
         </CardHeader>
         <CardContent className='flex flex-col gap-3'>
           {expired ? (
             <>
               <p className='text-muted-foreground'>
-                Si ya transferiste, en unos minutos te llegan las entradas por
-                mail. Si no, generá datos nuevos para pagar.
+                Tardaste más de una hora en hacer la transferencia y se
+                liberaron las entradas.
               </p>
-              <Button
-                variant='accent'
-                className='w-full whitespace-normal'
-                loading={isRenewing}
-                onClick={renew}
-              >
-                Generar datos nuevos
-              </Button>
-              {renewError && (
-                <p role='alert' className='text-sm font-medium text-red-500'>
-                  {renewError}
-                </p>
+              <p className='text-sm text-muted-foreground'>
+                {account.refunding ? (
+                  <>
+                    Recibimos tu transferencia tarde: le pedimos a Talo que te
+                    la devuelva a la cuenta desde la que transferiste. Si tenés
+                    dudas, escribí a {contact}.
+                  </>
+                ) : (
+                  <>
+                    Si acabás de transferir, escribí a {contact} para la
+                    devolución.
+                  </>
+                )}
+              </p>
+              {eventSlug && (
+                <Link
+                  href={`/event/${eventSlug}` as Route}
+                  className='text-sm font-medium text-accent underline'
+                >
+                  Volver a elegir entradas
+                </Link>
               )}
             </>
           ) : (
             <>
               <p className='text-muted-foreground'>
-                Tu reserva para {eventName} quedó registrada. Transferí el monto
-                exacto desde tu banco o billetera.
+                {missing !== null && account.received !== null
+                  ? `Recibimos ${formatCurrency(account.received)}. Transferí los ${formatCurrency(missing)} que faltan al mismo CVU.`
+                  : `Tu reserva para ${eventName} quedó registrada. Transferí el monto exacto desde tu banco o billetera.`}
               </p>
               <CopyableValue label='CVU' value={account.cvu} />
               {account.alias && (
                 <CopyableValue label='Alias' value={account.alias} />
               )}
               <CopyableValue
-                label='Monto'
-                value={formatCurrency(account.amount)}
+                label={missing !== null ? 'Monto que falta' : 'Monto'}
+                value={formatCurrency(missing ?? account.amount)}
               />
               <p className='text-sm text-muted-foreground'>
                 {account.expiresAt &&
@@ -134,12 +161,14 @@ export default function TicketsTaloPending({
                 <DotsLoader className='h-5 w-5 text-accent' />
                 Esperando la transferencia
               </div>
+              {missing === null && (
+                <OtherPaymentMethods
+                  ticketGroupId={ticketGroupId}
+                  methods={otherPaymentMethods}
+                />
+              )}
             </>
           )}
-          <OtherPaymentMethods
-            ticketGroupId={ticketGroupId}
-            methods={otherPaymentMethods}
-          />
         </CardContent>
       </Card>
     </div>

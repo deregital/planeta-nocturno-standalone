@@ -37,6 +37,43 @@ import {
 } from '@/server/services/ticketGroupHolds';
 import { listPaymentOptionsForGroup } from '@/server/payments/methods';
 import { readTaloDetails } from '@/server/payments/providers/talo';
+import { refreshTaloRefunds } from '@/server/payments/talo/actions';
+
+/** Cómo viene el pago con Talo de una compra, para la lista de Compras. */
+function taloPurchaseSummary(paymentDetails: unknown) {
+  const details = readTaloDetails(paymentDetails);
+  if (!details) return null;
+  return {
+    amount: details.amount,
+    received: details.received ?? null,
+    issue: details.issue ?? null,
+    accepted: details.accepted ?? false,
+    refund: details.refund
+      ? { amount: details.refund.amount, status: details.refund.status }
+      : null,
+  };
+}
+
+/** Lo que ve el comprador de su pago con Talo. */
+function taloAccountForBuyer(paymentDetails: unknown, holdsQuota: boolean) {
+  const details = readTaloDetails(paymentDetails);
+  if (!details) return null;
+  const expired =
+    !holdsQuota ||
+    (details.expiresAt !== null &&
+      new Date(details.expiresAt).getTime() <= Date.now());
+  return {
+    cvu: details.cvu,
+    alias: details.alias,
+    amount: details.amount,
+    expiresAt: details.expiresAt,
+    /** Lo transferido hasta ahora, si no alcanzó el precio. */
+    received: details.issue === 'UNDERPAID' ? (details.received ?? null) : null,
+    expired,
+    /** Talo está devolviendo una transferencia que llegó tarde. */
+    refunding: details.issue === 'LATE' && Boolean(details.refund),
+  };
+}
 import { getPaymentProvider } from '@/server/payments/registry';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
@@ -1091,11 +1128,15 @@ export const ticketGroupRouter = router({
         eventName: group.event.name,
         holdExpiresAt: holdsQuota ? holdExpiresAt(group) : null,
         paymentMethod: group.paymentMethod,
-        /** CVU de Talo para pagar esta compra. */
+        /**
+         * CVU de Talo de esta compra. Sigue después de que la reserva soltó
+         * el cupo, para mostrarle al comprador que venció.
+         */
         transferAccount:
-          payable && group.paymentMethod === 'TALO'
-            ? readTaloDetails(group.paymentDetails)
+          group.status === 'BOOKED' && group.paymentMethod === 'TALO'
+            ? taloAccountForBuyer(group.paymentDetails, holdsQuota)
             : null,
+        contactEmail: ctx.instance.contactEmail,
         canRetryPayment:
           payable &&
           options.some((option) => option.method === group.paymentMethod) &&
@@ -1137,31 +1178,49 @@ export const ticketGroupRouter = router({
   getPurchasesByEvent: permissionProcedure('tickets:read_all')
     .input(z.uuid())
     .query(async ({ ctx, input }) => {
-      return await ctx.db.query.ticketGroup.findMany({
-        where: and(
-          eq(ticketGroup.eventId, input),
-          eq(ticketGroup.isOrganizerGroup, false),
-        ),
-        orderBy: [desc(ticketGroup.createdAt)],
-        columns: {
-          id: true,
-          status: true,
-          paymentMethod: true,
-          totalAmount: true,
-          amountTickets: true,
-          createdAt: true,
-        },
-        with: {
-          user: { columns: { fullName: true } },
-          ticketTypePerGroups: {
-            columns: { amount: true },
-            with: { ticketType: { columns: { name: true } } },
+      const load = () =>
+        ctx.db.query.ticketGroup.findMany({
+          where: and(
+            eq(ticketGroup.eventId, input),
+            eq(ticketGroup.isOrganizerGroup, false),
+          ),
+          orderBy: [desc(ticketGroup.createdAt)],
+          columns: {
+            id: true,
+            status: true,
+            paymentMethod: true,
+            totalAmount: true,
+            amountTickets: true,
+            createdAt: true,
+            paymentReference: true,
+            paymentDetails: true,
           },
-          emittedTickets: {
-            columns: { id: true, fullName: true, dni: true, mail: true },
+          with: {
+            user: { columns: { fullName: true } },
+            ticketTypePerGroups: {
+              columns: { amount: true },
+              with: { ticketType: { columns: { name: true } } },
+            },
+            emittedTickets: {
+              columns: { id: true, fullName: true, dni: true, mail: true },
+            },
           },
-        },
-      });
+        });
+
+      let purchases = await load();
+      // Talo no avisa cuando termina una devolución: se lee al listar.
+      if ((await refreshTaloRefunds(ctx, purchases)).length > 0) {
+        purchases = await load();
+      }
+      return purchases.map(
+        ({ paymentDetails, paymentReference: _ref, ...purchase }) => ({
+          ...purchase,
+          talo:
+            purchase.paymentMethod === 'TALO'
+              ? taloPurchaseSummary(paymentDetails)
+              : null,
+        }),
+      );
     }),
   releaseTransfer: permissionProcedure('tickets:release')
     .input(ticketGroupSchema.shape.id)

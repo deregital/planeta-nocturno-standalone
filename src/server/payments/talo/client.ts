@@ -76,6 +76,18 @@ export const TALO_PAYMENT_STATUSES = [
   'EXPIRED',
 ] as const;
 
+export const TALO_REFUND_STATUSES = ['PENDING', 'SUCCESS', 'FAILED'] as const;
+
+const refundSchema = z
+  .object({
+    refund_id: z.string().optional(),
+    refund_type: z.string().optional(),
+    refund_status: z.enum(TALO_REFUND_STATUSES),
+    amount: z.coerce.number().optional(),
+    creation_timestamp: z.string().optional(),
+  })
+  .loose();
+
 const paymentSchema = z.object({
   id: z.string().min(1),
   payment_status: z.enum(TALO_PAYMENT_STATUSES),
@@ -86,9 +98,41 @@ const paymentSchema = z.object({
     .object({ amount: z.coerce.number(), currency: z.string() })
     .optional(),
   quotes: z.array(quoteSchema).default([]),
+  /** Lo que se acreditó hasta ahora (puede llegar en varias transferencias). */
+  transaction_fields: z
+    .object({
+      total_paid: z.object({ amount: z.coerce.number() }).partial().nullish(),
+    })
+    .partial()
+    .nullish(),
+  transactions: z
+    .array(
+      z
+        .object({
+          amount: z.coerce.number().optional(),
+          transactionType: z.string().optional(),
+          is_refund: z.boolean().optional(),
+        })
+        .loose(),
+    )
+    .nullish(),
+  refunds: z.array(refundSchema).nullish(),
 });
 
 export type TaloPayment = z.infer<typeof paymentSchema>;
+export type TaloRefund = z.infer<typeof refundSchema>;
+
+/**
+ * Cuánto transfirió el comprador en total. Talo suma las transferencias al
+ * mismo CVU; sin `total_paid`, se suman las entrantes.
+ */
+export function taloReceivedAmount(payment: TaloPayment) {
+  const total = payment.transaction_fields?.total_paid?.amount;
+  if (typeof total === 'number' && Number.isFinite(total)) return total;
+  return (payment.transactions ?? [])
+    .filter((t) => !t.is_refund && t.transactionType !== 'OUTBOUND')
+    .reduce((sum, t) => sum + (t.amount && t.amount > 0 ? t.amount : 0), 0);
+}
 
 /** CVU, alias y monto a transferir de un pago. */
 export function taloPaymentAccount(payment: TaloPayment) {
@@ -223,6 +267,55 @@ export async function getTaloPayment(
     { method: 'GET' },
   );
   return envelope(paymentSchema).parse(body).data;
+}
+
+/**
+ * Devuelve plata de un pago a quien la transfirió: todo, o una parte en pesos.
+ * Es asíncrono (queda PENDING) y Talo no avisa cuando termina: el estado se
+ * lee en el pago. Sólo puede haber una devolución pendiente por pago.
+ */
+export async function refundTaloPayment(
+  connection: TaloConnection,
+  paymentId: string,
+  refund: { type: 'FULL' } | { type: 'PARTIAL'; amount: number },
+) {
+  const body = await taloFetch(
+    connection,
+    `/payments/${encodeURIComponent(paymentId)}/refunds`,
+    {
+      method: 'POST',
+      body:
+        refund.type === 'FULL'
+          ? { refund_type: 'FULL' }
+          : {
+              refund_type: 'PARTIAL',
+              // La API de devoluciones recibe el monto como texto.
+              amount: String(refund.amount),
+              currency: 'ARS',
+            },
+    },
+  );
+  const payment = envelope(paymentSchema).parse(body).data;
+  return payment.refunds?.at(-1) ?? null;
+}
+
+/**
+ * Cambia el precio de un pago y Talo recalcula su estado: aceptar lo que se
+ * recibió deja un UNDERPAID como SUCCESS.
+ */
+export async function setTaloPaymentPrice(
+  connection: TaloConnection,
+  paymentId: string,
+  amount: number,
+) {
+  await taloFetch(
+    connection,
+    `/payments/${encodeURIComponent(paymentId)}/price`,
+    {
+      method: 'PUT',
+      body: { currency: 'ARS', amount },
+    },
+  );
 }
 
 /** Acorta el vencimiento del CVU (sólo pagos PENDING). */

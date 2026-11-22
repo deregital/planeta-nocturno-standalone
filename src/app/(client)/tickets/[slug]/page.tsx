@@ -54,6 +54,8 @@ export default async function TicketsPage({
         <TicketsTaloPending
           ticketGroupId={slug}
           eventName={pending.eventName}
+          eventSlug={pending.eventSlug}
+          contactEmail={pending.contactEmail}
           account={pending.transferAccount}
           otherPaymentMethods={pending.otherPaymentMethods}
         />

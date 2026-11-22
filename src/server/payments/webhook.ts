@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { capturePurchaseCompleted } from '@/server/analytics/purchase-events';
 import { resolveRequestContext } from '@/server/instance/resolve-request-context';
 import { logger } from '@/server/observability/logger';
+import { notifyPaymentIssue } from '@/server/payments/notify';
 import {
   deliverPaidTicketGroup,
   markGroupPaid,
@@ -65,11 +66,16 @@ export async function handlePaymentNotification(
   return new NextResponse(null, { status: 200 });
 }
 
-async function fulfillTicketGroup(
-  { db, instance }: PaymentContext,
+/**
+ * Marca la compra como pagada y manda las entradas. También la usan las
+ * acciones del organizador (aceptar un pago de menos).
+ */
+export async function fulfillTicketGroup(
+  ctx: PaymentContext,
   provider: PaymentProvider,
   ticketGroupId: string,
 ) {
+  const { db, instance } = ctx;
   const log = { operation: 'payment_webhook', method: provider.method };
 
   // El aviso se reintenta (y un mismo pago puede avisarse varias veces): las
@@ -97,6 +103,11 @@ async function fulfillTicketGroup(
     ticketGroupId,
     paymentMethod: provider.analyticsName,
   });
+
+  // Pago tardío entregado aunque el tipo ya se había vendido.
+  if (transitioned === 'over_quota') {
+    await notifyPaymentIssue(ctx, 'OVER_QUOTA', { ticketGroupId });
+  }
 
   logger.info('Payment webhook fulfillment completed', {
     ...log,

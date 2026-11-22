@@ -28,9 +28,13 @@ import { generatePdf } from '@/server/utils/ticket-template';
  *
  * Si la reserva ya había soltado el cupo (pago tardío, ver releaseExpiredHolds),
  * lo vuelve a tomar con las entradas emitidas, aunque el tipo se haya agotado
- * mientras tanto: la plata ya se cobró y la entrada se honra.
+ * mientras tanto: la plata ya se cobró y la entrada se honra. En ese caso
+ * devuelve 'over_quota' (sigue siendo verdadero) para avisarle al contacto.
  */
-export async function markGroupPaid(db: Db, ticketGroupId: string) {
+export async function markGroupPaid(
+  db: Db,
+  ticketGroupId: string,
+): Promise<false | true | 'over_quota'> {
   return db.transaction(async (tx) => {
     const [group] = await tx
       .select({ status: ticketGroup.status, eventId: ticketGroup.eventId })
@@ -43,6 +47,7 @@ export async function markGroupPaid(db: Db, ticketGroupId: string) {
     }
     if (group.status !== 'BOOKED') return false;
 
+    let overQuota = false;
     const [hold] = await tx
       .select({ ticketTypeId: ticketTypePerGroup.ticketTypeId })
       .from(ticketTypePerGroup)
@@ -87,6 +92,7 @@ export async function markGroupPaid(db: Db, ticketGroupId: string) {
           const type = types.find((t) => t.id === row.ticketTypeId);
           const after = (takenByType.get(row.ticketTypeId) ?? 0) + row.amount;
           if (type && after > type.maxAvailable) {
+            overQuota = true;
             logger.warn('Late payment honored over ticket type quota', {
               operation: 'payment_webhook',
               ticketGroupId,
@@ -112,7 +118,7 @@ export async function markGroupPaid(db: Db, ticketGroupId: string) {
       .update(ticketGroup)
       .set({ status: 'PAID' })
       .where(eq(ticketGroup.id, ticketGroupId));
-    return true;
+    return overQuota ? 'over_quota' : true;
   });
 }
 
