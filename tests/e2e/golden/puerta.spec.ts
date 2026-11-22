@@ -19,21 +19,44 @@ async function abrirScanner(page: Page) {
   await entrar(page, 'puerta');
   await page.goto(`${tenantUrl()}/admin/event/${event().slug}/scan`);
   await expect(page.locator('video').first()).toBeVisible({ timeout: 30_000 });
+  // Los eventos escanean en modo rápido salvo que alguien elija Normal: el
+  // celular baja la lista y decide sin esperar al servidor.
+  await expect(page.getByText(/Modo rápido · sincronizado/)).toBeVisible({
+    timeout: 30_000,
+  });
   await sinDesbordes(page, 'el scanner');
 }
 
-// Muestra el QR y espera la respuesta del servidor a ese escaneo.
+type Escaneo = { at: number; decidedBy?: 'server' | 'local' };
+
+// El último resultado que mostró el scanner. Cada escaneo queda en el
+// historial del celular, lo haya decidido el celular o el servidor.
+function ultimoEscaneo(page: Page) {
+  return page.evaluate((): Escaneo => {
+    let last: Escaneo = { at: 0 };
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith('pn-scanner-history:')) continue;
+      const [item] = JSON.parse(localStorage.getItem(key) ?? '[]') as Escaneo[];
+      if (item && item.at > last.at) last = item;
+    }
+    return last;
+  });
+}
+
+// Muestra el QR y espera a que el scanner muestre el resultado. En modo rápido
+// una entrada conocida se decide en el celular, sin pedido al servidor.
 async function escanear(page: Page, file: string) {
   await camara(page, null);
   await page.waitForTimeout(300);
+  const antes = (await ultimoEscaneo(page)).at;
   const started = Date.now();
-  const response = page.waitForResponse(
-    (r) => /emittedTickets\.scan/.test(r.url()),
-    { timeout: 15_000 },
-  );
   await camara(page, file);
-  await response;
-  return Date.now() - started;
+  await expect
+    .poll(async () => (await ultimoEscaneo(page)).at, { timeout: 15_000 })
+    .toBeGreaterThan(antes);
+  const ms = Date.now() - started;
+  return { ms, decidedBy: (await ultimoEscaneo(page)).decidedBy };
 }
 
 test('escaneo en la puerta: válida, repetida, de otro evento, de otra productora y basura', async ({
@@ -54,9 +77,14 @@ test('escaneo en la puerta: válida, repetida, de otro evento, de otra productor
 
   await abrirScanner(page);
 
-  await escanear(page, valida.file);
+  const { decidedBy } = await escanear(page, valida.file);
+  expect(decidedBy, 'la entrada válida la decide el celular').toBe('local');
   await expect(page.getByText(valida.fullName).first()).toBeVisible();
   await expect(page.locator('.bg-green-500').first()).toBeVisible();
+  // El ingreso se sube por detrás y queda registrado en la base.
+  await expect(
+    page.getByText('Escaneado en este celular · registrado'),
+  ).toBeVisible({ timeout: 15_000 });
   const [scanned] = await query<{ scanned: boolean }>(
     'SELECT scanned FROM "emittedTicket" WHERE id = $1',
     [valida.emittedTicketId],
@@ -90,11 +118,11 @@ test('el scanner no se traba con 30 escaneos seguidos', async ({
   await abrirScanner(page);
   const tiempos: number[] = [];
   for (let vuelta = 0; vuelta < 3; vuelta += 1) {
-    for (const qr of qrs) tiempos.push(await escanear(page, qr.file));
+    for (const qr of qrs) tiempos.push((await escanear(page, qr.file)).ms);
   }
   test.info().annotations.push({
     type: 'tiempos',
-    description: `de mostrar el QR a la respuesta: mediana ${tiempos.toSorted((a, b) => a - b)[15]} ms, máximo ${Math.max(...tiempos)} ms`,
+    description: `de mostrar el QR al resultado en pantalla: mediana ${tiempos.toSorted((a, b) => a - b)[15]} ms, máximo ${Math.max(...tiempos)} ms`,
   });
   // Los últimos no pueden tardar mucho más que los primeros.
   const primeros = tiempos.slice(0, 10).toSorted((a, b) => a - b)[5];
