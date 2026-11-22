@@ -11,17 +11,24 @@ import { cn } from '@/lib/utils';
  */
 function useHorizontalOverflow() {
   const ref = React.useRef<HTMLDivElement>(null);
+  const barRef = React.useRef<HTMLDivElement>(null);
   const [edges, setEdges] = React.useState({ left: false, right: false });
+  const [scrollWidth, setScrollWidth] = React.useState(0);
 
   React.useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    const update = () =>
+    const update = () => {
       setEdges({
         left: element.scrollLeft > 4,
         right:
           element.scrollLeft + element.clientWidth < element.scrollWidth - 4,
       });
+      setScrollWidth(
+        element.scrollWidth > element.clientWidth ? element.scrollWidth : 0,
+      );
+      if (barRef.current) barRef.current.scrollLeft = element.scrollLeft;
+    };
     update();
     element.addEventListener('scroll', update, { passive: true });
     const observer = new ResizeObserver(update);
@@ -33,7 +40,15 @@ function useHorizontalOverflow() {
     };
   }, []);
 
-  return { ref, edges };
+  const onBarScroll = React.useCallback(() => {
+    const element = ref.current;
+    const bar = barRef.current;
+    if (element && bar && element.scrollLeft !== bar.scrollLeft) {
+      element.scrollLeft = bar.scrollLeft;
+    }
+  }, []);
+
+  return { ref, barRef, edges, scrollWidth, onBarScroll };
 }
 
 function Table({
@@ -41,7 +56,8 @@ function Table({
   fullWidth,
   ...props
 }: React.ComponentProps<'table'> & { fullWidth?: boolean }) {
-  const { ref, edges } = useHorizontalOverflow();
+  const { ref, barRef, edges, scrollWidth, onBarScroll } =
+    useHorizontalOverflow();
 
   return (
     <div
@@ -54,7 +70,13 @@ function Table({
       <div
         ref={ref}
         data-slot='table-container'
-        className='overflow-x-auto w-full'
+        className={cn(
+          'overflow-x-auto w-full',
+          // La barra de abajo reemplaza a la nativa, que sólo se veía al
+          // llegar al final de la lista.
+          scrollWidth > 0 &&
+            '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        )}
       >
         <table
           data-slot='table'
@@ -62,6 +84,21 @@ function Table({
           {...props}
         />
       </div>
+      {scrollWidth > 0 && (
+        /* Barra para deslizar de costado pegada al pie de la pantalla mientras
+           la tabla siga más abajo: con listas largas no hay que bajar hasta el
+           final para moverla. Si un ancestro tiene overflow hidden/auto, se
+           pega a ese contenedor en vez de la pantalla. */
+        <div
+          ref={barRef}
+          aria-hidden
+          tabIndex={-1}
+          onScroll={onBarScroll}
+          className='sticky bottom-0 z-10 w-full overflow-x-auto overflow-y-hidden bg-white/90'
+        >
+          <div style={{ width: scrollWidth, height: 1 }} />
+        </div>
+      )}
       {edges.left && (
         <div
           aria-hidden
