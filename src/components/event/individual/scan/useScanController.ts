@@ -153,7 +153,7 @@ export function useScanController({
     },
   );
   const config = configQuery.data;
-  const serverConfig = config?.available ? config.effective : OFF_CONFIG;
+  const serverConfig = config ? config.effective : OFF_CONFIG;
   const serverConfigRef = useRef(serverConfig);
   serverConfigRef.current = serverConfig;
 
@@ -201,25 +201,27 @@ export function useScanController({
         ok: event.ok,
         latency_ms: Math.round(event.latencyMs),
         tickets: event.tickets,
+        // false: falló una actualización de fondo y la puerta siguió con la
+        // lista que tenía. Una demora larga suele ser el celular bloqueado.
+        initial: event.initial,
+        error_code: event.errorCode ?? null,
       });
     }
   };
 
   const userId = config?.userId;
-  const available = config?.available ?? false;
   const [engine, setEngine] = useState<LocalScanEngine | null>(null);
   useEffect(() => {
     if (!userId || !deviceId || stableEventIds.length === 0) return;
     // Se crea aunque el modo esté apagado: así se suben escaneos que hayan
-    // quedado pendientes de una sesión anterior, y si la instalación tiene el
-    // modo local, se entera cuando lo prendan.
+    // quedado pendientes de una sesión anterior, y se entera cuando pasen el
+    // evento a rápido.
     const instance = new LocalScanEngine({
       transport,
       store: new IndexedDbOutboxStore(),
       userId,
       eventIds: stableEventIds,
       deviceId,
-      available,
       onEvent: (event) => onEventRef.current(event),
     });
     setEngine(instance);
@@ -228,7 +230,7 @@ export function useScanController({
       instance.stop();
       setEngine(null);
     };
-  }, [userId, deviceId, stableEventIds, transport, available]);
+  }, [userId, deviceId, stableEventIds, transport]);
 
   const { mode: serverMode, maxStaleSeconds: serverMaxStale } = serverConfig;
   useEffect(() => {

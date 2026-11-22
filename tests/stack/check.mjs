@@ -5,7 +5,7 @@
 //
 //   tests/stack/check                  # todo desde que se sembró
 //   tests/stack/check --since <ISO>    # sólo lo ocurrido desde esa hora
-//   tests/stack/check --json
+//   tests/stack/check --json [--all-rows]
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,8 +22,11 @@ const since = new Date(sinceArg ?? seed.createdAt);
 if (Number.isNaN(since.getTime())) throw new Error(`--since inválido: ${sinceArg}`);
 
 const findings = [];
+// --all-rows: todas las filas de cada hallazgo (los tests e2e comparan contra la
+// línea de base fila por fila).
+const ROW_LIMIT = args.includes('--all-rows') ? Infinity : 15;
 const add = (severity, check, tenant, detail, rows = []) =>
-  findings.push({ severity, check, tenant, detail, rows: rows.slice(0, 15), count: rows.length || undefined });
+  findings.push({ severity, check, tenant, detail, rows: rows.slice(0, ROW_LIMIT), count: rows.length || undefined });
 
 // Cada consulta devuelve las filas que violan la invariante.
 const INVARIANTS = [
@@ -36,8 +39,11 @@ const INVARIANTS = [
           WHERE g.status IN ('PAID','FREE') AND NOT g."isOrganizerGroup"
             AND NOT EXISTS (SELECT 1 FROM "emittedTicket" t WHERE t."ticketGroupId" = g.id)
             -- El grupo FREE compartido donde viven los códigos sin canjear de cada
-            -- organizador no tiene entradas por diseño.
+            -- organizador no tiene entradas por diseño, y queda vacío (sin tipos
+            -- por grupo) cuando ya se canjearon todos.
             AND NOT EXISTS (SELECT 1 FROM "ticketXOrganizer" x WHERE x."ticketGroupId" = g.id)
+            AND NOT (g.status = 'FREE' AND e."inviteCondition" = 'INVITATION'
+                     AND NOT EXISTS (SELECT 1 FROM "ticketTypePerGroup" p WHERE p."ticketGroupId" = g.id))
             -- Arrepentida: sus entradas pasaron a la papelera.
             AND NOT EXISTS (SELECT 1 FROM "withdrawalRequest" w WHERE w."ticketGroupId" = g.id)`,
   },

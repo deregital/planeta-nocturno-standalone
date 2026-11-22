@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 
+import { readDevicePrefs } from '@/components/event/individual/scan/local/device';
 import {
   decideKnownTicket,
   isSelfRepeat,
@@ -328,6 +329,33 @@ describe('configuración', () => {
     assert.equal(clampMaxStaleSeconds(1), 10);
     assert.equal(clampMaxStaleSeconds(10_000), 300);
     assert.equal(clampMaxStaleSeconds(Number.NaN), 60);
+  });
+
+  it('un celular que tenía Sombra elegida queda en normal', () => {
+    const stored = new Map<string, string>();
+    const globals = globalThis as { window?: unknown };
+    const previous = globals.window;
+    globals.window = {
+      localStorage: {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => stored.set(key, value),
+      },
+    };
+    try {
+      const read = (mode: string) => {
+        stored.set(
+          'pn-scanner-device-prefs',
+          JSON.stringify({ mode, maxStaleSeconds: 30 }),
+        );
+        return readDevicePrefs();
+      };
+      assert.deepEqual(read('shadow'), { mode: 'off', maxStaleSeconds: 30 });
+      assert.equal(read('off').mode, 'off');
+      assert.equal(read('auto').mode, 'auto');
+      assert.equal(read('turbo').mode, 'auto');
+    } finally {
+      globals.window = previous;
+    }
   });
 });
 

@@ -8,8 +8,8 @@ import { type ScannerMode } from '@/lib/scan/protocol';
 const DEVICE_ID_KEY = 'pn-scanner-device-id';
 const DEVICE_PREFS_KEY = 'pn-scanner-device-prefs';
 
-/** `auto`: lo que diga el evento. Los otros solo pueden bajar el modo. */
-export type DeviceModePreference = 'auto' | 'shadow' | 'off';
+/** `auto`: lo que diga el evento. `off`: este celular escanea en normal. */
+export type DeviceModePreference = 'auto' | 'off';
 
 export type DevicePrefs = {
   mode: DeviceModePreference;
@@ -59,9 +59,11 @@ export function readDevicePrefs(): DevicePrefs {
   try {
     const parsed = JSON.parse(raw) as Partial<DevicePrefs>;
     return {
+      // Sombra ya no se ofrece: un celular que la tenía elegida queda en
+      // normal, que en la puerta funcionaba igual.
       mode:
-        parsed.mode === 'shadow' || parsed.mode === 'off'
-          ? parsed.mode
+        (parsed.mode as string) === 'shadow' || parsed.mode === 'off'
+          ? 'off'
           : 'auto',
       maxStaleSeconds:
         typeof parsed.maxStaleSeconds === 'number'

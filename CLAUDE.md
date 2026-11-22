@@ -36,3 +36,17 @@ Cómo verificar:
 - `npm run test:mobile`: recorre todas las pantallas, modals y menús de fila por rol a 360×640
   contra el stack de `tests/stack` (variables en `tests/mobile/overflow.mjs`). Correrlo antes de
   un release o después de tocar layout.
+
+## Pruebas
+
+Detalle en [`tests/README.md`](tests/README.md). GitHub corre `rapido` y `stack` en cada PR.
+
+- `npm test` (~30 s, sin nada levantado): lint, tipos y unitarias. Correrlo antes de dar algo
+  por terminado.
+- `npm run test:pr` (Docker; levanta el stack simulado solo): suma scanner, aislamiento entre
+  productoras, regresiones y el golden path en un navegador. Correrlo si tocaste compra,
+  invitaciones, puerta o el panel. Si cambió el código, recompila el stack solo (~4 min).
+- Un flujo nuevo que se usa mucho lleva su test en `tests/e2e/golden`; un bug arreglado, una
+  prueba en la suite más chica que lo cubra.
+- El stack es uno por máquina (contenedor y puertos fijos): si otra sesión lo está usando, no
+  lo apagues ni lo re-siembres.

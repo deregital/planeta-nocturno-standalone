@@ -17,17 +17,16 @@ import {
 import {
   clampMaxStaleSeconds,
   combineConfigs,
+  DEFAULT_EVENT_MODE,
   DEFAULT_MAX_STALE_SECONDS,
   DELTA_OVERLAP_MS,
-  isScannerMode,
   isTicketId,
   MAX_SCANNER_EVENTS,
   MAX_SYNC_SCANS,
-  OFF_CONFIG,
-  SCANNER_MODES,
   SCANNER_PROTOCOL_VERSION,
+  SELECTABLE_SCANNER_MODES,
   type DeltaScanRow,
-  type ScannerConfig,
+  type SelectableScannerMode,
   type SnapshotTicketRow,
   type SnapshotTicketType,
   type SyncScanOutcome,
@@ -39,7 +38,6 @@ import { tryRegisterTicketScanInTx } from '@/server/utils/register-ticket-scan';
 import { assertEventsAccess } from '@/server/utils/scanner-access';
 import {
   getLegacyQrKeyBase64,
-  isScannerLocalModeAvailable,
   serverTicketHash,
 } from '@/server/utils/scanner-crypto';
 import { decryptString } from '@/server/utils/utils';
@@ -50,7 +48,20 @@ const eventIdsSchema = z
   .max(MAX_SCANNER_EVENTS)
   .transform((ids) => [...new Set(ids.map((id) => id.toLowerCase()))]);
 
-type EventConfigRow = { eventId: string; name: string } & ScannerConfig;
+type EventConfigRow = {
+  eventId: string;
+  name: string;
+  mode: SelectableScannerMode;
+  maxStaleSeconds: number;
+};
+
+/**
+ * Modo guardado de un evento. Sombra (del período de prueba) o un valor que
+ * no se reconoce escanean en normal.
+ */
+function storedMode(mode: string): SelectableScannerMode {
+  return mode === 'local' ? 'local' : 'off';
+}
 
 /** 42P01: la migración de las tablas nuevas todavía no llegó a esta base. */
 function isMissingTable(error: unknown) {
@@ -88,6 +99,7 @@ async function loadEventConfigs(
     .where(inArray(eventTable.id, eventIds));
 
   let rows: { eventId: string; mode: string; maxStaleSeconds: number }[] = [];
+  let tableMissing = false;
   try {
     rows = await db
       .select({
@@ -98,21 +110,26 @@ async function loadEventConfigs(
       .from(eventScannerConfig)
       .where(inArray(eventScannerConfig.eventId, eventIds));
   } catch (error) {
-    // Sin la tabla, todos los eventos escanean como siempre.
+    // Sin las tablas el celular no podría subir lo que decide: todos los
+    // eventos escanean en normal.
     if (!isMissingTable(error)) throw error;
+    tableMissing = true;
     logger.warn('Scanner config table missing: every event scans as usual', {
       operation: 'scanner_config',
       code: SCANNER_MIGRATION_MISSING,
     });
   }
 
+  const unsetMode: SelectableScannerMode = tableMissing
+    ? 'off'
+    : DEFAULT_EVENT_MODE;
   const byEvent = new Map(rows.map((row) => [row.eventId, row]));
   return eventIds.map((eventId) => {
     const row = byEvent.get(eventId);
     return {
       eventId,
       name: events.find((e) => e.id === eventId)?.name ?? '',
-      mode: row && isScannerMode(row.mode) ? row.mode : 'off',
+      mode: row ? storedMode(row.mode) : unsetMode,
       maxStaleSeconds: clampMaxStaleSeconds(
         row?.maxStaleSeconds ?? DEFAULT_MAX_STALE_SECONDS,
       ),
@@ -121,7 +138,6 @@ async function loadEventConfigs(
 }
 
 async function effectiveConfig(db: Db, eventIds: string[]) {
-  if (!isScannerLocalModeAvailable()) return OFF_CONFIG;
   return combineConfigs(await loadEventConfigs(db, eventIds));
 }
 
@@ -507,15 +523,16 @@ export const scannerRouter = router({
     .input(z.object({ eventIds: eventIdsSchema }))
     .query(async ({ ctx, input }) => {
       await assertEventsAccess(ctx, input.eventIds);
-      const available = isScannerLocalModeAvailable();
-      const events = available
-        ? await loadEventConfigs(ctx.db, input.eventIds)
-        : [];
+      const events = await loadEventConfigs(ctx.db, input.eventIds);
       return {
-        available,
-        canEdit: available && ctx.can('events:update'),
+        // Lo leen las páginas del escáner abiertas desde antes de que el modo
+        // rápido dejara de depender de una variable de entorno: sin esto
+        // escanearían en normal hasta recargar. Se puede sacar en el release
+        // siguiente.
+        available: true,
+        canEdit: ctx.can('events:update'),
         userId: ctx.session.user.id,
-        effective: available ? combineConfigs(events) : OFF_CONFIG,
+        effective: combineConfigs(events),
         events,
       };
     }),
@@ -524,17 +541,11 @@ export const scannerRouter = router({
     .input(
       z.object({
         eventId: z.uuid(),
-        mode: z.enum(SCANNER_MODES),
+        mode: z.enum(SELECTABLE_SCANNER_MODES),
         maxStaleSeconds: z.number().int(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!isScannerLocalModeAvailable()) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'El modo local no está habilitado en esta instalación',
-        });
-      }
       await assertEventsAccess(ctx, [input.eventId]);
 
       const values = {
