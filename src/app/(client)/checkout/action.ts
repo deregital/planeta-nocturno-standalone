@@ -34,7 +34,11 @@ import {
 } from '@/server/services/mail';
 import { sendNotificationService } from '@/server/services/notification';
 import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
-import { updateTicketGroupStatus } from '@/server/services/ticketGroup';
+import {
+  generateTicketGroupPdfs,
+  updateTicketGroupStatus,
+} from '@/server/services/ticketGroup';
+import { ticketAccessCookie } from '@/server/security/ticket-access';
 import { startPayment } from '@/server/payments/methods';
 import { getPaymentProvider } from '@/server/payments/registry';
 import { trpc } from '@/server/trpc/server';
@@ -384,8 +388,8 @@ export const handlePurchase = async (
 
       const group = await trpc.ticketGroup.getById(ticketGroupId);
 
-      const pdfs =
-        await trpc.ticketGroup.generatePdfsByTicketGroupId(ticketGroupId);
+      // Directo al servicio: el procedure público pide el DNI del titular.
+      const pdfs = await generateTicketGroupPdfs(db, instance, ticketGroupId);
 
       // Enviar emails de forma secuencial para evitar rate limits
       try {
@@ -434,6 +438,8 @@ export const handlePurchase = async (
         path: '/',
       });
       (await cookies()).delete('carrito');
+      // Quien compra ve sus tickets sin volver a escribir el DNI.
+      (await cookies()).set(ticketAccessCookie(ticketGroupId));
 
       url = `/tickets/${ticketGroupId}` as Route;
     } else {
@@ -484,6 +490,7 @@ export const handlePurchase = async (
         path: '/',
       });
       (await cookies()).delete('carrito');
+      (await cookies()).set(ticketAccessCookie(ticketGroupId));
       if (payment.type === 'redirect') {
         (await cookies()).set('pendingPaymentUrl', payment.url);
       }

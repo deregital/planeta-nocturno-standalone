@@ -24,6 +24,7 @@ import {
   type RateLimitRule,
   refundRateLimit,
 } from '@/server/security/rate-limit';
+import { hasTicketAccess } from '@/server/security/ticket-access';
 import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
 import { getTransferAlias } from '@/server/services/paymentSettings';
 import {
@@ -115,6 +116,25 @@ function invitationHolderRateLimits(
     { key: `invite-dni:ip1h:${ip}`, limit: 10, windowSeconds: 60 * 60 },
     {
       key: `invite-dni:code1h:${eventId}:${code}`,
+      limit: 5,
+      windowSeconds: 60 * 60,
+    },
+  ];
+}
+
+/**
+ * Intentos de DNI para ver un ticket comprado desde su link. Igual que en las
+ * invitaciones: por IP y por grupo, sólo cuentan los fallidos.
+ */
+function ticketHolderRateLimits(
+  headers: Headers,
+  ticketGroupId: string,
+): RateLimitRule[] {
+  const ip = getClientIpKey(headers);
+  return [
+    { key: `ticket-dni:ip1h:${ip}`, limit: 10, windowSeconds: 60 * 60 },
+    {
+      key: `ticket-dni:group1h:${ticketGroupId}`,
       limit: 5,
       windowSeconds: 60 * 60,
     },
@@ -589,6 +609,46 @@ export const ticketGroupRouter = router({
       });
       return { status: 'ok' as const, ticketGroupId: match.ticketGroupId };
     }),
+  /**
+   * Para abrir `/tickets/[id]` desde otro navegador: el DNI tiene que ser el de
+   * alguno de los tickets emitidos del grupo. La cookie de acceso la pone la
+   * server action que llama a esto.
+   */
+  verifyTicketHolder: publicProcedure
+    .input(
+      z.object({
+        ticketGroupId: ticketGroupSchema.shape.id,
+        dni: z.string().trim().min(1).max(30),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const limits = ticketHolderRateLimits(ctx.headers, input.ticketGroupId);
+      if (!(await consumeRateLimit(ctx.db, limits))) {
+        logger.warn('Rate limit de verificación de DNI de ticket alcanzado', {
+          ticketGroupId: input.ticketGroupId,
+        });
+        return { status: 'rate_limited' as const };
+      }
+
+      const tickets = await ctx.db.query.emittedTicket.findMany({
+        where: eq(emittedTicket.ticketGroupId, input.ticketGroupId),
+        columns: { dni: true },
+      });
+
+      const dni = normalizeDni(input.dni);
+      if (!tickets.some((t) => normalizeDni(t.dni) === dni)) {
+        logger.warn('Verificación de DNI de ticket fallida', {
+          ticketGroupId: input.ticketGroupId,
+        });
+        return { status: 'invalid' as const };
+      }
+
+      await refundRateLimit(ctx.db, limits);
+      logger.info('Ticket consultado con DNI', {
+        ticketGroupId: input.ticketGroupId,
+      });
+      return { status: 'ok' as const };
+    }),
   getById: publicProcedure
     .input(ticketGroupSchema.shape.id)
     .query(async ({ ctx, input }) => {
@@ -967,6 +1027,15 @@ export const ticketGroupRouter = router({
         });
       }
 
+      // El link solo no alcanza: hace falta haber probado el DNI de un titular
+      // (o ser el navegador que compró). El staff logueado entra igual.
+      if (!hasTicketAccess(ctx.headers, group.id) && !(await ctx.getAccess())) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Falta verificar el DNI del titular',
+        });
+      }
+
       const { event } = group;
 
       const tickets = await Promise.all(
@@ -1060,6 +1129,17 @@ export const ticketGroupRouter = router({
         });
       }
 
+      // Mismo control que la página del ticket: DNI verificado o staff.
+      if (
+        !hasTicketAccess(ctx.headers, ticket.ticketGroup.id) &&
+        !(await ctx.getAccess())
+      ) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Falta verificar el DNI del titular',
+        });
+      }
+
       const blob = await generatePdf(
         {
           eventName: ticket.ticketGroup.event.name,
@@ -1091,10 +1171,17 @@ export const ticketGroupRouter = router({
         where: eq(ticketGroup.id, input),
         columns: { status: true },
       });
-      if (group?.status === 'BOOKED' && !(await ctx.getAccess())) {
+      const isStaff = !!(await ctx.getAccess());
+      if (group?.status === 'BOOKED' && !isStaff) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'El grupo de entradas no está pago',
+        });
+      }
+      if (!isStaff && !hasTicketAccess(ctx.headers, input)) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Falta verificar el DNI del titular',
         });
       }
       return generateTicketGroupPdfs(ctx.db, ctx.instance, input);
