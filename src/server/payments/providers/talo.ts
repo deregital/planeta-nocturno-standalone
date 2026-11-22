@@ -35,13 +35,17 @@ import {
   generateTaloUnderpaidEmail,
   sendMailWithoutAttachments,
 } from '@/server/services/mail';
-import { calculateAndSaveTotalAmount } from '@/server/services/ticketGroup';
+import {
+  calculateAndSaveTotalAmount,
+  expiredGroupFitsQuota,
+} from '@/server/services/ticketGroup';
 
 /** El CVU de una compra acepta transferencias durante una hora. */
 export const TALO_PAYMENT_TTL_MS = 60 * 60 * 1000;
 /**
  * La reserva suelta el cupo cuando vence el CVU. Una transferencia que llega
- * después no se entrega: se devuelve (ver parseNotification).
+ * después se entrega si todavía hay lugar; si no, se devuelve (ver
+ * parseNotification).
  */
 export const TALO_HOLD_TTL_MS = CHECKOUT_HOLD_TTL_MS + TALO_PAYMENT_TTL_MS;
 /** La compra vencida se guarda una semana, para devolver un pago que llegue tarde. */
@@ -58,7 +62,8 @@ const notificationSchema = z
 /**
  * - `UNDERPAID`: transfirió menos que el precio (más allá de la tolerancia de Talo).
  * - `OVERPAID`: transfirió de más; las entradas se entregaron.
- * - `LATE`: transfirió cuando la reserva ya había soltado el cupo; se devuelve.
+ * - `LATE`: transfirió con la reserva vencida y no había lugar (o faltaba
+ *   plata); se devuelve.
  */
 export const TALO_ISSUES = ['UNDERPAID', 'OVERPAID', 'LATE'] as const;
 export type TaloIssue = (typeof TALO_ISSUES)[number];
@@ -456,10 +461,30 @@ export const taloProvider: PaymentProvider = {
       return { ticketGroupId, status: 'PAID' };
     }
 
-    // La reserva ya soltó el cupo (venció el CVU): no se entrega, se devuelve.
-    // Salvo que el organizador haya aceptado el pago: ahí se entrega igual.
-    if (group.ticketTypePerGroups.length === 0 && !details.accepted) {
-      if (details.refund && details.refund.status !== 'FAILED') {
+    // La reserva ya soltó el cupo (venció el CVU, o la productora asignó a
+    // mano en Talo una transferencia retenida). Si el pago está completo y las
+    // entradas todavía entran en el cupo, se entregan igual; si no, se
+    // devuelve. Un pago que aceptó el organizador se entrega siempre.
+    const quotaReleased =
+      group.ticketTypePerGroups.length === 0 && !details.accepted;
+    const alreadyRefunded =
+      details.refund !== undefined &&
+      details.refund !== null &&
+      details.refund.status !== 'FAILED';
+    const deliverLate =
+      quotaReleased &&
+      !alreadyRefunded &&
+      status !== 'UNDERPAID' &&
+      (await expiredGroupFitsQuota(ctx.db, ticketGroupId));
+    if (deliverLate) {
+      logger.info('Talo late payment delivered: tickets still available', {
+        ...log,
+        ticketGroupId,
+        received,
+      });
+    }
+    if (quotaReleased && !deliverLate) {
+      if (alreadyRefunded) {
         return { ticketGroupId, status: 'IGNORE' };
       }
       const refund = await requestTaloRefund(connection, payment.id, {

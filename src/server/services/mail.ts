@@ -195,6 +195,7 @@ export function generateTaloPaymentEmail(
       ${alias ? `<li>Alias: <b>${alias}</b></li>` : ''}
       <li>Monto: <b>${totalAmount}</b></li>
     </ul>
+    <p><b>Transferí el monto exacto.</b> Si transferís de más, la transferencia queda retenida para revisión y tus entradas se demoran.</p>
     ${expiresAt ? `<p>Estos datos sirven hasta las <b>${expiresAt}</b> hs.</p>` : ''}
     <p>No hace falta mandar comprobante: cuando se acredita la transferencia te enviamos las entradas a este mail. Podés ver el estado en <a href="${paymentPageUrl}">tu compra</a>.</p>
   `;
@@ -247,7 +248,7 @@ const PAYMENT_ISSUE_TEXT: Record<
   },
   LATE: {
     subject: 'Llegó una transferencia de una reserva vencida',
-    body: 'La reserva ya había liberado las entradas, así que no se entregaron. Le pedimos a Talo que le devuelva la plata al comprador.',
+    body: 'La reserva ya había liberado las entradas y no se pudieron entregar: el evento ya no tenía lugar para ese tipo de entrada, o el pago no estaba completo. Le pedimos a Talo que le devuelva la plata al comprador.',
   },
   UNKNOWN_PURCHASE: {
     subject: 'Llegó una transferencia de una compra que ya no existe',

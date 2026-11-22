@@ -840,16 +840,52 @@ async function main() {
           `devolución ${JSON.stringify(overRow.details.refund)}`,
         );
 
-        // Tardío: la reserva ya soltó el cupo → no se entrega, se devuelve solo.
+        // Tardío con lugar: la reserva soltó el cupo pero el tipo no se
+        // agotó → se entrega igual.
+        const lateFits = await buy();
+        await raw.query(
+          'DELETE FROM "ticketTypePerGroup" WHERE "ticketGroupId" = $1',
+          [lateFits.group],
+        );
+        await faucet(lateFits.talo.cvu, lateFits.talo.amount);
+        const lateFitsRow = await row(lateFits.group);
+        assert(
+          lateFitsRow.status === 'PAID',
+          'no entregó un pago tardío con lugar',
+        );
+        assert(
+          await holdsQuota(lateFits.group),
+          'entregó sin volver a tomar el cupo',
+        );
+
+        // Tardío sin lugar: el tipo se agotó mientras tanto → se devuelve.
         const late = await buy();
         await raw.query(
           'DELETE FROM "ticketTypePerGroup" WHERE "ticketGroupId" = $1',
           [late.group],
         );
+        const generalId = type('fiesta-paga', 'General').id;
+        const {
+          rows: [{ max }],
+        } = await raw.query<{ max: number }>(
+          'SELECT "maxAvailable" AS max FROM "ticketType" WHERE id = $1',
+          [generalId],
+        );
+        await raw.query(
+          'UPDATE "ticketType" SET "maxAvailable" = (SELECT coalesce(sum(amount), 0) FROM "ticketTypePerGroup" WHERE "ticketTypeId" = $1) WHERE id = $1',
+          [generalId],
+        );
         const lateContact = mailsTo(contact);
-        await faucet(late.talo.cvu, late.talo.amount);
+        try {
+          await faucet(late.talo.cvu, late.talo.amount);
+        } finally {
+          await raw.query(
+            'UPDATE "ticketType" SET "maxAvailable" = $2 WHERE id = $1',
+            [generalId, max],
+          );
+        }
         const lateRow = await row(late.group);
-        assert(lateRow.status === 'BOOKED', 'entregó un pago tardío');
+        assert(lateRow.status === 'BOOKED', 'entregó un pago tardío sin lugar');
         assert(
           lateRow.details.issue === 'LATE',
           `issue ${lateRow.details.issue}`,
@@ -871,7 +907,7 @@ async function main() {
           'el comprador no ve que venció y se devuelve',
         );
 
-        for (const group of [tolerated, under, cancel, over, late]) {
+        for (const group of [tolerated, under, cancel, over, lateFits, late]) {
           await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [
             group.group,
           ]);

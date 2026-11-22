@@ -168,6 +168,12 @@ export default function TicketsTaloPending({
                 label={missing !== null ? 'Monto que falta' : 'Monto'}
                 value={formatCurrency(missing ?? account.amount)}
               />
+              {/* Talo retiene para revisión manual lo que supera el monto en más de un 10%. */}
+              <p className='rounded-md bg-amber-50 px-3 py-2 text-left text-sm text-amber-900'>
+                Transferí el monto exacto. Si transferís de más, la
+                transferencia queda retenida para revisión y tus entradas se
+                demoran.
+              </p>
               <p className='text-sm text-muted-foreground'>
                 {account.expiresAt &&
                   `Estos datos sirven hasta las ${formatTime(account.expiresAt)} hs. `}

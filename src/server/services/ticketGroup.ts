@@ -122,6 +122,50 @@ export async function markGroupPaid(
   });
 }
 
+/**
+ * Si las entradas de una reserva que ya soltó el cupo todavía entran en lo
+ * que queda de cada tipo: con un pago tardío, se entregan sólo si hay lugar.
+ */
+export async function expiredGroupFitsQuota(db: Db, ticketGroupId: string) {
+  const emitted = await db
+    .select({
+      ticketTypeId: emittedTicket.ticketTypeId,
+      amount: sql<number>`count(*)::int`,
+    })
+    .from(emittedTicket)
+    .where(eq(emittedTicket.ticketGroupId, ticketGroupId))
+    .groupBy(emittedTicket.ticketTypeId);
+  if (emitted.length === 0) return false;
+
+  const typeIds = emitted.map((row) => row.ticketTypeId);
+  const [types, taken] = await Promise.all([
+    db
+      .select({ id: ticketType.id, maxAvailable: ticketType.maxAvailable })
+      .from(ticketType)
+      .where(inArray(ticketType.id, typeIds)),
+    db
+      .select({
+        ticketTypeId: ticketTypePerGroup.ticketTypeId,
+        taken: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)::int`,
+      })
+      .from(ticketTypePerGroup)
+      .where(inArray(ticketTypePerGroup.ticketTypeId, typeIds))
+      .groupBy(ticketTypePerGroup.ticketTypeId),
+  ]);
+  const takenByType = new Map(
+    taken.map((row) => [row.ticketTypeId, Number(row.taken)]),
+  );
+
+  return emitted.every((row) => {
+    const type = types.find((t) => t.id === row.ticketTypeId);
+    return (
+      type !== undefined &&
+      (takenByType.get(row.ticketTypeId) ?? 0) + Number(row.amount) <=
+        type.maxAvailable
+    );
+  });
+}
+
 export async function updateTicketGroupStatus(
   db: Db,
   id: string,
