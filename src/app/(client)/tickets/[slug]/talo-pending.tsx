@@ -3,6 +3,7 @@
 import type { ComponentProps } from 'react';
 import type { Route } from 'next';
 
+import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -11,8 +12,9 @@ import { OtherPaymentMethods } from '@/app/(client)/tickets/[slug]/other-payment
 import { CopyableValue } from '@/app/(client)/tickets/[slug]/transfer-pending';
 import GoBack from '@/components/common/GoBack';
 import DotsLoader from '@/components/icons/DotsLoader';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
 const POLL_INTERVAL_MS = 4000;
@@ -138,11 +140,26 @@ export default function TicketsTaloPending({
             </>
           ) : (
             <>
-              <p className='text-muted-foreground'>
-                {missing !== null && account.received !== null
-                  ? `Recibimos ${formatCurrency(account.received)}. Transferí los ${formatCurrency(missing)} que faltan al mismo CVU.`
-                  : `Tu reserva para ${eventName} quedó registrada. Transferí el monto exacto desde tu banco o billetera.`}
-              </p>
+              {missing !== null && account.received !== null ? (
+                <Alert
+                  className={cn(
+                    'border-amber-300 bg-amber-50 text-left text-amber-950',
+                    '[&>svg]:text-amber-600',
+                  )}
+                >
+                  <AlertTriangle />
+                  <AlertTitle>Faltan {formatCurrency(missing)}</AlertTitle>
+                  <AlertDescription className='text-amber-900/90'>
+                    Recibimos {formatCurrency(account.received)}. Transferí lo
+                    que falta al mismo CVU para recibir tus entradas.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <p className='text-muted-foreground'>
+                  Tu reserva para {eventName} quedó registrada. Transferí el
+                  monto exacto desde tu banco o billetera.
+                </p>
+              )}
               <CopyableValue label='CVU' value={account.cvu} />
               {account.alias && (
                 <CopyableValue label='Alias' value={account.alias} />
