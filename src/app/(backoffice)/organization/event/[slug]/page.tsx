@@ -91,9 +91,12 @@ export default async function EventPage({
     isTeamLead
       ? myOrganizerIds.includes(tg.invitedById ?? '')
       : tg.invitedById === session?.user.id;
+  // Igual que en /admin/event: una compra sin pagar no cuenta como emitida,
+  // salvo el cobro en el lugar.
   const myTickets = event.ticketGroups
     .filter((tg) => !tg.isOrganizerGroup)
     .filter(isMyTicketGroup)
+    .filter((tg) => tg.status !== 'BOOKED' || tg.paymentMethod === 'ON_SITE')
     .flatMap((tg) => tg.emittedTickets);
 
   // Sorteo y respuestas del formulario: con "Ver todas las ventas" cubren todo
