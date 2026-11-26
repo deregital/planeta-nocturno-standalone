@@ -22,10 +22,22 @@ export function taloAppUrl() {
 }
 
 /**
+ * Talo se prende a mano con TALO_ENABLED=true. Apagado (lo normal mientras no
+ * haya credenciales de producción) no se ofrece a los compradores, no se puede
+ * conectar y no aparece en Medios de pago, aunque haya credenciales cargadas.
+ * Las compras de Talo que ya existen se siguen procesando (aviso de pago,
+ * devoluciones, liberar el cupo).
+ */
+export function isTaloEnabled() {
+  return process.env.TALO_ENABLED?.trim() === 'true';
+}
+
+/**
  * Credenciales de partner de la plataforma (https://docs.talo.com.ar/partners).
- * Sin ellas, Talo no se puede conectar.
+ * Sin ellas, o con Talo apagado, Talo no se puede conectar.
  */
 export function taloPartner() {
+  if (!isTaloEnabled()) return null;
   const id = process.env.TALO_PARTNER_ID?.trim();
   const secret = process.env.TALO_PARTNER_SECRET?.trim();
   return id && secret ? { id, secret } : null;

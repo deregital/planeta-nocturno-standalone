@@ -18,7 +18,11 @@ import {
   acceptTaloUnderpaid,
   refundTaloPurchase,
 } from '@/server/payments/talo/actions';
-import { taloApiUrl, taloPartner } from '@/server/payments/talo/client';
+import {
+  isTaloEnabled,
+  taloApiUrl,
+  taloPartner,
+} from '@/server/payments/talo/client';
 import {
   clearTaloConnection,
   completeTaloConnect,
@@ -101,7 +105,10 @@ export const paymentsRouter = router({
     }),
   /** Los medios de pago con su estado, en el orden en que se ofrecen. */
   methods: permissionProcedure('payments:manage').query(async ({ ctx }) => {
-    const states = await getPaymentMethodStates(ctx);
+    const states = (await getPaymentMethodStates(ctx)).filter(
+      // Talo apagado no se muestra (ver isTaloEnabled).
+      (state) => state.provider.method !== 'TALO' || isTaloEnabled(),
+    );
     // Talo conectado con la cuenta en verificación: todavía no cobra, pero
     // ya no hay que conectarlo.
     const taloInReview =

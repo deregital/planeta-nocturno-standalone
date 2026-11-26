@@ -118,6 +118,12 @@ EOF
   # shellcheck disable=SC1091
   source "$RUN/env.sh"
 fi
+# Talo viene apagado (producción no lo ofrece todavía); el stack lo prueba.
+if ! grep -q TALO_ENABLED "$RUN/env.sh"; then
+  echo 'export TALO_ENABLED=true' >> "$RUN/env.sh"
+  # shellcheck disable=SC1091
+  source "$RUN/env.sh"
+fi
 
 # ── Build ────────────────────────────────────────────────────────────────────
 # En .next-stack y no en .next: si no, pisa la carpeta de un `next dev` abierto.
