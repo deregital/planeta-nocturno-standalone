@@ -59,6 +59,8 @@ stack() {
   source tests/stack/.run/env.sh
   step "scanner (servidor y motor del celular)" \
     env LOAD_ADMIN_DATABASE_URL="$PG_BASE/postgres" npm run -s test:scanner
+  step "métricas de la noche" \
+    env LOAD_ADMIN_DATABASE_URL="$PG_BASE/postgres" npm run -s test:night-metrics
   step "regresiones del enjambre" npm run -s test:regressions
   step "golden path (e2e)" npm run -s test:e2e
   step "aislamiento entre productoras" aislamiento

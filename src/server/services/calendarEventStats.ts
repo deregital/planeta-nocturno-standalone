@@ -1,60 +1,41 @@
-import { and, eq, ne, sql } from 'drizzle-orm';
-
 import type { Db } from '@/drizzle';
 
 import {
-  emittedTicket,
-  ticketGroup,
-  ticketTypePerGroup,
-} from '@/drizzle/schema';
-import { notWithdrawn } from '@/server/services/withdrawal';
+  getNightMetrics,
+  type NightMetrics,
+} from '@/server/services/nightMetrics';
 
-export async function getCalendarStatsByEventId(db: Db, eventId: string) {
-  const ticketGroupFilter = and(
-    eq(ticketGroup.eventId, eventId),
-    ne(ticketGroup.status, 'BOOKED'),
-  );
-
-  const [[salesStats], [raisedStats]] = await Promise.all([
-    db
-      .select({
-        ticketsSold: sql<number>`coalesce(sum(${ticketTypePerGroup.amount}), 0)`,
-      })
-      .from(ticketTypePerGroup)
-      .innerJoin(
-        ticketGroup,
-        eq(ticketGroup.id, ticketTypePerGroup.ticketGroupId),
-      )
-      .where(ticketGroupFilter),
-    db
-      .select({
-        totalRaised: sql<number>`coalesce(sum(${ticketGroup.totalAmount}), 0)`,
-      })
-      .from(ticketGroup)
-      // Lo de una compra arrepentida se devuelve: no cuenta como recaudado.
-      .where(and(ticketGroupFilter, notWithdrawn)),
-  ]);
-
-  const [attendanceStats] = await db
-    .select({
-      ticketsIssued: sql<number>`count(${emittedTicket.id})`,
-      ticketsScanned: sql<number>`coalesce(sum(case when ${emittedTicket.scanned} then 1 else 0 end), 0)`,
-    })
-    .from(emittedTicket)
-    .innerJoin(ticketGroup, eq(ticketGroup.id, emittedTicket.ticketGroupId))
-    .where(
-      and(eq(ticketGroup.eventId, eventId), ne(ticketGroup.status, 'BOOKED')),
-    );
-
-  const ticketsIssued = Number(attendanceStats?.ticketsIssued ?? 0);
-  const ticketsScanned = Number(attendanceStats?.ticketsScanned ?? 0);
+/**
+ * Lo que muestran el calendario de /control y el de Pluto. Sale de las
+ * métricas de la noche, así que cuenta igual que el resto de las pantallas:
+ * sin las entradas de los organizadores ni las reservas sin pagar.
+ */
+export function calendarStatsFromMetrics(metrics: NightMetrics | undefined) {
+  const ticketsIssued = metrics?.tickets.valid ?? 0;
+  const ticketsScanned = metrics
+    ? metrics.tickets.valid - metrics.tickets.pending
+    : 0;
 
   return {
-    ticketsSold: Number(salesStats?.ticketsSold ?? 0),
+    ticketsSold: metrics?.tickets.sold ?? 0,
     ticketsIssued,
     ticketsScanned,
     attendanceRate:
       ticketsIssued > 0 ? (ticketsScanned / ticketsIssued) * 100 : 0,
-    totalRaised: Number(raisedStats?.totalRaised ?? 0),
+    totalRaised: metrics?.raised ?? 0,
   };
+}
+
+export async function getCalendarStatsByEventId(db: Db, eventId: string) {
+  const [metrics] = await getNightMetrics(db, [eventId]);
+  return calendarStatsFromMetrics(metrics);
+}
+
+/** Las de varios eventos de una misma base, en una sola tanda de consultas. */
+export async function getCalendarStatsByEventIds(db: Db, eventIds: string[]) {
+  const metrics = await getNightMetrics(db, eventIds);
+  const byId = new Map(metrics.map((item) => [item.event.id, item]));
+  return new Map(
+    eventIds.map((id) => [id, calendarStatsFromMetrics(byId.get(id))]),
+  );
 }

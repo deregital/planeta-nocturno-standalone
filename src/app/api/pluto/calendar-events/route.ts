@@ -5,7 +5,7 @@ import { resolveRequestContext } from '@/server/instance/resolve-request-context
 import { logger } from '@/server/observability/logger';
 import { verifySignedRequest } from '@/server/security/signed-request';
 import { getCalendarEvents } from '@/server/services/calendarEvents';
-import { getCalendarStatsByEventId } from '@/server/services/calendarEventStats';
+import { getCalendarStatsByEventIds } from '@/server/services/calendarEventStats';
 
 const calendarEventsRequestSchema = z
   .object({
@@ -43,13 +43,10 @@ export async function POST(request: Request) {
       await getCalendarEvents(db, { from: body.from, to: body.to })
     ).filter((eventItem) => eventItem.locationName !== null);
 
-    const eventStats = new Map();
-    for (const eventItem of events) {
-      eventStats.set(
-        eventItem.id,
-        await getCalendarStatsByEventId(db, eventItem.id),
-      );
-    }
+    const eventStats = await getCalendarStatsByEventIds(
+      db,
+      events.map((eventItem) => eventItem.id),
+    );
 
     return NextResponse.json({
       success: true,
