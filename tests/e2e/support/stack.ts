@@ -108,7 +108,8 @@ export function newPerson(label: string) {
     fullName: `${label} Golden ${stamp}`,
     email: `${label.toLowerCase()}-${stamp}@golden.pn.test`,
     dni: `5${stamp.slice(-7)}`,
-    phone: `11${stamp.slice(-8)}`,
+    // "11 15…" lo toma el input como celular con el 15 de prefijo y queda inválido.
+    phone: `114${stamp.slice(-7)}`,
     birth: { day: '14', month: '03', year: '1995' },
   };
 }
