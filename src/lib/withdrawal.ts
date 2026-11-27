@@ -37,6 +37,7 @@ export const WITHDRAWAL_PAYMENT_METHOD_LABELS = {
   MERCADO_PAGO: 'Mercado Pago',
   TRANSFER: 'Transferencia',
   ON_SITE: 'En el lugar',
+  TALO: 'Talo',
 } as const;
 
 export function withdrawalPaymentMethodLabel(

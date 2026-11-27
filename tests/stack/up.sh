@@ -107,9 +107,29 @@ if [[ -z "$(psql_admin -c "SELECT 1 FROM pg_database WHERE datname='control'")" 
   RESEED=1
 fi
 
+# Talo como partner (OAuth): se agrega también a un env.sh anterior.
+if ! grep -q TALO_PARTNER_ID "$RUN/env.sh"; then
+  cat >> "$RUN/env.sh" <<EOF
+export TALO_PARTNER_ID=pn-stack
+export TALO_PARTNER_SECRET=$(secret)
+export TALO_APP_URL=https://talo.mock.test
+export TALO_REDIRECT_URL=https://pn.test/api/payments/talo-oauth
+EOF
+  # shellcheck disable=SC1091
+  source "$RUN/env.sh"
+fi
+# Talo viene apagado (producción no lo ofrece todavía); el stack lo prueba.
+if ! grep -q TALO_ENABLED "$RUN/env.sh"; then
+  echo 'export TALO_ENABLED=true' >> "$RUN/env.sh"
+  # shellcheck disable=SC1091
+  source "$RUN/env.sh"
+fi
+
 # ── Build ────────────────────────────────────────────────────────────────────
+# En .next-stack y no en .next: si no, pisa la carpeta de un `next dev` abierto.
+export NEXT_DIST_DIR=.next-stack
 # Se recompila solo si el código cambió desde la última compilación (commit y
-# archivos modificados de la app) o si un `next dev` en esta carpeta pisó .next.
+# archivos modificados de la app).
 build_stamp() {
   local changed
   changed=$(git ls-files -m -o -d --exclude-standard -- src prisma public next.config.ts \
@@ -118,15 +138,15 @@ build_stamp() {
     git rev-parse HEAD
     echo "$changed"
     [[ -n "$changed" ]] && echo "$changed" | tr '\n' '\0' | xargs -0 cksum 2>/dev/null
-    cksum "$ROOT/.next/routes-manifest.json" 2>/dev/null
+    cksum "$ROOT/$NEXT_DIST_DIR/routes-manifest.json" 2>/dev/null
   } | cksum
 }
 STAMP_FILE="$RUN/build-stamp"
-if [[ "$REBUILD" == 0 && -f "$ROOT/.next/BUILD_ID" && "$(cat "$STAMP_FILE" 2>/dev/null)" != "$(build_stamp)" ]]; then
-  echo "el código cambió desde la última compilación (o un next dev pisó .next): recompilo"
+if [[ "$REBUILD" == 0 && -f "$ROOT/$NEXT_DIST_DIR/BUILD_ID" && "$(cat "$STAMP_FILE" 2>/dev/null)" != "$(build_stamp)" ]]; then
+  echo "el código cambió desde la última compilación: recompilo"
   REBUILD=1
 fi
-if [[ "$REBUILD" == 1 || ! -f "$ROOT/.next/BUILD_ID" ]]; then
+if [[ "$REBUILD" == 1 || ! -f "$ROOT/$NEXT_DIST_DIR/BUILD_ID" ]]; then
   echo "next build (log en $RUN/logs/build.log)…"
   npx next build >"$RUN/logs/build.log" 2>&1
   build_stamp >"$STAMP_FILE"
@@ -167,7 +187,7 @@ nohup node "$STACK/mocks.mjs" >>"$RUN/logs/mocks.out" 2>&1 &
 echo $! >"$RUN/pids/mocks"
 
 stop_pid next "next start -p $STACK_NEXT_PORT"
-NODE_OPTIONS="--import $STACK/preload.mjs --disable-warning=ExperimentalWarning" nohup node_modules/.bin/next start -p "$STACK_NEXT_PORT" \
+NODE_OPTIONS="--import ./tests/stack/preload.mjs --disable-warning=ExperimentalWarning" nohup node_modules/.bin/next start -p "$STACK_NEXT_PORT" \
   >>"$RUN/logs/next.log" 2>&1 &
 echo $! >"$RUN/pids/next"
 

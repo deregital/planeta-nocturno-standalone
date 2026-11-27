@@ -3,6 +3,10 @@ import { CreateUserForm } from '@/components/admin/config/CreateUserForm';
 import UpdateFeatures from '@/components/admin/config/UpdateFeatures';
 import { UsersTable } from '@/components/admin/config/UsersTable';
 import MercadoPagoOAuth from '@/components/admin/oauth/MercadoPagoOAuth';
+import MercadoPagoUnlinkDialog from '@/components/admin/oauth/MercadoPagoUnlinkDialog';
+import { TransferAliasForm } from '@/components/admin/oauth/TransferAliasField';
+import { PaymentMethodList } from '@/components/admin/payments/PaymentMethodList';
+import { TaloConnect } from '@/components/admin/payments/TaloConnect';
 import LocationList from '@/components/location/LocationList';
 import { SETTINGS_PAGE_PERMISSIONS } from '@/lib/rbac/navigation';
 import { hasPermission, type TenantPermission } from '@/lib/rbac/permissions';
@@ -37,9 +41,34 @@ export default async function Page() {
           <UpdateFeatures />
         </section>
       )}
-      {can('mercadopago:link') && (
-        <section id='mercadopago' className='mb-4 mx-4 space-y-4'>
-          <MercadoPagoOAuth canUnlink={can('mercadopago:unlink')} />
+      {can('payments:manage') && (
+        <section id='medios-de-pago' className='mb-4 mx-4 space-y-4'>
+          <div className='space-y-1'>
+            <h2 className='text-2xl font-bold'>Medios de pago</h2>
+            <p className='text-sm text-muted-foreground'>
+              Los compradores eligen con qué pagar entre los medios activos. El
+              primero de la lista aparece elegido de entrada.
+            </p>
+          </div>
+          <PaymentMethodList
+            initialMethods={await trpc.payments.methods()}
+            details={{
+              MERCADO_PAGO: (
+                <MercadoPagoOAuth canUnlink={can('payments:unlink')} />
+              ),
+              TRANSFER: <TransferAliasForm />,
+              TALO: <TaloConnect />,
+            }}
+            disconnect={{
+              // Mercado Pago confirma la desvinculación por mail.
+              MERCADO_PAGO: can('payments:unlink') ? (
+                <MercadoPagoUnlinkDialog
+                  triggerLabel='Desconectar'
+                  triggerClassName='mt-auto w-full'
+                />
+              ) : null,
+            }}
+          />
         </section>
       )}
     </div>

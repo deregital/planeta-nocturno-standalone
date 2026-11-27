@@ -81,6 +81,15 @@ export function validateEnvironment(
   validateDatabaseUrl(environment, 'CONTROL_DATABASE_URL', issues);
   validateHttpUrl(environment, 'GUIDE_URL', issues);
   validateHttpUrl(environment, 'PLUTO_URL', issues);
+  validateHttpUrl(environment, 'TALO_API_URL', issues);
+  validateHttpUrl(environment, 'TALO_APP_URL', issues);
+  // Talo es opcional, pero el partner necesita el id y el secreto juntos.
+  if (
+    Boolean(environment.TALO_PARTNER_ID?.trim()) !==
+    Boolean(environment.TALO_PARTNER_SECRET?.trim())
+  ) {
+    issues.push('TALO_PARTNER_ID and TALO_PARTNER_SECRET must be set together');
+  }
   validateHttpUrl(environment, 'NEXT_PUBLIC_S3_BUCKET_URL', issues);
   validateHttpUrl(environment, 'NEXT_PUBLIC_FAVICON_URL', issues);
   validateEmail(environment, 'INSTANCE_CONTACT_EMAIL', issues);

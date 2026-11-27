@@ -85,8 +85,8 @@ export default async function ControlRolesPage() {
         )}
       </div>
 
-      <div className='min-w-0 overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
-        <div className='overflow-x-auto'>
+      <div className='min-w-0 overflow-clip rounded-xl border border-stroke bg-white shadow-sm'>
+        <div>
           <Table>
             <TableHeader>
               <TableRow>
