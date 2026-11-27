@@ -310,18 +310,11 @@ export function InvitationTicketTable({
 
   return (
     <div className='mx-auto flex w-full max-w-[98%] flex-col gap-3'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-        <p className='text-accent'>
-          {pending.length > 0
-            ? `Te quedan ${pending.length} de ${codes.length} por compartir`
-            : `Compartiste tus ${codes.length} códigos`}
-        </p>
-        {pending.length > 0 && (
-          <Button type='button' onClick={() => setSharing(pending[0])}>
-            Compartir siguiente
-          </Button>
-        )}
-      </div>
+      <p className='text-accent'>
+        {pending.length > 0
+          ? `Te quedan ${pending.length} de ${codes.length} por compartir`
+          : `Compartiste tus ${codes.length} códigos`}
+      </p>
 
       <Tabs
         value={tab}

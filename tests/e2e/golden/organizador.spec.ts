@@ -65,7 +65,10 @@ test('el organizador comparte una invitación y el invitado la canjea', async ({
     orga.getByRole('heading', { name: 'Códigos de invitación' }),
   ).toBeVisible();
   await sinDesbordes(orga, 'el panel del organizador');
-  await orga.getByRole('button', { name: 'Compartir siguiente' }).click();
+  await orga
+    .getByRole('button', { name: 'Compartir', exact: true })
+    .first()
+    .click();
   const cajon = orga.getByRole('dialog');
   await expect(
     cajon.getByText('Cada enlace sirve para una sola persona.'),
