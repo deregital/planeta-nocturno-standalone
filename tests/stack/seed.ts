@@ -532,14 +532,16 @@ async function seedPrueba(control: Client) {
     'Sólo 3 entradas pagas, máximo 2 por compra: sirve para probar compras simultáneas del último cupo',
   );
 
+  // Una sola fecha para el evento y sus entradas: si la entrada arranca aunque
+  // sea un milisegundo después, la página muestra "(Inicio …)" junto al nombre.
+  const inFiveDays = new Date(Date.now() + 5 * DAY);
   await create(
     'gratis',
     {
-      event: eventInput(
-        'Fiesta Gratis con Datos Extra',
-        new Date(Date.now() + 5 * DAY),
-        { extraTicketData: true, minAge: null },
-      ),
+      event: eventInput('Fiesta Gratis con Datos Extra', inFiveDays, {
+        extraTicketData: true,
+        minAge: null,
+      }),
       ticketTypes: [
         ticketType({
           name: 'Entrada libre',
@@ -547,7 +549,7 @@ async function seedPrueba(control: Client) {
           maxAvailable: 100,
           maxPerPurchase: 4,
           category: 'FREE',
-          startingDate: new Date(Date.now() + 5 * DAY),
+          startingDate: inFiveDays,
         }),
       ],
       organizersInput: [],
@@ -557,14 +559,14 @@ async function seedPrueba(control: Client) {
     'Gratis, pide datos de cada entrada (extraTicketData): las entradas llegan por mail al instante',
   );
 
+  const inSevenDays = new Date(Date.now() + 7 * DAY);
   const egresados = await create(
     'egresados',
     {
-      event: eventInput(
-        'Egresados por Invitación',
-        new Date(Date.now() + 7 * DAY),
-        { inviteCondition: 'INVITATION', isActive: false },
-      ),
+      event: eventInput('Egresados por Invitación', inSevenDays, {
+        inviteCondition: 'INVITATION',
+        isActive: false,
+      }),
       ticketTypes: [
         ticketType({
           name: 'Invitación',
@@ -572,9 +574,9 @@ async function seedPrueba(control: Client) {
           maxAvailable: 120,
           maxPerPurchase: 1,
           category: 'FREE',
-          startingDate: new Date(Date.now() + 7 * DAY),
+          startingDate: inSevenDays,
         }),
-        organizerTicketType(new Date(Date.now() + 7 * DAY)),
+        organizerTicketType(inSevenDays),
       ],
       organizersInput: [
         org('jefe', { type: 'INVITATION', ticketAmount: 60 }),
@@ -735,10 +737,11 @@ async function seedPrueba(control: Client) {
     'Desactivado: no debería verse ni poder comprarse desde la web pública',
   );
 
+  const inThreeDays = new Date(Date.now() + 3 * DAY);
   await create(
     'simple',
     {
-      event: eventInput('Cumple Simple', new Date(Date.now() + 3 * DAY), {
+      event: eventInput('Cumple Simple', inThreeDays, {
         inviteCondition: 'SIMPLE',
         hasSimpleInvitation: true,
       }),
@@ -749,7 +752,7 @@ async function seedPrueba(control: Client) {
           maxAvailable: 60,
           maxPerPurchase: 3,
           category: 'FREE',
-          startingDate: new Date(Date.now() + 3 * DAY),
+          startingDate: inThreeDays,
         }),
       ],
       organizersInput: [],
