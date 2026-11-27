@@ -25,6 +25,7 @@
     "test:withdrawal": "node --conditions=react-server --import tsx --test tests/withdrawal.test.ts",
     "test:load": "node --import tsx --import ./tests/load/register-phone-metadata.mjs tests/load/run.ts",
     "test:scanner": "node --import tsx --import ./tests/load/register-phone-metadata.mjs --test --test-concurrency=1 tests/scanner/*.test.ts",
+    "test:night-metrics": "node --import tsx --import ./tests/load/register-phone-metadata.mjs --test --test-concurrency=1 tests/night-metrics/*.test.ts",
     "test:isolation": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/isolation/tenant-data-isolation.test.ts",
     "test:e2e": "playwright test -c tests/e2e",
     "test:regressions": ". tests/stack/.run/env.sh && node --import tsx --import ./tests/load/register-phone-metadata.mjs --import ./tests/stack/preload.mjs tests/stack/regressions.ts",

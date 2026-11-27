@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/session-tenant';
 import { createSingleTenantConfig } from '@/lib/config/single-tenant-config';
 import { TALO_OAUTH_CALLBACK_PATH } from '@/lib/payments/talo-paths';
+import { isPlutoInstanceApiPath } from '@/lib/pluto/instance-api';
 import {
   getRequestHost,
   getRequestOrigin,
@@ -74,6 +75,12 @@ export default authMiddleware(async function middleware(request) {
     if (request.nextUrl.pathname === TALO_OAUTH_CALLBACK_PATH) {
       return NextResponse.next({ request: { headers } });
     }
+
+    // Pluto le pregunta a la instancia entera por el dominio raíz.
+    if (isPlutoInstanceApiPath(request.nextUrl.pathname)) {
+      return NextResponse.next({ request: { headers } });
+    }
+
     if (request.nextUrl.pathname !== '/') {
       return new NextResponse('Página no encontrada', { status: 404 });
     }

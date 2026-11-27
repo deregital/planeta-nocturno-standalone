@@ -29,15 +29,16 @@ carpeta pisó `.next`). Si el golden path pide más códigos de invitación:
 **Con el stack simulado** ([stack/](stack/README.md): la app real compilada, con Postgres
 en Docker y Mercado Pago, mails, S3 y Neon simulados; nada sale a servicios reales):
 
-| Suite                         | Comando            | Qué cuida                                                                                     |
-| ----------------------------- | ------------------ | --------------------------------------------------------------------------------------------- |
-| [scanner/](scanner)           | `test:scanner`     | Escaneo online y en modo rápido, sincronización y fuera de horario                            |
-| [isolation/](isolation)       | `test:isolation`   | Que una productora no pueda leer datos de otra                                                |
-| [stack/regressions.ts](stack) | `test:regressions` | Los 17 arreglos de lo que encontró el enjambre en noviembre                                   |
-| [e2e/](e2e/README.md)         | `test:e2e`         | El golden path en un navegador: evento, compra paga y gratis, organizadores, puerta y gestión |
-| [mobile/overflow.mjs](mobile) | `test:mobile`      | Todas las pantallas y modals por rol a 360 px, sin desbordes                                  |
+| Suite                           | Comando              | Qué cuida                                                                                     |
+| ------------------------------- | -------------------- | --------------------------------------------------------------------------------------------- |
+| [scanner/](scanner)             | `test:scanner`       | Escaneo online y en modo rápido, sincronización y fuera de horario                            |
+| [night-metrics/](night-metrics) | `test:night-metrics` | Qué cuenta como entrada, ingreso y recaudado en las métricas de la noche                      |
+| [isolation/](isolation)         | `test:isolation`     | Que una productora no pueda leer datos de otra                                                |
+| [stack/regressions.ts](stack)   | `test:regressions`   | Los 17 arreglos de lo que encontró el enjambre en noviembre                                   |
+| [e2e/](e2e/README.md)           | `test:e2e`           | El golden path en un navegador: evento, compra paga y gratis, organizadores, puerta y gestión |
+| [mobile/overflow.mjs](mobile)   | `test:mobile`        | Todas las pantallas y modals por rol a 360 px, sin desbordes                                  |
 
-`test:scanner` y `test:isolation` necesitan variables del stack; `tests/run.sh` se las
+`test:scanner`, `test:night-metrics` y `test:isolation` necesitan variables del stack; `tests/run.sh` se las
 pasa. Para correrlas sueltas, ver el encabezado de cada archivo.
 
 **A mano, cuando haga falta** (no corren en los PRs):
