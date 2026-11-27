@@ -7,6 +7,14 @@ import { posthogProxyRewrites } from '@/lib/analytics/posthog-proxy';
 import { validateEnvironment } from '@/lib/config/environment';
 
 const config: NextConfig = {
+  // El stack de pruebas (tests/stack) compila en otra carpeta para no pisar la
+  // de `next dev`.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  // Con su propio tsconfig: si no, `next build` reescribe tsconfig.json para
+  // sumar los tipos de esa carpeta.
+  typescript: process.env.NEXT_DIST_DIR
+    ? { tsconfigPath: 'tsconfig.stack.json' }
+    : undefined,
   outputFileTracingIncludes: {
     '/*': ['./prisma/migrations/**/*'],
   },

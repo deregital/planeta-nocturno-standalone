@@ -39,6 +39,7 @@ export const paymentMethod = pgEnum('PaymentMethod', [
   'MERCADO_PAGO',
   'TRANSFER',
   'ON_SITE',
+  'TALO',
 ]);
 export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'FREE',
@@ -226,8 +227,14 @@ export const ticketGroup = pgTable(
     // Cuándo se acreditó el pago: desde acá corren los 10 días del
     // arrepentimiento. Null en las compras anteriores a la columna.
     paidAt: timestamp({ withTimezone: true, mode: 'string' }),
+    paymentReference: text(),
+    paymentDetails: jsonb(),
   },
   (table) => [
+    index('ticketGroup_paymentReference_idx').using(
+      'btree',
+      table.paymentReference.asc().nullsLast().op('text_ops'),
+    ),
     index('ticketGroup_event_id_idx').using(
       'btree',
       table.eventId.asc().nullsLast().op('uuid_ops'),
@@ -305,6 +312,26 @@ export const loginAttempt = pgTable('loginAttempt', {
   failedCount: integer().default(0).notNull(),
   lockedUntil: timestamp({ withTimezone: true, mode: 'string' }),
   lastFailedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export const taloConnection = pgTable('taloConnection', {
+  id: integer().default(1).primaryKey().notNull(),
+  taloUserId: text(),
+  token: text(),
+  accountStatus: text(),
+  statusCheckedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  connectedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  pendingSince: timestamp({ withTimezone: true, mode: 'string' }),
+  pendingByUserId: uuid(),
+});
+
+export const paymentMethodSetting = pgTable('paymentMethodSetting', {
+  method: paymentMethod().primaryKey().notNull(),
+  enabled: boolean().default(true).notNull(),
+  sortOrder: integer().default(0).notNull(),
+  updatedAt: timestamp({ withTimezone: true, mode: 'string' })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });

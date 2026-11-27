@@ -30,7 +30,9 @@ export async function getUnifiedCalendar(
     async (tenant) => {
       try {
         const db = await getInstanceDb({ name: tenant.databaseName });
-        const events = await getCalendarEvents(db, range);
+        const events = await getCalendarEvents(db, range, {
+          includeUnpublished: true,
+        });
         return { tenant, events, failed: false };
       } catch (error) {
         logger.error('Unable to load tenant calendar events', {

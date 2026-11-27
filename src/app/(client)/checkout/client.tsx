@@ -20,6 +20,10 @@ import {
   handlePurchase,
   type PurchaseActionState,
 } from '@/app/(client)/checkout/action';
+import {
+  type CheckoutPaymentOption,
+  PaymentMethodPicker,
+} from '@/app/(client)/checkout/payment-method-picker';
 import FormInputGender from '@/components/checkout/FormInputGender';
 import FormInputInstagram from '@/components/checkout/FormInputInstagram';
 import FormInputMail from '@/components/checkout/FormInputMail';
@@ -42,9 +46,11 @@ import 'react-phone-number-input/style.css';
 export default function CheckoutClient({
   ticketGroup,
   lastPurchase,
+  paymentOptions,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
   lastPurchase?: EmittedTicketInput;
+  paymentOptions: CheckoutPaymentOption[];
 }) {
   const [state, action, isPending] = useActionState(
     async (prevState: PurchaseActionState, formData: FormData) => {
@@ -288,6 +294,14 @@ export default function CheckoutClient({
       ticket_type_count: ticketGroup.ticketTypePerGroups.length,
       total_price: totalPrice,
       is_free: totalPrice === 0,
+      payment_method:
+        totalPrice === 0
+          ? null
+          : (formRef.current?.querySelector<HTMLInputElement>(
+              'input[name=paymentMethod]:checked',
+            )?.value ??
+            paymentOptions[0]?.method ??
+            null),
     });
   };
 
@@ -715,6 +729,12 @@ export default function CheckoutClient({
         <input hidden name='invitedBy' value={organizerId || ''} readOnly />
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />
+        {totalPrice > 0 && paymentOptions.length > 1 && (
+          <PaymentMethodPicker
+            options={paymentOptions}
+            defaultValue={state.formData?.paymentMethod}
+          />
+        )}
         <div className='mt-6 flex flex-col gap-1'>
           <div className='flex items-start gap-3'>
             {/* Nativa a propósito: el reset del form tras un error la deja

@@ -168,6 +168,140 @@ export function generateTransferPaymentEmail(
   `;
 }
 
+/** Datos para pagar por Talo: CVU propio de la compra, se confirma solo. */
+export function generateTaloPaymentEmail(
+  instance: Pick<ResolvedInstance, 'name'>,
+  {
+    eventName,
+    totalAmount,
+    cvu,
+    alias,
+    expiresAt,
+    paymentPageUrl,
+  }: {
+    eventName: string;
+    totalAmount: string;
+    cvu: string;
+    alias: string | null;
+    expiresAt: string | null;
+    paymentPageUrl: string;
+  },
+) {
+  return `
+    <h1>Completá el pago de tus entradas para ${eventName}</h1>
+    <p>Tu reserva en <b>${instance.name}</b> quedó registrada. Transferí el monto exacto desde tu banco o billetera:</p>
+    <ul>
+      <li>CVU: <b>${cvu}</b></li>
+      ${alias ? `<li>Alias: <b>${alias}</b></li>` : ''}
+      <li>Monto: <b>${totalAmount}</b></li>
+    </ul>
+    <p><b>Transferí el monto exacto.</b> Si transferís de más, la transferencia queda retenida para revisión y tus entradas se demoran.</p>
+    ${expiresAt ? `<p>Estos datos sirven hasta las <b>${expiresAt}</b> hs.</p>` : ''}
+    <p>No hace falta mandar comprobante: cuando se acredita la transferencia te enviamos las entradas a este mail. Podés ver el estado en <a href="${paymentPageUrl}">tu compra</a>.</p>
+  `;
+}
+
+/** Al comprador: transfirió menos de lo que salen las entradas. */
+export function generateTaloUnderpaidEmail({
+  eventName,
+  received,
+  missing,
+  cvu,
+  expiresAt,
+  paymentPageUrl,
+}: {
+  eventName: string;
+  received: string;
+  missing: string;
+  cvu: string;
+  expiresAt: string | null;
+  paymentPageUrl: string;
+}) {
+  return `
+    <h1>Te falta completar el pago de ${eventName}</h1>
+    <p>Recibimos <b>${received}</b>. Para recibir tus entradas transferí los <b>${missing}</b> que faltan al mismo CVU:</p>
+    <ul><li>CVU: <b>${cvu}</b></li><li>Monto que falta: <b>${missing}</b></li></ul>
+    ${expiresAt ? `<p>El CVU sirve hasta las <b>${expiresAt}</b> hs.</p>` : ''}
+    <p>Cuando se acredite te mandamos las entradas a este mail. Podés ver el estado en <a href="${paymentPageUrl}">tu compra</a>.</p>
+  `;
+}
+
+export type PaymentIssueKind =
+  | 'UNDERPAID'
+  | 'OVERPAID'
+  | 'LATE'
+  | 'UNKNOWN_PURCHASE'
+  | 'OVER_QUOTA'
+  | 'REFUND_FAILED';
+
+const PAYMENT_ISSUE_TEXT: Record<
+  PaymentIssueKind,
+  { subject: string; body: string }
+> = {
+  UNDERPAID: {
+    subject: 'Un comprador transfirió de menos',
+    body: 'Le avisamos al comprador que transfiera lo que falta al mismo CVU. Si no lo completa, desde Compras podés aceptar lo que pagó y entregarle las entradas, o cancelar la compra y devolverle la plata por Talo.',
+  },
+  OVERPAID: {
+    subject: 'Un comprador transfirió de más',
+    body: 'Le entregamos las entradas. Desde Compras podés devolverle la diferencia por Talo.',
+  },
+  LATE: {
+    subject: 'Llegó una transferencia de una reserva vencida',
+    body: 'La reserva ya había liberado las entradas y no se pudieron entregar: el evento ya no tenía lugar para ese tipo de entrada, o el pago no estaba completo. Le pedimos a Talo que le devuelva la plata al comprador.',
+  },
+  UNKNOWN_PURCHASE: {
+    subject: 'Llegó una transferencia de una compra que ya no existe',
+    body: 'No había ninguna compra esperando ese pago, así que no se entregaron entradas. Le pedimos a Talo que le devuelva la plata a quien la transfirió.',
+  },
+  OVER_QUOTA: {
+    subject: 'Se entregaron entradas por encima del cupo',
+    body: 'El pago llegó después de que la reserva liberara las entradas y el tipo ya se había vendido. Como la plata se cobró, las entradas se entregaron igual: el evento quedó por encima del cupo.',
+  },
+  REFUND_FAILED: {
+    subject: 'No se pudo devolver una transferencia',
+    body: 'Talo no aceptó la devolución automática. Devolvé la plata desde tu panel de Talo.',
+  },
+};
+
+export function paymentIssueSubject(kind: PaymentIssueKind) {
+  return PAYMENT_ISSUE_TEXT[kind].subject;
+}
+
+/** Al contacto de la plataforma: un pago necesita su atención. */
+export function generatePaymentIssueEmail({
+  kind,
+  eventName,
+  buyer,
+  expected,
+  received,
+  purchasesUrl,
+}: {
+  kind: PaymentIssueKind;
+  eventName: string | null;
+  buyer: string | null;
+  expected: string | null;
+  received: string | null;
+  purchasesUrl: string | null;
+}) {
+  const text = PAYMENT_ISSUE_TEXT[kind];
+  // Nombre y mail los cargó el comprador.
+  const escape = (value: string) =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const rows = [
+    eventName && `<li>Evento: <b>${escape(eventName)}</b></li>`,
+    buyer && `<li>Comprador: <b>${escape(buyer)}</b></li>`,
+    expected && `<li>Precio: <b>${expected}</b></li>`,
+    received && `<li>Transferido: <b>${received}</b></li>`,
+  ].filter(Boolean);
+  return `
+    <h1>${text.subject}</h1>
+    ${rows.length > 0 ? `<ul>${rows.join('')}</ul>` : ''}
+    <p>${text.body}</p>
+    ${purchasesUrl ? `<p><a href="${purchasesUrl}">Ver las compras del evento</a></p>` : ''}
+  `;
+}
+
 function unlinkConsequence(
   instance: Pick<ResolvedInstance, 'contactEmail'>,
   transferAlias: string | null,

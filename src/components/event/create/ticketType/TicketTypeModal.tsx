@@ -44,7 +44,7 @@ type TicketTypeModalProps = {
   maxAvailableLeft: number;
   action: 'CREATE' | 'EDIT';
   ticketType?: EventState['ticketTypes'][number];
-  mercadoPagoEnabled?: boolean | undefined;
+  paymentEnabled?: boolean | undefined;
 };
 
 export default function TicketTypeModal({
@@ -52,12 +52,12 @@ export default function TicketTypeModal({
   maxAvailableLeft,
   action,
   ticketType,
-  mercadoPagoEnabled,
+  paymentEnabled,
 }: TicketTypeModalProps) {
   const { text, icon } = ticketTypesTranslation[category];
-  const requiresMercadoPago = category === 'PAID' || category === 'TABLE';
+  const requiresPayment = category === 'PAID' || category === 'TABLE';
   const isCreateDisabled =
-    action === 'CREATE' && requiresMercadoPago && mercadoPagoEnabled === false;
+    action === 'CREATE' && requiresPayment && paymentEnabled === false;
   const [error, setError] = useState<{
     [key: string]: string;
   }>({});
@@ -273,8 +273,8 @@ export default function TicketTypeModal({
             </Button>
           </PopoverTrigger>
           <PopoverContent className='max-w-xs text-sm'>
-            Conectá tu cuenta de Mercado Pago desde Configuración para crear
-            este tipo de ticket.
+            Activá un medio de pago desde Configuración para crear este tipo de
+            ticket.
           </PopoverContent>
         </Popover>
       </div>

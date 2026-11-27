@@ -366,6 +366,8 @@ model TicketGroup {
   // Cuándo se acreditó el pago (Mercado Pago, transferencia liberada o pago en
   // el lugar). Desde acá corren los 10 días del arrepentimiento.
   paidAt           DateTime?         @db.Timestamptz
+  paymentReference String?
+  paymentDetails   Json?
 
   tickets            EmittedTicket[]        @relation("TICKET_X_TICKET_GROUP")
   deletedTickets     DeletedEmittedTicket[] @relation("DELETED_TICKET_X_TICKET_GROUP")
@@ -376,6 +378,7 @@ model TicketGroup {
 
   createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
 
+  @@index([paymentReference])
   @@index([eventId])
   @@index([invitedById])
   @@map("ticketGroup")
@@ -582,6 +585,32 @@ model PaymentSettings {
   @@map("paymentSettings")
 }
 
+// Fila única (id = 1) con la cuenta de Talo conectada por OAuth de partner.
+// El token va cifrado
+model TaloConnection {
+  id              Int       @id @default(1)
+  taloUserId      String?
+  token           String?
+  accountStatus   String?
+  statusCheckedAt DateTime? @db.Timestamptz
+  connectedAt     DateTime? @db.Timestamptz
+  pendingSince    DateTime? @db.Timestamptz
+  pendingByUserId String?   @db.Uuid
+
+  @@map("taloConnection")
+}
+
+// Un medio de pago que se ofrece al comprador: si está activo y en qué orden
+model PaymentMethodSetting {
+  method    PaymentMethod @id
+  enabled   Boolean       @default(true)
+  sortOrder Int           @default(0)
+
+  updatedAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz
+
+  @@map("paymentMethodSetting")
+}
+
 model TicketXOrganizer {
   ticketId String?        @db.Uuid
   ticket   EmittedTicket? @relation("TICKET_X_ORGANIZER", fields: [ticketId], references: [id], onDelete: Cascade)
@@ -649,6 +678,7 @@ enum PaymentMethod {
   MERCADO_PAGO
   TRANSFER
   ON_SITE
+  TALO
 }
 
 enum WithdrawalStatus {

@@ -1,14 +1,23 @@
 'use client';
 
+import type { ComponentProps } from 'react';
+
 import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { OtherPaymentMethods } from '@/app/(client)/tickets/[slug]/other-payment-methods';
 import GoBack from '@/components/common/GoBack';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 
-function CopyableValue({ label, value }: { label: string; value: string }) {
+export function CopyableValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className='flex items-center justify-between gap-2 rounded-md border border-stroke px-3 py-2 text-left'>
       <div className='min-w-0'>
@@ -32,12 +41,16 @@ function CopyableValue({ label, value }: { label: string; value: string }) {
 }
 
 export default function TicketsTransferPending({
+  ticketGroupId,
+  otherPaymentMethods = [],
   eventName,
   buyerName,
   totalAmount,
   transferAlias,
   contactEmail,
 }: {
+  ticketGroupId: string;
+  otherPaymentMethods?: ComponentProps<typeof OtherPaymentMethods>['methods'];
   eventName: string;
   buyerName: string;
   totalAmount: number;
@@ -45,11 +58,12 @@ export default function TicketsTransferPending({
   contactEmail: string | null;
 }) {
   return (
-    <div className='flex justify-center items-center h-full'>
+    <div className='flex h-full flex-col items-center justify-center px-4'>
+      {/* En el celular va arriba de la tarjeta: encima, tapaba el título. */}
       <GoBack
         route='/'
         title='Volver al inicio'
-        className='absolute top-24 md:left-26 left-4'
+        className='mt-4 self-start md:absolute md:top-24 md:left-26 md:mt-0'
       />
       <Card className='w-full max-w-md mx-auto text-center shadow-lg m-4'>
         <CardHeader>
@@ -88,6 +102,10 @@ export default function TicketsTransferPending({
             Cuando confirmen el pago, te vamos a enviar las entradas por mail.
             También te enviamos estas instrucciones a tu mail.
           </p>
+          <OtherPaymentMethods
+            ticketGroupId={ticketGroupId}
+            methods={otherPaymentMethods}
+          />
         </CardContent>
       </Card>
     </div>

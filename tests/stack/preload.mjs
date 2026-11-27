@@ -13,7 +13,12 @@ import pg from 'pg';
 const MOCKS = new URL(process.env.STACK_MOCKS_URL ?? 'http://127.0.0.1:55801');
 const NEON = 'https://console.neon.tech/api/v2';
 const PG_BASE = process.env.PG_BASE;
-const MOCKED_HOSTS = [/^api\.mercadopago\.com$/, /\.amazonaws\.com$/];
+const MOCKED_HOSTS = [
+  /^api\.mercadopago\.com$/,
+  /\.amazonaws\.com$/,
+  /(^|\.)talo\.com\.ar$/,
+  /^talo\.mock\.test$/,
+];
 
 const isMockedHost = (host) => MOCKED_HOSTS.some((re) => re.test(host ?? ''));
 

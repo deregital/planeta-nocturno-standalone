@@ -2,7 +2,7 @@
 
 import { type SortingFn, type StrictColumnDef } from '@tanstack/react-table';
 import { es } from 'date-fns/locale';
-import { Check, ChevronDown, Search, Trash } from 'lucide-react';
+import { Check, ChevronDown, Search, Trash, Undo2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -52,10 +52,26 @@ type PurchaseRow = {
   totalAmount: number;
   paymentMethod: string;
   status: string;
+  /** Detalle del estado (lo transferido con Talo, una devolución). */
+  statusNote: string | null;
   isPendingTransfer: boolean;
+  /** Qué se puede hacer con un pago de Talo con diferencia. */
+  taloActions: TaloActions | null;
 };
 
-type PendingAction = { type: 'release' | 'cancel'; row: PurchaseRow };
+type TaloActions = {
+  /** Pago de menos: aceptar lo transferido y entregar. */
+  canAccept: boolean;
+  /** Monto a devolver (todo, o la diferencia si pagó de más). */
+  refundAmount: number | null;
+  /** Lo transferido, para los textos de confirmación. */
+  received: number;
+};
+
+type PendingAction = {
+  type: 'release' | 'cancel' | 'talo-accept' | 'talo-refund';
+  row: PurchaseRow;
+};
 
 const SEARCH_FIELDS = [
   { id: 'createdAt', label: 'Fecha' },
@@ -77,12 +93,19 @@ const STATUS_CLASS: Record<string, string> = {
   'Pago en proceso': 'border-sky-200 bg-sky-50 text-sky-800',
   'A cobrar en el lugar': 'border-amber-300 bg-amber-50 text-amber-900',
   'Vencida sin pago': 'border-zinc-200 bg-zinc-50 text-zinc-500',
+  'Pagó de menos': 'border-amber-300 bg-amber-50 text-amber-900',
+  'Pagó de más': 'border-sky-200 bg-sky-50 text-sky-800',
+  'Pago tardío': 'border-amber-300 bg-amber-50 text-amber-900',
+  'Devolución en curso': 'border-sky-200 bg-sky-50 text-sky-800',
+  Devuelta: 'border-zinc-200 bg-zinc-50 text-zinc-700',
+  'Devolución fallida': 'border-red-200 bg-red-50 text-red-700',
 };
 
 const METHOD_CLASS: Record<string, string> = {
   Transferencia: 'border-amber-200 bg-amber-50 text-amber-900',
   'Mercado Pago': 'border-sky-200 bg-sky-50 text-sky-800',
   'En el lugar': 'border-zinc-200 bg-zinc-50 text-zinc-700',
+  Talo: 'border-green-200 bg-green-50 text-green-800',
 };
 
 function normalize(value: string) {
@@ -100,8 +123,69 @@ const textSortingFn: SortingFn<PurchaseRow> = (rowA, rowB, columnId) =>
     { sensitivity: 'base', numeric: true },
   );
 
+/** Estado de una compra de Talo con diferencia o devolución; null si no tiene. */
+function getTaloStatus(purchase: Purchase) {
+  const talo = purchase.talo;
+  if (!talo) return null;
+  const booked = purchase.status === 'BOOKED';
+  if (talo.refund && (booked || talo.refund.status !== 'SUCCESS')) {
+    return talo.refund.status === 'PENDING'
+      ? 'Devolución en curso'
+      : talo.refund.status === 'SUCCESS'
+        ? 'Devuelta'
+        : 'Devolución fallida';
+  }
+  if (booked && talo.issue === 'UNDERPAID') return 'Pagó de menos';
+  if (booked && talo.issue === 'LATE') return 'Pago tardío';
+  if (purchase.status === 'PAID' && talo.issue === 'OVERPAID')
+    return 'Pagó de más';
+  return null;
+}
+
+function getTaloNote(purchase: Purchase) {
+  const talo = purchase.talo;
+  if (!talo) return null;
+  const received = talo.received ?? 0;
+  if (talo.refund) {
+    return `Devolución de ${formatCurrency(talo.refund.amount)}`;
+  }
+  if (talo.issue === 'UNDERPAID')
+    return `Transfirió ${formatCurrency(received)} de ${formatCurrency(talo.amount)}`;
+  if (talo.issue === 'OVERPAID')
+    return `${formatCurrency(received - talo.amount)} de más`;
+  if (talo.issue === 'LATE')
+    return `Transfirió ${formatCurrency(received)} con la reserva vencida`;
+  if (talo.accepted) return 'Se aceptó un pago de menos';
+  return null;
+}
+
+function getTaloActions(purchase: Purchase): TaloActions | null {
+  const talo = purchase.talo;
+  if (!talo) return null;
+  const received = talo.received ?? 0;
+  const canRefund = !talo.refund || talo.refund.status === 'FAILED';
+  const booked = purchase.status === 'BOOKED';
+  if (booked && talo.issue === 'UNDERPAID' && canRefund) {
+    return { canAccept: true, refundAmount: received, received };
+  }
+  if (booked && talo.issue === 'LATE' && canRefund && received > 0) {
+    return { canAccept: false, refundAmount: received, received };
+  }
+  if (
+    purchase.status === 'PAID' &&
+    talo.issue === 'OVERPAID' &&
+    canRefund &&
+    received > talo.amount
+  ) {
+    return { canAccept: false, refundAmount: received - talo.amount, received };
+  }
+  return null;
+}
+
 function getStatusLabel(purchase: Purchase) {
   if (purchase.withdrawal) return 'Arrepentida';
+  const talo = getTaloStatus(purchase);
+  if (talo) return talo;
   if (purchase.status === 'PAID') return 'Pagado';
   if (purchase.status === 'FREE') return 'Gratis';
   if (purchase.paymentMethod === 'TRANSFER')
@@ -116,6 +200,7 @@ function getPaymentMethodLabel(purchase: Purchase) {
   if (purchase.paymentMethod === 'TRANSFER') return 'Transferencia';
   if (purchase.paymentMethod === 'MERCADO_PAGO') return 'Mercado Pago';
   if (purchase.paymentMethod === 'ON_SITE') return 'En el lugar';
+  if (purchase.paymentMethod === 'TALO') return 'Talo';
   return '-';
 }
 
@@ -152,8 +237,10 @@ function toRow(purchase: Purchase, extraTicketData: boolean): PurchaseRow {
     totalAmount: Number(purchase.totalAmount),
     paymentMethod: getPaymentMethodLabel(purchase),
     status: getStatusLabel(purchase),
+    statusNote: getTaloNote(purchase),
     isPendingTransfer:
       purchase.status === 'BOOKED' && purchase.paymentMethod === 'TRANSFER',
+    taloActions: getTaloActions(purchase),
   };
 }
 
@@ -255,6 +342,47 @@ function PurchaseSearch({
   );
 }
 
+/** Textos del diálogo de confirmación de cada acción. */
+function actionDialog(action: PendingAction | null, buyerLabel: string) {
+  const total = action ? formatCurrency(action.row.totalAmount) : '';
+  const talo = action?.row.taloActions;
+  switch (action?.type) {
+    case 'talo-accept':
+      return {
+        title: 'Aceptar pago de menos',
+        description: `${buyerLabel} transfirió ${formatCurrency(talo?.received ?? 0)} de ${total}. Si aceptás, el precio queda en lo que transfirió y las entradas se le envían por mail.`,
+        confirm: 'Aceptar y entregar',
+        positive: true,
+      };
+    case 'talo-refund': {
+      const amount = formatCurrency(talo?.refundAmount ?? 0);
+      const isDifference = action.row.status === 'Pagó de más';
+      return {
+        title: isDifference ? 'Devolver la diferencia' : 'Cancelar y devolver',
+        description: isDifference
+          ? `Talo le va a devolver ${amount} a ${buyerLabel}, a la cuenta desde la que transfirió. Las entradas siguen siendo suyas.`
+          : `Talo le va a devolver ${amount} a ${buyerLabel}, a la cuenta desde la que transfirió. La compra se cancela y las entradas vuelven a estar a la venta.`,
+        confirm: `Devolver ${amount}`,
+        positive: false,
+      };
+    }
+    case 'release':
+      return {
+        title: 'Liberar entradas',
+        description: `Confirmá que recibiste la transferencia de ${total}. Las entradas se van a enviar por mail a ${buyerLabel}.`,
+        confirm: 'Liberar entradas',
+        positive: true,
+      };
+    default:
+      return {
+        title: 'Cancelar compra',
+        description: `La reserva de ${buyerLabel} se va a eliminar y las entradas vuelven a estar disponibles para la venta.`,
+        confirm: 'Cancelar compra',
+        positive: false,
+      };
+  }
+}
+
 export function TicketGroupsTable({
   eventId,
   eventSlug,
@@ -296,7 +424,22 @@ export function TicketGroupsTable({
     onError: (error) => toast.error(error.message),
     onSettled,
   });
-  const isMutating = releaseTransfer.isPending || cancelTransfer.isPending;
+  const taloAccept = trpc.payments.taloAcceptUnderpaid.useMutation({
+    onSuccess: () =>
+      toast.success('Pago aceptado: las entradas se enviaron al comprador'),
+    onError: (error) => toast.error(error.message),
+    onSettled,
+  });
+  const taloRefund = trpc.payments.taloRefund.useMutation({
+    onSuccess: () => toast.success('Le pedimos a Talo que haga la devolución'),
+    onError: (error) => toast.error(error.message),
+    onSettled,
+  });
+  const isMutating =
+    releaseTransfer.isPending ||
+    cancelTransfer.isPending ||
+    taloAccept.isPending ||
+    taloRefund.isPending;
 
   const rows = useMemo(
     () => (purchases ?? []).map((purchase) => toRow(purchase, extraTicketData)),
@@ -510,16 +653,26 @@ export function TicketGroupsTable({
           <SortableColumnHeader column={column} label='Estado' />
         ),
         cell: ({ row }) => (
-          <Badge
-            variant='outline'
-            className={STATUS_CLASS[row.original.status]}
-          >
-            {row.original.status}
-          </Badge>
+          <div className='flex flex-col items-start gap-1'>
+            <Badge
+              variant='outline'
+              className={STATUS_CLASS[row.original.status]}
+            >
+              {row.original.status}
+            </Badge>
+            {row.original.statusNote ? (
+              <span className='text-xs text-muted-foreground'>
+                {row.original.statusNote}
+              </span>
+            ) : null}
+          </div>
         ),
         meta: {
           exportHeader: 'Estado',
-          exportValue: (row) => row.original.status,
+          exportValue: (row) =>
+            row.original.statusNote
+              ? `${row.original.status} (${row.original.statusNote})`
+              : row.original.status,
         },
       },
       ...(canRelease
@@ -557,6 +710,39 @@ export function TicketGroupsTable({
                       <Trash className='size-4' />
                     </Button>
                   </div>
+                ) : row.original.taloActions ? (
+                  <div className='flex flex-wrap items-center gap-1'>
+                    {row.original.taloActions.canAccept ? (
+                      <Button
+                        size='sm'
+                        variant='success'
+                        disabled={isMutating}
+                        onClick={() =>
+                          setPendingAction({
+                            type: 'talo-accept',
+                            row: row.original,
+                          })
+                        }
+                      >
+                        <Check className='size-4' />
+                        Aceptar
+                      </Button>
+                    ) : null}
+                    <Button
+                      size='sm'
+                      variant='destructiveGhost'
+                      disabled={isMutating}
+                      onClick={() =>
+                        setPendingAction({
+                          type: 'talo-refund',
+                          row: row.original,
+                        })
+                      }
+                    >
+                      <Undo2 className='size-4' />
+                      Devolver
+                    </Button>
+                  </div>
                 ) : null,
               meta: { exportHeader: null, exportValue: null },
             } satisfies StrictColumnDef<PurchaseRow>,
@@ -566,12 +752,12 @@ export function TicketGroupsTable({
     [canRelease, isMutating],
   );
 
-  const isRelease = pendingAction?.type === 'release';
   const buyerLabel = pendingAction
     ? pendingAction.row.buyerMail
       ? `${pendingAction.row.buyerName} (${pendingAction.row.buyerMail})`
       : pendingAction.row.buyerName
     : '';
+  const dialog = actionDialog(pendingAction, buyerLabel);
 
   return (
     <div id='purchases'>
@@ -611,14 +797,8 @@ export function TicketGroupsTable({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {isRelease ? 'Liberar entradas' : 'Cancelar compra'}
-            </DialogTitle>
-            <DialogDescription>
-              {isRelease
-                ? `Confirmá que recibiste la transferencia de ${pendingAction ? formatCurrency(pendingAction.row.totalAmount) : ''}. Las entradas se van a enviar por mail a ${buyerLabel}.`
-                : `La reserva de ${buyerLabel} se va a eliminar y las entradas vuelven a estar disponibles para la venta.`}
-            </DialogDescription>
+            <DialogTitle>{dialog.title}</DialogTitle>
+            <DialogDescription>{dialog.description}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
@@ -627,19 +807,21 @@ export function TicketGroupsTable({
               </Button>
             </DialogClose>
             <Button
-              variant={isRelease ? 'success' : 'destructive'}
+              variant={dialog.positive ? 'success' : 'destructive'}
               loading={isMutating}
               onClick={() => {
                 if (!pendingAction) return;
-                if (isRelease) releaseTransfer.mutate(pendingAction.row.id);
-                else cancelTransfer.mutate(pendingAction.row.id);
+                const id = pendingAction.row.id;
+                if (pendingAction.type === 'release')
+                  releaseTransfer.mutate(id);
+                else if (pendingAction.type === 'cancel')
+                  cancelTransfer.mutate(id);
+                else if (pendingAction.type === 'talo-accept')
+                  taloAccept.mutate({ ticketGroupId: id });
+                else taloRefund.mutate({ ticketGroupId: id });
               }}
             >
-              {isMutating
-                ? 'Procesando...'
-                : isRelease
-                  ? 'Liberar entradas'
-                  : 'Cancelar compra'}
+              {isMutating ? 'Procesando...' : dialog.confirm}
             </Button>
           </DialogFooter>
         </DialogContent>

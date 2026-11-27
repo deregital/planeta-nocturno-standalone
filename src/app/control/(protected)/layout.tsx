@@ -36,7 +36,7 @@ export default async function ProtectedControlLayout({
   }
 
   return (
-    <div className='min-h-screen overflow-x-hidden bg-gray-50'>
+    <div className='min-h-screen overflow-x-clip bg-gray-50'>
       <ControlHeader
         homeHref={homeHref}
         userName={session.user.name}

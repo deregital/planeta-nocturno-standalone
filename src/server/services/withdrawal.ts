@@ -160,7 +160,7 @@ export type WithdrawalPurchase = {
   purchasedAt: string;
   /** Último momento para arrepentirse: 10 días o 24 h antes del evento. */
   deadline: string;
-  paymentMethod: 'MERCADO_PAGO' | 'TRANSFER' | 'ON_SITE' | null;
+  paymentMethod: 'MERCADO_PAGO' | 'TRANSFER' | 'ON_SITE' | 'TALO' | null;
   tickets: { typeName: string; amount: number }[];
   ticketCount: number;
   amount: number;

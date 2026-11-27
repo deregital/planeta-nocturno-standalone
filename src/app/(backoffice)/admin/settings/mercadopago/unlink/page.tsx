@@ -9,7 +9,7 @@ export default async function UnlinkMercadoPagoPage({
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) {
-  const access = await requirePagePermission('mercadopago:unlink');
+  const access = await requirePagePermission('payments:unlink');
   const { token } = await searchParams;
   const { db, instance } = await getCurrentRequestContext();
 
