@@ -18,6 +18,10 @@ export type EmittedTicket = typeof emittedTicket.$inferSelect;
 
 export type TicketGroupStatus = (typeof ticketGroup.status.enumValues)[number];
 
+export type PaymentMethod = NonNullable<
+  (typeof ticketGroup.$inferSelect)['paymentMethod']
+>;
+
 export type TicketTypeCategory = (typeof ticketTypeCategory.enumValues)[number];
 
 export type InviteCondition = (typeof inviteCondition.enumValues)[number];

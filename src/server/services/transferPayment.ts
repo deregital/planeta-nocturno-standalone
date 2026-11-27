@@ -62,4 +62,6 @@ export async function startTransferPayment(
       error: mail.error,
     });
   }
+
+  return totalAmount;
 }

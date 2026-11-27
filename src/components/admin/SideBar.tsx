@@ -7,6 +7,7 @@ import {
   Settings,
   Shield,
   Ticket,
+  Undo2,
   UserPen,
   Users,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ const routeIcons: Record<string, React.ReactNode> = {
   '/organization': <CalendarCheck />,
   '/admin/event': <Calendar />,
   '/admin/database': <Database />,
+  '/admin/arrepentimientos': <Undo2 />,
   '/admin/users': <Users />,
   '/admin/ticketing': <Ticket />,
   '/profile': <UserPen />,

@@ -20,8 +20,29 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    # Each secret is listed by name. Do not go back to `toJSON(secrets)`: in a
+    # public repo GitHub flags that as a possibly malicious workflow and the run
+    # waits for manual approval (it happened from 21/11/2026 on). A new
+    # installation needs its secret here as well as in the repo settings.
     env:
-      ALL_SECRETS: ${{ toJSON(secrets) }}
+      DEV_DATABASE_URL_PLANETA_NOCTURNO: ${{ secrets.DEV_DATABASE_URL_PLANETA_NOCTURNO }}
+      DEV_CONTROL_DATABASE_URL_NUESTROSTICKETS: ${{ secrets.DEV_CONTROL_DATABASE_URL_NUESTROSTICKETS }}
+      DEV_NEON_API_KEY_NUESTROSTICKETS: ${{ secrets.DEV_NEON_API_KEY_NUESTROSTICKETS }}
+      DEV_NEON_PROJECT_NAME_NUESTROSTICKETS: ${{ secrets.DEV_NEON_PROJECT_NAME_NUESTROSTICKETS }}
+      PROD_DATABASE_URL_DEMO_PLANETA_NOCTURNO: ${{ secrets.PROD_DATABASE_URL_DEMO_PLANETA_NOCTURNO }}
+      PROD_DATABASE_URL_DIABLA: ${{ secrets.PROD_DATABASE_URL_DIABLA }}
+      PROD_DATABASE_URL_EGRESAS_TICKETS: ${{ secrets.PROD_DATABASE_URL_EGRESAS_TICKETS }}
+      PROD_DATABASE_URL_EXPODESFILES_TICKETS: ${{ secrets.PROD_DATABASE_URL_EXPODESFILES_TICKETS }}
+      PROD_DATABASE_URL_VITA_TICKETS: ${{ secrets.PROD_DATABASE_URL_VITA_TICKETS }}
+      PROD_CONTROL_DATABASE_URL_NUESTROSTICKETS: ${{ secrets.PROD_CONTROL_DATABASE_URL_NUESTROSTICKETS }}
+      PROD_CONTROL_DATABASE_URL_UNIVERSOEGRESAS: ${{ secrets.PROD_CONTROL_DATABASE_URL_UNIVERSOEGRESAS }}
+      PROD_CONTROL_DATABASE_URL_ZONANORTE_TICKETS: ${{ secrets.PROD_CONTROL_DATABASE_URL_ZONANORTE_TICKETS }}
+      PROD_NEON_API_KEY_NUESTROSTICKETS: ${{ secrets.PROD_NEON_API_KEY_NUESTROSTICKETS }}
+      PROD_NEON_API_KEY_UNIVERSOEGRESAS: ${{ secrets.PROD_NEON_API_KEY_UNIVERSOEGRESAS }}
+      PROD_NEON_API_KEY_ZONANORTE_TICKETS: ${{ secrets.PROD_NEON_API_KEY_ZONANORTE_TICKETS }}
+      PROD_NEON_PROJECT_NAME_NUESTROSTICKETS: ${{ secrets.PROD_NEON_PROJECT_NAME_NUESTROSTICKETS }}
+      PROD_NEON_PROJECT_NAME_UNIVERSOEGRESAS: ${{ secrets.PROD_NEON_PROJECT_NAME_UNIVERSOEGRESAS }}
+      PROD_NEON_PROJECT_NAME_ZONANORTE_TICKETS: ${{ secrets.PROD_NEON_PROJECT_NAME_ZONANORTE_TICKETS }}
       TARGET_ENVIRONMENT: ${{ inputs.environment || (github.ref_name == 'master' && 'prod' || 'dev') }}
 
     steps:
@@ -38,13 +59,14 @@ jobs:
         shell: bash
         run: |
           prefix="${TARGET_ENVIRONMENT^^}_DATABASE_URL_"
-          mapfile -t secret_names < <(
-            jq -r --arg prefix "$prefix" \
-              'keys[] | select(startswith($prefix))' <<< "$ALL_SECRETS"
-          )
+          mapfile -t secret_names < <(compgen -v "$prefix")
 
           for secret_name in "${secret_names[@]}"; do
-            database_url=$(jq -r --arg key "$secret_name" '.[$key] // empty' <<< "$ALL_SECRETS")
+            database_url="${!secret_name}"
+            if [[ -z "$database_url" ]]; then
+              echo "::warning::$secret_name is listed in the workflow but the secret is empty or missing; skipping"
+              continue
+            fi
             echo "Migrating single-tenant database: $secret_name"
             DATABASE_URL="$database_url" ./node_modules/.bin/prisma migrate deploy
           done
@@ -53,19 +75,20 @@ jobs:
         shell: bash
         run: |
           prefix="${TARGET_ENVIRONMENT^^}_CONTROL_DATABASE_URL_"
-          mapfile -t control_secret_names < <(
-            jq -r --arg prefix "$prefix" \
-              'keys[] | select(startswith($prefix))' <<< "$ALL_SECRETS"
-          )
+          mapfile -t control_secret_names < <(compgen -v "$prefix")
 
           for control_secret_name in "${control_secret_names[@]}"; do
             instance_name="${control_secret_name#"$prefix"}"
             neon_api_key_name="${TARGET_ENVIRONMENT^^}_NEON_API_KEY_${instance_name}"
             neon_project_name_key="${TARGET_ENVIRONMENT^^}_NEON_PROJECT_NAME_${instance_name}"
 
-            control_database_url=$(jq -r --arg key "$control_secret_name" '.[$key] // empty' <<< "$ALL_SECRETS")
-            neon_api_key=$(jq -r --arg key "$neon_api_key_name" '.[$key] // empty' <<< "$ALL_SECRETS")
-            neon_project_name=$(jq -r --arg key "$neon_project_name_key" '.[$key] // empty' <<< "$ALL_SECRETS")
+            control_database_url="${!control_secret_name}"
+            if [[ -z "$control_database_url" ]]; then
+              echo "::warning::$control_secret_name is listed in the workflow but the secret is empty or missing; skipping"
+              continue
+            fi
+            neon_api_key="${!neon_api_key_name:-}"
+            neon_project_name="${!neon_project_name_key:-}"
 
             if [[ -z "$control_database_url" || -z "$neon_api_key" || -z "$neon_project_name" ]]; then
               echo "Missing secrets for multi-tenant installation: $instance_name"

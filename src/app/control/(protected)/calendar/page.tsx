@@ -341,6 +341,13 @@ function TenantChip({
   );
 }
 
+/** Los que no están publicados en la ticketera llevan una marca. */
+function eventStatusLabel(event: UnifiedCalendarEvent) {
+  if (event.inviteCondition === 'INVITATION') return 'Invitación';
+  if (!event.isActive) return 'Oculto';
+  return null;
+}
+
 function EventChip({
   event,
   tenant,
@@ -354,6 +361,7 @@ function EventChip({
   href: Route;
   large?: boolean;
 }) {
+  const status = eventStatusLabel(event);
   return (
     <Link
       href={href}
@@ -380,6 +388,11 @@ function EventChip({
         )}
       >
         <span>{formatEventDate(event.startingDate, 'HH:mm')}</span>
+        {status && (
+          <span className='shrink-0 rounded bg-gray-200 px-1 font-medium text-gray-700'>
+            {status}
+          </span>
+        )}
         {large && <span className='truncate'>· {tenant?.name}</span>}
         {visitors !== undefined && (
           <span className='inline-flex items-center gap-0.5'>

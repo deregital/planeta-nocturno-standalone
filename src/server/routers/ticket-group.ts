@@ -24,6 +24,7 @@ import {
   type RateLimitRule,
   refundRateLimit,
 } from '@/server/security/rate-limit';
+import { hasTicketAccess } from '@/server/security/ticket-access';
 import { EVENT_BLOCKED_MESSAGE } from '@/server/services/eventBlock';
 import { getTransferAlias } from '@/server/services/paymentSettings';
 import {
@@ -31,11 +32,50 @@ import {
   generateTicketGroupPdfs,
 } from '@/server/services/ticketGroup';
 import {
-  CHECKOUT_HOLD_TTL_MS,
   eventHoldCondition,
-  MERCADO_PAGO_HOLD_TTL_MS,
+  holdExpiresAt,
   releaseExpiredHolds,
 } from '@/server/services/ticketGroupHolds';
+import { listPaymentOptionsForGroup } from '@/server/payments/methods';
+import { readTaloDetails } from '@/server/payments/providers/talo';
+import { refreshTaloRefunds } from '@/server/payments/talo/actions';
+
+/** Cómo viene el pago con Talo de una compra, para la lista de Compras. */
+function taloPurchaseSummary(paymentDetails: unknown) {
+  const details = readTaloDetails(paymentDetails);
+  if (!details) return null;
+  return {
+    amount: details.amount,
+    received: details.received ?? null,
+    issue: details.issue ?? null,
+    accepted: details.accepted ?? false,
+    refund: details.refund
+      ? { amount: details.refund.amount, status: details.refund.status }
+      : null,
+  };
+}
+
+/** Lo que ve el comprador de su pago con Talo. */
+function taloAccountForBuyer(paymentDetails: unknown, holdsQuota: boolean) {
+  const details = readTaloDetails(paymentDetails);
+  if (!details) return null;
+  const expired =
+    !holdsQuota ||
+    (details.expiresAt !== null &&
+      new Date(details.expiresAt).getTime() <= Date.now());
+  return {
+    cvu: details.cvu,
+    alias: details.alias,
+    amount: details.amount,
+    expiresAt: details.expiresAt,
+    /** Lo transferido hasta ahora, si no alcanzó el precio. */
+    received: details.issue === 'UNDERPAID' ? (details.received ?? null) : null,
+    expired,
+    /** Talo está devolviendo una transferencia que llegó tarde. */
+    refunding: details.issue === 'LATE' && Boolean(details.refund),
+  };
+}
+import { getPaymentProvider } from '@/server/payments/registry';
 import { permissionProcedure, publicProcedure, router } from '@/server/trpc';
 import { ORGANIZER_TICKET_TYPE_NAME } from '@/server/utils/constants';
 import {
@@ -76,6 +116,25 @@ function invitationHolderRateLimits(
     { key: `invite-dni:ip1h:${ip}`, limit: 10, windowSeconds: 60 * 60 },
     {
       key: `invite-dni:code1h:${eventId}:${code}`,
+      limit: 5,
+      windowSeconds: 60 * 60,
+    },
+  ];
+}
+
+/**
+ * Intentos de DNI para ver un ticket comprado desde su link. Igual que en las
+ * invitaciones: por IP y por grupo, sólo cuentan los fallidos.
+ */
+function ticketHolderRateLimits(
+  headers: Headers,
+  ticketGroupId: string,
+): RateLimitRule[] {
+  const ip = getClientIpKey(headers);
+  return [
+    { key: `ticket-dni:ip1h:${ip}`, limit: 10, windowSeconds: 60 * 60 },
+    {
+      key: `ticket-dni:group1h:${ticketGroupId}`,
       limit: 5,
       windowSeconds: 60 * 60,
     },
@@ -227,23 +286,6 @@ function ticketGroupNotFound() {
     code: 'NOT_FOUND',
     message: 'ticketGroup no encontrado',
   });
-}
-
-/** Hasta cuándo retiene el cupo una reserva sin pagar, para avisarle al comprador. */
-function holdExpiresAt(group: {
-  status: string;
-  paymentMethod: string | null;
-  createdAt: string;
-}) {
-  if (group.status !== 'BOOKED') return null;
-  const ttl =
-    group.paymentMethod === null
-      ? CHECKOUT_HOLD_TTL_MS
-      : group.paymentMethod === 'MERCADO_PAGO'
-        ? MERCADO_PAGO_HOLD_TTL_MS
-        : null;
-  if (ttl === null) return null;
-  return new Date(new Date(group.createdAt).getTime() + ttl).toISOString();
 }
 
 export const ticketGroupSchema = z.object({
@@ -566,6 +608,46 @@ export const ticketGroupRouter = router({
         ticketGroupId: match.ticketGroupId,
       });
       return { status: 'ok' as const, ticketGroupId: match.ticketGroupId };
+    }),
+  /**
+   * Para abrir `/tickets/[id]` desde otro navegador: el DNI tiene que ser el de
+   * alguno de los tickets emitidos del grupo. La cookie de acceso la pone la
+   * server action que llama a esto.
+   */
+  verifyTicketHolder: publicProcedure
+    .input(
+      z.object({
+        ticketGroupId: ticketGroupSchema.shape.id,
+        dni: z.string().trim().min(1).max(30),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const limits = ticketHolderRateLimits(ctx.headers, input.ticketGroupId);
+      if (!(await consumeRateLimit(ctx.db, limits))) {
+        logger.warn('Rate limit de verificación de DNI de ticket alcanzado', {
+          ticketGroupId: input.ticketGroupId,
+        });
+        return { status: 'rate_limited' as const };
+      }
+
+      const tickets = await ctx.db.query.emittedTicket.findMany({
+        where: eq(emittedTicket.ticketGroupId, input.ticketGroupId),
+        columns: { dni: true },
+      });
+
+      const dni = normalizeDni(input.dni);
+      if (!tickets.some((t) => normalizeDni(t.dni) === dni)) {
+        logger.warn('Verificación de DNI de ticket fallida', {
+          ticketGroupId: input.ticketGroupId,
+        });
+        return { status: 'invalid' as const };
+      }
+
+      await refundRateLimit(ctx.db, limits);
+      logger.info('Ticket consultado con DNI', {
+        ticketGroupId: input.ticketGroupId,
+      });
+      return { status: 'ok' as const };
     }),
   getById: publicProcedure
     .input(ticketGroupSchema.shape.id)
@@ -945,6 +1027,15 @@ export const ticketGroupRouter = router({
         });
       }
 
+      // El link solo no alcanza: hace falta haber probado el DNI de un titular
+      // (o ser el navegador que compró). El staff logueado entra igual.
+      if (!hasTicketAccess(ctx.headers, group.id) && !(await ctx.getAccess())) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Falta verificar el DNI del titular',
+        });
+      }
+
       const { event } = group;
 
       const tickets = await Promise.all(
@@ -1038,6 +1129,17 @@ export const ticketGroupRouter = router({
         });
       }
 
+      // Mismo control que la página del ticket: DNI verificado o staff.
+      if (
+        !hasTicketAccess(ctx.headers, ticket.ticketGroup.id) &&
+        !(await ctx.getAccess())
+      ) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Falta verificar el DNI del titular',
+        });
+      }
+
       const blob = await generatePdf(
         {
           eventName: ticket.ticketGroup.event.name,
@@ -1069,10 +1171,17 @@ export const ticketGroupRouter = router({
         where: eq(ticketGroup.id, input),
         columns: { status: true },
       });
-      if (group?.status === 'BOOKED' && !(await ctx.getAccess())) {
+      const isStaff = !!(await ctx.getAccess());
+      if (group?.status === 'BOOKED' && !isStaff) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'El grupo de entradas no está pago',
+        });
+      }
+      if (!isStaff && !hasTicketAccess(ctx.headers, input)) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Falta verificar el DNI del titular',
         });
       }
       return generateTicketGroupPdfs(ctx.db, ctx.instance, input);
@@ -1083,22 +1192,49 @@ export const ticketGroupRouter = router({
     .query(async ({ ctx, input }) => {
       const group = await ctx.db.query.ticketGroup.findFirst({
         where: eq(ticketGroup.id, input),
-        columns: { status: true, paymentMethod: true, createdAt: true },
+        columns: {
+          status: true,
+          paymentMethod: true,
+          createdAt: true,
+          paymentDetails: true,
+        },
         with: {
-          event: { columns: { slug: true } },
+          event: { columns: { slug: true, name: true } },
           ticketTypePerGroups: { columns: { amount: true }, limit: 1 },
         },
       });
       if (!group) return null;
 
       const holdsQuota = group.ticketTypePerGroups.length > 0;
+      const payable = group.status === 'BOOKED' && holdsQuota;
+      const options = payable
+        ? await listPaymentOptionsForGroup(ctx, group.createdAt)
+        : [];
       return {
         eventSlug: group.event.slug,
+        eventName: group.event.name,
         holdExpiresAt: holdsQuota ? holdExpiresAt(group) : null,
+        paymentMethod: group.paymentMethod,
+        /**
+         * CVU de Talo de esta compra. Sigue después de que la reserva soltó
+         * el cupo, para mostrarle al comprador que venció.
+         */
+        transferAccount:
+          group.status === 'BOOKED' && group.paymentMethod === 'TALO'
+            ? taloAccountForBuyer(group.paymentDetails, holdsQuota)
+            : null,
+        contactEmail: ctx.instance.contactEmail,
         canRetryPayment:
-          group.status === 'BOOKED' &&
-          group.paymentMethod === 'MERCADO_PAGO' &&
-          holdsQuota,
+          payable &&
+          options.some((option) => option.method === group.paymentMethod) &&
+          getPaymentProvider(group.paymentMethod)?.confirmation === 'webhook',
+        /** Otros medios con los que se puede pagar esta reserva. */
+        otherPaymentMethods: options
+          .filter((option) => option.method !== group.paymentMethod)
+          .map((option) => ({
+            method: option.method,
+            label: option.buyerLabel ?? option.label,
+          })),
       };
     }),
   getTransferInstructions: publicProcedure
@@ -1129,38 +1265,60 @@ export const ticketGroupRouter = router({
   getPurchasesByEvent: permissionProcedure('tickets:read_all')
     .input(z.uuid())
     .query(async ({ ctx, input }) => {
-      return await ctx.db.query.ticketGroup.findMany({
-        where: and(
-          eq(ticketGroup.eventId, input),
-          eq(ticketGroup.isOrganizerGroup, false),
-        ),
-        orderBy: [desc(ticketGroup.createdAt)],
-        columns: {
-          id: true,
-          status: true,
-          paymentMethod: true,
-          totalAmount: true,
-          amountTickets: true,
-          createdAt: true,
-        },
-        with: {
-          user: { columns: { fullName: true } },
-          ticketTypePerGroups: {
-            columns: { amount: true },
-            with: { ticketType: { columns: { name: true } } },
+      const load = () =>
+        ctx.db.query.ticketGroup.findMany({
+          where: and(
+            eq(ticketGroup.eventId, input),
+            eq(ticketGroup.isOrganizerGroup, false),
+          ),
+          orderBy: [desc(ticketGroup.createdAt)],
+          columns: {
+            id: true,
+            status: true,
+            paymentMethod: true,
+            totalAmount: true,
+            amountTickets: true,
+            createdAt: true,
+            paymentReference: true,
+            paymentDetails: true,
           },
-          emittedTickets: {
-            columns: { id: true, fullName: true, dni: true, mail: true },
+          with: {
+            user: { columns: { fullName: true } },
+            ticketTypePerGroups: {
+              columns: { amount: true },
+              with: { ticketType: { columns: { name: true } } },
+            },
+            emittedTickets: {
+              columns: { id: true, fullName: true, dni: true, mail: true },
+            },
+            // Arrepentida: sus entradas ya están en la papelera.
+            withdrawal: {
+              columns: { number: true, fullName: true, mail: true },
+            },
           },
-        },
-      });
+        });
+
+      let purchases = await load();
+      // Talo no avisa cuando termina una devolución: se lee al listar.
+      if ((await refreshTaloRefunds(ctx, purchases)).length > 0) {
+        purchases = await load();
+      }
+      return purchases.map(
+        ({ paymentDetails, paymentReference: _ref, ...purchase }) => ({
+          ...purchase,
+          talo:
+            purchase.paymentMethod === 'TALO'
+              ? taloPurchaseSummary(paymentDetails)
+              : null,
+        }),
+      );
     }),
   releaseTransfer: permissionProcedure('tickets:release')
     .input(ticketGroupSchema.shape.id)
     .mutation(async ({ ctx, input }) => {
       const [released] = await ctx.db
         .update(ticketGroup)
-        .set({ status: 'PAID' })
+        .set({ status: 'PAID', paidAt: sql`now()` })
         .where(
           and(
             eq(ticketGroup.id, input),

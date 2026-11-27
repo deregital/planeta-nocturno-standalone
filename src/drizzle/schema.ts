@@ -39,11 +39,16 @@ export const paymentMethod = pgEnum('PaymentMethod', [
   'MERCADO_PAGO',
   'TRANSFER',
   'ON_SITE',
+  'TALO',
 ]);
 export const ticketTypeCategory = pgEnum('TicketTypeCategory', [
   'FREE',
   'PAID',
   'TABLE',
+]);
+export const withdrawalStatus = pgEnum('WithdrawalStatus', [
+  'PENDING_REFUND',
+  'REFUNDED',
 ]);
 
 export const emittedTicketScan = pgTable(
@@ -219,8 +224,17 @@ export const ticketGroup = pgTable(
     invitedBySimple: text(),
     totalAmount: numeric({ precision: 14, scale: 2 }).default('0').notNull(),
     paymentMethod: paymentMethod(),
+    // Cuándo se acreditó el pago: desde acá corren los 10 días del
+    // arrepentimiento. Null en las compras anteriores a la columna.
+    paidAt: timestamp({ withTimezone: true, mode: 'string' }),
+    paymentReference: text(),
+    paymentDetails: jsonb(),
   },
   (table) => [
+    index('ticketGroup_paymentReference_idx').using(
+      'btree',
+      table.paymentReference.asc().nullsLast().op('text_ops'),
+    ),
     index('ticketGroup_event_id_idx').using(
       'btree',
       table.eventId.asc().nullsLast().op('uuid_ops'),
@@ -298,6 +312,26 @@ export const loginAttempt = pgTable('loginAttempt', {
   failedCount: integer().default(0).notNull(),
   lockedUntil: timestamp({ withTimezone: true, mode: 'string' }),
   lastFailedAt: timestamp({ withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
+export const taloConnection = pgTable('taloConnection', {
+  id: integer().default(1).primaryKey().notNull(),
+  taloUserId: text(),
+  token: text(),
+  accountStatus: text(),
+  statusCheckedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  connectedAt: timestamp({ withTimezone: true, mode: 'string' }),
+  pendingSince: timestamp({ withTimezone: true, mode: 'string' }),
+  pendingByUserId: uuid(),
+});
+
+export const paymentMethodSetting = pgTable('paymentMethodSetting', {
+  method: paymentMethod().primaryKey().notNull(),
+  enabled: boolean().default(true).notNull(),
+  sortOrder: integer().default(0).notNull(),
+  updatedAt: timestamp({ withTimezone: true, mode: 'string' })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
@@ -1112,6 +1146,87 @@ export const deletedEmittedTicket = pgTable(
       columns: [table.deletedByUserId],
       foreignColumns: [user.id],
       name: 'deletedEmittedTicket_deletedByUserId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+);
+
+/**
+ * Botón de arrepentimiento (Disp. SSDCyLC 954/2025): el comprador revoca una
+ * compra paga. Las entradas pasan a la papelera en el momento y la Productora
+ * le transfiere el dinero a la cuenta que cargó. Copia los datos de la compra para que el trámite
+ * quede aunque se borre.
+ */
+export const withdrawalRequest = pgTable(
+  'withdrawalRequest',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    /** Número de trámite correlativo: ARR-000123. */
+    number: serial().notNull(),
+    ticketGroupId: uuid(),
+    eventId: uuid(),
+    eventName: text().notNull(),
+    ticketCount: integer().notNull(),
+    fullName: text().notNull(),
+    mail: text().notNull(),
+    dni: text().notNull(),
+    /** Total a devolver, cargo por servicio incluido. */
+    amount: numeric({ precision: 14, scale: 2 }).notNull(),
+    serviceFeeAmount: numeric({ precision: 14, scale: 2 })
+      .default('0')
+      .notNull(),
+    paymentMethod: paymentMethod(),
+    paidAt: timestamp({ withTimezone: true, mode: 'string' }),
+    /** CBU, CVU o alias que cargó el comprador para la transferencia. */
+    refundAccount: text().notNull(),
+    status: withdrawalStatus().default('PENDING_REFUND').notNull(),
+    requestedAt: timestamp({ withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    refundedAt: timestamp({ withTimezone: true, mode: 'string' }),
+    refundedByUserId: uuid(),
+  },
+  (table) => [
+    uniqueIndex('withdrawalRequest_number_key').using(
+      'btree',
+      table.number.asc().nullsLast().op('int4_ops'),
+    ),
+    uniqueIndex('withdrawalRequest_ticketGroupId_key').using(
+      'btree',
+      table.ticketGroupId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('withdrawalRequest_status_requestedAt_idx').using(
+      'btree',
+      table.status.asc().nullsLast().op('enum_ops'),
+      table.requestedAt.desc().nullsFirst().op('timestamptz_ops'),
+    ),
+    index('withdrawalRequest_eventId_idx').using(
+      'btree',
+      table.eventId.asc().nullsLast().op('uuid_ops'),
+    ),
+    index('withdrawalRequest_refundedByUserId_idx').using(
+      'btree',
+      table.refundedByUserId.asc().nullsLast().op('uuid_ops'),
+    ),
+    foreignKey({
+      columns: [table.ticketGroupId],
+      foreignColumns: [ticketGroup.id],
+      name: 'withdrawalRequest_ticketGroupId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+    foreignKey({
+      columns: [table.eventId],
+      foreignColumns: [event.id],
+      name: 'withdrawalRequest_eventId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+    foreignKey({
+      columns: [table.refundedByUserId],
+      foreignColumns: [user.id],
+      name: 'withdrawalRequest_refundedByUserId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('set null'),

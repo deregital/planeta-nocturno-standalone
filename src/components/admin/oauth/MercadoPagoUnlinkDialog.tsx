@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -20,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { trpc } from '@/server/trpc/client';
 
 function unlinkWarning({
@@ -43,7 +45,13 @@ function unlinkWarning({
   return 'Al desvincular, no se van a poder cobrar entradas online ni crear tickets pagos hasta que vuelvas a conectar una cuenta.';
 }
 
-export default function MercadoPagoUnlinkDialog() {
+export default function MercadoPagoUnlinkDialog({
+  triggerLabel = 'Desvincular',
+  triggerClassName,
+}: {
+  triggerLabel?: string;
+  triggerClassName?: string;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [transferAlias, setTransferAlias] = useState('');
   const [transferAliasError, setTransferAliasError] = useState<string | null>(
@@ -61,10 +69,14 @@ export default function MercadoPagoUnlinkDialog() {
   const requiresTransferAlias = requirements?.requiresTransferAlias ?? false;
 
   const utils = trpc.useUtils();
+  const router = useRouter();
   const requestUnlink = trpc.mercadoPago.requestUnlink.useMutation({
     onSuccess() {
       utils.mercadoPago.getTransferAlias.invalidate();
       utils.mercadoPago.unlinkRequirements.invalidate();
+      // El alias cargado acá activa la transferencia en Medios de pago.
+      utils.payments.methods.invalidate();
+      router.refresh();
     },
     onError(error) {
       toast.error(error.message);
@@ -96,8 +108,11 @@ export default function MercadoPagoUnlinkDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant='destructive' className='hover:bg-red-600'>
-          Desvincular
+        <Button
+          variant='destructive'
+          className={cn('hover:bg-red-600', triggerClassName)}
+        >
+          {triggerLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className='flex max-w-lg flex-col gap-4'>

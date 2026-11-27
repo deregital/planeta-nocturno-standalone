@@ -1,3 +1,5 @@
+import type { InviteCondition } from '@/server/types';
+
 import { and, asc, eq, gte, isNotNull, lte } from 'drizzle-orm';
 
 import type { Db } from '@/drizzle';
@@ -13,12 +15,20 @@ export type CalendarEvent = {
   coverImageUrl: string;
   locationName: string | null;
   locationAddress: string | null;
+  /** Publicado en la ticketera. */
+  isActive: boolean;
+  inviteCondition: InviteCondition;
 };
 
-/** Eventos activos de un tenant que se superponen con el rango [from, to]. */
+/**
+ * Eventos de un tenant que se superponen con el rango [from, to]. Por defecto
+ * sólo los publicados; con `includeUnpublished` también los ocultos y los de
+ * invitación (que nunca se publican: se entra con link o código).
+ */
 export async function getCalendarEvents(
   db: Db,
   range: { from: string; to: string },
+  { includeUnpublished = false }: { includeUnpublished?: boolean } = {},
 ): Promise<CalendarEvent[]> {
   const rows = await db
     .select({
@@ -30,12 +40,14 @@ export async function getCalendarEvents(
       coverImageUrl: event.coverImageUrl,
       locationName: location.name,
       locationAddress: location.address,
+      isActive: event.isActive,
+      inviteCondition: event.inviteCondition,
     })
     .from(event)
     .leftJoin(location, eq(location.id, event.locationId))
     .where(
       and(
-        eq(event.isActive, true),
+        includeUnpublished ? undefined : eq(event.isActive, true),
         eq(event.isDeleted, false),
         isNotNull(event.startingDate),
         isNotNull(event.endingDate),
@@ -63,6 +75,8 @@ export async function getCalendarEventById(db: Db, eventId: string) {
       coverImageUrl: event.coverImageUrl,
       locationName: location.name,
       locationAddress: location.address,
+      isActive: event.isActive,
+      inviteCondition: event.inviteCondition,
     })
     .from(event)
     .leftJoin(location, eq(location.id, event.locationId))

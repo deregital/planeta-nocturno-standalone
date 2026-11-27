@@ -207,7 +207,7 @@ export default function TenantTable({
   }
 
   return (
-    <div className='min-w-0 overflow-hidden rounded-xl border border-stroke bg-white shadow-sm'>
+    <div className='min-w-0 overflow-clip rounded-xl border border-stroke bg-white shadow-sm'>
       <div
         className={`grid gap-3 border-b border-stroke p-4 sm:grid-cols-2 lg:items-end ${
           canViewAll && hasTags
@@ -317,7 +317,7 @@ export default function TenantTable({
         </div>
       </div>
 
-      <div className='-mx-px overflow-x-auto'>
+      <div className='-mx-px'>
         <Table>
           <TableHeader>
             <TableRow>

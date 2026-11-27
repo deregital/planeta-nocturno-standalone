@@ -180,6 +180,14 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     parent: 'tickets:read',
   },
 
+  // Arrepentimientos
+  {
+    key: 'withdrawals:manage',
+    label: 'Ver arrepentimientos y marcarlos como reintegrados',
+    description:
+      'Compras que el comprador revocó con el botón de arrepentimiento: el reintegro se hace a mano, por transferencia a la cuenta que cargó el comprador',
+  },
+
   // Escaneo
   {
     key: 'scanner:use',
@@ -371,19 +379,19 @@ export const TENANT_PERMISSION_DEFINITIONS = [
     parent: 'settings:read',
   },
 
-  // Mercado Pago
+  // Medios de pago
   {
-    key: 'mercadopago:link',
-    label: 'Vinculación de Mercado Pago',
+    key: 'payments:manage',
+    label: 'Configurar medios de pago',
     description:
-      'Conectar la cuenta de Mercado Pago en la que se acreditan los cobros de las entradas',
+      'Conectar Mercado Pago, cargar el alias de transferencia y activar, pausar u ordenar los medios con los que se cobran las entradas',
   },
   {
-    key: 'mercadopago:unlink',
+    key: 'payments:unlink',
     label: 'Desvincular Mercado Pago',
     description:
       'Desconectar la cuenta de Mercado Pago. Se confirma desde un link enviado por mail',
-    parent: 'mercadopago:link',
+    parent: 'payments:manage',
   },
 
   // Estadísticas
@@ -552,6 +560,7 @@ export function togglePermission(
 export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   events: 'Eventos',
   tickets: 'Entradas',
+  withdrawals: 'Arrepentimientos',
   scanner: 'Escaneo',
   database: 'Base de datos',
   organizers: 'Organizadores',
@@ -561,7 +570,7 @@ export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   locations: 'Locaciones',
   categories: 'Categorías',
   settings: 'Configuración',
-  mercadopago: 'Mercado Pago',
+  payments: 'Medios de pago',
   statistics: 'Estadísticas',
   exports: 'Exportaciones',
   profile: 'Mi perfil',
@@ -713,7 +722,7 @@ export function deriveLegacyRole(
         permission.startsWith('users:') ||
         permission.startsWith('roles:') ||
         permission.startsWith('settings:') ||
-        permission.startsWith('mercadopago:'),
+        permission.startsWith('payments:'),
     )
   ) {
     return 'ADMIN';

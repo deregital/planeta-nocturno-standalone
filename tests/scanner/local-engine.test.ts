@@ -286,7 +286,6 @@ let events: EngineEvent[];
 function makeEngine(
   extra: {
     isOnline?: () => boolean;
-    available?: boolean;
     /** Por defecto es la única pestaña (como si el lock ya estuviera). */
     leader?: LeaderState;
   } = {},
@@ -973,17 +972,6 @@ describe('modo apagado', () => {
     assert.equal(engine.getStatus().phase, 'ready');
     assert.equal((await engine.evaluate(ana.code)).kind, 'known');
   });
-
-  it('sin el modo local en la instalación no pregunta la configuración', async () => {
-    server.config = { mode: 'off', maxStaleSeconds: 60 };
-    const engine = makeEngine({ available: false });
-    await engine.start(server.config, { tick: false });
-    for (let i = 0; i < 5; i += 1) {
-      clock.advance(CONFIG_CHECK_MS);
-      await engine.poll();
-    }
-    assert.equal(server.syncCalls.length, 0);
-  });
 });
 
 describe('red que cambia seguido', () => {
@@ -1029,5 +1017,40 @@ describe('una sola pestaña decide', () => {
     const engine = makeEngine({ leader: 'unknown' });
     await engine.start(server.config, { tick: false });
     assert.equal(engine.getStatus().staleReason, null);
+  });
+});
+
+describe('descarga de la lista', () => {
+  it('avisa si la puerta esperaba la lista o era una actualización de fondo', async () => {
+    server.addTicket('Ana');
+    server.down = true;
+    const engine = makeEngine();
+    await engine.start(server.config, { tick: false }); // falla sin lista
+    assert.equal(engine.getStatus().phase, 'error');
+
+    server.down = false;
+    clock.advance(5_000); // primer reintento
+    await engine.poll();
+    assert.equal(engine.getStatus().phase, 'ready');
+
+    server.down = true;
+    clock.advance(SNAPSHOT_REFRESH_MS);
+    await engine.poll(); // toca actualizar
+    await engine.poll(); // la actualización falla
+    // La puerta sigue con la lista que tenía.
+    assert.equal(engine.getStatus().phase, 'ready');
+
+    const snapshots = events.filter(
+      (e): e is Extract<EngineEvent, { type: 'snapshot' }> =>
+        e.type === 'snapshot',
+    );
+    assert.deepEqual(
+      snapshots.map((e) => [e.ok, e.initial, e.errorCode]),
+      [
+        [false, true, 'NETWORK'],
+        [true, true, undefined],
+        [false, false, 'NETWORK'],
+      ],
+    );
   });
 });

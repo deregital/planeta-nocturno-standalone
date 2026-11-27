@@ -20,6 +20,10 @@ import {
   handlePurchase,
   type PurchaseActionState,
 } from '@/app/(client)/checkout/action';
+import {
+  type CheckoutPaymentOption,
+  PaymentMethodPicker,
+} from '@/app/(client)/checkout/payment-method-picker';
 import FormInputGender from '@/components/checkout/FormInputGender';
 import FormInputInstagram from '@/components/checkout/FormInputInstagram';
 import FormInputMail from '@/components/checkout/FormInputMail';
@@ -32,6 +36,7 @@ import PhoneInputWithLabel from '@/components/common/PhoneInputWithLabel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { ACCEPT_TERMS_FIELD } from '@/lib/legal';
 import { calculateTotalPriceFromData } from '@/lib/utils';
 import { type RouterOutputs } from '@/server/routers/app';
 import { type EmittedTicketInput } from '@/server/schemas/emitted-tickets';
@@ -41,9 +46,11 @@ import 'react-phone-number-input/style.css';
 export default function CheckoutClient({
   ticketGroup,
   lastPurchase,
+  paymentOptions,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
   lastPurchase?: EmittedTicketInput;
+  paymentOptions: CheckoutPaymentOption[];
 }) {
   const [state, action, isPending] = useActionState(
     async (prevState: PurchaseActionState, formData: FormData) => {
@@ -74,6 +81,10 @@ export default function CheckoutClient({
 
   const formRef = useRef<HTMLFormElement>(null);
   const generalErrors = Array.isArray(state.errors) ? state.errors : [];
+  const acceptTermsError =
+    state.errors && !Array.isArray(state.errors)
+      ? state.errors[ACCEPT_TERMS_FIELD]
+      : undefined;
 
   // El error de un campo podía quedar fuera de pantalla y parecía que el botón
   // no hacía nada: llevar al primer campo con error, o al aviso general.
@@ -283,6 +294,14 @@ export default function CheckoutClient({
       ticket_type_count: ticketGroup.ticketTypePerGroups.length,
       total_price: totalPrice,
       is_free: totalPrice === 0,
+      payment_method:
+        totalPrice === 0
+          ? null
+          : (formRef.current?.querySelector<HTMLInputElement>(
+              'input[name=paymentMethod]:checked',
+            )?.value ??
+            paymentOptions[0]?.method ??
+            null),
     });
   };
 
@@ -710,6 +729,60 @@ export default function CheckoutClient({
         <input hidden name='invitedBy' value={organizerId || ''} readOnly />
         <input hidden name='eventId' defaultValue={ticketGroup.eventId} />
         <input hidden name='ticketGroupId' defaultValue={ticketGroup.id} />
+        {totalPrice > 0 && paymentOptions.length > 1 && (
+          <PaymentMethodPicker
+            options={paymentOptions}
+            defaultValue={state.formData?.paymentMethod}
+          />
+        )}
+        <div className='mt-6 flex flex-col gap-1'>
+          <div className='flex items-start gap-3'>
+            {/* Nativa a propósito: el reset del form tras un error la deja
+                como estaba (defaultChecked), igual que el resto de los campos. */}
+            <input
+              type='checkbox'
+              id={ACCEPT_TERMS_FIELD}
+              name={ACCEPT_TERMS_FIELD}
+              required
+              defaultChecked={state.formData?.[ACCEPT_TERMS_FIELD] === 'on'}
+              aria-invalid={Boolean(acceptTermsError)}
+              aria-describedby={
+                acceptTermsError ? `${ACCEPT_TERMS_FIELD}-error` : undefined
+              }
+              className='mt-0.5 size-5 shrink-0 cursor-pointer accent-accent'
+            />
+            <label
+              htmlFor={ACCEPT_TERMS_FIELD}
+              className='min-w-0 text-sm leading-snug text-accent-dark'
+            >
+              Acepto los{' '}
+              <Link
+                href='/terminos'
+                target='_blank'
+                className='font-medium underline'
+              >
+                Términos y condiciones
+              </Link>{' '}
+              y la{' '}
+              <Link
+                href='/privacidad'
+                target='_blank'
+                className='font-medium underline'
+              >
+                Política de privacidad
+              </Link>
+              .
+            </label>
+          </div>
+          {acceptTermsError && (
+            <p
+              id={`${ACCEPT_TERMS_FIELD}-error`}
+              className='pl-8 text-xs font-bold text-red-500'
+            >
+              {acceptTermsError}
+            </p>
+          )}
+        </div>
         {generalErrors.length > 0 && !isPending && (
           <div
             role='alert'

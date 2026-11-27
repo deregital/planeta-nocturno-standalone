@@ -30,7 +30,11 @@ import {
   registerSuccessfulLogin,
   TENANT_LOGIN_ATTEMPTS,
 } from '@/server/security/login-throttle';
-import { markMercadoPagoGroupPaid } from '@/server/services/ticketGroup';
+import {
+  getTransferAlias,
+  setTransferAlias,
+} from '@/server/services/paymentSettings';
+import { markGroupPaid } from '@/server/services/ticketGroup';
 import { createCallerFactory } from '@/server/trpc';
 import { encryptString } from '@/server/utils/utils';
 
@@ -336,7 +340,7 @@ async function main() {
       );
       assert(mailsTo(ticket.mail) === 1, `mails: ${mailsTo(ticket.mail)}`);
       assert(
-        (await markMercadoPagoGroupPaid(db, group)) === false,
+        (await markGroupPaid(db, group)) === false,
         'un cuarto aviso volvió a registrar el pago',
       );
     },
@@ -370,6 +374,547 @@ async function main() {
         `failure va a ${pref.back_urls.failure}`,
       );
       await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [group]);
+    },
+  );
+
+  await check(
+    'MEDIOS',
+    'el comprador elige el medio, puede cambiarlo y no queda sin medios activos',
+    async () => {
+      const previousAlias = await getTransferAlias(db);
+      await setTransferAlias(db, 'prueba.regresion.mp');
+      try {
+        const options = await anon.payments.checkoutOptions();
+        assert(
+          options.map((o) => o.method).join(',') === 'MERCADO_PAGO,TRANSFER',
+          `opciones ${options.map((o) => o.method).join(',')}`,
+        );
+
+        const e = event('fiesta-paga');
+        const group = await reserve('fiesta-paga', 'General');
+        await anon.emittedTickets.createMany([
+          buyer(type('fiesta-paga', 'General').id, group, e.id),
+        ]);
+        const methodOf = async () =>
+          (
+            await raw.query<{ m: string | null }>(
+              'SELECT "paymentMethod" AS m FROM "ticketGroup" WHERE id = $1',
+              [group],
+            )
+          ).rows[0]?.m;
+
+        const transfer = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TRANSFER',
+        });
+        assert(transfer.type === 'instructions', 'transferencia sin datos');
+        assert((await methodOf()) === 'TRANSFER', 'no quedó en transferencia');
+        const info = await anon.ticketGroup.getPendingPaymentInfo(group);
+        assert(
+          info?.otherPaymentMethods.some((o) => o.method === 'MERCADO_PAGO') ===
+            true,
+          'no ofrece pasar a Mercado Pago',
+        );
+
+        const mp = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'MERCADO_PAGO',
+        });
+        assert(mp.type === 'redirect', 'Mercado Pago sin link');
+        assert((await methodOf()) === 'MERCADO_PAGO', 'no pasó a Mercado Pago');
+
+        // Una transferencia vieja no puede pasar a Mercado Pago: soltaría el
+        // cupo apenas se crea la preferencia.
+        await raw.query(
+          `UPDATE "ticketGroup" SET "paymentMethod" = 'TRANSFER' WHERE id = $1`,
+          [group],
+        );
+        await age(group, 41);
+        const late = await anon.ticketGroup.getPendingPaymentInfo(group);
+        assert(
+          late?.otherPaymentMethods.length === 0,
+          `ofrece ${late?.otherPaymentMethods.map((o) => o.method)}`,
+        );
+        await rejects(
+          anon.payments.start({ ticketGroupId: group, method: 'MERCADO_PAGO' }),
+          'PRECONDITION_FAILED',
+        );
+
+        // Pausada, la transferencia no se ofrece ni se puede iniciar.
+        await admin.payments.setEnabled({ method: 'TRANSFER', enabled: false });
+        try {
+          assert(
+            !(await anon.payments.checkoutOptions()).some(
+              (o) => o.method === 'TRANSFER',
+            ),
+            'ofrece la transferencia pausada',
+          );
+          await rejects(
+            anon.payments.start({ ticketGroupId: group, method: 'TRANSFER' }),
+            'PRECONDITION_FAILED',
+          );
+          // Con eventos pagos, Mercado Pago queda como único activo.
+          await rejects(
+            admin.payments.setEnabled({
+              method: 'MERCADO_PAGO',
+              enabled: false,
+            }),
+            'PRECONDITION_FAILED',
+          );
+        } finally {
+          await admin.payments.setEnabled({
+            method: 'TRANSFER',
+            enabled: true,
+          });
+        }
+        await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [group]);
+      } finally {
+        await setTransferAlias(db, previousAlias);
+      }
+    },
+  );
+
+  await check(
+    'TALO',
+    'Conectar con Talo por OAuth, un CVU por compra y entrega sólo con el pago completo',
+    async () => {
+      const before = await admin.payments.taloConnection();
+      assert(before.enabled, 'Talo no está habilitado en el stack');
+      assert(before.connection === null, 'ya había una cuenta conectada');
+
+      // Sin haber tocado "Conectar con Talo", un código ajeno no conecta.
+      await rejects(
+        admin.payments.completeTaloConnect({
+          code: 'code-ajeno',
+          referredUserId: 'prueba',
+        }),
+        'PRECONDITION_FAILED',
+      );
+
+      // La persona toca Conectar, autoriza en Talo y vuelve con un código.
+      const authorize = async (status: 'ACTIVE' | 'PENDING') => {
+        const { url: authorizeUrl } = await admin.payments.startTaloConnect();
+        assert(
+          authorizeUrl.startsWith(
+            `${process.env.TALO_APP_URL}/authorize/${process.env.TALO_PARTNER_ID}`,
+          ),
+          `autoriza en ${authorizeUrl}`,
+        );
+        assert(
+          new URL(authorizeUrl).searchParams.get('referred_user_id') ===
+            'prueba',
+          'no manda la plataforma en referred_user_id',
+        );
+        const authorized = await fetch(authorizeUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ status }).toString(),
+          redirect: 'manual',
+        });
+        const back = new URL(authorized.headers.get('location')!);
+        assert(
+          back.origin + back.pathname === process.env.TALO_REDIRECT_URL,
+          `Talo vuelve a ${back}`,
+        );
+        return back;
+      };
+
+      const back = await authorize('ACTIVE');
+      const code = back.searchParams.get('code')!;
+
+      // El callback del dominio raíz rebota a la plataforma con el código.
+      const rootHost = process.env.ROOT_DOMAIN!;
+      const bounce = await fetch(`${NEXT}${back.pathname}${back.search}`, {
+        headers: {
+          host: rootHost,
+          'x-forwarded-host': rootHost,
+          'x-forwarded-proto': 'https',
+        },
+        redirect: 'manual',
+      });
+      const bounced = new URL(bounce.headers.get('location') ?? 'about:blank');
+      assert(
+        bounce.status === 303 &&
+          bounced.host === new URL(instance.publicUrl).host &&
+          bounced.pathname === '/admin/settings/talo' &&
+          bounced.searchParams.get('code') === code,
+        `el callback va a ${bounce.status} ${bounced}`,
+      );
+
+      // Otra persona del staff no puede completar la conexión que empezó admin.
+      await rejects(
+        callerFor('admin2').payments.completeTaloConnect({
+          code,
+          referredUserId: 'prueba',
+        }),
+        'PRECONDITION_FAILED',
+      );
+      const done = await admin.payments.completeTaloConnect({
+        code,
+        referredUserId: 'prueba',
+      });
+      assert(done.status === 'ACTIVE', `estado ${done.status}`);
+      const connected = await admin.payments.taloConnection();
+      assert(connected.connection?.status === 'ACTIVE', 'no quedó conectada');
+      const taloUser = connected.connection!.userId;
+
+      try {
+        const talo = (await anon.payments.checkoutOptions()).find(
+          (o) => o.method === 'TALO',
+        );
+        assert(talo?.label === 'Transferencia inmediata', 'no ofrece Talo');
+
+        const e = event('fiesta-paga');
+        const group = await reserve('fiesta-paga', 'General');
+        const ticket = buyer(type('fiesta-paga', 'General').id, group, e.id);
+        await anon.emittedTickets.createMany([ticket]);
+
+        const start = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TALO',
+        });
+        assert(
+          start.type === 'instructions' && Boolean(start.cvu),
+          'Talo sin CVU',
+        );
+        const cvu = start.type === 'instructions' ? start.cvu! : '';
+        const amount = start.type === 'instructions' ? start.amount : 0;
+        const payment = JSON.parse(
+          readFileSync(
+            path.join(
+              RUN,
+              'talo',
+              `${encodeURIComponent(`VAR-${taloUser}-${group}`)}.json`,
+            ),
+            'utf8',
+          ),
+        );
+        assert(
+          payment.partner_id === process.env.TALO_PARTNER_ID,
+          'el cobro no lleva el partner_id',
+        );
+
+        const again = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TALO',
+        });
+        assert(
+          again.type === 'instructions' && again.cvu === cvu,
+          'generó otro CVU',
+        );
+
+        const faucet = (value: number) =>
+          fetch(`https://sandbox-api.talo.com.ar/cvu/${cvu}/faucet`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ amount: value }),
+          }).then((r) => r.json());
+        const statusOf = async () =>
+          (
+            await raw.query<{ status: string }>(
+              'SELECT status FROM "ticketGroup" WHERE id = $1',
+              [group],
+            )
+          ).rows[0]?.status;
+
+        const partial = await faucet(amount - 100);
+        assert(
+          partial.data.payment_status === 'UNDERPAID',
+          `faucet: ${JSON.stringify(partial.data)}`,
+        );
+        assert(partial.data.webhook?.status === 200, 'el aviso parcial falló');
+        assert((await statusOf()) === 'BOOKED', 'entregó con un pago parcial');
+
+        const rest = await faucet(100);
+        assert(rest.data.payment_status === 'SUCCESS', 'no completó el pago');
+        assert(rest.data.webhook?.status === 200, 'el aviso del pago falló');
+        assert((await statusOf()) === 'PAID', 'no quedó pagada');
+        assert(mailsTo(ticket.mail) >= 1, 'no mandó las entradas');
+
+        const host = new URL(instance.publicUrl).host;
+        const unknown = await fetch(`${NEXT}/api/payments/talo`, {
+          method: 'POST',
+          headers: {
+            host,
+            'x-forwarded-host': host,
+            'x-forwarded-proto': 'https',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ paymentId: 'VAR-desconocido' }),
+        });
+        assert(unknown.status === 200, `aviso desconocido: ${unknown.status}`);
+
+        await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [group]);
+      } finally {
+        await admin.payments.removeTaloConnection();
+      }
+      assert(
+        !(await anon.payments.checkoutOptions()).some(
+          (o) => o.method === 'TALO',
+        ),
+        'Talo sigue ofrecido sin conexión',
+      );
+
+      // Una cuenta que Talo todavía verifica queda conectada pero no se ofrece.
+      const pendingBack = await authorize('PENDING');
+      const pending = await admin.payments.completeTaloConnect({
+        code: pendingBack.searchParams.get('code')!,
+        referredUserId: 'prueba',
+      });
+      try {
+        assert(pending.status === 'PENDING', `estado ${pending.status}`);
+        assert(
+          !(await anon.payments.checkoutOptions()).some(
+            (o) => o.method === 'TALO',
+          ),
+          'ofrece Talo con la cuenta en verificación',
+        );
+      } finally {
+        await admin.payments.removeTaloConnection();
+      }
+    },
+  );
+
+  await check(
+    'TALO-DIF',
+    'Talo: tolerancia, pago de menos (aceptar o devolver), de más y tardío',
+    async () => {
+      // Conecta Talo como lo haría la productora.
+      await admin.payments
+        .startTaloConnect()
+        .then(async ({ url: authorizeUrl }) => {
+          const authorized = await fetch(authorizeUrl, {
+            method: 'POST',
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ status: 'ACTIVE' }).toString(),
+            redirect: 'manual',
+          });
+          const back = new URL(authorized.headers.get('location')!);
+          await admin.payments.completeTaloConnect({
+            code: back.searchParams.get('code')!,
+            referredUserId: 'prueba',
+          });
+        });
+      const contact = 'contacto@prueba.pn.test';
+      const e = event('fiesta-paga');
+
+      type Talo = { cvu: string; amount: number };
+      const buy = async () => {
+        const group = await reserve('fiesta-paga', 'General');
+        const ticket = buyer(type('fiesta-paga', 'General').id, group, e.id);
+        await anon.emittedTickets.createMany([ticket]);
+        const start = await anon.payments.start({
+          ticketGroupId: group,
+          method: 'TALO',
+        });
+        assert(start.type === 'instructions' && start.cvu, 'sin CVU');
+        const talo: Talo = {
+          cvu: start.type === 'instructions' ? start.cvu! : '',
+          amount: start.type === 'instructions' ? start.amount : 0,
+        };
+        return { group, ticket, talo };
+      };
+      const faucet = (cvu: string, value: number) =>
+        fetch(`https://sandbox-api.talo.com.ar/cvu/${cvu}/faucet`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ amount: value }),
+        }).then((r) => r.json());
+      const row = async (group: string) => {
+        const { rows } = await raw.query<{
+          status: string;
+          details: {
+            received?: number;
+            issue?: string | null;
+            refund?: { status: string; amount: number; type: string } | null;
+          };
+          total: string;
+        }>(
+          'SELECT status, "paymentDetails" AS details, "totalAmount" AS total FROM "ticketGroup" WHERE id = $1',
+          [group],
+        );
+        return rows[0];
+      };
+      const purchaseOf = async (group: string) =>
+        (await admin.ticketGroup.getPurchasesByEvent(e.id)).find(
+          (purchase) => purchase.id === group,
+        );
+
+      try {
+        // Tolerancia: $5 menos cuenta como completo.
+        const tolerated = await buy();
+        await faucet(tolerated.talo.cvu, tolerated.talo.amount - 5);
+        const toleratedRow = await row(tolerated.group);
+        assert(
+          toleratedRow.status === 'PAID',
+          'no entregó dentro de la tolerancia',
+        );
+        assert(
+          !toleratedRow.details.issue,
+          'marcó diferencia dentro de la tolerancia',
+        );
+
+        // De menos → el comprador ve cuánto falta → el organizador acepta.
+        const under = await buy();
+        const contactBefore = mailsTo(contact);
+        const buyerBefore = mailsTo(under.ticket.mail);
+        const partial = await faucet(under.talo.cvu, under.talo.amount - 1000);
+        assert(
+          partial.data.webhook?.status === 200,
+          'falló el aviso de pago de menos',
+        );
+        let underRow = await row(under.group);
+        assert(underRow.status === 'BOOKED', 'entregó un pago de menos');
+        assert(
+          underRow.details.issue === 'UNDERPAID',
+          `issue ${underRow.details.issue}`,
+        );
+        assert(mailsTo(contact) === contactBefore + 1, 'no avisó al contacto');
+        assert(
+          mailsTo(under.ticket.mail) === buyerBefore + 1,
+          'no avisó al comprador',
+        );
+        const info = await anon.ticketGroup.getPendingPaymentInfo(under.group);
+        assert(
+          info?.transferAccount?.received === under.talo.amount - 1000,
+          'el comprador no ve lo recibido',
+        );
+        // Un segundo aviso igual no repite el mail al contacto.
+        await faucet(under.talo.cvu, 1);
+        assert(
+          mailsTo(contact) === contactBefore + 1,
+          'repitió el mail al contacto',
+        );
+        await admin.payments.taloAcceptUnderpaid({
+          ticketGroupId: under.group,
+        });
+        underRow = await row(under.group);
+        assert(underRow.status === 'PAID', 'aceptar no entregó');
+        assert(
+          Number(underRow.total) === under.talo.amount - 999,
+          `total ${underRow.total}`,
+        );
+
+        // De menos → el organizador cancela y devuelve todo.
+        const cancel = await buy();
+        await faucet(cancel.talo.cvu, cancel.talo.amount - 2000);
+        await admin.payments.taloRefund({ ticketGroupId: cancel.group });
+        let cancelRow = await row(cancel.group);
+        assert(
+          cancelRow.details.refund?.type === 'FULL' &&
+            cancelRow.details.refund.amount === cancel.talo.amount - 2000,
+          `devolución ${JSON.stringify(cancelRow.details.refund)}`,
+        );
+        assert(!(await holdsQuota(cancel.group)), 'no liberó las entradas');
+        await rejects(
+          admin.payments.taloRefund({ ticketGroupId: cancel.group }),
+          'PRECONDITION_FAILED',
+        );
+        // Talo no avisa cuando termina: se lee al listar las compras.
+        await purchaseOf(cancel.group);
+        const refunded = await purchaseOf(cancel.group);
+        assert(
+          refunded?.talo?.refund?.status === 'SUCCESS',
+          `estado ${refunded?.talo?.refund?.status}`,
+        );
+        cancelRow = await row(cancel.group);
+        assert(
+          cancelRow.status === 'BOOKED',
+          'la compra cancelada quedó pagada',
+        );
+
+        // De más → se entrega y se devuelve la diferencia.
+        const over = await buy();
+        await faucet(over.talo.cvu, over.talo.amount + 500);
+        let overRow = await row(over.group);
+        assert(overRow.status === 'PAID', 'no entregó un pago de más');
+        assert(
+          overRow.details.issue === 'OVERPAID',
+          `issue ${overRow.details.issue}`,
+        );
+        await admin.payments.taloRefund({ ticketGroupId: over.group });
+        overRow = await row(over.group);
+        assert(
+          overRow.details.refund?.type === 'PARTIAL' &&
+            overRow.details.refund.amount === 500,
+          `devolución ${JSON.stringify(overRow.details.refund)}`,
+        );
+
+        // Tardío con lugar: la reserva soltó el cupo pero el tipo no se
+        // agotó → se entrega igual.
+        const lateFits = await buy();
+        await raw.query(
+          'DELETE FROM "ticketTypePerGroup" WHERE "ticketGroupId" = $1',
+          [lateFits.group],
+        );
+        await faucet(lateFits.talo.cvu, lateFits.talo.amount);
+        const lateFitsRow = await row(lateFits.group);
+        assert(
+          lateFitsRow.status === 'PAID',
+          'no entregó un pago tardío con lugar',
+        );
+        assert(
+          await holdsQuota(lateFits.group),
+          'entregó sin volver a tomar el cupo',
+        );
+
+        // Tardío sin lugar: el tipo se agotó mientras tanto → se devuelve.
+        const late = await buy();
+        await raw.query(
+          'DELETE FROM "ticketTypePerGroup" WHERE "ticketGroupId" = $1',
+          [late.group],
+        );
+        const generalId = type('fiesta-paga', 'General').id;
+        const {
+          rows: [{ max }],
+        } = await raw.query<{ max: number }>(
+          'SELECT "maxAvailable" AS max FROM "ticketType" WHERE id = $1',
+          [generalId],
+        );
+        await raw.query(
+          'UPDATE "ticketType" SET "maxAvailable" = (SELECT coalesce(sum(amount), 0) FROM "ticketTypePerGroup" WHERE "ticketTypeId" = $1) WHERE id = $1',
+          [generalId],
+        );
+        const lateContact = mailsTo(contact);
+        try {
+          await faucet(late.talo.cvu, late.talo.amount);
+        } finally {
+          await raw.query(
+            'UPDATE "ticketType" SET "maxAvailable" = $2 WHERE id = $1',
+            [generalId, max],
+          );
+        }
+        const lateRow = await row(late.group);
+        assert(lateRow.status === 'BOOKED', 'entregó un pago tardío sin lugar');
+        assert(
+          lateRow.details.issue === 'LATE',
+          `issue ${lateRow.details.issue}`,
+        );
+        assert(
+          lateRow.details.refund?.type === 'FULL',
+          'no pidió la devolución',
+        );
+        assert(
+          mailsTo(contact) === lateContact + 1,
+          'no avisó al contacto del tardío',
+        );
+        const lateInfo = await anon.ticketGroup.getPendingPaymentInfo(
+          late.group,
+        );
+        assert(
+          lateInfo?.transferAccount?.expired === true &&
+            lateInfo.transferAccount.refunding === true,
+          'el comprador no ve que venció y se devuelve',
+        );
+
+        for (const group of [tolerated, under, cancel, over, lateFits, late]) {
+          await raw.query('DELETE FROM "ticketGroup" WHERE id = $1', [
+            group.group,
+          ]);
+        }
+      } finally {
+        await admin.payments.removeTaloConnection();
+      }
     },
   );
 

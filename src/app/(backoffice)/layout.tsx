@@ -29,7 +29,8 @@ export default async function AdminLayout({
           className='grid grid-rows-[auto_1fr] min-h-screen h-full'
           style={
             {
-              '--sidebar-width': '12rem',
+              // Lo justo para "Arrepentimientos" en negrita en una línea.
+              '--sidebar-width': '15rem',
             } as React.CSSProperties
           }
         >

@@ -8,7 +8,7 @@
 export const SCANNER_PROTOCOL_VERSION = 1;
 
 /**
- * - `off`: como siempre, cada escaneo espera al servidor.
+ * - `off`: normal, cada escaneo espera al servidor.
  * - `shadow`: espera al servidor y muestra su respuesta, pero además calcula
  *   la decisión local y registra si coinciden. No cambia nada en la puerta.
  * - `local`: decide en el celular las entradas que conoce y sincroniza por
@@ -16,6 +16,20 @@ export const SCANNER_PROTOCOL_VERSION = 1;
  */
 export const SCANNER_MODES = ['off', 'shadow', 'local'] as const;
 export type ScannerMode = (typeof SCANNER_MODES)[number];
+
+/**
+ * Los modos que se pueden elegir para un evento. Sombra sirvió para probar el
+ * modo rápido y ya no se ofrece: un evento guardado así escanea en normal,
+ * que en la puerta funcionaba igual.
+ */
+export const SELECTABLE_SCANNER_MODES = ['off', 'local'] as const;
+export type SelectableScannerMode = (typeof SELECTABLE_SCANNER_MODES)[number];
+
+/**
+ * Modo de un evento que nadie configuró. Quien edita eventos puede pasar uno
+ * puntual a normal desde las opciones del escáner, y esa elección se guarda.
+ */
+export const DEFAULT_EVENT_MODE: SelectableScannerMode = 'local';
 
 const MODE_RANK: Record<ScannerMode, number> = { off: 0, shadow: 1, local: 2 };
 

@@ -5,6 +5,7 @@ import {
   isTenantSessionValid,
 } from '@/lib/auth/session-tenant';
 import { createSingleTenantConfig } from '@/lib/config/single-tenant-config';
+import { TALO_OAUTH_CALLBACK_PATH } from '@/lib/payments/talo-paths';
 import {
   getRequestHost,
   getRequestOrigin,
@@ -69,6 +70,10 @@ export default authMiddleware(async function middleware(request) {
   }
 
   if (target.type === 'root') {
+    // La vuelta de "Conectar con Talo" es una sola para todas las plataformas.
+    if (request.nextUrl.pathname === TALO_OAUTH_CALLBACK_PATH) {
+      return NextResponse.next({ request: { headers } });
+    }
     if (request.nextUrl.pathname !== '/') {
       return new NextResponse('Página no encontrada', { status: 404 });
     }

@@ -49,7 +49,7 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [batchName, setBatchName] = useState<string>('');
-  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +145,7 @@ export function ImportUsersModal({ onImport }: ImportUsersModalProps) {
       // Limpiar estados cuando se cierra el modal
       setFile(null);
       setBatchName('');
-      setSendWelcomeEmail(true);
+      setSendWelcomeEmail(false);
       setResult(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';

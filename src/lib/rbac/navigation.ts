@@ -10,7 +10,7 @@ export const SETTINGS_PAGE_PERMISSIONS = [
   'locations:read',
   'categories:read',
   'settings:read',
-  'mercadopago:link',
+  'payments:manage',
 ] as const satisfies readonly TenantPermission[];
 
 type BackofficeRoute = {
@@ -36,6 +36,11 @@ export const BACKOFFICE_ROUTES: readonly BackofficeRoute[] = [
     href: '/admin/database',
     title: 'Base de Datos',
     anyOf: ['database:read'],
+  },
+  {
+    href: '/admin/arrepentimientos' as Route,
+    title: 'Arrepentimientos',
+    anyOf: ['withdrawals:manage'],
   },
   {
     href: '/admin/users',

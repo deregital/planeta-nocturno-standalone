@@ -72,12 +72,11 @@ async function scanRows(ticketId: string) {
   return rows[0].n as number;
 }
 
-async function setMode(eventId: string, mode: 'off' | 'shadow' | 'local') {
+async function setMode(eventId: string, mode: 'off' | 'local') {
   await admin().scanner.setConfig({ eventId, mode, maxStaleSeconds: 60 });
 }
 
 before(async () => {
-  process.env.SCANNER_LOCAL_MODE_ENABLED = 'true';
   load = await openLoadDb(await createScenarioDatabase('scanner_server'));
   const { raw } = load;
 
@@ -218,39 +217,27 @@ describe('escaneo online (emittedTickets.scan)', () => {
 });
 
 describe('configuración por evento', () => {
-  it('sin habilitar la instalación, todo queda en off', async () => {
-    process.env.SCANNER_LOCAL_MODE_ENABLED = 'false';
-    try {
-      const config = await door().scanner.config({ eventIds: [eventA] });
-      assert.equal(config.available, false);
-      assert.equal(config.effective.mode, 'off');
-      await expectTrpcError(
-        admin().scanner.setConfig({
-          eventId: eventA,
-          mode: 'local',
-          maxStaleSeconds: 60,
-        }),
-        'PRECONDITION_FAILED',
-      );
-      await expectTrpcError(
-        door().scanner.snapshot({ protocol: 1, eventIds: [eventA] }),
-        'PRECONDITION_FAILED',
-      );
-    } finally {
-      process.env.SCANNER_LOCAL_MODE_ENABLED = 'true';
-    }
-  });
-
-  it('por defecto off; solo quien edita eventos lo cambia', async () => {
+  it('por defecto rápido, sin configurar nada; solo quien edita eventos lo cambia', async () => {
     const initial = await door().scanner.config({ eventIds: [eventA] });
-    assert.equal(initial.available, true);
     assert.equal(initial.canEdit, false);
-    assert.equal(initial.effective.mode, 'off');
+    assert.equal(initial.effective.mode, 'local');
+    assert.equal(initial.effective.maxStaleSeconds, 60);
+    const { rows } = await load.raw.query(
+      `SELECT count(*)::int AS n FROM "eventScannerConfig"`,
+    );
+    assert.equal(rows[0].n, 0, 'leer la configuración no debe guardar nada');
+
+    // Sin configurar, la puerta ya baja la tabla.
+    const snapshot = await door().scanner.snapshot({
+      protocol: 1,
+      eventIds: [eventA],
+    });
+    assert.equal(snapshot.config.mode, 'local');
 
     await expectTrpcError(
       door().scanner.setConfig({
         eventId: eventA,
-        mode: 'local',
+        mode: 'off',
         maxStaleSeconds: 60,
       }),
       'FORBIDDEN',
@@ -263,11 +250,53 @@ describe('configuración por evento', () => {
     });
     assert.deepEqual(saved, { mode: 'local', maxStaleSeconds: 300 });
 
+    // B sin configurar también es rápido; manda el N más corto (el de B).
     const both = await admin().scanner.config({ eventIds: [eventA, eventB] });
     assert.equal(both.canEdit, true);
-    // Con dos eventos manda el más conservador (B sigue en off).
-    assert.equal(both.effective.mode, 'off');
+    assert.deepEqual(both.effective, { mode: 'local', maxStaleSeconds: 60 });
+
+    // Pasar un evento a normal queda guardado, y con dos eventos manda el
+    // más conservador.
+    await setMode(eventB, 'off');
+    const withNormal = await admin().scanner.config({
+      eventIds: [eventA, eventB],
+    });
+    assert.equal(
+      withNormal.events.find((e) => e.eventId === eventB)?.mode,
+      'off',
+    );
+    assert.equal(withNormal.effective.mode, 'off');
+    await setMode(eventB, 'local');
     await setMode(eventA, 'local');
+  });
+
+  it('Sombra, o un modo guardado que no se reconoce, escanea en normal', async () => {
+    try {
+      for (const stored of ['shadow', 'turbo']) {
+        await load.raw.query(
+          `UPDATE "eventScannerConfig" SET mode = $2 WHERE "eventId" = $1`,
+          [eventB, stored],
+        );
+        const config = await admin().scanner.config({ eventIds: [eventB] });
+        assert.equal(config.events[0].mode, 'off', stored);
+        assert.equal(config.effective.mode, 'off', stored);
+      }
+    } finally {
+      await setMode(eventB, 'local');
+    }
+  });
+
+  it('Sombra ya no se puede elegir', async () => {
+    await expectTrpcError(
+      admin().scanner.setConfig({
+        eventId: eventB,
+        mode: 'shadow' as 'off',
+        maxStaleSeconds: 60,
+      }),
+      'BAD_REQUEST',
+    );
+    const config = await admin().scanner.config({ eventIds: [eventB] });
+    assert.equal(config.effective.mode, 'local');
   });
 
   it('el celular sin acceso al evento no ve la configuración', async () => {
@@ -514,15 +543,6 @@ describe('sincronización', () => {
       await setMode(eventA, 'local');
     }
 
-    process.env.SCANNER_LOCAL_MODE_ENABLED = 'false';
-    try {
-      const disabled = await push(door(), [], fromStart);
-      assert.equal(disabled.config.mode, 'off');
-      assert.equal(disabled.delta, null, 'bajó la tabla sin la instalación');
-    } finally {
-      process.env.SCANNER_LOCAL_MODE_ENABLED = 'true';
-    }
-
     const on = await push(door(), [], fromStart);
     assert.ok(on.delta && on.delta.added.length > 0);
   });
@@ -642,7 +662,7 @@ describe('base sin la migración del escaneo', () => {
       await assert.rejects(
         admin().scanner.setConfig({
           eventId: eventA,
-          mode: 'shadow',
+          mode: 'local',
           maxStaleSeconds: 60,
         }),
         clear,

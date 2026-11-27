@@ -28,7 +28,9 @@ export default async function Home() {
   }
 
   return (
-    <div className='h-main-screen mx-auto w-full min-w-0 max-w-screen-2xl p-4 font-(family-name:--font-geist-sans)'>
+    // Sin alto fijo: la lista de eventos se desbordaba del contenedor y el pie
+    // legal del layout quedaba encima, a mitad de la lista.
+    <div className='mx-auto w-full min-w-0 max-w-screen-2xl p-4 font-(family-name:--font-geist-sans)'>
       <Suspense fallback={<TicketeraHomeSkeleton />}>
         <TicketeraHome />
       </Suspense>

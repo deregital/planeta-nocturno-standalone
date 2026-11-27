@@ -4,6 +4,8 @@
 //     *.pn.test / pn.test        → Next (127.0.0.1:STACK_NEXT_PORT)
 //     mercadopago.mock.test      → checkout falso de Mercado Pago
 //     mail.mock.test             → bandeja de entrada (mails capturados)
+//     *.talo.com.ar              → API de Talo (pagos con CVU y faucet)
+//     talo.mock.test             → pantalla de "Conectar con Talo" (OAuth de partner)
 //     *.amazonaws.com            → S3 falso (subidas firmadas e imágenes)
 // - HTTP en 127.0.0.1:55801 para el servidor (preload.mjs y RESEND_BASE_URL).
 import { createHmac, randomUUID } from 'node:crypto';
@@ -22,6 +24,7 @@ const dirs = {
   mails: path.join(RUN, 'mails'),
   s3: path.join(RUN, 's3'),
   mp: path.join(RUN, 'mp'),
+  talo: path.join(RUN, 'talo'),
 };
 for (const dir of Object.values(dirs)) mkdirSync(dir, { recursive: true });
 
@@ -396,6 +399,253 @@ async function handleMercadoPagoUi(req, res) {
   return html('Mercado Pago (prueba)', '<h1>Página inexistente</h1>');
 }
 
+// ── Talo ─────────────────────────────────────────────────────────────────────
+// Como el sandbox de Talo: autorización de partner (código → token PAR-), un
+// CVU por pago y un faucet que acredita la transferencia y avisa al
+// webhook_url del pago. En la pantalla de autorización, "cuenta en
+// verificación" deja la cuenta PENDING.
+const TALO_PARTNER_ID = process.env.TALO_PARTNER_ID;
+const TALO_PARTNER_SECRET = process.env.TALO_PARTNER_SECRET;
+const TALO_REDIRECT_URL = process.env.TALO_REDIRECT_URL;
+const taloCodes = new Map();
+const taloAccounts = new Map();
+
+async function handleTaloUi(req, res) {
+  const url = new URL(req.url, 'https://talo.mock.test');
+  const match = url.pathname.match(/^\/authorize\/([^/]+)$/);
+  if (!match || match[1] !== TALO_PARTNER_ID) return send(res, 404, 'talo mock: partner desconocido');
+  const referred = url.searchParams.get('referred_user_id') ?? '';
+  if (req.method === 'GET') {
+    return send(
+      res,
+      200,
+      page(
+        'Talo (simulado)',
+        `<h1>Conectar con Talo</h1>
+        <p>La plataforma <b>${escapeHtml(referred)}</b> quiere crear cobros en tu cuenta de Talo.</p>
+        <form method="post"><input type="hidden" name="status" value="ACTIVE">
+          <button type="submit">Autorizar</button></form>
+        <form method="post"><input type="hidden" name="status" value="PENDING">
+          <button type="submit">Autorizar (cuenta en verificación)</button></form>`,
+      ),
+      { 'content-type': 'text/html; charset=utf-8' },
+    );
+  }
+  if (req.method === 'POST') {
+    const form = new URLSearchParams((await readBody(req)).toString());
+    const userId = 'talo-' + randomUUID().slice(0, 8);
+    taloAccounts.set(userId, form.get('status') === 'PENDING' ? 'PENDING' : 'ACTIVE');
+    const code = 'code-' + randomUUID();
+    taloCodes.set(code, { userId, referred, expiresAt: Date.now() + 5 * 60 * 1000 });
+    const back = new URL(TALO_REDIRECT_URL);
+    back.searchParams.set('code', code);
+    back.searchParams.set('referred_user_id', referred);
+    log('talo authorized', { userId, referred });
+    return send(res, 302, '', { location: back.toString() });
+  }
+  return send(res, 405, 'método no soportado');
+}
+const taloFile = (id) => path.join(dirs.talo, `${encodeURIComponent(id)}.json`);
+const loadTalo = (id) => (existsSync(taloFile(id)) ? JSON.parse(readFileSync(taloFile(id), 'utf8')) : null);
+const saveTalo = (payment) => writeFileSync(taloFile(payment.id), JSON.stringify(payment, null, 2));
+const allTalo = () =>
+  readdirSync(dirs.talo)
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => JSON.parse(readFileSync(path.join(dirs.talo, file), 'utf8')));
+const taloEnvelope = (data) => ({ message: 'ok', error: false, code: 200, data });
+
+// Como el sandbox: una diferencia de hasta $10 cuenta como pago completo.
+const TALO_TOLERANCE = 10;
+const taloPaid = (payment) => payment.transactions.reduce((sum, t) => sum + t.amount, 0);
+function taloStatus(payment) {
+  const paid = taloPaid(payment);
+  if (paid === 0) return new Date(payment.expiration_timestamp) < new Date() ? 'EXPIRED' : 'PENDING';
+  if (Math.abs(paid - payment.price.amount) <= TALO_TOLERANCE) return 'SUCCESS';
+  return paid > payment.price.amount ? 'OVERPAID' : 'UNDERPAID';
+}
+// Lo que devuelve la API al leer un pago: estado, lo pagado y las devoluciones.
+// Una devolución pendiente se completa la próxima vez que se lee el pago.
+function taloView(payment) {
+  let changed = false;
+  for (const refund of payment.refunds ?? []) {
+    if (refund.refund_status === 'PENDING' && refund.read) {
+      refund.refund_status = 'SUCCESS';
+      changed = true;
+    } else if (refund.refund_status === 'PENDING') {
+      refund.read = true;
+      changed = true;
+    }
+  }
+  if (changed) saveTalo(payment);
+  return {
+    ...payment,
+    payment_status: taloStatus(payment),
+    transaction_fields: { total_paid: { amount: taloPaid(payment), currency: 'ARS' } },
+    refunds: (payment.refunds ?? []).map(({ read: _read, ...refund }) => refund),
+  };
+}
+
+async function sendTaloWebhook(payment) {
+  const target = new URL(payment.webhook_url);
+  const body = JSON.stringify({ message: 'Pago Actualizado', paymentId: payment.id, externalId: payment.external_id });
+  const result = await new Promise((resolve) => {
+    const request = http.request(
+      {
+        host: '127.0.0.1',
+        port: NEXT_PORT,
+        method: 'POST',
+        path: target.pathname,
+        headers: {
+          host: target.host,
+          'x-forwarded-host': target.host,
+          'x-forwarded-proto': 'https',
+          'content-type': 'application/json',
+        },
+      },
+      async (response) => resolve({ status: response.statusCode, body: (await readBody(response)).toString().slice(0, 500) }),
+    );
+    request.on('error', (error) => resolve({ status: 0, body: error.message }));
+    request.end(body);
+  });
+  log('talo webhook sent', { paymentId: payment.id, ...result });
+  return result;
+}
+
+async function handleTaloApi(req, res) {
+  const url = new URL(req.url, 'https://sandbox-api.talo.com.ar');
+  const pathname = url.pathname.replace(/\/+$/, '');
+  const body = req.method === 'GET' ? {} : JSON.parse((await readBody(req)).toString() || '{}');
+
+  if (req.method === 'POST' && pathname === '/auth/tokens') {
+    const entry = taloCodes.get(body.code);
+    taloCodes.delete(body.code);
+    if (
+      body.client_id !== TALO_PARTNER_ID ||
+      body.client_secret !== TALO_PARTNER_SECRET ||
+      !entry ||
+      entry.expiresAt < Date.now()
+    ) {
+      return sendJson(res, 400, { message: 'Invalid credentials', error: true, code: 400 });
+    }
+    return sendJson(res, 200, taloEnvelope({ token: 'PAR-mock-' + entry.userId, user_id: entry.userId, referred_user_id: entry.referred }));
+  }
+
+  // El faucet del sandbox: acredita una transferencia a un CVU.
+  const faucetMatch = pathname.match(/^\/cvu\/([^/]+)\/faucet$/);
+  if (req.method === 'POST' && faucetMatch) {
+    const payment = allTalo().find((p) => p.quotes[0]?.cvu === faucetMatch[1]);
+    if (!payment) return sendJson(res, 404, { message: 'CVU no encontrado', error: true, code: 404 });
+    payment.transactions.push({ amount: Number(body.amount), cuit: body.cuit ?? null, at: new Date().toISOString() });
+    saveTalo(payment);
+    const webhook = payment.webhook_url ? await sendTaloWebhook(payment) : null;
+    return sendJson(res, 200, taloEnvelope({ paymentId: payment.id, payment_status: taloStatus(payment), webhook }));
+  }
+
+  const tokenMatch = pathname.match(/^\/users\/([^/]+)\/tokens$/);
+  if (req.method === 'POST' && tokenMatch) {
+    if (!body.client_id || !body.client_secret || body.client_secret === 'rechazado') {
+      log('talo token rejected', { userId: tokenMatch[1] });
+      return sendJson(res, 401, { message: 'Credenciales inválidas', error: true, code: 401 });
+    }
+    return sendJson(res, 200, taloEnvelope({ token: 'TL-mock-' + tokenMatch[1] }));
+  }
+
+  const auth = req.headers.authorization ?? '';
+  const tokenUser = auth.match(/^Bearer (?:TL|PAR)-mock-(.+)$/)?.[1];
+  if (!tokenUser) {
+    return sendJson(res, 401, { message: 'Token inválido', error: true, code: 401 });
+  }
+  const userId = tokenUser;
+
+  const accountMatch = pathname.match(/^\/users\/([^/]+)\/account$/);
+  if (req.method === 'GET' && accountMatch) {
+    if (!auth.startsWith('Bearer PAR-') || accountMatch[1] !== userId) {
+      return sendJson(res, 403, { message: 'Forbidden', error: true, code: 403 });
+    }
+    return sendJson(res, 200, taloEnvelope({ account_status: taloAccounts.get(userId) ?? 'ACTIVE', partner_config: { partner_id: TALO_PARTNER_ID } }));
+  }
+
+  if (req.method === 'POST' && pathname === '/payments') {
+    const existing = allTalo().find((p) => p.user_id === userId && p.external_id === body.external_id);
+    if (existing) return sendJson(res, 200, taloEnvelope(taloView(existing)));
+    const id = 'VAR-' + userId + '-' + body.external_id;
+    const cvu = '00006305000000' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
+    const amount = Number(body.price?.amount);
+    const payment = {
+      id,
+      user_id: userId,
+      external_id: body.external_id,
+      partner_id: body.partner_id ?? null,
+      price: { amount, currency: body.price?.currency ?? 'ARS' },
+      payment_options: body.payment_options,
+      webhook_url: body.webhook_url,
+      redirect_url: body.redirect_url,
+      motive: body.motive,
+      client_data: body.client_data,
+      quotes: [{ cvu, address: cvu, alias: 'talo.mock.' + cvu.slice(-6), amount, currency: 'ARS' }],
+      payment_url: 'https://sandbox.talo.com.ar/payments/' + id,
+      expiration_timestamp: new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString(),
+      creation_timestamp: new Date().toISOString(),
+      transactions: [],
+    };
+    saveTalo(payment);
+    log('talo payment created', { id, external_id: body.external_id, amount });
+    return sendJson(res, 200, taloEnvelope({ ...payment, payment_status: 'PENDING' }));
+  }
+
+  const paymentMatch = pathname.match(/^\/payments\/([^/]+)(\/expiration|\/price|\/refunds)?$/);
+  if (paymentMatch) {
+    const payment = loadTalo(decodeURIComponent(paymentMatch[1]));
+    if (!payment || payment.user_id !== userId) {
+      return sendJson(res, 404, { message: 'payment.not.found', error: true, code: 404 });
+    }
+    const action = paymentMatch[2];
+    if (req.method === 'GET' && !action) {
+      return sendJson(res, 200, taloEnvelope(taloView(payment)));
+    }
+    if (req.method === 'PUT' && action === '/expiration') {
+      payment.expiration_timestamp = body.expiration_timestamp;
+      saveTalo(payment);
+      return sendJson(res, 200, payment);
+    }
+    if (req.method === 'PUT' && action === '/price') {
+      payment.price = { amount: Number(body.amount), currency: body.currency ?? 'ARS' };
+      saveTalo(payment);
+      log('talo price changed', { id: payment.id, amount: payment.price.amount });
+      return sendJson(res, 200, payment);
+    }
+    if (req.method === 'POST' && action === '/refunds') {
+      payment.refunds ??= [];
+      if (payment.refunds.some((r) => r.refund_status === 'PENDING')) {
+        return sendJson(res, 409, { message: 'refund.already.pending', error: true, code: 409 });
+      }
+      const paid = taloPaid(payment);
+      const refunded = payment.refunds.filter((r) => r.refund_status === 'SUCCESS').reduce((sum, r) => sum + Number(r.amount), 0);
+      const available = paid - refunded;
+      if (available <= 0) {
+        return sendJson(res, 409, { message: 'payment.no.inbound.transactions', error: true, code: 409 });
+      }
+      const amount = body.refund_type === 'FULL' ? available : Number(body.amount);
+      if (!(amount > 0)) return sendJson(res, 409, { message: 'refund.amount.must.be.positive', error: true, code: 409 });
+      if (amount > available) return sendJson(res, 409, { message: 'refund.amount.exceeds.payment.amount', error: true, code: 409 });
+      payment.refunds.push({
+        refund_id: randomUUID(),
+        refund_type: body.refund_type,
+        refund_status: 'PENDING',
+        amount: String(amount),
+        currency: 'ARS',
+        creation_timestamp: new Date().toISOString(),
+      });
+      saveTalo(payment);
+      log('talo refund requested', { id: payment.id, type: body.refund_type, amount });
+      return sendJson(res, 200, taloEnvelope(taloView(payment)));
+    }
+  }
+
+  log('talo api not mocked', { method: req.method, path: pathname });
+  return sendJson(res, 404, { message: 'talo mock: ' + req.method + ' ' + pathname + ' no soportado' });
+}
+
 // ── Next ─────────────────────────────────────────────────────────────────────
 function proxyToNext(req, res, host) {
   const upstream = http.request(
@@ -429,6 +679,8 @@ async function route(req, res) {
     if (req.url.startsWith('/resend/')) return await handleResend(req, res);
     if (host.endsWith('.amazonaws.com')) return await handleS3(req, res, host);
     if (host === 'api.mercadopago.com') return await handleMercadoPagoApi(req, res);
+    if (host.endsWith('talo.com.ar')) return await handleTaloApi(req, res);
+    if (host === 'talo.mock.test') return await handleTaloUi(req, res);
     if (host === 'mercadopago.mock.test') return await handleMercadoPagoUi(req, res);
     if (host === 'mail.mock.test') return await handleMailViewer(req, res);
     if (host === 'pn.test' || host.endsWith('.pn.test')) return proxyToNext(req, res, req.headers.host);

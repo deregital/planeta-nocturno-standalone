@@ -23,12 +23,3 @@ export function serverTicketHash(ticketId: string): string {
 export function getLegacyQrKeyBase64(): string {
   return getBarcodeKey().toString('base64');
 }
-
-/**
- * El modo local se habilita por instalación (proyecto de Vercel) con
- * SCANNER_LOCAL_MODE_ENABLED=true. Sin eso, todos los eventos escanean como
- * siempre y la configuración por evento no aparece.
- */
-export function isScannerLocalModeAvailable(): boolean {
-  return process.env.SCANNER_LOCAL_MODE_ENABLED === 'true';
-}

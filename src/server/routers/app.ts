@@ -9,12 +9,14 @@ import { featureRouter } from '@/server/routers/feature';
 import { locationRouter } from '@/server/routers/location';
 import { mailRouter } from '@/server/routers/mail';
 import { mercadoPagoRouter } from '@/server/routers/mercado-pago';
+import { paymentsRouter } from '@/server/routers/payments';
 import { organizerRouter } from '@/server/routers/organizer';
 import { scannerRouter } from '@/server/routers/scanner';
 import { statisticsRouter } from '@/server/routers/statistics';
 import { tagRouter } from '@/server/routers/tag';
 import { ticketGroupRouter } from '@/server/routers/ticket-group';
 import { userRouter } from '@/server/routers/user';
+import { withdrawalRouter } from '@/server/routers/withdrawal';
 import { router } from '@/server/trpc';
 
 export const appRouter = router({
@@ -22,6 +24,7 @@ export const appRouter = router({
   ticketGroup: ticketGroupRouter,
   emittedTickets: emittedTicketsRouter,
   mercadoPago: mercadoPagoRouter,
+  payments: paymentsRouter,
   mail: mailRouter,
   location: locationRouter,
   eventCategory: eventCategoriesRouter,
@@ -33,6 +36,7 @@ export const appRouter = router({
   tag: tagRouter,
   accessRole: accessRoleRouter,
   scanner: scannerRouter,
+  withdrawal: withdrawalRouter,
 });
 
 export type AppRouter = typeof appRouter;
