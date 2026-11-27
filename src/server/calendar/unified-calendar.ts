@@ -10,6 +10,7 @@ import {
   getCalendarEvents,
 } from '@/server/services/calendarEvents';
 import { getCalendarStatsByEventId } from '@/server/services/calendarEventStats';
+import { mapWithConcurrency } from '@/server/utils/map-with-concurrency';
 
 // Cada base de tenant abre su propio pool: se consultan de a pocas a la vez.
 const TENANT_CONCURRENCY = 5;
@@ -67,25 +68,4 @@ export async function getTenantEventDetail(
   if (!event) return null;
 
   return { event, stats: await getCalendarStatsByEventId(db, event.id) };
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  concurrency: number,
-  mapper: (item: T) => Promise<R>,
-) {
-  const results = new Array<R>(items.length);
-  let nextIndex = 0;
-
-  async function worker() {
-    while (nextIndex < items.length) {
-      const index = nextIndex++;
-      results[index] = await mapper(items[index]);
-    }
-  }
-
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, worker),
-  );
-  return results;
 }

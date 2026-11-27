@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { ControlPermission } from '@/lib/control/permissions';
 
-import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
 
 import { getControlDb } from '@/db/control/client';
 import { tenants } from '@/db/control/schema';
@@ -16,12 +16,14 @@ export type CalendarTenant = {
   saturation: number;
 };
 
-/** Tenants activos con base que el admin puede ver (misma regla que Plataformas). */
-export async function getCalendarTenants(
-  adminId: string,
-  permissions: readonly ControlPermission[],
-): Promise<CalendarTenant[]> {
-  const rows = await getControlDb()
+const activeWithDatabase = and(
+  eq(tenants.status, 'active'),
+  isNull(tenants.deletedAt),
+  isNotNull(tenants.databaseName),
+);
+
+function selectTenants(filter: SQL | undefined) {
+  return getControlDb()
     .select({
       slug: tenants.slug,
       name: tenants.name,
@@ -30,21 +32,30 @@ export async function getCalendarTenants(
       saturation: tenants.saturation,
     })
     .from(tenants)
-    .where(
-      and(
-        eq(tenants.status, 'active'),
-        isNull(tenants.deletedAt),
-        isNotNull(tenants.databaseName),
-        tenantVisibilityFilter(adminId, permissions),
+    .where(and(activeWithDatabase, filter))
+    .orderBy(asc(tenants.name))
+    .then((rows) =>
+      rows.map(
+        (row): CalendarTenant => ({
+          slug: row.slug,
+          name: row.name,
+          databaseName: row.databaseName!,
+          hue: row.hue ?? 200,
+          saturation: row.saturation ?? 100,
+        }),
       ),
-    )
-    .orderBy(asc(tenants.name));
+    );
+}
 
-  return rows.map((row) => ({
-    slug: row.slug,
-    name: row.name,
-    databaseName: row.databaseName!,
-    hue: row.hue ?? 200,
-    saturation: row.saturation ?? 100,
-  }));
+/** Tenants activos con base que el admin puede ver (misma regla que Plataformas). */
+export async function getCalendarTenants(
+  adminId: string,
+  permissions: readonly ControlPermission[],
+): Promise<CalendarTenant[]> {
+  return selectTenants(tenantVisibilityFilter(adminId, permissions));
+}
+
+/** Todos los tenants activos con base de la instancia (para el pedido firmado de Pluto). */
+export async function getActiveTenants(): Promise<CalendarTenant[]> {
+  return selectTenants(undefined);
 }
