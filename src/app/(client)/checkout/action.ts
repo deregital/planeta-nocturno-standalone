@@ -59,7 +59,7 @@ export type PurchaseActionState = {
 
 // La reserva vence a los 10 minutos sin enviar los datos.
 const RESERVATION_EXPIRED_MESSAGE =
-  'Tu reserva ya no está activa: pasaron más de 10 minutos. Volvé a abrir el link o elegí tus entradas de nuevo.';
+  'Tu reserva ya no está activa: pasaron más de 10 minutos. Volvé a abrir el link o elegí tus tickets de nuevo.';
 
 export const handlePurchase = async (
   prevState: PurchaseActionState,

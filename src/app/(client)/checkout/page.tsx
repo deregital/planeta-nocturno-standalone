@@ -39,7 +39,7 @@ export default async function CheckoutPage() {
     return (
       <ServerErrorCard
         title='Tu reserva ya no está activa'
-        description='Pasaron más de 10 minutos. Volvé a abrir el link o elegí tus entradas de nuevo.'
+        description='Pasaron más de 10 minutos. Volvé a abrir el link o elegí tus tickets de nuevo.'
         route='/'
       />
     );
@@ -66,6 +66,8 @@ export default async function CheckoutPage() {
       ticketGroup={data}
       lastPurchase={lastPurchase}
       paymentOptions={paymentOptions}
+      // La cuenta regresiva de la reserva descuenta desde la hora del servidor.
+      serverNow={Date.now()}
     />
   );
 }

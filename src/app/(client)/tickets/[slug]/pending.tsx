@@ -14,6 +14,7 @@ import {
 
 import { startPaymentFor } from '@/app/(client)/tickets/[slug]/actions';
 import { OtherPaymentMethods } from '@/app/(client)/tickets/[slug]/other-payment-methods';
+import { HoldCountdown } from '@/components/checkout/HoldCountdown';
 import GoBack from '@/components/common/GoBack';
 import DotsLoader from '@/components/icons/DotsLoader';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export default function TicketsPendingClient({
   holdExpiresAt,
   canRetryPayment,
   otherPaymentMethods = [],
+  serverNow,
 }: {
   ticketGroupId: string;
   paymentUrl?: string;
@@ -60,8 +62,10 @@ export default function TicketsPendingClient({
   holdExpiresAt?: string | null;
   canRetryPayment?: boolean;
   otherPaymentMethods?: ComponentProps<typeof OtherPaymentMethods>['methods'];
+  serverNow: number;
 }) {
   const router = useRouter();
+  const [holdExpired, setHoldExpired] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [isRetrying, startRetry] = useTransition();
 
@@ -108,14 +112,6 @@ export default function TicketsPendingClient({
   }
 
   const eventRoute = (eventSlug ? `/event/${eventSlug}` : '/') as Route;
-  const holdUntil = holdExpiresAt
-    ? new Date(holdExpiresAt).toLocaleTimeString('es-AR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-        timeZone: 'America/Argentina/Buenos_Aires',
-      })
-    : null;
 
   const retry = () =>
     startRetry(async () => {
@@ -139,7 +135,7 @@ export default function TicketsPendingClient({
     title = 'Tu reserva venció';
     body = (
       <p className='text-muted-foreground'>
-        No recibimos el pago a tiempo y las entradas se liberaron. Si Mercado
+        No recibimos el pago a tiempo y los tickets se liberaron. Si Mercado
         Pago te cobró, escribinos y lo resolvemos.
       </p>
     );
@@ -147,8 +143,8 @@ export default function TicketsPendingClient({
     title = 'Procesando tu pago...';
     body = (
       <p className='text-muted-foreground'>
-        Mercado Pago aprobó el pago. En unos segundos aparecen tus entradas acá
-        y te llegan por mail.
+        Mercado Pago aprobó el pago. En unos segundos aparecen tus tickets acá y
+        te llegan por mail.
       </p>
     );
   } else if (paymentStatus === 'pending' || paymentStatus === 'in_process') {
@@ -156,7 +152,7 @@ export default function TicketsPendingClient({
     body = (
       <p className='text-muted-foreground'>
         Mercado Pago todavía no lo acreditó (pago en efectivo o en revisión).
-        Cuando se apruebe te mandamos las entradas por mail; no hace falta que
+        Cuando se apruebe te mandamos los tickets por mail; no hace falta que
         dejes esta página abierta.
       </p>
     );
@@ -168,12 +164,21 @@ export default function TicketsPendingClient({
         : 'Todavía no recibimos tu pago';
     body = (
       <>
-        <p className='text-muted-foreground'>
-          {holdUntil && canRetryPayment
-            ? `Tus entradas siguen reservadas hasta las ${holdUntil} hs.`
-            : 'Si ya pagaste, en unos segundos aparecen tus entradas acá.'}
-        </p>
-        {canRetryPayment && (
+        {holdExpiresAt && canRetryPayment ? (
+          <HoldCountdown
+            expiresAt={holdExpiresAt}
+            serverNow={serverNow}
+            task='completar el pago'
+            backHref={eventRoute}
+            onExpire={() => setHoldExpired(true)}
+            className='text-left'
+          />
+        ) : (
+          <p className='text-muted-foreground'>
+            Si ya pagaste, en unos segundos aparecen tus tickets acá.
+          </p>
+        )}
+        {canRetryPayment && !holdExpired && (
           <Button
             variant='accent'
             className='w-full'

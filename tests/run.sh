@@ -39,6 +39,7 @@ rapido() {
   step "variables de entorno" npm run -s test:environment
   step "videos de ayuda" npm run -s test:guide-videos
   step "importación de usuarios" npm run -s test:user-import
+  step "cuenta regresiva de la reserva" npm run -s test:hold-countdown
 }
 
 levantar_stack() {

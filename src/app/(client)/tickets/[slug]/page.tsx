@@ -102,6 +102,8 @@ export default async function TicketsPage({
           pending?.canRetryPayment && pending.paymentMethod === 'MERCADO_PAGO'
         }
         otherPaymentMethods={pending?.otherPaymentMethods}
+        // La cuenta regresiva de la reserva descuenta desde la hora del servidor.
+        serverNow={Date.now()}
       />
     );
   }
