@@ -12,9 +12,9 @@ export default function InvitationTicketVerify({
 }) {
   return (
     <TicketHolderVerify
-      title='Tu invitación ya tiene un ticket'
-      description='Para verlo, ingresá el DNI de la persona titular del ticket.'
-      invalidMessage='El DNI no coincide con el del titular de esta invitación.'
+      title='Esta invitación ya fue canjeada'
+      description='Si la canjeaste vos, ingresá tu DNI (el que cargaste al canjearla) para ver tu ticket.'
+      invalidMessage='Ese DNI no es el que se cargó al canjear esta invitación. Si no la canjeaste vos, pedile una nueva a quien te la mandó.'
       verify={(dni) => verifyInvitationHolder(eventSlug, code, dni)}
     />
   );

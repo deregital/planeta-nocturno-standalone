@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const ERRORS: Record<Exclude<VerifyHolderResult['status'], 'ok'>, string> = {
-  invalid: 'El DNI no coincide con el de ningún titular de este ticket.',
+  invalid: 'Ese DNI no está en ninguno de los tickets de esta compra.',
   rate_limited:
     'Hiciste demasiados intentos. Esperá un rato y volvé a intentar.',
   error: 'No pudimos verificar tus datos. Intentá nuevamente.',
@@ -28,11 +28,13 @@ const ERRORS: Record<Exclude<VerifyHolderResult['status'], 'ok'>, string> = {
 export default function TicketHolderVerify({
   title,
   description,
+  label = 'Tu DNI',
   invalidMessage = ERRORS.invalid,
   verify,
 }: {
   title: string;
   description: string;
+  label?: string;
   invalidMessage?: string;
   verify: (dni: string) => Promise<VerifyHolderResult>;
 }) {
@@ -78,7 +80,7 @@ export default function TicketHolderVerify({
 
           <form onSubmit={handleSubmit} className='flex flex-col gap-3'>
             <div className='flex flex-col gap-1.5'>
-              <Label htmlFor='dni'>DNI del titular</Label>
+              <Label htmlFor='dni'>{label}</Label>
               <Input
                 id='dni'
                 name='dni'
@@ -126,7 +128,7 @@ export function TicketAccessVerify({
   return (
     <TicketHolderVerify
       title='Ingresá tu DNI para ver el ticket'
-      description='Por seguridad, para ver el ticket ingresá el DNI de alguna de las personas titulares.'
+      description='Por seguridad, ingresá tu DNI. Sirve el de cualquier persona con un ticket de esta compra (el que se cargó al comprar).'
       verify={(dni) => verifyTicketHolder(ticketGroupId, dni)}
     />
   );

@@ -125,17 +125,20 @@ test('el organizador comparte una invitación y el invitado la canjea', async ({
     invitada.fullName,
   );
 
-  // El mismo link otra vez no da otra entrada: pide el DNI del titular, y sólo
-  // con ese DNI muestra la entrada que ya tiene.
+  // El mismo link otra vez no da otro ticket: pide el DNI de quien la canjeó,
+  // y sólo con ese DNI muestra el ticket que ya tiene.
   const otra = await abrir('celular');
   await otra.goto(link!);
   await expect(otra).toHaveURL(/\/ticket\?invite=/, { timeout: 30_000 });
   await sinDesbordes(otra, 'la invitación ya usada');
-  const dni = otra.getByLabel('DNI del titular');
+  const dni = otra.getByLabel('Tu DNI');
   await dni.fill('40111222');
   await otra.getByRole('button', { name: 'Ver mi ticket' }).click();
   await expect(
-    otra.getByText('El DNI no coincide con el del titular de esta invitación.'),
+    otra.getByText(
+      'Ese DNI no es el que se cargó al canjear esta invitación.',
+      { exact: false },
+    ),
   ).toBeVisible();
   await dni.fill(invitada.dni);
   await otra.getByRole('button', { name: 'Ver mi ticket' }).click();
