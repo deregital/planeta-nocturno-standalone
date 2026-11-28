@@ -25,6 +25,7 @@ import {
   PaymentMethodPicker,
 } from '@/app/(client)/checkout/payment-method-picker';
 import FormInputGender from '@/components/checkout/FormInputGender';
+import { HoldCountdown } from '@/components/checkout/HoldCountdown';
 import FormInputInstagram from '@/components/checkout/FormInputInstagram';
 import FormInputMail from '@/components/checkout/FormInputMail';
 import OrganizerCodeOTP from '@/components/checkout/OrganizerCodeOTP';
@@ -47,11 +48,14 @@ export default function CheckoutClient({
   ticketGroup,
   lastPurchase,
   paymentOptions,
+  serverNow,
 }: {
   ticketGroup: RouterOutputs['ticketGroup']['getById'];
   lastPurchase?: EmittedTicketInput;
   paymentOptions: CheckoutPaymentOption[];
+  serverNow: number;
 }) {
+  const [holdExpired, setHoldExpired] = useState(false);
   const [state, action, isPending] = useActionState(
     async (prevState: PurchaseActionState, formData: FormData) => {
       try {
@@ -274,8 +278,9 @@ export default function CheckoutClient({
 
   const holdExpiresAt =
     ticketGroup.holdExpiresAt && !ticketGroup.paymentMethod
-      ? format(new Date(ticketGroup.holdExpiresAt), 'HH:mm')
+      ? ticketGroup.holdExpiresAt
       : null;
+  const eventRoute = `/event/${ticketGroup.event.slug}` as Route;
 
   const isSingleFreeTicket =
     ticketGroup.ticketTypePerGroups.length === 1 &&
@@ -342,13 +347,14 @@ export default function CheckoutClient({
       )}
 
       {holdExpiresAt && (
-        <p
-          className='w-full sm:w-xl md:w-2xl px-4 text-sm text-accent-dark/80'
-          suppressHydrationWarning
-        >
-          Tus entradas están reservadas hasta las {holdExpiresAt} hs. Completá
-          tus datos antes de esa hora.
-        </p>
+        <HoldCountdown
+          expiresAt={holdExpiresAt}
+          serverNow={serverNow}
+          task='completar tus datos'
+          backHref={eventRoute}
+          onExpire={() => setHoldExpired(true)}
+          className='w-full sm:w-xl md:w-2xl'
+        />
       )}
 
       <form
@@ -799,7 +805,7 @@ export default function CheckoutClient({
                 }
                 className='mt-2 inline-block font-bold underline'
               >
-                Volver a elegir entradas
+                Volver a elegir tickets
               </Link>
             )}
           </div>
@@ -809,7 +815,7 @@ export default function CheckoutClient({
           size='lg'
           variant='accent'
           className='rounded-full sm:text-2xl text-xl font-bold py-6 mt-8'
-          disabled={isPending || state.reservationExpired}
+          disabled={isPending || state.reservationExpired || holdExpired}
         >
           <span>
             {isPending ? (

@@ -689,6 +689,8 @@ export const ticketGroupRouter = router({
             columns: {
               id: true,
               name: true,
+              // Para "Volver a elegir tickets" cuando vence la reserva.
+              slug: true,
               description: true,
               startingDate: true,
               endingDate: true,
